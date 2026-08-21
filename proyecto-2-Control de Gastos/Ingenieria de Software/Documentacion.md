@@ -63,9 +63,9 @@ Permitir que un grupo pueda:
 
 ## 5. Actor
 
-# | Actor | Descripción |
+### | Actor | Descripción |
 
-# | Usuario |
+#### | Usuario |
 Puede:
 1) crear espacio de pago;
 2) participar en espacios;
@@ -77,7 +77,7 @@ Puede:
 8) consultar historial;
 9) participar de pagos.
     
-# | Organizador | Es un usuario que crea o administra determinado gasto.
+#### | Organizador | Es un usuario que crea o administra determinado gasto.
 Puede:
 1) Crear un gasto compartido
 2) Editar un gasto compartido
@@ -86,20 +86,20 @@ Puede:
   4.1) Asignar un responsable de pago (Por default es el organizador)
   4.2) Designar pago conjunto sin responsable unico.
 
-# | Participante | Es un usuario que se une a un gasto compartido creado
+#### | Participante | Es un usuario que se une a un gasto compartido creado
 Puede:
 1) consultar participación %
 2) aceptar su pago
 3) rechazar su pago
 4) consultar estado
 
-# | Responsable del pago | 
+#### | Responsable del pago | 
 Es Usuario que realiza el pago principal cuando se utiliza una modalidad en la que una persona paga y luego es compensada por el resto.
 
-# | Proveedor de pagos | 
+#### | Proveedor de pagos | 
 Actor externo encargado de procesar una orden de pago. En la versión académica será simulado
 
-# | Servicio de notificaciones |
+#### | Servicio de notificaciones |
 Actor externo opcional encargado de informar nuevas solicitudes, autorizaciones, rechazos, pagos y comprobantes.
 
 Un mismo usuario puede ser organizador, participante y responsable de pago en una operación, y tener roles distintos en otra.
