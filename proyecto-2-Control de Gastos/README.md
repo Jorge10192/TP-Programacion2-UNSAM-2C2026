@@ -1,28 +1,36 @@
-###########################
-#### Control de Gastos ####
-###########################
+# Saldo - Control de Gastos
 
-# Idea principal:
-Crear una app que permita a los usuarios organizarses en gastos comunes que deben realizar.
-Entre todos los usuarios definen los gastos comunes y cuanto quiere colaborar cada usuario.
+Prototipo web para organizar gastos compartidos entre amigos, parejas o equipos. Permite registrar consumos, repartirlos entre participantes y calcular quién le debe a quién.
 
-# Forma de uso:
-- Deben cargarse los gastos comunes y medios de pago de cada usuario.
-- Luego cada usuario debe liberar (de forma condicinal) su dinero a la app, para que esta gestione el pago comun.
-- Cuando todos los usuarios cargaron los aportes correspondientes (definidos por la app), se gestiona de forma automatica
-el pago de la reserva, y el comprobante a todos los usuarios.
+## Funciones actuales
 
-# Extension de la idea:
-- Poder definir un gasto compartido entre 2 o mas usuarios de forma espontanea sin necesidad de hacer reserva,
-luego para ejecutarse el pago que no haga falta que todos le transfieran a el usuario que paga, que se haga de forma
-automatica el pago desde la cuenta del responsable y los pagos de los otros consumidores secundarios a la cuenta del responsable.
+- Crear espacios de tipo evento, permanente u objetivo.
+- Registrar gastos y dividirlos en partes iguales, montos o porcentajes.
+- Consultar movimientos, presupuestos y saldos.
+- Calcular una propuesta simple para saldar las deudas.
+- Registrar aportes a objetivos de ahorro.
+- Generar un enlace de invitación y un resumen visual simulados.
 
-- Generar informes de gastos para control interno
-- Crear alerta si se quiere utilizar mas dinero del que se dispone
+## Ejecutar la demo
 
-- Generar medios de control de gastos por parte de los usuarios que comparten gastos de forma que:
-i) Cada usuario no gaste mas de lo que quiere/se compromete a gastar
-ii) Un usuario externo no pueda activar un consumo de la cuenta de otro usuario sin su consentimiento explicito, aunque
-ya haya sido aprobado en otro momento para otros gastos anteriores.
+No requiere instalación ni dependencias.
 
- 
+1. Abrir `saldo-demo.html` en un navegador moderno.
+2. Navegar con el menú inferior.
+3. Crear un espacio o registrar un gasto para ver cómo se actualizan los saldos.
+
+También se puede servir localmente desde esta carpeta:
+
+```bash
+python -m http.server 8000
+```
+
+Luego abrir `http://localhost:8000/saldo-demo.html`.
+
+## Limitaciones
+
+La aplicación es una demo de frontend. Los datos se guardan solo en memoria y se pierden al recargar la página. No incluye usuarios reales, base de datos, backend ni pagos reales.
+
+## Documentación
+
+La definición del sistema, los requisitos, los casos de uso, los diagramas y las pruebas mínimas están en [Ingeniería de Software/Documentación.md](Ingenieria%20de%20Software/Documentacion.md).
