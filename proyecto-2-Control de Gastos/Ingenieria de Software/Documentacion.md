@@ -2,36 +2,45 @@
 
 ## 1. Descripción
 
-Saldo es un prototipo web para registrar y dividir gastos compartidos. Centraliza los movimientos de un grupo, calcula los saldos individuales y propone las transferencias necesarias para que las cuentas queden equilibradas.
+- Su objetivo es centralizar en un único lugar la organización de gastos, la distribución de responsabilidades, las autorizaciones individuales, el cálculo de saldos y la liquidación de pagos.
+- El sistema busca resolver gastos planificados, en los que los participantes acuerdan previamente cuánto aportará cada uno y autorizan su participación antes de ejecutar el pago.
+- El MVP va a utilizar un servicio de prueba de API de Mercado Pago y una prueba real de descarga de App Store para un testeo real.
 
 ## 2. Problema
 
-Cuando varias personas comparten gastos, una suele pagar y después debe calcular cuánto corresponde a cada integrante. El seguimiento se reparte entre mensajes, anotaciones y transferencias, lo que puede producir errores y discusiones.
+- Una persona debe disponer temporalmente de dinero para cubrir gastos que en realidad corresponden al grupo (otros usuarios);
+- El responsable debe controlar quién pagó, cuánto pagó y quién todavía mantiene una deuda pendiente;
+- Una persona puede ser incluida o comprometida en un gasto sin que exista una autorización explícita de su parte;
+- Cuando existen muchos participantes pueden producirse errores de comunicación, distribución y seguimiento;
+- No siempre existen mecanismos claros para limitar cuánto dinero desea comprometer cada participante.
 
-Saldo reúne esa información en un mismo lugar y actualiza los saldos automáticamente.
-
-## 3. Objetivo
+"Problema a resolver:
+La coordinación de un gasto compartido, desde su acuerdo y distribución entre los participantes hasta su pago y posterior liquidación, se encuentra fragmentada entre varias personas, aplicaciones y transferencias independientes."
+  
+## 3. Objetivos
 
 Permitir que un grupo pueda:
 
 - organizar gastos dentro de espacios;
-- definir quién pagó y quiénes participan;
+- definir responsables de pagó y quiénes participan;
 - repartir un gasto de diferentes formas;
-- conocer cuánto debe o tiene a favor cada persona;
+- conocer cuánto debe o tiene a favor cada persona; Sirve si solo gestionamos???
 - registrar pagos y aportes a objetivos comunes.
+- Definir alertas/recordatorios de pagos
+- Programar/automatizar operaciones. 
 
 ## 4. Alcance
 
 ### Incluido en el prototipo
 
-- Espacios de tipo evento, permanente y objetivo.
-- Presupuesto opcional para eventos.
-- Registro y listado de gastos.
+- Espacios de tipo evento, permanente (Ej: pagos mensuales o recurrentes) y objetivo (Ej: evento particular de 1 sola vez).
+- Presupuesto opcional para eventos. (Ampliar)???
+- Combinar distintos eventos en uno solo multiple (Ej: Viaje definir pasajes, hotel, excursiones etc)
+- Historial de gastos particular por eventos / Historial de eventos donde participa el usuario.
 - Categorías de gastos.
 - División en partes iguales, montos fijos o porcentajes.
 - Cálculo automático de saldos.
-- Propuesta de transferencias para saldar deudas.
-- Registro simulado de una deuda como pagada.
+- Registro simulado de pago realizado para ver estado posterior al evento.
 - Objetivos de ahorro y aportes.
 - Perfil y resumen visual.
 - Enlace de invitación simulado.
@@ -40,7 +49,13 @@ Permitir que un grupo pueda:
 
 - Registro e inicio de sesión.
 - Persistencia en una base de datos.
-- Backend o API.
+
+- Backend (con python).
+- API con FastAPI
+- Front (con Javascript/Typescript)
+- BBDD (PostgreSQL)
+-> Para monetizar plantear un modelo escalable en la nube (GCS o AWS)  
+
 - Invitaciones y usuarios reales.
 - Transferencias o medios de pago reales.
 - Autorizaciones, límites personales y comprobantes legales.
@@ -48,10 +63,46 @@ Permitir que un grupo pueda:
 
 ## 5. Actor
 
-| Actor | Descripción |
-| --- | --- |
-| Usuario | Persona que crea espacios, registra gastos, consulta saldos y administra objetivos dentro de la demo. |
+# | Actor | Descripción |
 
+# | Usuario |
+Puede:
+1) crear espacio de pago;
+2) participar en espacios;
+3) registrar gastos;
+4) consultar gastos;
+5) establecer límites;
+6) aceptar/rechazar participaciones;
+7) Establecer limites de pagos;
+8) consultar historial;
+9) participar de pagos.
+    
+# | Organizador | Es un usuario que crea o administra determinado gasto.
+Puede:
+1) Crear un gasto compartido
+2) Editar un gasto compartido
+3) Enviar invitacion a otro usuario
+4) Designar responsable de pago (Usuario que computa el pago al proveedor)
+  4.1) Asignar un responsable de pago (Por default es el organizador)
+  4.2) Designar pago conjunto sin responsable unico.
+
+# | Participante | Es un usuario que se une a un gasto compartido creado
+Puede:
+1) consultar participación %
+2) aceptar su pago
+3) rechazar su pago
+4) consultar estado
+
+# | Responsable del pago | 
+Es Usuario que realiza el pago principal cuando se utiliza una modalidad en la que una persona paga y luego es compensada por el resto.
+
+# | Proveedor de pagos | 
+Actor externo encargado de procesar una orden de pago. En la versión académica será simulado
+
+# | Servicio de notificaciones |
+Actor externo opcional encargado de informar nuevas solicitudes, autorizaciones, rechazos, pagos y comprobantes.
+
+Un mismo usuario puede ser organizador, participante y responsable de pago en una operación, y tener roles distintos en otra.
 El prototipo usa datos de ejemplo y simula las acciones de todos los participantes desde una misma sesión.
 
 ## 6. Requisitos funcionales
