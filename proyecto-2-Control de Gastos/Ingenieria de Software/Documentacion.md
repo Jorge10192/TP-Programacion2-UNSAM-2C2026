@@ -624,6 +624,156 @@ iii) *La participación ya fue respondida:* el sistema impide realizar nuevament
 - Si el pago finaliza correctamente, se genera un comprobante.
 - Si existe algún fallo, se conserva el estado y detalle de la operación para su control.
 
+### CU-09 - Saldar cuentas
+- **Actor:** Usuario.
+- **Precondición:**
+- El usuario debe estar registrado y autenticado.
+- Debe pertenecer al espacio.
+- Deben existir gastos o transacciones que generen saldos pendientes.
+- **Flujo principal:**
+- El usuario selecciona Saldos.
+- El sistema calcula el saldo de cada participante.
+- El sistema identifica usuarios deudores y acreedores.
+- El sistema calcula las transferencias necesarias para compensar los saldos.
+- El sistema muestra para cada transferencia:
+    usuario de origen;
+    usuario de destino;
+    monto.
+- El usuario selecciona una transferencia pendiente.
+- La transferencia se ejecuta o simula.
+- El sistema registra el resultado.
+- El sistema actualiza los saldos.
+- El sistema recalcula las transferencias pendientes.
+- **Flujo alternativo:**
+- Todos los saldos están compensados: el sistema informa que no existen deudas pendientes.
+- Transferencia con monto cero o inválido: el sistema no genera la transferencia.
+- La transferencia falla: el sistema registra el error y mantiene la deuda pendiente.
+- **Postcondiciones:**
+- Las transferencias completadas quedan registradas.
+- Los saldos de los participantes quedan actualizados.
+- Las transferencias pendientes se recalculan según los nuevos saldos.
+
+### CU-10 - Consultar comprobante
+- **Actor:** Participante.
+- **Precondición:**
+- El usuario debe estar registrado y autenticado.
+- Debe haber participado de la operación.
+- La operación debe haber finalizado correctamente.
+- Debe existir un comprobante asociado.
+- **Flujo principal:**
+- El usuario accede al historial de operaciones.
+- El usuario selecciona una operación completada.
+- El usuario selecciona Ver comprobante.
+- El sistema recupera el comprobante correspondiente.
+- El sistema muestra:
+    identificador único;
+    operación asociada;
+    fecha;
+    monto;
+    participantes;
+    gasto asociado;
+    estado de la operación.
+- El usuario consulta el comprobante.
+- Flujo alternativo:
+- La operación no finalizó correctamente: el sistema informa que no existe un comprobante exitoso.
+- El usuario no participó de la operación: el sistema impide consultar el comprobante.
+- **Postcondiciones:**
+- El comprobante permanece disponible para futuras consultas.
+- La consulta no modifica la operación ni el comprobante.
+- Una misma ejecución no genera comprobantes duplicados.
+
+### CU-11 - Consultar historial
+- **Actor:** Usuario.
+- **Precondición:**
+- El usuario debe estar registrado y autenticado.
+- **Flujo principal:**
+- El usuario selecciona Historial.
+- El sistema recupera los gastos y operaciones a los que el usuario tiene acceso.
+- El sistema ordena los registros temporalmente.
+- El sistema muestra para cada registro:
+    fecha;
+    concepto;
+    monto;
+    estado.
+- El usuario puede seleccionar un registro.
+- El sistema muestra el detalle de la operación seleccionada.
+- **Flujo alternativo:**
+- No existen operaciones registradas: el sistema informa que el historial está vacío.
+- El usuario intenta consultar información de un espacio al que no pertenece: el sistema rechaza el acceso.
+- **Postcondiciones:**
+- El usuario puede consultar sus operaciones anteriores.
+- La consulta no modifica los datos almacenados.
+- Las operaciones finalizadas continúan disponibles para futuras consultas.
+
+### CU-12 - Generar informe de gastos
+- **Actor:** Usuario.
+- **Precondición:**
+- El usuario debe estar registrado y autenticado.
+- Debe existir información de gastos a la que el usuario tenga acceso.
+- **Flujo principal:**
+- El usuario selecciona Informes.
+- El sistema presenta las opciones disponibles.
+- El usuario selecciona uno o más filtros:
+    período;
+    espacio;
+    categoría.
+- El sistema recupera únicamente los gastos a los que el usuario tiene acceso.
+- El sistema procesa los datos.
+- El sistema calcula los totales correspondientes.
+- El sistema genera el informe.
+- El sistema muestra los resultados mediante una representación visual.
+- El usuario puede modificar la forma de visualización utilizando las opciones disponibles.
+- El usuario puede seleccionar Exportar.
+- El usuario selecciona uno de los formatos soportados.
+- El sistema genera el archivo correspondiente.
+- **Flujo alternativo:**
+- No existen datos para los filtros seleccionados: el sistema informa que no existen resultados.
+- **Filtros inválidos:** el sistema informa qué valores deben corregirse.
+- **Formato de exportación no soportado:** el sistema solicita seleccionar un formato disponible.
+- **Postcondiciones:**
+- El usuario obtiene un informe construido únicamente con información a la que tiene acceso.
+- Si solicita una exportación, se genera un archivo en uno de los formatos soportados.
+- La generación del informe no modifica los gastos originales.
+
+### CU-13 - Administrar objetivo compartido
+- **Actor:** Usuario.
+**Precondición:**
+- El usuario debe estar registrado y autenticado.
+- **Flujo principal — Crear objetivo:**
+- El usuario selecciona Crear objetivo.
+- El sistema solicita los datos del objetivo.
+- El usuario ingresa un nombre.
+- El usuario ingresa el monto objetivo.
+- El usuario selecciona los participantes.
+- El sistema valida los datos.
+- El usuario confirma.
+- El sistema genera un identificador para el objetivo.
+- El sistema registra el objetivo.
+- El sistema inicializa su monto acumulado.
+- El sistema muestra el nuevo objetivo.
+- **Flujo principal — Registrar aporte:**
+- El usuario selecciona un objetivo existente.
+- El usuario selecciona Aportar.
+- El sistema solicita el monto del aporte.
+- El usuario ingresa un monto.
+- El sistema verifica que sea mayor que cero.
+- El usuario confirma.
+- El sistema registra usuario, monto y fecha del aporte.
+- El sistema recalcula el monto acumulado.
+- El sistema recalcula el progreso respecto del objetivo.
+- El sistema actualiza el historial de aportes.
+- **Flujo alternativo:**
+- Nombre vacío: el sistema informa el error y no crea el objetivo.
+- Monto objetivo inválido: el sistema informa el error.
+- Aporte menor o igual a cero: el sistema rechaza el aporte.
+- Usuario no asociado al objetivo: el sistema impide registrar el aporte.
+- **Postcondiciones:**
+- Si se crea un objetivo, este queda asociado a los participantes seleccionados.
+- Si se registra un aporte, queda asociado al usuario, monto y fecha correspondientes.
+- El monto acumulado y el progreso del objetivo quedan actualizados.
+- El historial de aportes queda disponible para consulta.
+
+
 ## 9. Diagrama de casos de uso
 
 ```mermaid
