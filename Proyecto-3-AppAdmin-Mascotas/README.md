@@ -4,6 +4,7 @@ Documentación de una aplicación para la panadería para mascotas WALOS. El pro
 
 ## Documentos
 
+- [Documentación del sistema](Ingenieria%20de%20Software/Documentacion.md): vista breve del alcance, reglas, casos de uso, diagramas y pruebas.
 - [Requerimientos](docs/requerimientos.md): necesidades del negocio, reglas, casos de uso y decisiones pendientes.
 - [Guía técnica](docs/guia-tecnica.md): modelo propuesto, flujos de stock y pedidos, endpoints y criterios de entrega de Programación 2.
 - [Requerimientos en PDF](output/pdf/WALOS_Requerimientos.pdf): versión breve para revisar con WALOS y entregar; máximo cinco páginas.
