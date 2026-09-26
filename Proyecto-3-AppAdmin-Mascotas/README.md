@@ -1,29 +1,26 @@
-WALOS/
-│
-├── README.md
-│
-├── docs/
-│   ├── 01-problema-y-objetivo.md
-│   ├── 02-alcance.md
-│   ├── 03-actores.md
-│   ├── 04-user-stories.md
-│   ├── 05-requerimientos-funcionales.md
-│   ├── 06-requerimientos-no-funcionales.md
-│   ├── 07-reglas-de-negocio.md
-│   ├── 08-casos-de-uso.md
-│   │
-│   └── uml/
-│       ├── casos-de-uso.md
-│       ├── clases.md
-│       └── secuencias/
-│           ├── registrar-produccion.md
-│           ├── registrar-venta.md
-│           ├── confirmar-reserva.md
-│           └── registrar-compra.md
-│
-├── src/
-│
-├── tests/
-│
-├── .gitignore
-└── requirements.txt
+# WALOS
+
+Sistema de gestión para un emprendimiento de productos alimenticios para mascotas.
+
+## Objetivo
+
+Centralizar la gestión de:
+
+- proveedores y compras
+- producción
+- lotes
+- stock
+- ventas en ferias
+- promociones
+- pedidos y reservas
+- pagos
+- análisis de ventas
+- costos
+
+## Estado
+
+Proyecto en etapa de análisis y diseño.
+
+## Documentación
+
+La documentación funcional se encuentra en `/docs`.
