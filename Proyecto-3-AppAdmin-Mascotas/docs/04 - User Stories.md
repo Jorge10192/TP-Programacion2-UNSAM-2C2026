@@ -12,23 +12,9 @@ Cada historia incluye criterios de aceptación que permitirán verificar posteri
 
 # 1. Usuarios y permisos
 
-## US-01 — Gestionar usuarios
+## US-01 — Iniciar sesión
 
-Como **administrador de WALOS**, quiero crear, habilitar y deshabilitar usuarios para controlar quién puede utilizar el sistema.
-
-### Criterios de aceptación
-
-- El administrador puede crear nuevos usuarios.
-- Puede habilitar o deshabilitar usuarios existentes.
-- Un usuario deshabilitado no puede ingresar al sistema.
-- Cada usuario debe tener un rol asignado.
-- Solo un usuario autorizado puede administrar otros usuarios.
-
----
-
-## US-02 — Iniciar sesión
-
-Como **usuario autorizado**, quiero iniciar sesión para acceder a las funciones correspondientes a mi rol.
+Como **usuario trabajador**, quiero iniciar sesión para acceder a las funciones correspondientes a mi rol.
 
 ### Criterios de aceptación
 
@@ -36,25 +22,28 @@ Como **usuario autorizado**, quiero iniciar sesión para acceder a las funciones
 - Las credenciales inválidas deben impedir el acceso.
 - El usuario solo puede acceder a las funciones permitidas por su rol.
 - La sesión debe identificar qué usuario realiza cada operación.
+- El **usuario administrador** puede dar de alta y de baja otros usuarios.
 
 ---
 
-## US-03 — Trabajar simultáneamente desde distintos lugares
+## US-02 — Operar el negocio simultáneamente desde distintos lugares
 
-Como **operador o vendedor**, quiero utilizar el sistema al mismo tiempo que otros usuarios para poder trabajar desde diferentes ferias o puntos de venta sin generar inconsistencias.
+Como **trabajador de WALOS**, quiero utilizar el sistema al mismo tiempo que otras personas desde diferentes ubicaciones para que las distintas actividades del negocio puedan realizarse en paralelo sin generar inconsistencias.
 
 ### Criterios de aceptación
 
-- Dos o más usuarios pueden utilizar el sistema simultáneamente.
-- Las ventas realizadas por un usuario deben reflejarse para los demás.
-- El sistema debe evitar que dos usuarios vendan simultáneamente la misma última unidad disponible.
-- Cada operación debe conservar el usuario que la realizó.
-
+- Dos o más personas pueden utilizar el sistema simultáneamente.
+- Las operaciones realizadas por una persona deben reflejarse para las demás.
+- El sistema debe permitir realizar en paralelo actividades de compra de materia prima, producción, ventas en ferias, ventas en local comercial, ventas web y gestión de reservas.
+- Una operación realizada en un área debe actualizar la información relacionada cuando corresponda.
+- El sistema debe mantener consistencia del stock ante operaciones simultáneas.
+- El sistema debe evitar que una misma unidad disponible sea vendida, reservada o asignada más de una vez.
+- Cada operación debe conservar: la fecha, hora y punto de operación cuando corresponda, detalle de operación y que usuario la realizo.
 ---
 
 # 2. Proveedores e insumos
 
-## US-04 — Gestionar proveedores
+## US-03 — Gestionar proveedores
 
 Como **administrador**, quiero registrar y mantener información de los proveedores para centralizar las alternativas disponibles para la compra de insumos.
 
@@ -67,7 +56,7 @@ Como **administrador**, quiero registrar y mantener información de los proveedo
 
 ---
 
-## US-05 — Gestionar insumos
+## US-04 — Gestionar insumos
 
 Como **administrador**, quiero registrar los insumos utilizados en la elaboración de productos para controlar compras, costos y existencias.
 
@@ -80,7 +69,7 @@ Como **administrador**, quiero registrar los insumos utilizados en la elaboraci�
 
 ---
 
-## US-06 — Registrar compra de insumos
+## US-05 — Registrar compra de insumos
 
 Como **operador**, quiero registrar las compras realizadas a proveedores para actualizar el inventario y conservar el costo de adquisición.
 
@@ -95,9 +84,9 @@ Como **operador**, quiero registrar las compras realizadas a proveedores para ac
 
 ---
 
-## US-07 — Comparar proveedores
+## US-06 — Comparar proveedores
 
-Como **administrador**, quiero consultar los precios históricos pagados a diferentes proveedores para decidir dónde conviene comprar cada insumo.
+Como **administrador**, quiero consultar los precios de diferentes proveedores para decidir dónde conviene comprar cada insumo.
 
 ### Criterios de aceptación
 
@@ -111,7 +100,7 @@ Como **administrador**, quiero consultar los precios históricos pagados a difer
 
 # 3. Producción
 
-## US-08 — Gestionar recetas
+## US-07 — Gestionar recetas
 
 Como **administrador**, quiero definir los insumos necesarios para producir cada producto para calcular necesidades de materia prima y costos.
 
@@ -124,7 +113,7 @@ Como **administrador**, quiero definir los insumos necesarios para producir cada
 
 ---
 
-## US-09 — Registrar producción
+## US-08 — Registrar producción
 
 Como **operador**, quiero registrar una producción indicando los insumos utilizados y las unidades obtenidas para mantener trazabilidad de lo producido.
 
@@ -140,7 +129,7 @@ Como **operador**, quiero registrar una producción indicando los insumos utiliz
 
 ---
 
-## US-10 — Calcular costo de producción
+## US-09 — Calcular costo de producción
 
 Como **administrador**, quiero conocer el costo de elaboración de cada producto para analizar precios y rentabilidad.
 
@@ -151,12 +140,14 @@ Como **administrador**, quiero conocer el costo de elaboración de cada producto
 - Debe calcular el costo total de la producción.
 - Debe permitir obtener un costo por unidad producida.
 - El costo histórico de una producción debe conservarse aunque posteriormente cambien los precios de los insumos.
+- Debe poder asignar costos fijos que no son asociados a la produccion, como por ejemplo: uso de cocina, packagin e impuestos.
+
 
 ---
 
 # 4. Lotes e inventario
 
-## US-11 — Gestionar lotes
+## US-10 — Gestionar lotes
 
 Como **operador**, quiero identificar cada producción mediante un lote para conocer su origen, cantidad y vencimiento.
 
@@ -171,7 +162,7 @@ Como **operador**, quiero identificar cada producción mediante un lote para con
 
 ---
 
-## US-12 — Priorizar productos próximos a vencer
+## US-11 — Priorizar productos próximos a vencer
 
 Como **vendedor**, quiero identificar los lotes próximos a vencer para priorizar su venta y reducir pérdidas de mercadería.
 
@@ -179,12 +170,13 @@ Como **vendedor**, quiero identificar los lotes próximos a vencer para prioriza
 
 - El sistema debe mostrar la fecha de vencimiento de los lotes.
 - Debe permitir identificar los lotes próximos a vencer.
-- Un lote vencido no debe considerarse disponible para una nueva venta.
 - Cuando existan varios lotes aptos de un mismo producto, debe poder priorizarse el que vence primero.
-
+- Debe generarse una alerta cuando un lote esta proximo a vencer segun criterio de WALOS
+- Si un producto esta vencido debe notificarse para su descarte y considerarse perdida para el negocio.
+  
 ---
 
-## US-13 — Consultar stock
+## US-12 — Consultar stock
 
 Como **operador o administrador**, quiero consultar el stock actualizado para conocer qué productos e insumos se encuentran disponibles.
 
@@ -200,7 +192,7 @@ Como **operador o administrador**, quiero consultar el stock actualizado para co
 
 # 5. Ferias y puntos de venta
 
-## US-14 — Registrar ferias o puntos de venta
+## US-13 — Registrar ferias o puntos de venta
 
 Como **administrador**, quiero registrar las diferentes ferias o puntos de venta donde trabaja WALOS para identificar dónde se realizan las ventas.
 
@@ -213,7 +205,7 @@ Como **administrador**, quiero registrar las diferentes ferias o puntos de venta
 
 ---
 
-## US-15 — Asignar mercadería a una feria
+## US-14 — Asignar mercadería a una feria
 
 Como **operador**, quiero registrar qué productos y lotes se llevan a cada feria para conocer dónde se encuentra físicamente la mercadería.
 
@@ -229,9 +221,9 @@ Como **operador**, quiero registrar qué productos y lotes se llevan a cada feri
 
 # 6. Ventas y promociones
 
-## US-16 — Registrar venta
+## US-15 — Registrar venta
 
-Como **vendedor**, quiero registrar rápidamente una venta desde el celular para mantener actualizado el stock mientras trabajo en una feria.
+Como **vendedor**, quiero registrar una venta desde el celular para mantener actualizado el stock mientras trabajo en una feria.
 
 ### Criterios de aceptación
 
@@ -245,7 +237,7 @@ Como **vendedor**, quiero registrar rápidamente una venta desde el celular para
 
 ---
 
-## US-17 — Configurar promociones
+## US-16 — Configurar promociones
 
 Como **administrador**, quiero configurar promociones para que los vendedores puedan aplicarlas sin realizar cálculos manuales.
 
@@ -260,7 +252,7 @@ Como **administrador**, quiero configurar promociones para que los vendedores pu
 
 ---
 
-## US-18 — Aplicar promociones automáticamente
+## US-17 — Aplicar promociones automáticamente
 
 Como **vendedor**, quiero que el sistema calcule automáticamente los descuentos para cobrar correctamente y agilizar las ventas en las ferias.
 
@@ -277,7 +269,7 @@ Como **vendedor**, quiero que el sistema calcule automáticamente los descuentos
 
 # 7. Pedidos y reservas
 
-## US-19 — Consultar catálogo
+## US-18 — Consultar catálogo
 
 Como **cliente**, quiero consultar los productos disponibles para conocer qué puedo pedir a WALOS.
 
@@ -290,7 +282,7 @@ Como **cliente**, quiero consultar los productos disponibles para conocer qué p
 
 ---
 
-## US-20 — Crear pedido
+## US-19 — Crear pedido
 
 Como **cliente**, quiero seleccionar productos y cantidades para realizar un pedido.
 
@@ -300,11 +292,11 @@ Como **cliente**, quiero seleccionar productos y cantidades para realizar un ped
 - Puede modificar cantidades.
 - Puede eliminar productos.
 - El sistema debe mostrar el total del pedido.
-- Las promociones correspondientes deben reflejarse antes de confirmar.
+- Las promociones correspondientes deben reflejarse antes de confirmar en un carrito de compra similar a Pedidos Ya.
 
 ---
 
-## US-21 — Reservar mediante seña
+## US-20 — Reservar mediante seña
 
 Como **responsable de WALOS**, quiero que determinados pedidos requieran una seña para evitar producir o reservar mercadería para clientes que luego no la retiran.
 
@@ -321,7 +313,7 @@ Como **responsable de WALOS**, quiero que determinados pedidos requieran una se�
 
 # 8. Pagos
 
-## US-22 — Registrar medio de pago
+## US-21 — Registrar medio de pago
 
 Como **vendedor**, quiero registrar cómo se pagó una venta para poder controlar posteriormente los ingresos.
 
@@ -337,21 +329,21 @@ Como **vendedor**, quiero registrar cómo se pagó una venta para poder controla
 
 # 9. Analítica
 
-## US-23 — Analizar ventas por feria
+## US-22 — Analizar ventas por ubicacion de venta
 
-Como **administrador**, quiero conocer qué productos se venden en cada feria para decidir qué mercadería conviene llevar a cada lugar.
+Como **administrador**, quiero conocer qué productos se venden en cada **feria/punto de venta especifico** para decidir qué mercadería conviene priorizar en cada lugar.
 
 ### Criterios de aceptación
 
-- Las ventas pueden filtrarse por feria.
+- Las ventas pueden filtrarse por punto de venta disponible.
 - Puede consultarse la cantidad vendida por producto.
-- Puede consultarse el importe vendido.
-- Deben poder compararse diferentes ferias.
-- Debe permitirse seleccionar un período de análisis.
+- Puede consultarse el importe vendido por periodo de tiempo (no menor a un dia completo).
+- Deben poder compararse diferentes puntos de venta.
+- Debe permitirse seleccionar un período de análisis valido (dia, semana, mes o meses).
 
 ---
 
-## US-24 — Analizar ventas mensuales
+## US-23 — Analizar ventas mensuales
 
 Como **administrador**, quiero consultar la evolución mensual de las ventas para conocer el desempeño del negocio.
 
@@ -365,7 +357,7 @@ Como **administrador**, quiero consultar la evolución mensual de las ventas par
 
 ---
 
-## US-25 — Analizar productos
+## US-24 — Analizar productos
 
 Como **administrador**, quiero conocer cuáles son los productos más y menos vendidos para tomar mejores decisiones de producción.
 
@@ -378,7 +370,7 @@ Como **administrador**, quiero conocer cuáles son los productos más y menos ve
 
 ---
 
-## US-26 — Analizar costos y rentabilidad
+## US-25 — Analizar costos y rentabilidad
 
 Como **administrador**, quiero comparar el costo de producción con las ventas para conocer la rentabilidad de los productos.
 
@@ -393,7 +385,7 @@ Como **administrador**, quiero comparar el costo de producción con las ventas p
 
 # 10. Costos del negocio
 
-## US-27 — Registrar costos fijos
+## US-26 — Registrar costos fijos
 
 Como **administrador**, quiero registrar costos fijos del negocio para obtener una visión más completa del resultado económico mensual.
 
