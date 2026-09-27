@@ -21,7 +21,7 @@ El sistema deberá permitir que varias personas utilicen la aplicación simultá
 - Dos o más personas podrán registrar operaciones al mismo tiempo.
 - Las operaciones confirmadas deberán reflejarse para los demás usuarios.
 - El sistema deberá evitar ventas, reservas o movimientos duplicados sobre la misma disponibilidad de stock.
-- Una operación concurrente no deberá generar stock negativo.
+- Una operación concurrente no deberá generar stock negativo o inconsistencias.
 
 ---
 
@@ -50,12 +50,14 @@ El sistema deberá responder con suficiente rapidez para poder utilizarse durant
 
 ---
 
-## RNF-05 — Disponibilidad
+## RNF-05 — Disponibilidad continua
 
-El sistema deberá encontrarse disponible durante los horarios habituales de operación del negocio.
+El sistema deberá estar disponible para su uso en cualquier momento, permitiendo operar tanto las funciones internas del negocio como las funciones destinadas a clientes sin depender de un horario fijo.
 
 ### Criterios verificables
 
+- Los trabajadores de WALOS deberán poder registrar operaciones en cualquier momento del día.
+- Los clientes deberán poder consultar productos y realizar reservas en cualquier horario.
 - Una interrupción del sistema no deberá provocar pérdida de operaciones previamente confirmadas.
 - El reinicio de la aplicación no deberá eliminar información almacenada.
 - El sistema deberá poder recuperarse manteniendo los datos persistidos.
@@ -69,7 +71,6 @@ El sistema deberá proteger el acceso a la información del negocio.
 ### Criterios verificables
 
 - El acceso deberá requerir autenticación.
-- Las contraseñas no deberán almacenarse en texto plano.
 - La comunicación deberá utilizar HTTPS cuando el sistema se encuentre desplegado.
 - Las credenciales y secretos del sistema no deberán almacenarse directamente en el repositorio.
 
@@ -77,11 +78,11 @@ El sistema deberá proteger el acceso a la información del negocio.
 
 ## RNF-07 — Trazabilidad
 
-El sistema deberá permitir conocer el origen de las operaciones relevantes del negocio.
+- El sistema deberá permitir conocer el origen de las operaciones relevantes del negocio.
 
 ### Criterios verificables
 
-- Las operaciones deberán registrar fecha y hora.
+- Las operaciones deberán registrar fecha y hora y usuario que las genero segun corresponda.
 - Los movimientos de stock deberán conservar origen, destino y motivo.
 - Las ventas deberán conservar el punto o canal donde fueron realizadas.
 - Las modificaciones que afecten stock deberán poder rastrearse posteriormente.
@@ -109,7 +110,7 @@ El sistema deberá contar con mecanismos de respaldo de la información.
 ### Criterios verificables
 
 - La base de datos deberá respaldarse periódicamente.
-- Deberá poder recuperarse la información ante una falla.
+- Deberá poder recuperarse la información a un ultimo punto de guarado ante una falla.
 - Las copias deberán almacenarse separadamente de la instancia principal del sistema.
 
 ---
