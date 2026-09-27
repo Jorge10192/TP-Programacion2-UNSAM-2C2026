@@ -2,7 +2,9 @@
 
 ## RF-01 — Acceso al sistema
 
-El sistema deberá permitir que los trabajadores de WALOS accedan a la aplicación desde distintos dispositivos.
+- El sistema deberá permitir que los trabajadores de WALOS accedan a la aplicación desde distintos dispositivos.
+Principalmente celular y computadora/notebook.
+- El sistema debe poder permitir a los clientes acceder a una pagina web que permita hacer reservas de productos.
 
 ## RF-02 — Operación simultánea
 
