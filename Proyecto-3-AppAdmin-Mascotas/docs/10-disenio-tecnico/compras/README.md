@@ -161,10 +161,12 @@ Cada materia prima será representada mediante un ítem de compra independiente.
 
 Conceptualmente:
 
+```
 Compra
  ├── Ítem de compra → Harina
  ├── Ítem de compra → Avena
  └── Ítem de compra → Huevos
+```
 
 ## Extension a futuro
 
