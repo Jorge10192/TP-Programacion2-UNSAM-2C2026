@@ -1,25 +1,58 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
-# Campos comunes del proveedor
+from src.compras.models import UnidadMedida
+
+
 class ProveedorBase(BaseModel):
-    nombre: str = Field(
-        min_length=1,
-        max_length=150
-    )
-
+    nombre: str
     observaciones: str | None = None
 
-# Lo que permitimos recibir cuandos se crea un proveedor nuevo
+
 class ProveedorCreate(ProveedorBase):
     pass
 
-# Representa lo que devolvemos del proveedor una vez creado
-class ProveedorResponse(ProveedorBase):
-    # Transforma respuesta SQL en formato JSON
-    model_config = ConfigDict(from_attributes=True)
 
+class ProveedorResponse(ProveedorBase):
     id: int
     activo: bool
     fecha_creacion: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CategoriaInsumoBase(BaseModel):
+    nombre: str
+    descripcion: str | None = None
+
+
+class CategoriaInsumoCreate(CategoriaInsumoBase):
+    pass
+
+
+class CategoriaInsumoResponse(CategoriaInsumoBase):
+    id: int
+    activa: bool
+    es_sistema: bool
+    fecha_creacion: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InsumoBase(BaseModel):
+    nombre: str
+    categoria_id: int
+    unidad_base: UnidadMedida
+
+
+class InsumoCreate(InsumoBase):
+    pass
+
+
+class InsumoResponse(InsumoBase):
+    id: int
+    activo: bool
+    fecha_creacion: datetime
+
+    model_config = ConfigDict(from_attributes=True)

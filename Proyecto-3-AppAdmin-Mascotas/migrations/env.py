@@ -7,7 +7,7 @@ from alembic import context
 
 from src.database.base import Base
 from src.database.session import DATABASE_URL
-from src.compras.models import Proveedor
+from src.compras.models import CategoriaInsumo, Insumo, Proveedor
 
 # Objeto de configuración de Alembic
 config = context.config

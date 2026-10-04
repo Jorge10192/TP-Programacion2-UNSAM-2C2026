@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 
-from src.compras.routes import router as proveedores_router
+from src.compras.routes import (
+    categorias_insumos_router,
+    insumos_router,
+    proveedores_router,
+)
 
 
 app = FastAPI(
@@ -9,8 +13,10 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Incorporá a la aplicación los endpoints definidos en routes.py
+
 app.include_router(proveedores_router)
+app.include_router(categorias_insumos_router)
+app.include_router(insumos_router)
 
 
 @app.get("/health")
