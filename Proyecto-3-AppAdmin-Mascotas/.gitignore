@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Entorno virtual
+.venv/
+
+# Variables de entorno
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Base de datos local
+*.db
+*.sqlite
+*.sqlite3
