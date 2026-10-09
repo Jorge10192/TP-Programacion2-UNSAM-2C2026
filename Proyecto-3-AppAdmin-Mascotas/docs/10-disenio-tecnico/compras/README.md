@@ -6,7 +6,7 @@ El módulo de Compras tiene como responsabilidad registrar y administrar las com
 
 La compra se realiza físicamente fuera del sistema.
 
-El trabajador adquiere mercadería o insumos en un comercio o proveedor y, posteriormente, registra en WALOS la información relevante para el negocio.
+El trabajador adquiere mercadería o insumos en un comercio o proveedor y posteriormente registra en WALOS la información relevante para el negocio.
 
 Los bienes físicos adquiridos serán representados dentro del sistema mediante un catálogo de **insumos**.
 
@@ -23,16 +23,18 @@ El módulo deberá conservar información sobre:
 - proveedor o comercio donde se realizó la compra;
 - insumos adquiridos;
 - cantidades compradas;
-- unidad base de cada insumo;
-- presentación en la cual fue adquirido, cuando corresponda;
+- unidad habitual de stock de cada insumo;
+- unidad o forma utilizada para registrar la compra;
+- contenido por unidad, cuando corresponda;
+- cantidad efectivamente incorporada;
 - precios pagados;
 - fecha de la operación;
 - usuario que realizó el registro;
-- comprobante de compra, cuando se encuentre disponible;
+- comprobantes de compra, cuando se encuentren disponibles;
 - observaciones asociadas a la operación;
 - historial necesario para futuros análisis de costos y proveedores.
 
-Una vez confirmada correctamente la compra, los insumos correspondientes serán informados al módulo de Inventario.
+Una vez confirmada correctamente una compra, los insumos y sus cantidades incorporadas serán informados al módulo de Inventario.
 
 Inventario será responsable de administrar las existencias físicas.
 
@@ -48,9 +50,13 @@ El módulo comienza cuando el trabajador desea registrar una compra que ya fue r
 
 1. la compra queda registrada;
 2. sus ítems quedan almacenados;
-3. el comprobante queda asociado, cuando corresponda;
+3. los comprobantes quedan asociados, cuando corresponda;
 4. la información histórica de precios queda disponible;
-5. los insumos adquiridos son informados al módulo de Inventario.
+5. los insumos adquiridos y sus cantidades incorporadas son informados al módulo de Inventario.
+
+Para el MVP se considera que una compra confirmada corresponde a mercadería que ya fue recibida físicamente por WALOS.
+
+Por lo tanto, la recepción parcial o diferida de mercadería queda fuera del alcance inicial.
 
 El módulo de Compras no administra el consumo posterior de los insumos.
 
@@ -78,16 +84,19 @@ El módulo deberá permitir:
 - gestionar proveedores o comercios;
 - gestionar el catálogo de insumos;
 - gestionar las categorías de insumos;
+- gestionar las unidades utilizadas por el negocio;
 - registrar compras;
 - registrar uno o más ítems dentro de una misma compra;
 - asociar cada ítem a un insumo existente;
-- registrar cantidades;
-- registrar presentaciones de compra cuando corresponda;
-- normalizar las cantidades utilizando la unidad base del insumo;
+- registrar cantidades de forma simple para el trabajador;
+- registrar la unidad o forma en la cual fue realizada la compra;
+- registrar contenido por unidad cuando corresponda;
+- determinar la cantidad incorporada que deberá informarse a Inventario;
+- realizar conversiones entre unidades compatibles cuando resulte necesario;
 - registrar precios;
 - registrar la fecha de la operación;
 - identificar automáticamente al usuario responsable;
-- adjuntar opcionalmente un comprobante;
+- adjuntar opcionalmente uno o más comprobantes;
 - agregar observaciones a la compra;
 - conservar el historial de compras;
 - conservar los precios efectivamente pagados;
@@ -105,21 +114,23 @@ El módulo deberá permitir:
 5. Si el proveedor no existe, podrá registrarlo y continuar luego con la compra.
 6. El trabajador agrega los insumos correspondientes a la operación.
 7. Cada insumo deberá seleccionarse desde el catálogo de insumos habilitados.
-8. Si un insumo todavía no existe, el trabajador podrá registrarlo, asignarle una categoría y continuar con la compra.
-9. Para cada insumo deberá registrar la información correspondiente a la adquisición.
-10. El sistema deberá determinar la cantidad incorporada expresada en la unidad base del insumo.
-11. El trabajador registrará el precio pagado.
-12. El trabajador podrá adjuntar opcionalmente una imagen o archivo PDF del comprobante.
-13. Podrá agregar observaciones asociadas a la operación.
-14. El sistema mostrará un resumen de la compra.
-15. El trabajador revisará la información ingresada.
-16. El trabajador confirmará la operación.
-17. El sistema registrará la compra y sus ítems.
-18. El sistema asociará automáticamente la operación al usuario responsable.
-19. La información quedará disponible como historial de compras y precios.
-20. El módulo de Compras informará al módulo de Inventario los insumos y cantidades incorporadas.
-21. Inventario registrará las correspondientes entradas.
-22. Los insumos quedarán disponibles para las operaciones del negocio que correspondan.
+8. Si un insumo todavía no existe, el trabajador podrá registrarlo, asignarle una categoría y definir su unidad habitual de stock sin abandonar el flujo de compra.
+9. Para cada insumo, el trabajador registra la cantidad y la unidad o forma en la cual fue adquirido.
+10. Cuando corresponda, podrá indicar cuánto contiene cada unidad comprada y en qué unidad se expresa ese contenido.
+11. El sistema determinará automáticamente la cantidad efectivamente incorporada.
+12. Cuando la unidad utilizada para expresar el contenido sea diferente de la unidad habitual de stock, el sistema deberá normalizar la cantidad mediante una conversión válida.
+13. El trabajador registrará el precio pagado.
+14. El trabajador podrá adjuntar opcionalmente una imagen o archivo PDF del comprobante.
+15. Podrá agregar observaciones asociadas a la operación.
+16. El sistema mostrará un resumen de la compra.
+17. El trabajador revisará la información ingresada.
+18. El trabajador confirmará la operación.
+19. El sistema registrará la compra y sus ítems.
+20. El sistema asociará automáticamente la operación al usuario responsable.
+21. La información quedará disponible como historial de compras y precios.
+22. El módulo de Compras informará al módulo de Inventario los insumos y cantidades incorporadas.
+23. Inventario registrará las correspondientes entradas.
+24. Los insumos quedarán disponibles para las operaciones del negocio que correspondan.
 
 ---
 
@@ -172,7 +183,7 @@ Insumo
 id
 nombre
 categoriaId
-unidadBase
+unidadStockId
 activo
 fechaCreacion
 ```
@@ -198,28 +209,44 @@ Detergente
 
 Referencia a la categoría a la cual pertenece el insumo.
 
-### unidadBase
+### unidadStockId
 
-Unidad normalizada en la cual Inventario deberá expresar su cantidad.
+Referencia a la unidad habitual utilizada por Inventario para expresar la existencia del insumo.
 
 Ejemplos:
 
 ```text
 Harina
-→ KILOGRAMO
+→ Kilogramo
 
 Aceite
-→ LITRO
+→ Litro
 
 Huevos
-→ UNIDAD
+→ Unidad
 
 Bolsas
-→ UNIDAD
+→ Unidad
 
 Detergente
-→ LITRO
+→ Litro
 ```
+
+La unidad habitual de stock no obliga a que todas las compras deban registrarse directamente utilizando esa misma unidad.
+
+Por ejemplo:
+
+```text
+Harina
+
+Unidad habitual de stock:
+Kilogramo
+
+Compra:
+2 bolsas de 5 kg
+```
+
+El trabajador podrá registrar la compra utilizando la forma comercial que resulte natural y el sistema determinará la cantidad incorporada correspondiente.
 
 ### activo
 
@@ -276,7 +303,6 @@ id
 nombre
 descripcion
 activa
-esSistema
 fechaCreacion
 ```
 
@@ -310,21 +336,9 @@ activa = false
 
 para conservar correctamente las referencias históricas.
 
-### esSistema
+### fechaCreacion
 
-Permite distinguir categorías iniciales proporcionadas junto con WALOS de categorías creadas posteriormente por los usuarios.
-
-Por ejemplo:
-
-```text
-Materia prima
-esSistema = true
-
-Eventos
-esSistema = false
-```
-
-El uso definitivo de esta propiedad podrá ajustarse durante la implementación.
+Fecha y hora de creación del registro.
 
 ---
 
@@ -377,141 +391,207 @@ Por ejemplo, será Producción y sus recetas quien determine qué insumos se con
 
 ---
 
-# Unidad de medida
+# Unidades de medida
 
-Cada insumo deberá poseer una unidad base que permita normalizar cantidades y precios.
+Las unidades utilizadas por WALOS no deberán quedar limitadas a una enumeración rígida dentro del código.
 
-Inicialmente podrán considerarse:
+El sistema deberá disponer de un catálogo administrable que permita representar tanto unidades físicas como formas comerciales utilizadas habitualmente durante una compra.
+
+Ejemplos iniciales:
 
 ```text
-KILOGRAMO
-LITRO
-UNIDAD
+Kilogramo
+Gramo
+Litro
+Mililitro
+Unidad
+Paquete
+Bolsa
+Caja
+Tarro
+Rollo
 ```
+
+Si posteriormente WALOS necesita trabajar con una nueva unidad, podrá incorporarla al catálogo sin requerir cambios en el código fuente.
 
 Conceptualmente:
 
 ```text
-<<enumeration>>
 UnidadMedida
 --------------------------------
-KILOGRAMO
-LITRO
-UNIDAD
+id
+nombre
+simbolo
+activa
 ```
 
-A diferencia de las categorías de insumos, las unidades de medida representan conceptos estructurales del sistema y podrán mantenerse inicialmente como una enumeración.
+### id
+
+Identificador único de la unidad.
+
+### nombre
+
+Nombre utilizado para identificarla.
+
+Ejemplos:
+
+```text
+Kilogramo
+Gramo
+Litro
+Unidad
+Bolsa
+Caja
+Tarro
+```
+
+### simbolo
+
+Representación abreviada cuando corresponda.
+
+Ejemplos:
+
+```text
+kg
+g
+L
+ml
+u
+```
+
+Para unidades comerciales como `Bolsa`, `Caja` o `Tarro`, el símbolo podrá omitirse cuando no resulte necesario.
+
+### activa
+
+Indica si la unidad continúa disponible para nuevas operaciones.
+
+Una unidad utilizada históricamente no deberá eliminarse físicamente.
+
+Podrá desactivarse para impedir su selección en nuevas compras sin perder las referencias existentes.
 
 ---
 
-## Unidad base y presentación de compra
+## Unidad habitual de stock y unidad utilizada en la compra
 
-La unidad base de un insumo no deberá confundirse con la presentación comercial en la cual se compra.
+Cada insumo deberá definir una unidad habitual utilizada por Inventario para expresar sus existencias.
 
-Por ejemplo:
+La forma en la cual un insumo se compra puede ser diferente de la unidad utilizada para administrar posteriormente su stock.
+
+Ejemplo:
 
 ```text
 Insumo:
-Queso rallado
+Harina
 
-Unidad base:
-KILOGRAMO
+Unidad habitual de stock:
+Kilogramo
 ```
 
-Puede adquirirse de la siguiente forma:
+Una compra podría registrarse como:
 
 ```text
-2 paquetes de 500 g
+2 bolsas de 5 kg
 ```
 
-La cantidad incorporada al Inventario deberá quedar normalizada como:
+En este caso:
 
 ```text
-1 kg
+cantidad = 2
+unidadCompra = Bolsa
+
+contenidoPorUnidad = 5
+unidadContenido = Kilogramo
 ```
 
-Por lo tanto:
+y el sistema determinará:
 
 ```text
-PAQUETE
-CAJA
-BIDON
-BOLSA
+cantidadIncorporada = 10 kg
 ```
 
-no deberán considerarse automáticamente unidades base.
+El trabajador no deberá realizar manualmente este cálculo.
 
-Representan formas o presentaciones comerciales.
+Cuando el negocio controle directamente el stock utilizando la misma unidad en la cual se realiza la compra, el contenido por unidad podrá omitirse.
+
+Ejemplo:
+
+```text
+Insumo:
+Témpera blanca
+
+Unidad habitual de stock:
+Tarro
+
+Compra:
+10 tarros
+```
+
+podrá registrarse como:
+
+```text
+cantidad = 10
+unidadCompra = Tarro
+
+contenidoPorUnidad = no corresponde
+unidadContenido = no corresponde
+
+cantidadIncorporada = 10 tarros
+```
+
+De esta manera, el sistema permite registrar las adquisiciones utilizando una forma natural para el trabajador sin exigir información que no resulte útil para el negocio.
 
 ---
 
-## Ejemplos de normalización
+## Conversión entre unidades compatibles
 
-### Queso rallado
+Cuando la unidad utilizada para expresar el contenido de una compra sea diferente de la unidad habitual de stock del insumo, el sistema deberá normalizar la cantidad antes de informar la entrada a Inventario.
 
-```text
-Unidad base:
-KILOGRAMO
-
-Compra:
-2 paquetes
-
-Contenido por paquete:
-500 g
-
-Cantidad total:
-1 kg
-```
-
-### Detergente
+Ejemplo:
 
 ```text
-Unidad base:
-LITRO
+Insumo:
+Harina
+
+Unidad habitual de stock:
+Gramo
 
 Compra:
-1 bidón
-
-Contenido:
-5 litros
-
-Cantidad total:
-5 litros
+2 bolsas de 5 kg
 ```
 
-### Bolsas
+El sistema deberá obtener:
 
 ```text
-Unidad base:
-UNIDAD
-
-Compra:
-1 paquete
-
-Contenido:
-100 bolsas
-
-Cantidad total:
-100 unidades
+2 × 5 kg = 10 kg
+10 kg = 10000 g
 ```
 
-### Pollo comprado a granel
+por lo tanto:
 
 ```text
-Unidad base:
-KILOGRAMO
-
-Compra:
-1,25 kg
-
-Presentación:
-no corresponde
-
-Cantidad total:
-1,25 kg
+cantidadIncorporada = 10000 g
 ```
 
-La presentación deberá ser opcional cuando la compra pueda expresarse directamente mediante la unidad base.
+Las conversiones deberán realizarse únicamente entre unidades compatibles.
+
+Ejemplos:
+
+```text
+Kilogramo <-> Gramo
+Litro <-> Mililitro
+```
+
+No deberán realizarse conversiones automáticas entre unidades que representen conceptos incompatibles.
+
+Ejemplo:
+
+```text
+Kilogramo <-> Litro
+```
+
+La implementación concreta del mecanismo de conversión se definirá durante el desarrollo de `UnidadMedida`.
+
+El diseño deberá permitir ampliar las conversiones disponibles sin alterar la lógica general de Compras.
 
 ---
 
@@ -584,175 +664,255 @@ Compra
  └── ItemCompra → Detergente
 ```
 
+Una compra confirmada deberá contener al menos un ítem.
+
 ---
 
 ## ItemCompra
 
-Cada ítem deberá conservar la información específica de un insumo adquirido dentro de una compra.
+Cada ítem representa un insumo particular adquirido dentro de una compra.
 
-Conceptualmente podrá considerarse:
+Conceptualmente:
 
 ```text
 ItemCompra
 --------------------------------
 id
 insumoId
-cantidadBase
-cantidadPresentaciones
-presentacion
-contenidoPorPresentacion
+
+cantidad
+unidadCompraId
+
+contenidoPorUnidad
+unidadContenidoId
+
+cantidadIncorporada
 precioTotal
 --------------------------------
+calcularCantidadIncorporada()
 calcularPrecioUnitario()
 ```
 
-El modelo definitivo podrá simplificarse o ajustarse durante la implementación.
+El modelo permite representar compras simples y compras realizadas en presentaciones o unidades comerciales diferentes de la unidad habitual de stock.
 
 ---
 
-## cantidadBase
+### cantidad
 
-Representa la cantidad real incorporada al Inventario expresada mediante la unidad base del insumo.
+Representa cuántas unidades de compra fueron adquiridas.
 
 Ejemplo:
 
 ```text
-Insumo:
-Queso rallado
-
-Unidad base:
-KILOGRAMO
-
-Compra:
-2 paquetes de 500 g
-
-cantidadBase:
-1
+2 bolsas
 ```
 
----
-
-## cantidadPresentaciones
-
-Representa la cantidad de unidades comerciales adquiridas cuando corresponda.
-
-Ejemplo:
+se registra como:
 
 ```text
-2 paquetes
-```
-
-podrá registrarse como:
-
-```text
-cantidadPresentaciones = 2
-```
-
-Este dato podrá ser opcional cuando la compra se realice directamente en la unidad base.
-
----
-
-## presentacion
-
-Describe la forma comercial en la cual fue adquirido el insumo.
-
-Ejemplos:
-
-```text
-Paquete
-Caja
-Bidón
-Bolsa
-Botella
-```
-
-Inicialmente podrá representarse mediante información descriptiva.
-
-La necesidad de crear un catálogo específico de presentaciones se evaluará durante la implementación.
-
----
-
-## contenidoPorPresentacion
-
-Representa cuánto contiene cada presentación expresado respecto de la unidad base correspondiente.
-
-Ejemplo:
-
-```text
-2 paquetes de queso
-
-contenidoPorPresentacion:
-0,5 kg
-
-cantidadBase:
-1 kg
-```
-
----
-
-## precioTotal
-
-Representa el precio efectivamente pagado por el ítem.
-
-Ejemplo:
-
-```text
-Queso rallado
-
-Cantidad:
-1 kg
-
-Precio total:
-$8.000
-```
-
----
-
-# Precio unitario normalizado
-
-El precio unitario no necesita almacenarse inicialmente como un dato independiente.
-
-Puede calcularse mediante:
-
-```text
-precioUnitario =
-precioTotal / cantidadBase
-```
-
-Ejemplo:
-
-```text
-Queso rallado
-
-Compra:
-2 paquetes de 500 g
-
-Cantidad base total:
-1 kg
-
-Precio total:
-$8.000
-
-Precio unitario:
-$8.000 por kg
+cantidad = 2
 ```
 
 Otro ejemplo:
 
 ```text
-Harina
-
-Cantidad base:
-5 kg
-
-Precio total:
-$7.500
-
-Precio unitario:
-$1.500 por kg
+10 tarros
 ```
 
-La normalización será importante para comparar compras realizadas en presentaciones distintas.
+se registra como:
+
+```text
+cantidad = 10
+```
+
+---
+
+### unidadCompraId
+
+Indica la unidad o forma utilizada por el trabajador para expresar la compra.
+
+Ejemplos:
+
+```text
+Bolsa
+Paquete
+Caja
+Tarro
+Kilogramo
+Unidad
+```
+
+---
+
+### contenidoPorUnidad
+
+Dato opcional que representa cuánto contenido posee cada unidad comprada.
+
+Ejemplo:
+
+```text
+2 bolsas de 5 kg
+```
+
+se registra como:
+
+```text
+contenidoPorUnidad = 5
+```
+
+Este dato podrá omitirse cuando la unidad de compra coincida directamente con la forma en que el negocio controla el stock.
+
+---
+
+### unidadContenidoId
+
+Indica la unidad en la cual se expresa `contenidoPorUnidad`.
+
+Ejemplo:
+
+```text
+contenidoPorUnidad = 5
+unidadContenido = Kilogramo
+```
+
+Este dato será opcional cuando no sea necesario expresar un contenido interno.
+
+---
+
+### cantidadIncorporada
+
+Representa la cantidad efectiva que deberá incorporarse al Inventario, expresada mediante la unidad habitual de stock del insumo.
+
+Ejemplo:
+
+```text
+cantidad = 2
+unidadCompra = Bolsa
+contenidoPorUnidad = 5
+unidadContenido = Kilogramo
+
+cantidadIncorporada = 10 kg
+```
+
+Cuando sea necesario, el sistema deberá realizar la conversión correspondiente hacia la unidad habitual de stock.
+
+Otro ejemplo:
+
+```text
+Insumo:
+Témpera blanca
+
+cantidad = 10
+unidadCompra = Tarro
+contenidoPorUnidad = no corresponde
+unidadContenido = no corresponde
+
+cantidadIncorporada = 10 tarros
+```
+
+---
+
+### precioTotal
+
+Representa el importe efectivamente pagado por ese ítem de compra.
+
+Ejemplo:
+
+```text
+Harina
+
+Cantidad incorporada:
+10 kg
+
+Precio total:
+$15.000
+```
+
+El precio total constituirá el dato histórico principal utilizado para posteriores análisis de costos y proveedores.
+
+---
+
+### calcularCantidadIncorporada()
+
+Determina la cantidad real que deberá informarse al módulo de Inventario.
+
+Dependiendo de la forma de compra, podrá:
+
+- utilizar directamente la cantidad ingresada;
+- multiplicar cantidad por contenido por unidad;
+- aplicar una conversión entre unidades compatibles.
+
+Ejemplo:
+
+```text
+2 bolsas × 5 kg
+=
+10 kg
+```
+
+---
+
+### calcularPrecioUnitario()
+
+El precio unitario podrá obtenerse a partir de:
+
+```text
+precioUnitario =
+precioTotal / cantidadIncorporada
+```
+
+El precio unitario será inicialmente un valor calculado y no será necesario almacenarlo como dato independiente.
+
+---
+
+# Precio unitario normalizado
+
+El precio unitario no se almacenará inicialmente como un dato independiente.
+
+Se calculará mediante:
+
+```text
+precioUnitario =
+precioTotal / cantidadIncorporada
+```
+
+Ejemplo:
+
+```text
+Harina
+
+Compra:
+2 bolsas de 5 kg
+
+Cantidad incorporada:
+10 kg
+
+Precio total:
+$15.000
+
+Precio unitario:
+$1.500 / kg
+```
+
+Otro ejemplo:
+
+```text
+Queso rallado
+
+Compra:
+2 paquetes de 500 g
+
+Cantidad incorporada:
+1 kg
+
+Precio total:
+$8.000
+
+Precio unitario:
+$8.000 / kg
+```
+
+La normalización será importante para comparar compras realizadas en formas comerciales diferentes.
 
 Ejemplo:
 
@@ -790,8 +950,10 @@ Cada registro permitirá conocer:
 
 - qué insumo se compró;
 - a qué proveedor;
-- qué cantidad base se incorporó;
-- en qué presentación se compró, cuando corresponda;
+- qué cantidad se adquirió;
+- qué unidad de compra se utilizó;
+- qué contenido por unidad se indicó, cuando corresponda;
+- qué cantidad efectiva fue incorporada;
 - qué precio se pagó;
 - en qué fecha.
 
@@ -805,7 +967,7 @@ A partir de esta información podrán calcularse posteriormente:
 - diferencias de precio entre proveedores;
 - gasto total por proveedor;
 - frecuencia de compra de un insumo;
-- comportamiento de precios según presentación.
+- comportamiento de precios según la forma en la cual fue comprado.
 
 El módulo de Compras únicamente conservará los datos necesarios.
 
@@ -822,6 +984,8 @@ Cuando se encuentre disponible, el trabajador podrá adjuntar:
 - fotografías;
 - imágenes;
 - archivos PDF.
+
+Una compra podrá tener más de un archivo asociado si resulta necesario.
 
 El comprobante funcionará como evidencia de la operación.
 
@@ -864,7 +1028,7 @@ La existencia de un producto dentro del comprobante no será suficiente para inc
 
 La forma definitiva de almacenamiento físico de imágenes y archivos PDF será una decisión de infraestructura posterior.
 
-La base de datos deberá conservar al menos una referencia que permita vincular el comprobante con la compra correspondiente.
+La base de datos deberá conservar al menos una referencia que permita vincular cada comprobante con la compra correspondiente.
 
 ---
 
@@ -876,7 +1040,11 @@ Compras será responsable de registrar el hecho comercial:
 
 > WALOS adquirió determinados insumos físicos en una operación concreta.
 
-Cuando una compra sea confirmada correctamente, Compras deberá informar al módulo de Inventario los insumos y las cantidades base adquiridas.
+Cuando una compra sea confirmada correctamente, Compras deberá informar al módulo de Inventario los insumos y las cantidades efectivamente incorporadas, expresadas en la unidad habitual de stock correspondiente.
+
+Para el MVP se considera que una compra confirmada corresponde a mercadería que ya fue recibida físicamente por WALOS.
+
+La recepción parcial o diferida de mercadería queda fuera del alcance inicial.
 
 Ejemplo:
 
@@ -1042,7 +1210,8 @@ El sistema deberá identificar automáticamente al usuario que:
 - anula una compra;
 - registra o confirma un ajuste cuando corresponda;
 - crea o modifica un insumo;
-- crea o modifica una categoría de insumo.
+- crea o modifica una categoría de insumo;
+- crea o modifica una unidad utilizada por el negocio.
 
 La autenticación y administración general de los usuarios no pertenece al módulo de Compras.
 
@@ -1069,6 +1238,8 @@ Mientras permanezca en este estado, sus datos podrán ser modificados libremente
 La compra fue revisada y aceptada por el trabajador.
 
 La información pasa a formar parte del historial y los insumos correspondientes son informados a Inventario.
+
+Para el MVP, confirmar una compra implica que la mercadería correspondiente ya fue recibida físicamente.
 
 Una compra confirmada no deberá modificarse sobrescribiendo silenciosamente sus datos históricos.
 
@@ -1103,10 +1274,11 @@ Mientras la compra se encuentre en estado `BORRADOR`, el trabajador podrá:
 - agregar insumos;
 - eliminar ítems;
 - modificar cantidades;
-- modificar presentaciones;
+- modificar unidades de compra;
+- modificar contenido por unidad;
 - modificar precios;
 - cambiar proveedor;
-- agregar o reemplazar el comprobante;
+- agregar o reemplazar comprobantes;
 - modificar observaciones.
 
 Como la operación todavía no fue confirmada, estas modificaciones no deberán afectar Inventario.
@@ -1191,10 +1363,10 @@ Inicialmente podrán utilizarse datos como:
 - fecha;
 - insumos;
 - cantidades;
-- presentaciones;
+- unidades utilizadas;
 - precios;
 - importe de la operación;
-- comprobante asociado.
+- comprobantes asociados.
 
 Cuando exista un comprobante, en una versión posterior podrá calcularse una huella digital o hash del archivo.
 
@@ -1271,16 +1443,16 @@ Insumo
 
 CategoriaInsumo
 
+UnidadMedida
+
 Comprobante
 
 CorreccionCompra
 ```
 
-Además se consideran enumeraciones estructurales como:
+Se consideran enumeraciones estructurales:
 
 ```text
-UnidadMedida
-
 EstadoCompra
 
 TipoCorreccion
@@ -1302,7 +1474,7 @@ como entidad externa perteneciente al módulo de Usuarios y Autenticación.
 Proveedor
    1
    │
-   │ realiza históricamente
+   │ provee
    │
    0..*
  Compra
@@ -1330,12 +1502,42 @@ ItemCompra
 
 ```text
 CategoriaInsumo
-   1
-   │
-   │ clasifica
-   │
-   0..*
-Insumo
+      1
+      │
+      │ clasifica
+      │
+      0..*
+    Insumo
+```
+
+```text
+UnidadMedida
+      1
+      │
+      │ unidad habitual de stock
+      │
+      0..*
+    Insumo
+```
+
+```text
+UnidadMedida
+      1
+      │
+      │ unidad de compra
+      │
+      0..*
+  ItemCompra
+```
+
+```text
+UnidadMedida
+     0..1
+      │
+      │ unidad de contenido
+      │
+      0..*
+  ItemCompra
 ```
 
 ```text
@@ -1388,6 +1590,9 @@ El módulo de Compras no será responsable de:
 - calcular necesidades futuras de compra;
 - recomendar automáticamente qué proveedor utilizar;
 - optimizar futuras compras;
+- administrar recepciones parciales o diferidas de mercadería durante el MVP;
+- administrar códigos de catálogo específicos de cada proveedor durante el MVP;
+- manejar múltiples monedas durante el MVP;
 - realizar liquidaciones impositivas;
 - interpretar automáticamente comprobantes mediante OCR durante el MVP.
 
@@ -1444,7 +1649,7 @@ El sistema podrá utilizar OCR u otras técnicas para detectar posibles datos co
 - fecha;
 - insumos;
 - cantidades;
-- presentaciones;
+- unidades;
 - precios;
 - importe.
 
@@ -1468,65 +1673,81 @@ El sistema podrá comparar:
 - importe;
 - insumos;
 - cantidades;
-- presentaciones.
+- unidades utilizadas.
 
 ---
 
-## Catálogo de presentaciones
+## Recepciones parciales de mercadería
 
-Inicialmente la presentación de una compra podrá conservarse de manera simple.
+El MVP considera que una compra confirmada corresponde a mercadería ya recibida físicamente.
 
-Si posteriormente aparece suficiente necesidad, podrá crearse un catálogo específico de presentaciones.
+En una evolución posterior podrá incorporarse una entidad específica de recepción que permita modelar:
 
-Ejemplos:
+- compras registradas antes de la llegada física;
+- entregas parciales;
+- faltantes;
+- diferencias entre cantidad comprada y recibida;
+- múltiples recepciones correspondientes a una misma compra.
+
+Conceptualmente podría incorporarse en el futuro una entidad como:
 
 ```text
-Paquete
-Caja
-Botella
-Bidón
-Bolsa
-Bandeja
+RecepcionStock
 ```
 
-La existencia de este catálogo no deberá modificar la unidad base utilizada para Inventario.
+sin modificar el significado histórico de `Compra`.
+
+---
+
+## Códigos de artículos utilizados por proveedores
+
+En una versión posterior podrá incorporarse una relación entre proveedores e insumos que permita conservar códigos o descripciones propias del catálogo de cada proveedor.
 
 Por ejemplo:
 
 ```text
-Presentación:
-Paquete
+Proveedor:
+Distribuidora Norte
 
-Contenido:
-500 g
+Código del proveedor:
+HAR-00125
 
-Unidad base:
-KILOGRAMO
+Insumo WALOS:
+Harina integral
 ```
+
+Esta funcionalidad no resulta necesaria para el flujo inicial de registro de compras.
+
+Si se incorpora, deberá evitarse duplicar innecesariamente la información en cada `ItemCompra`.
 
 ---
 
-## Conversiones adicionales de unidades
+## Catálogo más avanzado de unidades y conversiones
 
-Inicialmente se utilizarán unidades base simples como:
+El MVP deberá soportar las conversiones necesarias para normalizar las cantidades utilizadas por WALOS.
 
-```text
-KILOGRAMO
-LITRO
-UNIDAD
-```
+En una evolución posterior podrán incorporarse mecanismos más avanzados para:
 
-En una versión posterior podrán incorporarse conversiones adicionales cuando resulten necesarias.
-
-Por ejemplo:
-
-```text
-gramos → kilogramos
-
-mililitros → litros
-```
+- administrar nuevas magnitudes;
+- definir equivalencias adicionales;
+- validar automáticamente compatibilidad entre unidades;
+- incorporar unidades específicas de otros tipos de negocios.
 
 El objetivo será conservar siempre una cantidad normalizada adecuada para Inventario y análisis de precios.
+
+---
+
+## Multimoneda e impuestos
+
+En una versión futura podrán incorporarse funcionalidades como:
+
+- moneda de la compra;
+- tipo de cambio;
+- impuestos;
+- percepciones;
+- otros componentes fiscales.
+
+Estas funcionalidades quedan fuera del alcance inicial del módulo.
 
 ---
 
@@ -1540,7 +1761,7 @@ El historial generado por Compras podrá utilizarse posteriormente para:
 - calcular precios unitarios normalizados;
 - conocer el gasto histórico por proveedor;
 - conocer qué proveedor vendió cada insumo;
-- comparar distintas presentaciones comerciales.
+- comparar distintas formas comerciales de compra.
 
 ---
 
@@ -1629,32 +1850,142 @@ Esto permitirá que WALOS cree nuevas categorías después de la entrega del sis
 
 ---
 
-## Unidad base y presentación son conceptos diferentes
+## Las unidades utilizadas por el negocio son configurables
 
-La unidad base representa cómo debe conservarse y compararse una cantidad.
+El sistema no limitará las unidades a un enum fijo como:
 
-La presentación representa cómo fue adquirido comercialmente el producto.
+```text
+KILOGRAMO
+LITRO
+UNIDAD
+```
+
+En su lugar:
+
+```text
+UnidadMedida
+```
+
+será un catálogo administrable.
+
+Esto permitirá representar tanto unidades físicas como formas comerciales utilizadas en la práctica.
+
+Ejemplos:
+
+```text
+Kilogramo
+Gramo
+Litro
+Mililitro
+Unidad
+Bolsa
+Caja
+Tarro
+Rollo
+```
+
+Las unidades utilizadas históricamente no deberán eliminarse físicamente.
+
+---
+
+## La forma de compra y la unidad habitual de stock pueden ser diferentes
+
+El sistema deberá permitir que el trabajador registre una adquisición en la forma en la que resulta natural hacerlo, mientras conserva internamente una cantidad adecuada para Inventario.
 
 Ejemplo:
 
 ```text
 Insumo:
-Queso rallado
+Harina
 
-Unidad base:
-KILOGRAMO
-
-Presentación:
-Paquete
+Unidad habitual de stock:
+Kilogramo
 
 Compra:
-2 paquetes de 500 g
-
-Cantidad base:
-1 kg
+2 bolsas de 5 kg
 ```
 
-Esto permitirá comparar correctamente proveedores aunque utilicen presentaciones diferentes.
+El trabajador registra:
+
+```text
+cantidad = 2
+unidadCompra = Bolsa
+contenidoPorUnidad = 5
+unidadContenido = Kilogramo
+```
+
+El sistema obtiene:
+
+```text
+cantidadIncorporada = 10 kg
+```
+
+También podrán existir casos donde no sea necesario indicar un contenido.
+
+Ejemplo:
+
+```text
+Insumo:
+Témpera blanca
+
+Unidad habitual de stock:
+Tarro
+
+Compra:
+10 tarros
+```
+
+Si WALOS administra ese insumo directamente en tarros:
+
+```text
+cantidadIncorporada = 10 tarros
+```
+
+Esta flexibilidad busca que el registro de compras sea sencillo para el trabajador sin perder consistencia en Inventario.
+
+---
+
+## El precio unitario es un dato derivado
+
+El sistema conservará como datos históricos principales:
+
+```text
+precioTotal
+cantidadIncorporada
+```
+
+A partir de ellos podrá calcular:
+
+```text
+precioUnitario =
+precioTotal / cantidadIncorporada
+```
+
+Inicialmente no será necesario almacenar `precioUnitario` como un atributo independiente.
+
+Esto evita mantener dos valores que podrían volverse inconsistentes entre sí.
+
+---
+
+## Compras e Inventario permanecen separados
+
+Compras registra el hecho comercial.
+
+Inventario administra las existencias físicas.
+
+Conceptualmente:
+
+```text
+Compra confirmada
+       ↓
+cantidades incorporadas
+       ↓
+Inventario
+```
+
+Compras no deberá modificar directamente las cantidades disponibles.
+
+Para el MVP, la confirmación implica que la mercadería ya fue recibida.
 
 ---
 
@@ -1687,49 +2018,65 @@ Esta separación permitirá que Inventario reciba únicamente operaciones que re
 
 ---
 
+## Proveedor e Insumo no mantienen una relación manual directa
+
+No se almacenará inicialmente una asociación independiente entre:
+
+```text
+Proveedor
+<->
+Insumo
+```
+
+La relación surgirá del historial real de compras:
+
+```text
+Proveedor
+   ↓
+Compra
+   ↓
+ItemCompra
+   ↓
+Insumo
+```
+
+Esto evita mantener manualmente relaciones redundantes y permite conocer qué proveedores vendieron cada insumo a partir de las operaciones efectivamente realizadas.
+
+---
+
 # Estado actual
 
-El módulo de Compras se encuentra en desarrollo.
+El análisis y diseño técnico inicial del módulo de Compras se encuentra prácticamente cerrado.
 
-Actualmente ya se comenzó a implementar:
+Actualmente se encuentra implementada parcialmente la entidad:
 
 ```text
 Proveedor
 ```
 
-y se está redefiniendo el catálogo originalmente denominado:
+La próxima etapa de implementación contempla, en orden:
 
 ```text
-MateriaPrima
-```
-
-para reemplazarlo por:
-
-```text
-Insumo
-```
-
-junto con:
-
-```text
+Proveedor
 CategoriaInsumo
-```
-
-Antes de continuar con la implementación de:
-
-```text
+UnidadMedida
+Insumo
 Compra
 ItemCompra
+Comprobante
+CorreccionCompra
 ```
 
-deberán alinearse:
+Antes de considerar terminado el módulo deberán alinearse:
 
-- modelo de clases;
-- documentación técnica;
 - migraciones;
 - modelos SQLAlchemy;
 - schemas de API;
-- endpoints correspondientes.
+- endpoints;
+- reglas de negocio;
+- validaciones;
+- integración con Inventario;
+- pruebas.
 
 La implementación deberá mantener la separación entre:
 
