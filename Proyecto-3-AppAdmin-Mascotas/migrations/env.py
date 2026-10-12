@@ -8,12 +8,14 @@ from alembic import context
 from src.database.base import Base
 from src.database.session import DATABASE_URL
 from src.compras.models import Proveedor
+from src.auth import models as auth_models
+from src.inventario import models as stock_models
 
 # Objeto de configuración de Alembic
 config = context.config
 
 # Le indicamos a Alembic qué URL de base de datos debe usar
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
 
 
 # Configuración de logging

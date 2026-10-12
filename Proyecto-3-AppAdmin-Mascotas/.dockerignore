@@ -1,0 +1,10 @@
+.git
+.env
+.venv
+__pycache__
+*.db
+*.sqlite*
+.pytest_cache
+tests
+docs
+Ingenieria de Software
