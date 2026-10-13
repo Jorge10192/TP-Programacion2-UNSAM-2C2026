@@ -4,6 +4,7 @@ from src.compras.routes import (
     categorias_insumos_router,
     insumos_router,
     proveedores_router,
+    unidades_medida_router,
 )
 
 
@@ -16,6 +17,7 @@ app = FastAPI(
 
 app.include_router(proveedores_router)
 app.include_router(categorias_insumos_router)
+app.include_router(unidades_medida_router)
 app.include_router(insumos_router)
 
 
