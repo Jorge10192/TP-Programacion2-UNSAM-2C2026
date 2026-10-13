@@ -1,0 +1,303 @@
+@startuml WALOS_Modulo_Compras
+
+top to bottom direction
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+
+skinparam ArrowColor black
+skinparam ArrowThickness 1.8
+
+skinparam note {
+    BackgroundColor #FFF8CC
+    BorderColor #C5A632
+}
+
+title WALOS - Diagrama de clases del módulo de Compras\nVersión de dominio
+
+
+package "Catálogos" {
+
+    class CategoriaInsumo #E7F8E7 {
+        - id: int
+        - nombre: String
+        - descripcion: String?
+        - activa: boolean
+        - fechaCreacion: DateTime
+    }
+
+    class UnidadMedida #E5F6F4 {
+        - id: int
+        - nombre: String
+        - simbolo: String?
+        - magnitud: MagnitudUnidad?
+        - factorBase: Decimal?
+        - activa: boolean
+    }
+
+    class Proveedor #FFF0E6 {
+        - id: int
+        - nombre: String
+        - direccion: String?
+        - observaciones: String?
+        - activo: boolean
+        - fechaCreacion: DateTime
+    }
+
+    class Insumo #DFF5FF {
+        - id: int
+        - nombre: String
+        - tipoControlStock: TipoControlStock
+        - controlaVencimiento: boolean
+        - activo: boolean
+        - fechaCreacion: DateTime
+    }
+
+    class PresentacionInsumo #E8F8E8 {
+        - id: int
+        - nombre: String
+        - marca: String?
+        - unidadCompra: UnidadMedida
+        - contenidoPorUnidad: Decimal?
+        - unidadContenido: UnidadMedida?
+        - activa: boolean
+        - fechaCreacion: DateTime
+    }
+
+    class ImagenInsumo #EFE7FF {
+        - id: int
+        - archivo: String
+        - principal: boolean
+        - activa: boolean
+    }
+}
+
+
+package "Entidad externa" {
+
+    class Usuario <<external>> #EDE2FF {
+        - id: int
+    }
+}
+
+
+package "Operación de Compra" {
+
+    class Compra #FFE6E6 {
+        - id: int
+        - fechaCompra: Date
+        - estado: EstadoCompra
+        - estadoConsistencia: EstadoConsistencia
+        - observaciones: String?
+        - fechaCreacion: DateTime
+        - fechaConfirmacion: DateTime?
+        - fechaUltimaModificacion: DateTime?
+        --
+        + calcularTotal(): Decimal
+    }
+
+    class ItemCompra #FFF4CC {
+        - id: int
+        - cantidad: Decimal
+        - unidadCompra: UnidadMedida
+        - contenidoPorUnidad: Decimal?
+        - unidadContenido: UnidadMedida?
+        - precioTotal: Decimal
+        - cantidadIncorporada: Decimal
+        --
+        + calcularCantidadIncorporada(): Decimal
+        + calcularPrecioPorUnidad(): Decimal
+        + calcularPrecioNormalizado(): Decimal
+    }
+
+    class Comprobante #E6EBFF {
+        - id: int
+        - archivo: String
+        - tipo: String?
+        - fechaCreacion: DateTime
+        - activo: boolean
+    }
+}
+
+
+package "Trazabilidad" {
+
+    class RegistroActividadCompra #E4F3FF {
+        - id: int
+        - fecha: DateTime
+        - tipo: TipoActividadCompra
+        - descripcion: String
+        - datosAnteriores: Object?
+        - datosNuevos: Object?
+    }
+}
+
+
+package "Enumeraciones" {
+
+    enum EstadoCompra #FFE6E6 {
+        BORRADOR
+        CONFIRMADA
+        ANULADA
+    }
+
+    enum EstadoConsistencia #FFE6E6 {
+        CONSISTENTE
+        REQUIERE_REVISION
+    }
+
+    enum TipoActividadCompra #E4F3FF {
+        CREACION
+        EDICION
+        CONFIRMACION
+        ANULACION
+    }
+
+    enum TipoControlStock #DFF5FF {
+        CONTROL_MINIMO
+        CONTROL_PERIODICO
+        SIN_CONTROL_DETALLADO
+    }
+
+    enum MagnitudUnidad #E5F6F4 {
+        MASA
+        VOLUMEN
+        SUPERFICIE
+        CANTIDAD
+    }
+}
+
+
+' =========================================================
+' RELACIONES
+' =========================================================
+
+CategoriaInsumo "1" -- "0..*" Insumo : clasifica
+
+UnidadMedida "1" -- "0..*" Insumo : unidad de stock
+
+Insumo "1" *-- "0..*" PresentacionInsumo : presentaciones
+
+Insumo "1" *-- "0..*" ImagenInsumo : imágenes
+
+
+Proveedor "0..1" -- "0..*" Compra : proveedor
+
+Usuario "1" -- "0..*" Compra : crea
+
+Compra "1" *-- "1..*" ItemCompra : contiene
+
+ItemCompra "0..*" -- "1" Insumo : producto
+
+ItemCompra "0..*" -- "0..1" PresentacionInsumo : basada en
+
+Compra "1" *-- "0..*" Comprobante : respaldo
+
+
+Compra "1" *-- "0..*" RegistroActividadCompra : historial
+
+Usuario "1" -- "0..*" RegistroActividadCompra : realiza
+
+
+' =========================================================
+' DEPENDENCIAS A ENUMS
+' =========================================================
+
+Compra ..> EstadoCompra : usa
+Compra ..> EstadoConsistencia : usa
+
+Insumo ..> TipoControlStock : usa
+
+UnidadMedida ..> MagnitudUnidad : usa
+
+RegistroActividadCompra ..> TipoActividadCompra : usa
+
+
+' =========================================================
+' NOTAS
+' =========================================================
+
+note top of Proveedor
+Proveedor opcional.
+
+Una compra tiene como máximo
+un proveedor.
+
+Si hay dos proveedores,
+se registran dos compras.
+end note
+
+
+note right of PresentacionInsumo
+Presentación opcional.
+
+Sirve como plantilla para formas
+habituales de compra.
+
+Ejemplos:
+- Bolsa 5 kg
+- Pack x100
+
+También puede hacerse
+una carga manual.
+end note
+
+
+note left of Compra
+La fecha se propone como hoy,
+pero puede modificarse.
+
+El usuario creador se obtiene
+automáticamente.
+
+El total se calcula a partir
+de los ítems.
+
+Los borradores pueden recuperarse.
+end note
+
+
+note right of ItemCompra
+Representa lo realmente comprado.
+
+Ejemplos:
+- Pollo: 3,75 kg
+- 5 paquetes de 300 unidades
+
+Sus valores quedan guardados
+como información histórica.
+end note
+
+
+note right of Comprobante
+Respaldo documental opcional.
+
+Una compra puede tener
+ninguno, uno o varios comprobantes.
+
+El ticket no determina
+el total registrado por WALOS.
+end note
+
+
+note bottom of RegistroActividadCompra
+Historial cronológico de acciones.
+
+Registra creación, edición,
+confirmación y anulación,
+junto con usuario y fecha.
+end note
+
+
+note bottom of Compra
+Al confirmar una compra,
+WALOS genera la entrada
+correspondiente en Inventario.
+
+Inventario queda fuera
+de este diagrama de dominio.
+end note
+
+@enduml
