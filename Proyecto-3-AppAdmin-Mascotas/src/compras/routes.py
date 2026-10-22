@@ -1,16 +1,30 @@
+from datetime import datetime, timezone
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from src.compras.models import (
     CategoriaInsumo,
+    Compra,
+    EstadoCompra,
     ImagenInsumo,
     Insumo,
+    ItemCompra,
     PresentacionInsumo,
     Proveedor,
+    RegistroActividadCompra,
+    TipoActividadCompra,
     UnidadMedida,
 )
+
 from src.compras.schemas import (
+    CompraCreate,
+    CompraResponse,
+    CompraResumenResponse,
+    ItemCompraCreate,
+    ItemCompraUpdate,
     CategoriaInsumoCreate,
     CategoriaInsumoResponse,
     CategoriaInsumoUpdate,
@@ -1178,3 +1192,713 @@ def activar_imagen_insumo(
     db.refresh(imagen)
 
     return imagen
+
+# ---------------------------------------------------------------------------
+# Compras
+# ---------------------------------------------------------------------------
+
+
+compras_router = APIRouter(
+    prefix="/compras",
+    tags=["Compras"],
+)
+
+def calcular_cantidad_incorporada(
+    datos: ItemCompraCreate,
+    insumo: Insumo,
+    unidad_compra: UnidadMedida,
+    unidad_contenido: UnidadMedida | None,
+) -> Decimal:
+    if datos.contenido_por_unidad is not None:
+        cantidad = datos.cantidad * datos.contenido_por_unidad
+        unidad_origen = unidad_contenido
+    else:
+        cantidad = datos.cantidad
+        unidad_origen = unidad_compra
+
+    unidad_stock = insumo.unidad_stock
+
+    if unidad_origen is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se pudo determinar la unidad de la cantidad incorporada.",
+        )
+
+    if unidad_origen.id == unidad_stock.id:
+        return cantidad
+
+    if (
+        unidad_origen.magnitud is None
+        or unidad_stock.magnitud is None
+        or unidad_origen.factor_base is None
+        or unidad_stock.factor_base is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Las unidades son diferentes y no tienen configurada "
+                "una conversión válida."
+            ),
+        )
+
+    if unidad_origen.magnitud != unidad_stock.magnitud:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La unidad utilizada en la compra no es compatible "
+                "con la unidad de stock del insumo."
+            ),
+        )
+
+    return (
+        cantidad
+        * unidad_origen.factor_base
+        / unidad_stock.factor_base
+    )
+
+def construir_resumen_compra(
+    compra: Compra,
+) -> CompraResumenResponse:
+    return CompraResumenResponse(
+        id=compra.id,
+        proveedor_id=compra.proveedor_id,
+        creado_por_usuario_id=compra.creado_por_usuario_id,
+        fecha_compra=compra.fecha_compra,
+        estado=compra.estado,
+        estado_consistencia=compra.estado_consistencia,
+        observaciones=compra.observaciones,
+        fecha_creacion=compra.fecha_creacion,
+        fecha_confirmacion=compra.fecha_confirmacion,
+        fecha_ultima_modificacion=compra.fecha_ultima_modificacion,
+        total=compra.calcular_total(),
+    )
+
+
+def construir_compra_response(
+    compra: Compra,
+) -> CompraResponse:
+    return CompraResponse(
+        id=compra.id,
+        proveedor_id=compra.proveedor_id,
+        creado_por_usuario_id=compra.creado_por_usuario_id,
+        fecha_compra=compra.fecha_compra,
+        estado=compra.estado,
+        estado_consistencia=compra.estado_consistencia,
+        observaciones=compra.observaciones,
+        fecha_creacion=compra.fecha_creacion,
+        fecha_confirmacion=compra.fecha_confirmacion,
+        fecha_ultima_modificacion=compra.fecha_ultima_modificacion,
+        total=compra.calcular_total(),
+        items=compra.items,
+        comprobantes=compra.comprobantes,
+    )
+
+
+@compras_router.post(
+    "",
+    response_model=CompraResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def crear_compra(
+    datos: CompraCreate,
+    db: Session = Depends(get_db),
+):
+    if datos.proveedor_id is not None:
+        proveedor = db.get(
+            Proveedor,
+            datos.proveedor_id,
+        )
+
+        if proveedor is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="El proveedor indicado no existe.",
+            )
+
+        if not proveedor.activo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede crear una compra con un proveedor inactivo.",
+            )
+
+    nueva_compra = Compra(
+        **datos.model_dump(exclude_none=True),
+    )
+
+    db.add(nueva_compra)
+
+    # Necesitamos obtener el ID antes del commit para poder
+    # registrar la actividad inicial.
+    db.flush()
+
+    actividad = RegistroActividadCompra(
+        compra_id=nueva_compra.id,
+        usuario_id=None,
+        tipo=TipoActividadCompra.CREACION,
+        descripcion="Compra creada en estado borrador.",
+        datos_anteriores=None,
+        datos_nuevos={
+            "estado": nueva_compra.estado.value,
+        },
+    )
+
+    db.add(actividad)
+
+    db.commit()
+    db.refresh(nueva_compra)
+
+    compra = db.scalar(
+        select(Compra)
+        .options(
+            selectinload(Compra.items),
+            selectinload(Compra.comprobantes),
+        )
+        .where(
+            Compra.id == nueva_compra.id
+        )
+    )
+
+    return construir_compra_response(compra)
+
+
+@compras_router.get(
+    "",
+    response_model=list[CompraResumenResponse],
+)
+def listar_compras(
+    db: Session = Depends(get_db),
+):
+    compras = list(
+        db.scalars(
+            select(Compra)
+            .options(
+                selectinload(Compra.items),
+            )
+            .order_by(
+                Compra.id.desc()
+            )
+        ).all()
+    )
+
+    return [
+        construir_resumen_compra(compra)
+        for compra in compras
+    ]
+
+
+@compras_router.get(
+    "/{compra_id}",
+    response_model=CompraResponse,
+)
+def obtener_compra(
+    compra_id: int,
+    db: Session = Depends(get_db),
+):
+    compra = db.scalar(
+        select(Compra)
+        .options(
+            selectinload(Compra.items),
+            selectinload(Compra.comprobantes),
+        )
+        .where(
+            Compra.id == compra_id
+        )
+    )
+
+    if compra is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Compra no encontrada.",
+        )
+
+    return construir_compra_response(compra)
+
+@compras_router.post(
+    "/{compra_id}/items",
+    response_model=CompraResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def agregar_item_compra(
+    compra_id: int,
+    datos: ItemCompraCreate,
+    db: Session = Depends(get_db),
+):
+    compra = db.get(
+        Compra,
+        compra_id,
+    )
+
+    if compra is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Compra no encontrada.",
+        )
+
+    if compra.estado != EstadoCompra.BORRADOR:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se pueden agregar ítems a una compra en borrador.",
+        )
+
+    insumo = db.get(
+        Insumo,
+        datos.insumo_id,
+    )
+
+    if insumo is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El insumo indicado no existe.",
+        )
+
+    if not insumo.activo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede comprar un insumo inactivo.",
+        )
+
+    unidad_compra = db.get(
+        UnidadMedida,
+        datos.unidad_compra_id,
+    )
+
+    if unidad_compra is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="La unidad de compra indicada no existe.",
+        )
+
+    if not unidad_compra.activa:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La unidad de compra indicada está inactiva.",
+        )
+
+    presentacion = None
+
+    if datos.presentacion_id is not None:
+        presentacion = db.get(
+            PresentacionInsumo,
+            datos.presentacion_id,
+        )
+
+        if presentacion is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="La presentación indicada no existe.",
+            )
+
+        if not presentacion.activa:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La presentación indicada está inactiva.",
+            )
+
+        if presentacion.insumo_id != datos.insumo_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "La presentación indicada no pertenece "
+                    "al insumo seleccionado."
+                ),
+            )
+
+    if (
+        datos.contenido_por_unidad is None
+        and datos.unidad_contenido_id is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Si se indica una unidad de contenido, "
+                "también debe indicarse el contenido por unidad."
+            ),
+        )
+
+    if (
+        datos.contenido_por_unidad is not None
+        and datos.unidad_contenido_id is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Si se indica contenido por unidad, "
+                "también debe indicarse su unidad."
+            ),
+        )
+
+    unidad_contenido = None
+
+    if datos.unidad_contenido_id is not None:
+        unidad_contenido = db.get(
+            UnidadMedida,
+            datos.unidad_contenido_id,
+        )
+
+        if unidad_contenido is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="La unidad de contenido indicada no existe.",
+            )
+
+        if not unidad_contenido.activa:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La unidad de contenido indicada está inactiva.",
+            )
+
+    cantidad_incorporada = calcular_cantidad_incorporada(
+        datos=datos,
+        insumo=insumo,
+        unidad_compra=unidad_compra,
+        unidad_contenido=unidad_contenido,
+    )
+
+    nuevo_item = ItemCompra(
+        compra_id=compra.id,
+        insumo_id=datos.insumo_id,
+        presentacion_id=datos.presentacion_id,
+        cantidad=datos.cantidad,
+        unidad_compra_id=datos.unidad_compra_id,
+        contenido_por_unidad=datos.contenido_por_unidad,
+        unidad_contenido_id=datos.unidad_contenido_id,
+        precio_total=datos.precio_total,
+        cantidad_incorporada=cantidad_incorporada,
+    )
+
+    db.add(nuevo_item)
+    db.flush()
+
+    compra.fecha_ultima_modificacion = (
+    datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+
+    actividad = RegistroActividadCompra(
+        compra_id=compra.id,
+        usuario_id=None,
+        tipo=TipoActividadCompra.EDICION,
+        descripcion="Se agregó un ítem a la compra.",
+        datos_anteriores=None,
+        datos_nuevos={
+            "item_id": nuevo_item.id,
+            "insumo_id": nuevo_item.insumo_id,
+            "cantidad": str(nuevo_item.cantidad),
+            "precio_total": str(nuevo_item.precio_total),
+            "cantidad_incorporada": str(
+                nuevo_item.cantidad_incorporada
+            ),
+        },
+    )
+
+    db.add(actividad)
+    db.commit()
+
+    compra = db.scalar(
+        select(Compra)
+        .options(
+            selectinload(Compra.items),
+            selectinload(Compra.comprobantes),
+        )
+        .where(
+            Compra.id == compra_id
+        )
+    )
+
+    return construir_compra_response(compra)
+
+
+
+@compras_router.put(
+    "/{compra_id}/items/{item_id}",
+    response_model=CompraResponse,
+)
+def actualizar_item_compra(
+    compra_id: int,
+    item_id: int,
+    datos: ItemCompraUpdate,
+    db: Session = Depends(get_db),
+):
+    compra = db.get(
+        Compra,
+        compra_id,
+    )
+
+    if compra is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Compra no encontrada.",
+        )
+
+    if compra.estado != EstadoCompra.BORRADOR:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se pueden editar ítems de una compra en borrador.",
+        )
+
+    item = db.get(
+        ItemCompra,
+        item_id,
+    )
+
+    if item is None or item.compra_id != compra_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ítem de compra no encontrado.",
+        )
+
+    datos_anteriores = {
+        "insumo_id": item.insumo_id,
+        "presentacion_id": item.presentacion_id,
+        "cantidad": str(item.cantidad),
+        "unidad_compra_id": item.unidad_compra_id,
+        "contenido_por_unidad": (
+            str(item.contenido_por_unidad)
+            if item.contenido_por_unidad is not None
+            else None
+        ),
+        "unidad_contenido_id": item.unidad_contenido_id,
+        "precio_total": str(item.precio_total),
+        "cantidad_incorporada": str(item.cantidad_incorporada),
+    }
+
+    insumo = db.get(
+        Insumo,
+        datos.insumo_id,
+    )
+
+    if insumo is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El insumo indicado no existe.",
+        )
+
+    if not insumo.activo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede utilizar un insumo inactivo.",
+        )
+
+    unidad_compra = db.get(
+        UnidadMedida,
+        datos.unidad_compra_id,
+    )
+
+    if unidad_compra is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="La unidad de compra indicada no existe.",
+        )
+
+    if not unidad_compra.activa:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La unidad de compra indicada está inactiva.",
+        )
+
+    if datos.presentacion_id is not None:
+        presentacion = db.get(
+            PresentacionInsumo,
+            datos.presentacion_id,
+        )
+
+        if presentacion is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="La presentación indicada no existe.",
+            )
+
+        if not presentacion.activa:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La presentación indicada está inactiva.",
+            )
+
+        if presentacion.insumo_id != datos.insumo_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "La presentación indicada no pertenece "
+                    "al insumo seleccionado."
+                ),
+            )
+
+    if (
+        datos.contenido_por_unidad is None
+        and datos.unidad_contenido_id is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Si se indica una unidad de contenido, "
+                "también debe indicarse el contenido por unidad."
+            ),
+        )
+
+    if (
+        datos.contenido_por_unidad is not None
+        and datos.unidad_contenido_id is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Si se indica contenido por unidad, "
+                "también debe indicarse su unidad."
+            ),
+        )
+
+    unidad_contenido = None
+
+    if datos.unidad_contenido_id is not None:
+        unidad_contenido = db.get(
+            UnidadMedida,
+            datos.unidad_contenido_id,
+        )
+
+        if unidad_contenido is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="La unidad de contenido indicada no existe.",
+            )
+
+        if not unidad_contenido.activa:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La unidad de contenido indicada está inactiva.",
+            )
+
+    cantidad_incorporada = calcular_cantidad_incorporada(
+        datos=datos,
+        insumo=insumo,
+        unidad_compra=unidad_compra,
+        unidad_contenido=unidad_contenido,
+    )
+
+    item.insumo_id = datos.insumo_id
+    item.presentacion_id = datos.presentacion_id
+    item.cantidad = datos.cantidad
+    item.unidad_compra_id = datos.unidad_compra_id
+    item.contenido_por_unidad = datos.contenido_por_unidad
+    item.unidad_contenido_id = datos.unidad_contenido_id
+    item.precio_total = datos.precio_total
+    item.cantidad_incorporada = cantidad_incorporada
+
+    compra.fecha_ultima_modificacion = (
+        datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+
+    actividad = RegistroActividadCompra(
+        compra_id=compra.id,
+        usuario_id=None,
+        tipo=TipoActividadCompra.EDICION,
+        descripcion="Se editó un ítem de la compra.",
+        datos_anteriores=datos_anteriores,
+        datos_nuevos={
+            "item_id": item.id,
+            "insumo_id": item.insumo_id,
+            "presentacion_id": item.presentacion_id,
+            "cantidad": str(item.cantidad),
+            "unidad_compra_id": item.unidad_compra_id,
+            "contenido_por_unidad": (
+                str(item.contenido_por_unidad)
+                if item.contenido_por_unidad is not None
+                else None
+            ),
+            "unidad_contenido_id": item.unidad_contenido_id,
+            "precio_total": str(item.precio_total),
+            "cantidad_incorporada": str(item.cantidad_incorporada),
+        },
+    )
+
+    db.add(actividad)
+    db.commit()
+
+    compra = db.scalar(
+        select(Compra)
+        .options(
+            selectinload(Compra.items),
+            selectinload(Compra.comprobantes),
+        )
+        .where(
+            Compra.id == compra_id
+        )
+    )
+
+    return construir_compra_response(compra)
+
+
+@compras_router.delete(
+    "/{compra_id}/items/{item_id}",
+    response_model=CompraResponse,
+)
+def eliminar_item_compra(
+    compra_id: int,
+    item_id: int,
+    db: Session = Depends(get_db),
+):
+    compra = db.get(
+        Compra,
+        compra_id,
+    )
+
+    if compra is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Compra no encontrada.",
+        )
+
+    if compra.estado != EstadoCompra.BORRADOR:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se pueden quitar ítems de una compra en borrador.",
+        )
+
+    item = db.get(
+        ItemCompra,
+        item_id,
+    )
+
+    if item is None or item.compra_id != compra_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ítem de compra no encontrado.",
+        )
+
+    datos_anteriores = {
+        "item_id": item.id,
+        "insumo_id": item.insumo_id,
+        "presentacion_id": item.presentacion_id,
+        "cantidad": str(item.cantidad),
+        "precio_total": str(item.precio_total),
+        "cantidad_incorporada": str(item.cantidad_incorporada),
+    }
+
+    db.delete(item)
+
+    compra.fecha_ultima_modificacion = (
+        datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+
+    actividad = RegistroActividadCompra(
+        compra_id=compra.id,
+        usuario_id=None,
+        tipo=TipoActividadCompra.EDICION,
+        descripcion="Se eliminó un ítem de la compra.",
+        datos_anteriores=datos_anteriores,
+        datos_nuevos=None,
+    )
+
+    db.add(actividad)
+    db.commit()
+
+    compra = db.scalar(
+        select(Compra)
+        .options(
+            selectinload(Compra.items),
+            selectinload(Compra.comprobantes),
+        )
+        .where(
+            Compra.id == compra_id
+        )
+    )
+
+    return construir_compra_response(compra)

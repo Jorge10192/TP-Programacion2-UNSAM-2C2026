@@ -1,10 +1,13 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.compras.models import (
+    EstadoCompra,
+    EstadoConsistencia,
     MagnitudUnidad,
+    TipoActividadCompra,
     TipoControlStock,
 )
 
@@ -55,7 +58,7 @@ class ProveedorResponse(ProveedorBase):
 
 
 # ---------------------------------------------------------------------------
-# Categorías de insumos
+# Categorias de insumos
 # ---------------------------------------------------------------------------
 
 
@@ -234,7 +237,7 @@ class PresentacionInsumoResponse(PresentacionInsumoBase):
 
 
 # ---------------------------------------------------------------------------
-# Imágenes de insumos
+# Imagenes de insumos
 # ---------------------------------------------------------------------------
 
 
@@ -266,3 +269,175 @@ class ImagenInsumoResponse(ImagenInsumoBase):
     activa: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ===========================================================================
+# NUCLEO TRANSACCIONAL DE COMPRAS
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Items de compra
+# ---------------------------------------------------------------------------
+
+
+class ItemCompraBase(BaseModel):
+    insumo_id: int
+
+    presentacion_id: int | None = None
+
+    cantidad: Decimal = Field(
+        gt=0,
+    )
+
+    unidad_compra_id: int
+
+    contenido_por_unidad: Decimal | None = Field(
+        default=None,
+        gt=0,
+    )
+
+    unidad_contenido_id: int | None = None
+
+    precio_total: Decimal = Field(
+        gt=0,
+        max_digits=14,
+        decimal_places=2,
+    )
+
+
+class ItemCompraCreate(ItemCompraBase):
+    pass
+
+
+class ItemCompraUpdate(ItemCompraBase):
+    pass
+
+
+class ItemCompraResponse(ItemCompraBase):
+    id: int
+    compra_id: int
+    cantidad_incorporada: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------------------------------------------------------------------
+# Comprobantes
+# ---------------------------------------------------------------------------
+
+
+class ComprobanteBase(BaseModel):
+    archivo: str = Field(
+        min_length=1,
+        max_length=500,
+    )
+
+    tipo: str | None = Field(
+        default=None,
+        max_length=100,
+    )
+
+
+class ComprobanteCreate(ComprobanteBase):
+    pass
+
+
+class ComprobanteUpdate(BaseModel):
+    archivo: str = Field(
+        min_length=1,
+        max_length=500,
+    )
+
+    tipo: str | None = Field(
+        default=None,
+        max_length=100,
+    )
+
+
+class ComprobanteResponse(ComprobanteBase):
+    id: int
+    compra_id: int
+    fecha_creacion: datetime
+    activo: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------------------------------------------------------------------
+# Registro de actividad
+# ---------------------------------------------------------------------------
+
+
+class RegistroActividadCompraResponse(BaseModel):
+    id: int
+    compra_id: int
+    usuario_id: int | None
+
+    fecha: datetime
+    tipo: TipoActividadCompra
+    descripcion: str
+
+    datos_anteriores: dict | None
+    datos_nuevos: dict | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------------------------------------------------------------------
+# Compras
+# ---------------------------------------------------------------------------
+
+
+class CompraCreate(BaseModel):
+    proveedor_id: int | None = None
+
+    fecha_compra: date | None = None
+
+    observaciones: str | None = None
+
+
+class CompraUpdate(BaseModel):
+    proveedor_id: int | None = None
+
+    fecha_compra: date
+
+    observaciones: str | None = None
+
+
+class CompraResumenResponse(BaseModel):
+    id: int
+
+    proveedor_id: int | None
+    creado_por_usuario_id: int | None
+
+    fecha_compra: date
+
+    estado: EstadoCompra
+    estado_consistencia: EstadoConsistencia
+
+    observaciones: str | None
+
+    fecha_creacion: datetime
+    fecha_confirmacion: datetime | None
+    fecha_ultima_modificacion: datetime
+
+    total: Decimal = Decimal("0")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CompraResponse(CompraResumenResponse):
+    items: list[ItemCompraResponse] = Field(
+        default_factory=list,
+    )
+
+    comprobantes: list[ComprobanteResponse] = Field(
+        default_factory=list,
+    )
+
+
+class CompraDetalleResponse(CompraResponse):
+    historial: list[RegistroActividadCompraResponse] = Field(
+        default_factory=list,
+    )
