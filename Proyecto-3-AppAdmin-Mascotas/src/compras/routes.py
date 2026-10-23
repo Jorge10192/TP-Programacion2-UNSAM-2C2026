@@ -21,6 +21,7 @@ from src.compras.models import (
 
 from src.compras.schemas import (
     CompraCreate,
+    CompraUpdate,
     CompraResponse,
     CompraResumenResponse,
     ItemCompraCreate,
@@ -1412,6 +1413,168 @@ def obtener_compra(
         )
 
     return construir_compra_response(compra)
+
+@compras_router.put(
+    "/{compra_id}",
+    response_model=CompraResponse,
+)
+def actualizar_compra(
+    compra_id: int,
+    datos: CompraUpdate,
+    db: Session = Depends(get_db),
+):
+    compra = db.get(
+        Compra,
+        compra_id,
+    )
+
+    if compra is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Compra no encontrada.",
+        )
+
+    if compra.estado != EstadoCompra.BORRADOR:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se puede editar una compra en estado borrador.",
+        )
+
+    if datos.proveedor_id is not None:
+        proveedor = db.get(
+            Proveedor,
+            datos.proveedor_id,
+        )
+
+        if proveedor is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="El proveedor indicado no existe.",
+            )
+
+        if not proveedor.activo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede utilizar un proveedor inactivo.",
+            )
+
+    datos_anteriores = {
+        "proveedor_id": compra.proveedor_id,
+        "fecha_compra": str(compra.fecha_compra),
+        "observaciones": compra.observaciones,
+    }
+
+    compra.proveedor_id = datos.proveedor_id
+    compra.fecha_compra = datos.fecha_compra
+    compra.observaciones = datos.observaciones
+
+    compra.fecha_ultima_modificacion = (
+        datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+
+    actividad = RegistroActividadCompra(
+        compra_id=compra.id,
+        usuario_id=None,
+        tipo=TipoActividadCompra.EDICION,
+        descripcion="Se editaron los datos generales de la compra.",
+        datos_anteriores=datos_anteriores,
+        datos_nuevos={
+            "proveedor_id": compra.proveedor_id,
+            "fecha_compra": str(compra.fecha_compra),
+            "observaciones": compra.observaciones,
+        },
+    )
+
+    db.add(actividad)
+    db.commit()
+
+    compra = db.scalar(
+        select(Compra)
+        .options(
+            selectinload(Compra.items),
+            selectinload(Compra.comprobantes),
+        )
+        .where(
+            Compra.id == compra_id
+        )
+    )
+
+    return construir_compra_response(compra)
+
+
+@compras_router.patch(
+    "/{compra_id}/confirmar",
+    response_model=CompraResponse,
+)
+def confirmar_compra(
+    compra_id: int,
+    db: Session = Depends(get_db),
+):
+    compra = db.scalar(
+        select(Compra)
+        .options(
+            selectinload(Compra.items),
+            selectinload(Compra.comprobantes),
+        )
+        .where(
+            Compra.id == compra_id
+        )
+    )
+
+    if compra is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Compra no encontrada.",
+        )
+
+    if compra.estado != EstadoCompra.BORRADOR:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se puede confirmar una compra en estado borrador.",
+        )
+
+    if not compra.items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede confirmar una compra sin ítems.",
+        )
+
+    ahora = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    compra.estado = EstadoCompra.CONFIRMADA
+    compra.fecha_confirmacion = ahora
+    compra.fecha_ultima_modificacion = ahora
+
+    actividad = RegistroActividadCompra(
+        compra_id=compra.id,
+        usuario_id=None,
+        tipo=TipoActividadCompra.CONFIRMACION,
+        descripcion="Compra confirmada.",
+        datos_anteriores={
+            "estado": EstadoCompra.BORRADOR.value,
+        },
+        datos_nuevos={
+            "estado": EstadoCompra.CONFIRMADA.value,
+            "fecha_confirmacion": ahora.isoformat(),
+        },
+    )
+
+    db.add(actividad)
+    db.commit()
+
+    compra = db.scalar(
+        select(Compra)
+        .options(
+            selectinload(Compra.items),
+            selectinload(Compra.comprobantes),
+        )
+        .where(
+            Compra.id == compra_id
+        )
+    )
+
+    return construir_compra_response(compra)
+
 
 @compras_router.post(
     "/{compra_id}/items",
