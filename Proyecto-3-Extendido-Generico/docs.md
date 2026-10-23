@@ -1,3 +1,4 @@
+```
 docs/
 │
 ├── 00-definicion-producto.md
@@ -41,3 +42,4 @@ docs/
 ├── 17-datos-demo.md
 ├── 18-plan-implementacion.md
 └── 19-prompt-maestro-implementacion.md
+```
