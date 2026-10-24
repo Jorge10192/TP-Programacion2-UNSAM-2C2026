@@ -1,7 +1,5 @@
 # Documentación y Estrategia de Desarrollo
 
-> Guía maestra para desarrollo humano y asistido por IA.
-
 ---
 
 # 1. Propósito de este README
