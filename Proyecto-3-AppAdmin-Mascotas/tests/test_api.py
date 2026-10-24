@@ -95,11 +95,14 @@ def test_referencia_no_admite_otro_contenido(api, compra):
     assert len(api.get("/compras").json()) == 1
 
 
-def test_compra_no_vacia_ni_insumos_repetidos(api, compra):
+def test_borrador_vacio_e_insumos_no_repetidos(api, compra):
     compra["items"] *= 2
     assert api.post("/compras", json=compra).status_code == 422
     compra["items"] = []
-    assert api.post("/compras", json=compra).status_code == 422
+    borrador = api.post("/compras", json=compra)
+    assert borrador.status_code == 201
+    assert api.post(f"/compras/{borrador.json()['id']}/confirmar").status_code == 422
+    assert api.get(f"/compras/{borrador.json()['id']}").json()["estado"] == "BORRADOR"
 
 
 def test_cantidad_incompatible_o_contenido_incompleto(api, compra, catalogo):

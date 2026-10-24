@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, LargeBinary, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, JSON, LargeBinary, Numeric, String, Text, UniqueConstraint, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.base import Base
@@ -30,6 +30,8 @@ class Proveedor(Base):
         nullable=True
     )
 
+    direccion: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     fecha_creacion: Mapped[datetime] = mapped_column(
         DateTime,
         server_default=func.now(),
@@ -42,6 +44,8 @@ class CategoriaInsumo(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(150), unique=True)
     activo: Mapped[bool] = mapped_column(default=True)
+    descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fecha_creacion: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class UnidadMedida(Base):
@@ -52,6 +56,7 @@ class UnidadMedida(Base):
     dimension: Mapped[str] = mapped_column(String(30))
     factor: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     activo: Mapped[bool] = mapped_column(default=True)
+    simbolo: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
 class Insumo(Base):
@@ -61,13 +66,42 @@ class Insumo(Base):
     categoria_id: Mapped[int] = mapped_column(ForeignKey("categorias_insumo.id"))
     unidad_stock_id: Mapped[int] = mapped_column(ForeignKey("unidades_medida.id"))
     activo: Mapped[bool] = mapped_column(default=True)
+    tipo_control_stock: Mapped[str] = mapped_column(String(30), default="CONTROL_PERIODICO", server_default="CONTROL_PERIODICO")
+    controla_vencimiento: Mapped[bool] = mapped_column(default=False, server_default=false())
+    fecha_creacion: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class PresentacionInsumo(Base):
+    __tablename__ = "presentaciones_insumo"
+    __table_args__ = (
+        CheckConstraint("contenido_por_unidad > 0", name="presentacion_contenido_positivo"),
+        CheckConstraint("(contenido_por_unidad IS NULL) = (unidad_contenido_id IS NULL)", name="presentacion_contenido_completo"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    insumo_id: Mapped[int] = mapped_column(ForeignKey("insumos.id"))
+    nombre: Mapped[str] = mapped_column(String(150))
+    marca: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    unidad_compra_id: Mapped[int] = mapped_column(ForeignKey("unidades_medida.id"))
+    contenido_por_unidad: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
+    unidad_contenido_id: Mapped[int | None] = mapped_column(ForeignKey("unidades_medida.id"), nullable=True)
+    activo: Mapped[bool] = mapped_column(default=True)
+    fecha_creacion: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ImagenInsumo(Base):
+    __tablename__ = "imagenes_insumo"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    insumo_id: Mapped[int] = mapped_column(ForeignKey("insumos.id"))
+    archivo: Mapped[str] = mapped_column(String(500))
+    principal: Mapped[bool] = mapped_column(default=False)
+    activo: Mapped[bool] = mapped_column(default=True)
 
 
 class Compra(Base):
     __tablename__ = "compras"
     __table_args__ = (UniqueConstraint("usuario_id", "referencia", name="compra_referencia_unica"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    proveedor_id: Mapped[int] = mapped_column(ForeignKey("proveedores.id"))
+    proveedor_id: Mapped[int | None] = mapped_column(ForeignKey("proveedores.id"), nullable=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
     referencia: Mapped[str] = mapped_column(String(80))
     huella: Mapped[str] = mapped_column(String(64))
@@ -78,7 +112,10 @@ class Compra(Base):
     anulada_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
     fecha_anulacion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    fecha_confirmacion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    fecha_ultima_modificacion: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     items: Mapped[list["ItemCompra"]] = relationship(cascade="all, delete-orphan", lazy="selectin")
+    historial: Mapped[list["RegistroActividadCompra"]] = relationship(lazy="selectin", order_by="RegistroActividadCompra.id")
 
     @property
     def total(self) -> Decimal:
@@ -95,6 +132,7 @@ class ItemCompra(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     compra_id: Mapped[int] = mapped_column(ForeignKey("compras.id"))
     insumo_id: Mapped[int] = mapped_column(ForeignKey("insumos.id"))
+    presentacion_id: Mapped[int | None] = mapped_column(ForeignKey("presentaciones_insumo.id", name="item_presentacion_fk"), nullable=True)
     cantidad: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     unidad_compra_id: Mapped[int] = mapped_column(ForeignKey("unidades_medida.id"))
     contenido_por_unidad: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
@@ -123,3 +161,15 @@ class Comprobante(Base):
     tipo: Mapped[str] = mapped_column(String(40))
     huella: Mapped[str] = mapped_column(String(64))
     contenido: Mapped[bytes] = mapped_column(LargeBinary)
+
+
+class RegistroActividadCompra(Base):
+    __tablename__ = "registros_actividad_compra"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    compra_id: Mapped[int] = mapped_column(ForeignKey("compras.id"))
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    fecha: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    tipo: Mapped[str] = mapped_column(String(30))
+    descripcion: Mapped[str] = mapped_column(Text)
+    datos_anteriores: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    datos_nuevos: Mapped[dict | None] = mapped_column(JSON, nullable=True)
