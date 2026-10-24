@@ -1,3 +1,4 @@
+```
 NEGOCIO
 │
 ├── UsuarioNegocio
@@ -38,3 +39,4 @@ NEGOCIO
 │
 └── AUDITORIA
        └── RegistroActividad
+```
