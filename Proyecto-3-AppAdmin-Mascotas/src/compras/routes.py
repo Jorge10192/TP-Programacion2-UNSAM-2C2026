@@ -8,8 +8,10 @@ from src.auth.security import administrador, usuario_actual
 from src.compras.models import CategoriaInsumo, Comprobante, Compra, Insumo, Proveedor, UnidadMedida
 from src.compras.schemas import (CategoriaCreate, CategoriaResponse, CompraCreate, CompraResponse,
                                 InsumoCreate, InsumoResponse, Motivo, ProveedorCreate, ProveedorResponse,
-                                UnidadCreate, UnidadResponse)
-from src.compras.services import anular_compra, confirmar_compra, crear_compra, guardar, habilitado
+                                UnidadCreate, UnidadResponse, CompraUpdate, CompraDetalleResponse,
+                                ItemCreate, ActividadResponse)
+from src.compras.services import (anular_compra, confirmar_compra, crear_compra, guardar, habilitado,
+                                 editar_compra, agregar_item, editar_item, eliminar_item)
 from src.database.session import get_db
 from src.inventario.models import Existencia
 
@@ -29,6 +31,7 @@ def crear_proveedor(
     proveedor = Proveedor(
         nombre=datos.nombre,
         observaciones=datos.observaciones,
+        direccion=datos.direccion,
     )
 
     db.add(proveedor)
@@ -64,6 +67,7 @@ def editar_proveedor(id: int, datos: ProveedorCreate, _=Depends(administrador), 
     proveedor = obtener(db, Proveedor, id)
     proveedor.nombre = datos.nombre
     proveedor.observaciones = datos.observaciones
+    proveedor.direccion = datos.direccion
     guardar(db)
     return proveedor
 
@@ -153,12 +157,38 @@ def listar_compras(db: Session = Depends(get_db), limit: int = Query(50, ge=1, l
     return db.query(Compra).order_by(Compra.id).offset(offset).limit(limit).all()
 
 
-@router.get("/compras/{id}", response_model=CompraResponse)
+@router.get("/compras/{id}", response_model=CompraDetalleResponse)
 def consultar_compra(id: int, db: Session = Depends(get_db)):
     return obtener(db, Compra, id)
 
 
+@router.put("/compras/{id}", response_model=CompraDetalleResponse)
+def actualizar_compra(id: int, datos: CompraUpdate, user=Depends(usuario_actual), db: Session = Depends(get_db)):
+    return editar_compra(db, obtener(db, Compra, id), datos, user.id)
+
+
+@router.post("/compras/{id}/items", response_model=CompraDetalleResponse, status_code=201)
+def agregar_item_compra(id: int, datos: ItemCreate, user=Depends(usuario_actual), db: Session = Depends(get_db)):
+    return agregar_item(db, obtener(db, Compra, id), datos, user.id)
+
+
+@router.put("/compras/{id}/items/{item_id}", response_model=CompraDetalleResponse)
+def actualizar_item_compra(id: int, item_id: int, datos: ItemCreate, user=Depends(usuario_actual), db: Session = Depends(get_db)):
+    return editar_item(db, obtener(db, Compra, id), item_id, datos, user.id)
+
+
+@router.delete("/compras/{id}/items/{item_id}", response_model=CompraDetalleResponse)
+def eliminar_item_compra(id: int, item_id: int, user=Depends(usuario_actual), db: Session = Depends(get_db)):
+    return eliminar_item(db, obtener(db, Compra, id), item_id, user.id)
+
+
+@router.get("/compras/{id}/historial", response_model=list[ActividadResponse])
+def historial_compra(id: int, db: Session = Depends(get_db)):
+    return obtener(db, Compra, id).historial
+
+
 @router.post("/compras/{id}/confirmar", response_model=CompraResponse)
+@router.patch("/compras/{id}/confirmar", response_model=CompraResponse, include_in_schema=False)
 def confirmar(id: int, user=Depends(usuario_actual), db: Session = Depends(get_db)):
     return confirmar_compra(db, obtener(db, Compra, id), user.id)
 

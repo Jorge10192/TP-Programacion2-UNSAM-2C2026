@@ -10,21 +10,22 @@ Gestión de un emprendimiento de bocaditos y tortas para mascotas.
 |---|---|---|
 | 01 | Sesiones, usuarios y roles. | Implementado |
 | 02 | Alta, consulta, edición y baja lógica de proveedores. | Implementado |
-| 03 | Categorías, unidades e insumos. | Implementado |
-| 04 | Compras, comprobantes, recepción y anulación. | Implementado |
+| 03 | Categorías, unidades, insumos, presentaciones e imágenes. | Implementado |
+| 04 | Borradores editables, historial, comprobantes, recepción y anulación de compras. | Implementado |
 | 05 | Existencias de insumos y ajustes trazables. | Implementado |
 | 06 | Producción, lotes, ubicaciones y ventas. | Planificado |
 | 07 | Pedidos web y reservas con seña. | Planificado |
 | 08 | Promociones. | Planificado |
 | 09 | Gastos, costos y resumen mensual. | Planificado |
 
-**Actores:** operador registra catálogos y compras; administrador también gestiona usuarios, edita/desactiva proveedores, da bajas lógicas, anula compras y ajusta stock. Cliente: futuro canal web. La API actual no incluye interfaz.
+**Actores:** operador registra catálogos y gestiona borradores; administrador también gestiona usuarios, edita/reactiva/desactiva catálogos, anula compras y ajusta stock. Cliente: futuro canal web. La API actual no incluye interfaz.
 
 ## 3. Reglas
 
-- Una compra nace como borrador. Confirmarla implica mercadería recibida: compra, entradas y movimientos se guardan juntos. No se admiten recepciones parciales/diferidas en esta etapa.
+- Un borrador puede empezar vacío y editarse hasta confirmar; requiere proveedor e ítems para confirmarse. Confirmar implica mercadería recibida: compra, entradas y movimientos se guardan juntos. Sin recepciones parciales/diferidas.
 - Referencia y usuario identifican una solicitud; repetirla no duplica registros. Confirmar o anular tampoco repite movimientos.
 - Cantidades positivas, unidades compatibles y nombres no vacíos. Strategy elige conversión directa o por contenido de presentación; la cantidad incorporada y el precio quedan históricos.
+- Cada edición registra usuario, fecha y cambios. La presentación se copia al ítem; modificarla después no altera compras existentes. La unidad de stock y las conversiones utilizadas no se cambian; un insumo marcado con vencimiento lo exige al comprar.
 - Una anulación conserva compra y comprobantes. Si revertir genera stock negativo, se rechaza y requiere revisión. Los ajustes registran usuario, fecha y motivo.
 - Comprar insumos físicos y registrar gastos como alquiler/impuestos son operaciones distintas. Una compra no acredita ni debita dinero.
 - **Reservas previstas:** pedido web sin apartar stock → revisión del trabajador → seña verificada y asignación manual de stock o producción → aceptación. La seña debe cubrir materiales; entrega y cobro son hechos distintos. Cancelar libera unidades y requiere resolver la seña.
@@ -53,11 +54,15 @@ flowchart LR
 classDiagram
     Usuario "1" --> "*" Compra : registra
     Proveedor "1" --> "*" Compra
-    Compra "1" *-- "1..*" ItemCompra
+    Compra "1" *-- "*" ItemCompra
+    Compra "1" --> "*" RegistroActividadCompra
     Compra "1" --> "*" Comprobante
     ItemCompra "*" --> "1" Insumo
     Insumo "*" --> "1" CategoriaInsumo
     Insumo "*" --> "1" UnidadMedida : stock
+    Insumo "1" --> "*" PresentacionInsumo
+    Insumo "1" --> "*" ImagenInsumo
+    ItemCompra "*" --> "0..1" PresentacionInsumo : origen
     Insumo "1" --> "1" Existencia
     Insumo "1" --> "*" MovimientoStock
 ```
