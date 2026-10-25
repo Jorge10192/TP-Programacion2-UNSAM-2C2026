@@ -135,7 +135,13 @@ Usuario
 
 Representa la identidad global de una persona dentro de la plataforma.
 
-Un Usuario existe independientemente de los Negocios a los que pertenezca.
+Un `Usuario` existe independientemente de los Negocios a los que pertenezca y puede poseer:
+
+```text
+0..N membresías
+```
+
+La pertenencia a un Negocio no modifica la identidad global del Usuario.
 
 ### Información Conceptual
 
@@ -143,26 +149,49 @@ Un Usuario existe independientemente de los Negocios a los que pertenezca.
 Usuario
 ├── identidad
 ├── nombre
-├── email
-├── credencial de acceso
-└── estado de cuenta
+├── email : Email
+├── estado de cuenta
+└── fecha de registro
 ```
+
+La gestión técnica de credenciales no forma parte de esta entidad conceptual.
+
+Por lo tanto, este modelo no incorpora como atributos de dominio:
+
+```text
+contraseña
+hash de contraseña
+JWT
+refresh token
+OAuth
+MFA
+```
+
+La autenticación forma parte funcionalmente de M01, pero su implementación técnica pertenece a Arquitectura / IAM.
 
 ### Reglas
 
-Un Usuario puede pertenecer a:
-
-```text
-0..N Negocios
-```
-
 Un Usuario no posee un Rol global.
 
-El Rol surge de:
+El Rol surge exclusivamente de:
 
 ```text
 UsuarioNegocio
 ```
+
+Desactivar una membresía:
+
+```text
+UsuarioNegocio
+ACTIVO → INACTIVO
+```
+
+no debe:
+
+- desactivar la cuenta global;
+- afectar otras membresías;
+- eliminar al Usuario;
+- modificar operaciones históricas.
 
 ### Ejemplo
 
@@ -191,7 +220,7 @@ Negocio
 
 Representa la organización, emprendimiento o comercio cuyos datos y operaciones se administran mediante la plataforma.
 
-Constituye el límite principal de aislamiento funcional.
+Constituye el límite principal de aislamiento funcional y concentra las reglas que requieren conocer el contexto organizacional completo.
 
 ### Información Conceptual
 
@@ -202,7 +231,7 @@ Negocio
 ├── rubro opcional
 ├── moneda base
 ├── modalidades operativas
-└── estado
+└── estado conceptual
 ```
 
 ### Moneda del MVP
@@ -211,9 +240,17 @@ Negocio
 ARS
 ```
 
+Durante el Bloque 1 no se define cambio de moneda base.
+
 ### Modalidades
 
-Una o más:
+Un Negocio posee un conjunto de:
+
+```text
+1..N ModalidadOperativa
+```
+
+Valores del MVP:
 
 ```text
 REVENTA
@@ -221,9 +258,19 @@ PRODUCCION
 SERVICIOS
 ```
 
+Las modalidades:
+
+```text
+adaptan UX
+priorizan navegación
+orientan onboarding
+```
+
+pero no funcionan como restricciones rígidas del dominio.
+
 ### Estado durante el Bloque 1
 
-El MVP solo necesita operar con:
+El MVP solo necesita operar funcionalmente con:
 
 ```text
 ACTIVO
@@ -238,7 +285,7 @@ eliminar negocio
 reactivar negocio
 ```
 
-El eventual ciclo de vida administrativo del Negocio queda para una evolución posterior.
+Por lo tanto, este documento no define todavía un `EstadoNegocio` cerrado ni sus transiciones administrativas.
 
 ### Invariante Principal
 
@@ -247,6 +294,62 @@ Todo Negocio activo debe poseer:
 ```text
 >= 1 UsuarioNegocio ACTIVO
 con rol PROPIETARIO
+```
+
+Las operaciones que puedan alterar esa condición deben validar la invariante dentro de la misma operación que produce el cambio.
+
+Conceptualmente:
+
+```text
+desactivarMiembro(...)
+cambiarRolMiembro(...)
+```
+
+no pueden dejar al Negocio sin Propietarios activos.
+
+### Creación Válida del Negocio
+
+Crear un Negocio no consiste únicamente en crear la entidad `Negocio`.
+
+Una creación válida produce conceptualmente y de forma atómica:
+
+```text
+Negocio nuevo
++
+UsuarioNegocio del creador
++
+EstadoMembresia = ACTIVO
++
+Rol = PROPIETARIO
+```
+
+Nunca debe resultar de una creación válida:
+
+```text
+Negocio activo
++
+0 Propietarios activos
+```
+
+Este documento no decide todavía si esta coordinación se implementará mediante Factory, Application Service, Domain Service u otro patrón.
+
+### Gestión Conceptual de Membresías
+
+Las mutaciones de membresía que pueden afectar invariantes organizacionales se expresan desde el contexto del Negocio:
+
+```text
+desactivarMiembro(miembro)
+cambiarRolMiembro(miembro, nuevoRol)
+incorporarOReactivarMiembro(usuario, rolInicial)
+```
+
+`cambiarRolMiembro(..., PROPIETARIO)` representa conceptualmente la promoción explícita a Propietario.
+
+La incorporación inicial mediante invitación solo admite:
+
+```text
+ENCARGADO
+TRABAJADOR
 ```
 
 ---
@@ -262,7 +365,7 @@ UsuarioNegocio
 
 ### Responsabilidad
 
-Representa la participación de un Usuario dentro de un Negocio.
+Representa la participación contextual de un Usuario dentro de un Negocio.
 
 Es el concepto central que resuelve la relación:
 
@@ -276,8 +379,8 @@ Usuario N:M Negocio
 UsuarioNegocio
 ├── Usuario
 ├── Negocio
-├── Rol
-├── estado
+├── rol : Rol
+├── estado : EstadoMembresia
 └── fecha de incorporación
 ```
 
@@ -296,7 +399,18 @@ ACTIVO
 INACTIVO
 ```
 
-### Invariantes
+No deben inventarse desde este modelo estados adicionales como:
+
+```text
+PENDIENTE
+SUSPENDIDO
+ELIMINADO
+BLOQUEADO
+```
+
+sin modificar previamente la especificación funcional.
+
+### Invariante de Membresía Histórica Única
 
 Para una misma combinación conceptual:
 
@@ -323,6 +437,43 @@ UsuarioNegocio ACTIVO
 ```
 
 El nuevo rol será el establecido por la nueva incorporación.
+
+Si la membresía ya se encuentra:
+
+```text
+ACTIVA
+```
+
+la operación de incorporación no debe:
+
+```text
+crear otra membresía
+reactivar
+modificar silenciosamente el rol existente
+```
+
+La operación debe rechazarse o informar que el Usuario ya pertenece activamente al Negocio.
+
+### Mutaciones y Protección de Invariantes
+
+`UsuarioNegocio` puede responder consultas conceptuales sobre sí misma, por ejemplo:
+
+```text
+estaActiva()
+esPropietario()
+```
+
+pero no debe exponer públicamente mutadores que permitan saltarse reglas que dependen del conjunto de miembros del Negocio.
+
+Por lo tanto, este modelo no asigna a `UsuarioNegocio` operaciones públicas como:
+
+```text
+cambiarRol()
+desactivar()
+reactivar()
+```
+
+cuando dichas mutaciones deban proteger la invariante del último Propietario.
 
 ### Regla del Último Propietario
 
@@ -358,25 +509,27 @@ La invitación puede existir aunque el destinatario todavía no posea una cuenta
 ```text
 InvitacionNegocio
 ├── Negocio
-├── email destino
-├── rol propuesto
+├── identificador seguro
+├── email destino : Email
+├── rol propuesto : Rol
 ├── emisor : UsuarioNegocio
-├── estado
+├── estado : EstadoInvitacion
 ├── fecha de emisión
 └── vigencia
 ```
 
+### Emisión Válida
+
 El `emisor` representa la membresía activa desde la cual se genera la invitación.
 
-Durante el MVP, dicha membresía debe pertenecer al mismo Negocio de la invitación y poseer rol `PROPIETARIO`.
-
-### Rol Propuesto
-
-Durante el MVP:
+Durante el MVP debe cumplirse:
 
 ```text
-ENCARGADO
-TRABAJADOR
+emisor.estado = ACTIVO
+emisor.rol = PROPIETARIO
+emisor.negocio = invitacion.negocio
+rolPropuesto ∈ {ENCARGADO, TRABAJADOR}
+estado inicial = PENDIENTE
 ```
 
 No puede utilizarse una invitación inicial para asignar:
@@ -384,6 +537,8 @@ No puede utilizarse una invitación inicial para asignar:
 ```text
 PROPIETARIO
 ```
+
+La promoción a Propietario es una acción explícita posterior.
 
 ### Estados
 
@@ -395,15 +550,50 @@ CANCELADA
 EXPIRADA
 ```
 
-### Invariante de Identidad
+### Aceptación
 
 Una invitación solo puede aceptarse cuando:
 
 ```text
-Usuario.email
-=
-InvitacionNegocio.email_destino
+estado = PENDIENTE
++
+vigente
++
+Usuario.email = InvitacionNegocio.emailDestino
 ```
+
+La operación conceptual de aceptación modifica el ciclo de vida de `InvitacionNegocio`, pero no debe crear o modificar directamente una membresía.
+
+La creación o reactivación de `UsuarioNegocio` se coordina desde el Caso de Uso correspondiente.
+
+Conceptualmente:
+
+```text
+InvitacionNegocio
+PENDIENTE → ACEPTADA
+
+        +
+
+Negocio.incorporarOReactivarMiembro(...)
+```
+
+La operación completa debe ser atómica:
+
+```text
+Invitación ACEPTADA
++
+membresía creada/reactivada
+```
+
+o:
+
+```text
+ninguna modificación confirmada
+```
+
+Nunca debe persistirse una invitación ACEPTADA si la incorporación/reactivación correspondiente no pudo completarse.
+
+La forma técnica de implementar esa atomicidad se definirá en Arquitectura.
 
 ### Canal de Distribución
 
@@ -414,7 +604,7 @@ Conceptualmente:
 ```text
 InvitacionNegocio
         ↓
-enlace
+enlace seguro
         ↓
 WhatsApp / copiar enlace / otro canal futuro
 ```
@@ -676,9 +866,39 @@ UsuarioNegocio
 
 No pertenece directamente a `Usuario`.
 
+Los permisos concretos asociados a cada Rol se definen en cada módulo funcional.
+
 ---
 
-## 5.3. ModalidadOperativa
+## 5.3. EstadoMembresia
+
+### Estereotipo
+
+```text
+<<enum>>
+EstadoMembresia
+```
+
+Valores del MVP:
+
+```text
+ACTIVO
+INACTIVO
+```
+
+Representa el estado de participación de un `UsuarioNegocio`.
+
+No debe confundirse con:
+
+```text
+EstadoInvitacion
+estado de cuenta del Usuario
+estado administrativo futuro del Negocio
+```
+
+---
+
+## 5.4. ModalidadOperativa
 
 ### Estereotipo
 
@@ -716,7 +936,7 @@ pero no bloquean permanentemente funcionalidades del dominio.
 
 ---
 
-## 5.4. EstadoInvitacion
+## 5.5. EstadoInvitacion
 
 ### Estereotipo
 
@@ -735,9 +955,15 @@ CANCELADA
 EXPIRADA
 ```
 
+Una invitación nueva se crea conceptualmente en:
+
+```text
+PENDIENTE
+```
+
 ---
 
-## 5.5. TipoArticulo
+## 5.6. TipoArticulo
 
 ### Estereotipo
 
@@ -757,7 +983,7 @@ Es inmutable para un ArticuloCatalogo una vez creado.
 
 ---
 
-## 5.6. UnidadMedida
+## 5.7. UnidadMedida
 
 ### Estereotipo
 
@@ -805,7 +1031,7 @@ HORA
 
 ---
 
-## 5.7. CapacidadesArticulo
+## 5.8. CapacidadesArticulo
 
 ### Estereotipo
 
@@ -840,7 +1066,7 @@ La representación técnica se decidirá durante el Modelo Relacional.
 
 ---
 
-## 5.8. Moneda
+## 5.9. Moneda
 
 ### Estereotipo
 
@@ -1137,6 +1363,8 @@ UsuarioNegocio
 
 Un Usuario puede poseer ninguna, una o múltiples membresías.
 
+La membresía contiene el Rol contextual del Usuario dentro de cada Negocio.
+
 ---
 
 ## Negocio ↔ UsuarioNegocio
@@ -1150,7 +1378,17 @@ Negocio
 UsuarioNegocio
 ```
 
-Todo Negocio activo posee al menos una membresía activa de propietario.
+Todo Negocio activo posee al menos una membresía ACTIVA con rol PROPIETARIO.
+
+Para una misma combinación:
+
+```text
+Usuario + Negocio
+```
+
+existe una única membresía conceptual histórica.
+
+La reincorporación reutiliza esa membresía.
 
 ---
 
@@ -1164,6 +1402,8 @@ Negocio
 0..N
 InvitacionNegocio
 ```
+
+Una invitación pertenece explícitamente a un Negocio.
 
 ---
 
@@ -1183,36 +1423,19 @@ UsuarioNegocio
 InvitacionNegocio
 ```
 
-La membresía emisora debe poseer permisos suficientes.
-
-Durante el MVP:
+Durante el MVP, la membresía emisora debe cumplir:
 
 ```text
+EstadoMembresia = ACTIVO
 Rol = PROPIETARIO
 ```
 
-La relación directa entre `Negocio` e `InvitacionNegocio` se conserva porque la invitación pertenece explícitamente a un Negocio y debe poder comprenderse como parte de su contexto.
-
-Al mismo tiempo, `UsuarioNegocio` identifica a la membresía responsable de emitirla.
-
-Por ello existe la siguiente invariante:
+Además:
 
 ```text
 InvitacionNegocio.negocio
 =
 InvitacionNegocio.emisor.negocio
-```
-
-Conceptualmente:
-
-```text
-Negocio A
-   │
-   ├── UsuarioNegocio del Propietario A
-   │          │
-   │          └── emite
-   │                 ↓
-   └──────── InvitacionNegocio del Negocio A
 ```
 
 No es válido:
@@ -1223,25 +1446,35 @@ UsuarioNegocio del Negocio A
 emite invitación para Negocio B
 ```
 
-La forma concreta de garantizar esta consistencia pertenece al Modelo Relacional y a la capa de aplicación, no a este modelo conceptual.
+La forma concreta de garantizar esta consistencia pertenece al Modelo Relacional y a la capa de aplicación.
 
 ---
 
-## InvitacionNegocio → UsuarioNegocio
+## Aceptación de InvitacionNegocio y UsuarioNegocio
 
-Una invitación aceptada puede:
+Una invitación aceptada puede provocar como consecuencia del Caso de Uso:
 
 ```text
-crear
+crear UsuarioNegocio
 o
-reactivar
+reactivar UsuarioNegocio histórico
 ```
 
-un `UsuarioNegocio`.
+Esta consecuencia **no representa una asociación estructural directa** entre `InvitacionNegocio` y `UsuarioNegocio`.
 
-No se trata necesariamente de una relación estructural persistente entre ambas entidades.
+La coordinación pertenece al comportamiento dinámico del Caso de Uso.
 
-Es una consecuencia de dominio.
+Conceptualmente:
+
+```text
+InvitacionNegocio.aceptarPara(...)
+        ↓
+Caso de Uso
+        ↓
+Negocio.incorporarOReactivarMiembro(...)
+```
+
+La operación completa debe conservar consistencia transaccional.
 
 ---
 
@@ -1289,6 +1522,8 @@ Categoria
 → opcional
 ```
 
+La Categoria, cuando existe, debe pertenecer al mismo Negocio que el ArticuloCatalogo.
+
 ---
 
 ## ArticuloCatalogo ↔ CapacidadesArticulo
@@ -1315,6 +1550,8 @@ N
 UnidadMedida
 ```
 
+`UnidadMedida` pertenece a un catálogo normalizado global del sistema.
+
 ---
 
 # 11. Invariantes Principales del Bloque 1
@@ -1327,38 +1564,42 @@ Todo Negocio activo conserva al menos un Propietario activo.
 
 ### INV-ORG-002
 
-El Rol pertenece a UsuarioNegocio.
+El Rol pertenece a `UsuarioNegocio`, no al `Usuario` global.
 
 ### INV-ORG-003
 
-Un Usuario puede existir sin Negocio.
+Un Usuario puede existir sin Negocio y puede participar en 0..N Negocios.
 
 ### INV-ORG-004
 
-Desactivar una membresía no desactiva la cuenta global.
+Desactivar una membresía no desactiva la cuenta global ni afecta otras membresías.
 
 ### INV-ORG-005
 
-Una reincorporación reutiliza la membresía histórica.
+Para una misma combinación `Usuario + Negocio` existe una única membresía conceptual histórica.
+
+La reincorporación reutiliza esa membresía.
+
+Si la membresía ya está ACTIVA, una nueva incorporación no debe duplicarla ni modificar silenciosamente su rol.
 
 ### INV-ORG-006
 
-Una invitación solamente puede ser aceptada por el email destinatario.
+Una invitación solamente puede ser aceptada por el Usuario cuyo email coincide con `emailDestino`.
 
 ### INV-ORG-007
 
-Solo una invitación PENDIENTE y vigente puede aceptarse.
+Solo una invitación `PENDIENTE` y vigente puede aceptarse.
 
 ### INV-ORG-008
 
-Toda operación de Negocio exige:
+Toda operación de Negocio exige conceptualmente:
 
 ```text
 Usuario autenticado
 +
 Negocio autorizado
 +
-Membresía activa
+UsuarioNegocio ACTIVO
 +
 Rol
 +
@@ -1367,7 +1608,7 @@ permiso específico del módulo
 
 ### INV-ORG-009
 
-Las modalidades adaptan la experiencia pero no funcionan como restricciones rígidas.
+Las modalidades adaptan la experiencia pero no funcionan como restricciones rígidas del dominio.
 
 ### INV-ORG-010
 
@@ -1381,9 +1622,45 @@ InvitacionNegocio.negocio
 UsuarioNegocioEmisor.negocio
 ```
 
-No puede emitirse una invitación para un Negocio utilizando una membresía perteneciente a otro.
+### INV-ORG-011
+
+Crear un Negocio debe crear de forma funcionalmente atómica su primera membresía:
+
+```text
+UsuarioNegocio
+estado = ACTIVO
+rol = PROPIETARIO
+```
+
+No puede resultar un Negocio activo recién creado sin Propietario.
+
+### INV-ORG-012
+
+La incorporación inicial mediante invitación solo admite:
+
+```text
+ENCARGADO
+TRABAJADOR
+```
+
+`PROPIETARIO` requiere una promoción explícita posterior.
+
+### INV-ORG-013
+
+Aceptar una invitación no crea ni modifica directamente una membresía desde la entidad `InvitacionNegocio`.
+
+El Caso de Uso coordina:
+
+```text
+InvitacionNegocio → ACEPTADA
++
+UsuarioNegocio creado/reactivado
+```
+
+La operación completa debe conservar atomicidad: se confirman ambos cambios o ninguno.
 
 ---
+
 
 ## Catálogo
 
@@ -1582,7 +1859,11 @@ Eso sería complejidad innecesaria para el MVP.
 
 # 14. Diagrama UML Conceptual
 
-El siguiente diagrama representa el Modelo de Dominio del Bloque 1.
+El siguiente diagrama representa una vista conceptual integrada del Modelo de Dominio del Bloque 1.
+
+Los diagramas detallados específicos de M01 y M02 complementan esta vista y pueden expresar responsabilidades con mayor precisión.
+
+El UML embebido en este documento no debe interpretarse como un modelo ORM ni como una definición automática de agregados.
 
 ```plantuml
 @startuml
@@ -1599,8 +1880,7 @@ class Usuario <<entity>> {
   nombre
   email : Email
   estadoCuenta
-  --
-  autenticarse()
+  fechaRegistro
 }
 
 class Negocio <<entity>> {
@@ -1611,28 +1891,33 @@ class Negocio <<entity>> {
   modalidades : Set<ModalidadOperativa>
   estado
   --
-  tienePropietarioActivo()
+  configurarModalidades()
+  tienePropietarioActivo() : Boolean
+  desactivarMiembro()
+  cambiarRolMiembro()
+  incorporarOReactivarMiembro()
 }
 
 class UsuarioNegocio <<entity>> {
   rol : Rol
-  estado
+  estado : EstadoMembresia
   fechaIncorporacion
   --
-  cambiarRol()
-  desactivar()
-  reactivar()
+  estaActiva() : Boolean
+  esPropietario() : Boolean
 }
 
 class InvitacionNegocio <<entity>> {
+  identificadorSeguro
   emailDestino : Email
   rolPropuesto : Rol
-  emisor : UsuarioNegocio
   estado : EstadoInvitacion
   fechaEmision
   vigencia
   --
-  aceptar()
+  estaVigente() : Boolean
+  puedeSerAceptadaPor()
+  aceptarPara()
   rechazar()
   cancelar()
   expirar()
@@ -1642,6 +1927,11 @@ enum Rol <<enum>> {
   PROPIETARIO
   ENCARGADO
   TRABAJADOR
+}
+
+enum EstadoMembresia <<enum>> {
+  ACTIVO
+  INACTIVO
 }
 
 enum ModalidadOperativa <<enum>> {
@@ -1728,47 +2018,49 @@ enum UnidadMedida <<enum>> {
 }
 
 
-Usuario "1" -- "0..*" UsuarioNegocio : participa mediante >
-Negocio "1" -- "1..*" UsuarioNegocio : posee >
+Usuario "1" -- "0..*" UsuarioNegocio : membresías
+UsuarioNegocio "1..*" -- "1" Negocio : pertenece a
 
-UsuarioNegocio --> Rol
-
-Negocio --> ModalidadOperativa
-Negocio --> Moneda
-
-Negocio "1" -- "0..*" InvitacionNegocio : genera >
-UsuarioNegocio "1" -- "0..*" InvitacionNegocio : emite >
-
-InvitacionNegocio --> EstadoInvitacion
-InvitacionNegocio --> Rol : rol propuesto
-InvitacionNegocio --> Email : destinatario
-Usuario --> Email
-
-InvitacionNegocio ..> UsuarioNegocio : crea / reactiva
+Negocio "1" -- "0..*" InvitacionNegocio : invitaciones
+UsuarioNegocio "1" -- "0..*" InvitacionNegocio : emite
 
 Negocio "1" -- "0..*" Categoria
 Negocio "1" -- "0..*" ArticuloCatalogo
 
-Categoria "0..1" <-- "0..*" ArticuloCatalogo : organiza >
+Categoria "0..1" <-- "0..*" ArticuloCatalogo : clasifica
 
 ArticuloCatalogo --> TipoArticulo
 ArticuloCatalogo --> UnidadMedida
 ArticuloCatalogo *-- "1" CapacidadesArticulo
 
-note right of Negocio
-Todo Negocio activo debe conservar
-al menos un PROPIETARIO activo.
+note right of UsuarioNegocio
+El Rol pertenece a la membresía.
+EstadoMembresia = ACTIVO / INACTIVO.
+No expone mutadores públicos directos
+que puedan saltarse invariantes del Negocio.
 end note
 
-note right of UsuarioNegocio
-El Rol pertenece a la membresía,
-no al Usuario global.
+note right of Negocio
+Crear Negocio requiere su primer
+UsuarioNegocio ACTIVO PROPIETARIO.
+
+desactivarMiembro() y cambiarRolMiembro()
+deben preservar al menos
+un PROPIETARIO activo.
 end note
 
 note bottom of InvitacionNegocio
-emisor pertenece a UsuarioNegocio.
-El Negocio de la invitación debe coincidir
-con el Negocio de la membresía emisora.
+Emisor:
+UsuarioNegocio ACTIVO PROPIETARIO
+del mismo Negocio.
+
+Rol inicial:
+ENCARGADO / TRABAJADOR.
+
+Aceptar modifica la invitación.
+El Caso de Uso coordina después
+crear/reactivar la membresía
+de manera atómica.
 end note
 
 note right of ArticuloCatalogo
@@ -1794,6 +2086,28 @@ end note
 
 @enduml
 ```
+
+### Diagramas Detallados Asociados
+
+La vista general se complementa con:
+
+```text
+01-diagrama-general.puml
+02-m01-organizacion-clases.puml
+```
+
+y posteriormente:
+
+```text
+03-m02-catalogo-clases.puml
+04-m01-estados-invitacion.puml
+05-m01-estados-membresia.puml
+06-m02-estados-articulo.puml
+secuencias/01-aceptar-invitacion.puml
+secuencias/02-editar-articulo.puml
+```
+
+El diagrama de clases no sustituye a los diagramas dinámicos.
 
 ---
 
@@ -1999,13 +2313,33 @@ Este modelo no decide todavía:
 ```text
 UUID vs otro identificador
 
+límites formales de Aggregate Roots
+
+Factory Methods
+
+Domain Events
+
+Domain Services
+
+Service Layer concreto
+
+Repository
+
+Unit of Work
+
+estrategia de transacciones
+
+estrategia de concurrencia
+
 tablas y nombres de columnas
+
+claves foráneas
 
 índices
 
 restricciones SQL
 
-implementación de unicidad
+implementación técnica de unicidad
 
 normalización exacta de email
 
@@ -2021,20 +2355,46 @@ hash de contraseña
 
 JWT / sesiones
 
+RequestContext
+
 forma de transportar Negocio activo
-
-Service Layer
-
-Repository
-
-eventos de dominio
 
 auditoría técnica
 
 almacenamiento de imágenes
 ```
 
-Estas decisiones se resolverán en las siguientes etapas.
+### Restricción de Interpretación
+
+La presencia de métodos conceptuales en el UML no obliga a:
+
+```text
+una clase ORM equivalente
+un Repository por entidad
+un agregado por clase
+una tabla por concepto
+```
+
+Estas decisiones se resolverán en Arquitectura, ADRs y Modelo Relacional.
+
+### Atomicidad Funcional vs. Implementación Técnica
+
+Cuando este modelo indica que una operación debe ser atómica, expresa una condición funcional:
+
+```text
+o se confirma el cambio completo
+o no se confirma ninguna parte
+```
+
+No prescribe todavía si la implementación utilizará:
+
+```text
+transacción SQL
+Unit of Work
+Application Service
+Domain Service
+otro mecanismo
+```
 
 ---
 
@@ -2043,59 +2403,67 @@ Estas decisiones se resolverán en las siguientes etapas.
 El Modelo de Dominio del Bloque 1 se considera válido cuando:
 
 1. `Usuario` representa una cuenta global independiente de los Negocios.
-2. `UsuarioNegocio` representa correctamente la relación N:M.
-3. El Rol pertenece a `UsuarioNegocio`.
-4. Un Negocio puede poseer múltiples Propietarios.
-5. El modelo protege la existencia de al menos un Propietario activo.
-6. `Negocio.modalidades` representa conceptualmente un conjunto de una o más `ModalidadOperativa`.
-7. `InvitacionNegocio` puede existir sin que exista previamente el Usuario destinatario.
-8. La invitación se vincula funcionalmente por email.
-9. `InvitacionNegocio` identifica explícitamente a la membresía `UsuarioNegocio` emisora.
-10. Toda `InvitacionNegocio` pertenece al mismo Negocio que su membresía emisora.
-11. WhatsApp no forma parte de la identidad del Usuario ni de la Invitación.
-12. Las modalidades operativas pertenecen al Negocio.
-13. Las modalidades no bloquean permanentemente funcionalidades.
-14. Cada Categoria pertenece a un Negocio.
-15. Cada ArticuloCatalogo pertenece a un Negocio.
-16. La Categoria de un artículo pertenece al mismo Negocio.
-17. La Categoria es opcional.
-18. `TipoArticulo` distingue BIEN de SERVICIO.
-19. El Tipo del artículo es inmutable.
-20. `CapacidadesArticulo` representa los usos operativos sin crear jerarquías rígidas.
-21. Un SERVICIO no puede controlar stock, vencimiento ni utilizarse como insumo de producción.
-22. Producción exige BIEN con stock.
-23. Vencimiento exige BIEN con stock.
+2. `Usuario` puede participar en 0..N Negocios mediante `UsuarioNegocio`.
+3. El Rol pertenece a `UsuarioNegocio` y no al Usuario global.
+4. `EstadoMembresia` está limitado en el MVP a `ACTIVO` e `INACTIVO`.
+5. Para cada combinación Usuario + Negocio existe una única membresía conceptual histórica.
+6. La reincorporación reutiliza la membresía histórica y una membresía ya ACTIVA no se duplica ni cambia silenciosamente de rol.
+7. Un Negocio puede poseer múltiples Propietarios y nunca puede quedar activo sin al menos uno.
+8. Crear un Negocio incluye de forma funcionalmente atómica su primera membresía ACTIVA con rol PROPIETARIO.
+9. La incorporación inicial mediante invitación solo admite `ENCARGADO` o `TRABAJADOR`; `PROPIETARIO` requiere promoción explícita.
+10. `InvitacionNegocio` puede existir sin que exista previamente el Usuario destinatario.
+11. Una invitación nueva nace `PENDIENTE`, es emitida por un `UsuarioNegocio` ACTIVO PROPIETARIO del mismo Negocio y se vincula funcionalmente por email.
+12. Solo una invitación PENDIENTE, vigente y cuyo emailDestino coincide con el Usuario puede aceptarse.
+13. `InvitacionNegocio` no crea directamente una membresía; el Caso de Uso coordina de forma atómica la aceptación con la creación/reactivación de `UsuarioNegocio`.
+14. WhatsApp no forma parte de la identidad del Usuario ni de la Invitación.
+15. `Negocio.modalidades` representa conceptualmente un conjunto de una o más `ModalidadOperativa`.
+16. Las modalidades adaptan experiencia y navegación pero no bloquean permanentemente funcionalidades.
+17. Cada Categoria pertenece a un Negocio.
+18. Cada ArticuloCatalogo pertenece a un Negocio.
+19. La Categoria de un artículo es opcional y, cuando existe, pertenece al mismo Negocio.
+20. `TipoArticulo` distingue BIEN de SERVICIO y es inmutable.
+21. `CapacidadesArticulo` representa los usos operativos sin crear jerarquías rígidas.
+22. Un SERVICIO no puede controlar stock, vencimiento ni utilizarse como insumo de producción.
+23. Producción y vencimiento exigen BIEN con stock.
 24. Descuento exige que el artículo sea vendible.
-25. Deshabilitar venta ajusta `permite_descuento = False` dentro de la misma transición.
-26. Deshabilitar venta conserva `precio_base`.
-27. El precio base admite cero.
-28. SKU es único dentro de cada Negocio considerando activos e inactivos.
-29. UnidadMedida es un concepto normalizado global.
-30. Los Servicios reciben `UNIDAD` como valor inicial.
-31. Las unidades con historia cuantitativa quedan protegidas.
-32. Las Categorías inactivas no desactivan sus artículos y una Categoria referenciada por artículos activos o inactivos no puede eliminarse físicamente.
+25. Deshabilitar venta ajusta `permite_descuento = False` dentro de la misma transición y conserva `precio_base`.
+26. Un artículo vendible requiere `precio_base >= 0` y el valor cero es válido.
+27. `costo_referencia`, cuando existe, debe ser >= 0.
+28. SKU es único dentro de cada Negocio considerando artículos activos e inactivos.
+29. UnidadMedida es un concepto normalizado global y los Servicios reciben `UNIDAD` como valor inicial.
+30. Las unidades con historia cuantitativa quedan protegidas contra cambios que alteren su significado histórico.
+31. Las Categorías inactivas no desactivan sus artículos.
+32. Una Categoria referenciada por artículos activos o inactivos no puede eliminarse físicamente.
 33. `ArticuloCatalogo` solo puede eliminarse físicamente cuando no posee historia operativa, referencias ni dependencias que deban conservarse.
 34. Los permisos concretos permanecen bajo responsabilidad de cada módulo y la trazabilidad se reconoce como responsabilidad transversal sin sobrediseñar una entidad universal.
-35. El modelo no introduce conceptos pertenecientes a módulos posteriores.
+35. El modelo no introduce como decisiones cerradas elementos pertenecientes a infraestructura o a módulos posteriores.
 
 ---
 
 # 21. Estado del Documento
 
-Una vez revisado y aprobado, el estado esperado será:
+Con la actualización de M01 y las reglas ya congeladas de M02, el Modelo de Dominio conceptual del Bloque 1 queda alineado con las especificaciones funcionales vigentes.
+
+Estado actual:
 
 ```text
 BLOQUE 1 — FUNDACIÓN
 
 Especificación Funcional
-├── M01 Organización     ✅ CONGELADO
-└── M02 Catálogo         ✅ CONGELADO
+├── M01 Organización                         ✅ CONGELADO
+└── M02 Catálogo                             ✅ CONGELADO
 
-Diseño Técnico
-└── Modelo de Dominio    ✅ CONGELADO
+Modelo de Dominio
+├── 01-modelo-dominio-bloque-1.md            ✅ ACTUALIZADO
+├── 01-diagrama-general.puml                 ✅ CONGELADO
+├── 02-m01-organizacion-clases.md            ✅ CONGELADO
+├── 02-m01-organizacion-clases.puml          ✅ CONGELADO
+└── 03-m02-catalogo-clases                   ⏳ SIGUIENTE
 ```
 
-El siguiente paso será:
+El Modelo de Dominio conceptual puede utilizarse como fuente para las siguientes etapas, pero las vistas detalladas restantes deben completarse antes de cerrar toda la suite gráfica del Bloque 1.
+
+Después de completar las vistas de dominio correspondientes, el flujo continúa con:
 
 ```text
 DECISIONES ARQUITECTÓNICAS
@@ -2106,4 +2474,19 @@ y posteriormente:
 
 ```text
 MODELO RELACIONAL
+CONTRATO API
+UX
+IMPLEMENTACIÓN
 ```
+
+Cualquier modificación futura que altere:
+
+- entidades;
+- cardinalidades;
+- estados;
+- invariantes;
+- responsabilidades;
+- reglas de incorporación;
+- restricciones de roles;
+
+deberá actualizar primero la documentación funcional correspondiente y luego regenerar los artefactos de dominio afectados.
