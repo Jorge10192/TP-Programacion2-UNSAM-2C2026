@@ -253,7 +253,7 @@ Puede realizar operaciones como:
 - cerrar caja;
 - realizar arqueos;
 - registrar gastos;
-- modificar precios permitidos;
+- modificar el precio aplicado durante una venta cuando las reglas del módulo de Ventas lo permitan;
 - corregir operaciones;
 - realizar determinadas anulaciones;
 - consultar analítica operativa.
@@ -268,6 +268,9 @@ Ejemplos:
 - eliminar o desactivar propietarios;
 - modificar el rol de un propietario;
 - administrar globalmente los roles de otros usuarios;
+- crear, editar o eliminar artículos del catálogo;
+- modificar el precio base o el costo de referencia del catálogo;
+- administrar categorías del catálogo;
 - modificar configuraciones críticas reservadas al propietario.
 
 La definición exacta de estos permisos será documentada en:
@@ -382,11 +385,16 @@ La demostración inicial podrá utilizar pocos usuarios activos, siempre que el 
 
 La siguiente tabla representa la política general inicial.
 
-Los permisos específicos podrán refinarse posteriormente sin modificar los tres roles conceptuales principales.
+Los tres roles conceptuales principales permanecen estables, pero los permisos concretos se especifican en el módulo funcional al que pertenece cada operación.
+
+Cuando una especificación de módulo define una política más restrictiva o más precisa que esta matriz general, prevalece la regla específica del módulo para esa funcionalidad.
 
 | Acción / Operación | Propietario | Encargado | Trabajador |
 | :--- | :---: | :---: | :---: |
 | Consultar catálogo | Sí | Sí | Sí |
+| Crear, editar o eliminar artículos del catálogo | Sí | No | No |
+| Activar, desactivar o reactivar artículos del catálogo | Sí | Sí | No |
+| Administrar categorías del catálogo | Sí | No | No |
 | Consultar stock disponible | Sí | Sí | Sí |
 | Registrar Venta Rápida | Sí | Sí | Sí |
 | Registrar cobros | Sí | Sí | Sí |
@@ -398,7 +406,7 @@ Los permisos específicos podrán refinarse posteriormente sin modificar los tre
 | Mover stock entre ubicaciones | Sí | Sí | Sí |
 | Abrir y cerrar caja | Sí | Sí | Según permiso |
 | Modificar precio aplicado durante una venta | Sí | Sí | Según permiso |
-| Modificar precio base del catálogo | Sí | Sí | No |
+| Modificar precio base del catálogo | Sí | No | No |
 | Realizar ajustes de inventario | Sí | Sí | Según permiso |
 | Editar o corregir operaciones | Sí | Sí | Según permiso |
 | Anular operaciones confirmadas | Sí | Limitado | Restringido |
@@ -411,11 +419,28 @@ Los permisos específicos podrán refinarse posteriormente sin modificar los tre
 
 Esta matriz representa una definición general.
 
-Las reglas exactas de autorización deberán especificarse en:
+M01 define la pertenencia al Negocio, los roles y sus responsabilidades generales. Los permisos exactos sobre las funcionalidades de cada módulo se especifican en la documentación funcional correspondiente.
+
+Por ejemplo:
 
 ```text
-docs/modulos/01-organizacion-negocio.md
+M01 — Organización
+→ membresías
+→ roles
+→ invitaciones
+
+M02 — Catálogo
+→ creación y edición de artículos
+→ activación/desactivación
+→ categorías
+→ precio base
+
+M05 — Ventas
+→ precio aplicado durante una venta
+→ descuentos
 ```
+
+Una regla específica de módulo puede restringir las capacidades generales de un rol sin modificar el significado conceptual del rol.
 
 ---
 
@@ -848,6 +873,10 @@ Los datos pertenecientes a otros negocios deberán permanecer aislados.
 ### `ACT-003` — Control de Acceso por Rol
 
 Las operaciones disponibles dependerán del rol y de los permisos que el usuario posea dentro del negocio.
+
+M01 establece los roles generales. Cada módulo funcional define los permisos concretos aplicables a sus propias operaciones.
+
+Cuando una especificación funcional de módulo establece una restricción más precisa, dicha regla debe respetarse para ese módulo.
 
 Roles iniciales:
 
