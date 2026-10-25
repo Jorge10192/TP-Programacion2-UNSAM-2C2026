@@ -1,0 +1,229 @@
+@startuml
+
+title Bloque 1 — Fundación: M02 Catálogo\n<size:11>Diagrama de clases conceptual detallado — versión oficial congelada</size>
+
+' =============================================================================
+' CONFIGURACIÓN VISUAL Y PALETA CROMÁTICA CONGELADA
+' =============================================================================
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam noteFontSize 10
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #E6C200
+
+hide circle
+hide empty members
+
+skinparam class {
+    BackgroundColor<<entity>> #EBF3FA
+    BorderColor<<entity>> #2B6CB0
+    HeaderBackgroundColor<<entity>> #3182CE
+
+    BackgroundColor<<value object>> #F3E8FA
+    BorderColor<<value object>> #805AD5
+    HeaderBackgroundColor<<value object>> #805AD5
+
+    BackgroundColor<<enum>> #FFF5F5
+    BorderColor<<enum>> #E53E3E
+    HeaderBackgroundColor<<enum>> #E53E3E
+}
+
+skinparam package {
+    BorderColor #CBD5E0
+    BackgroundColor #FAFAFA
+    FontColor #1A202C
+    FontStyle bold
+}
+
+' =============================================================================
+' REFERENCIA CONTEXTUAL M01 (IZQUIERDA COMPACTA)
+' =============================================================================
+
+class Negocio <<entity>> {
+  identidad
+  nombre
+}
+
+note top of Negocio
+  <b>Referencia Contextual M01</b>
+  Definido en M01. M02 lo utiliza para:
+  - pertenencia y aislamiento entre Negocios
+  - unicidad contextual de Categoria y SKU
+  - moneda base de importes
+  Reglas internas de membresías pertenecen a M01.
+end note
+
+' =============================================================================
+' M02 — CATÁLOGO DE ARTÍCULOS
+' =============================================================================
+
+package "M02 — Catálogo" as M02 {
+
+  class Categoria <<entity>> {
+    identidad
+    nombre : String
+    estado : EstadoCategoria
+    --
+    estaActiva() : Boolean
+    cambiarNombre(nuevoNombre : String)
+    desactivar()
+    reactivar()
+    puedeEliminarseFisicamente() : Boolean
+  }
+
+  class ArticuloCatalogo <<entity>> {
+    identidad
+    nombre : String
+    descripcion [0..1] : String
+    tipo : TipoArticulo
+    unidadMedida : UnidadMedida
+    sku [0..1] : String
+    precioBase [0..1]
+    costoReferencia [0..1]
+    imagenPrincipal [0..1]
+    estado : EstadoArticulo
+    --
+    estaActivo() : Boolean
+    asignarCategoria(categoria : Categoria)
+    quitarCategoria()
+    actualizarCapacidades(nuevas : CapacidadesArticulo)
+    cambiarPrecioBase(nuevoPrecio)
+    cambiarCostoReferencia(nuevoCosto)
+    cambiarUnidad(nuevaUnidad : UnidadMedida)
+    puedeEliminarseFisicamente() : Boolean
+    desactivar()
+    reactivar()
+  }
+
+  class CapacidadesArticulo <<value object>> {
+    esComprable : Boolean
+    esVendible : Boolean
+    controlaStock : Boolean
+    puedeUsarseEnProduccion : Boolean
+    controlaVencimiento : Boolean
+    permiteDescuento : Boolean
+    --
+    esCoherenteCon(tipo : TipoArticulo) : Boolean
+  }
+
+  ' Estrategia de maquetado interno en M02
+  Categoria "0..1" -right- "0..*" ArticuloCatalogo : clasifica
+  ArticuloCatalogo "1" *-right- "1" CapacidadesArticulo : define
+
+  ' ===========================================================================
+  ' BASE HORIZONTAL DE AUXILIARES Y ENUMS
+  ' ===========================================================================
+
+  package "Tipos del dominio M02" as TiposM02 #F7FAFC {
+
+    enum EstadoCategoria <<enum>> {
+      ACTIVA
+      INACTIVA
+    }
+
+    enum EstadoArticulo <<enum>> {
+      ACTIVO
+      INACTIVO
+    }
+
+    enum TipoArticulo <<enum>> {
+      BIEN
+      SERVICIO
+    }
+
+    enum UnidadMedida <<enum>> {
+      UNIDAD
+      KG
+      G
+      L
+      ML
+      M
+      CM
+      HORA
+    }
+
+    EstadoCategoria -[hidden]right- EstadoArticulo
+    EstadoArticulo -[hidden]right- TipoArticulo
+    TipoArticulo -[hidden]right- UnidadMedida
+  }
+
+  ArticuloCatalogo -[hidden]down- EstadoCategoria
+
+  ' ===========================================================================
+  ' NOTAS CONTEXTUALES E INVARIANTES
+  ' ===========================================================================
+
+  note top of Categoria
+    <b>Categoria — Reglas y Estado</b>
+    Nombre único por Negocio luego de normalización funcional (ACTIVAS e INACTIVAS).
+    INACTIVA conserva asociaciones existentes, pero no permite nuevas asociaciones.
+    desactivar() no afecta artículos. Reactivar conserva relaciones sin recalcular precios.
+    puedeEliminarseFisicamente() es consulta UX; el comando real revalida atómicamente.
+  end note
+
+  note top of ArticuloCatalogo
+    <b>ArticuloCatalogo — Identidad, SKU y Estado</b>
+    Solo TipoArticulo es inmutable. Edición de nombre, descripción, SKU e imagen permitida.
+    
+    Política de SKU: único por Negocio (activos e inactivos).
+    - SKU A -> B: valida B disponible; al confirmar B, A queda libre.
+    - SKU A -> null: libera A al confirmar.
+    - null -> B: valida B disponible.
+    - SKU A -> A: no-op.
+    
+    Si posee Categoria: ArticuloCatalogo.negocio == Categoria.negocio.
+    Una Categoria históricamente asociada INACTIVA no bloquea la reactivación del artículo.
+    ACTIVO exige >=1 uso operativo. INACTIVO puede no tener uso.
+    reactivar() revalida las invariantes vigentes necesarias para volver a operar; no reescribe historia.
+  end note
+
+  note right of CapacidadesArticulo
+    <b>Capacidades vs Hechos Operativos</b>
+    actualizarCapacidades() es reemplazo atómico de la configuración completa.
+    esCoherenteCon() solo valida coherencia interna Tipo + Capacidades.
+    
+    Capacidades son elegibilidades, NO datos operativos:
+    controlaStock != stock (M04), controlaVencimiento != fecha vencimiento (M04),
+    puedeUsarseEnProduccion != receta (M07), esVendible != Venta (M05), esComprable != Compra (M03).
+    
+    Comerciales: cambian sin alterar historia.
+    Estructurales: condicionadas por dependencias operativas incompatibles.
+  end note
+
+  note bottom of ArticuloCatalogo
+    <b>Guardias Contextuales, Transiciones y Autorización</b>
+    Transiciones Comerciales en ArticuloCatalogo:
+    - esVendible False -> True requiere precioBase válido >= 0.
+    - esVendible True -> False: permiteDescuento = false, preserva precioBase.
+    
+    Validaciones contextuales (unicidad SKU, unicidad nombre Categoria, pertenencia al mismo Negocio,
+    dependencias estructurales, historia cuantitativa para cambio de UnidadMedida, eliminación física)
+    y mutación deben confirmarse de manera consistente/atómica. Preconsulta UX != confirmación.
+    
+    Autorización: los métodos no autorizan actores. El Caso de Uso valida:
+    Usuario autenticado + Negocio + Membresía ACTIVA + Rol + permiso concreto de M02.
+    
+    M02 representa estado ACTUAL. Los módulos consumidores preservan los valores históricos
+    necesarios para sus propias operaciones.
+  end note
+
+  note bottom of UnidadMedida
+    <b>Unidades e Historia Cuantitativa</b>
+    Catálogo global normalizado. BIEN requiere unidad válida; SERVICIO inicia en UNIDAD.
+    cambiarUnidad() exige no alterar el significado de cantidades históricas.
+  end note
+}
+
+' =============================================================================
+' RELACIONES ESTRUCTURALES CONCEPTUALES
+' =============================================================================
+
+Negocio "1" -right- "0..*" Categoria : organiza
+Negocio "1" -right- "0..*" ArticuloCatalogo : contiene
+
+@enduml
