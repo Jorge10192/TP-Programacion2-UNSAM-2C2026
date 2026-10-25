@@ -1,0 +1,207 @@
+@startuml 01-diagrama-general
+
+title Bloque 1 — Fundación: Mapa General de Dominio (M01 + M02)\n<size:11>Vista conceptual para referencia funcional y futura implementación</size>
+
+' ============================================================================
+' CONFIGURACIÓN VISUAL Y PALETA CROMÁTICA
+' ============================================================================
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam noteFontSize 10
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #E6C200
+
+hide circle
+hide empty members
+
+' Colores por Estereotipo (Identidad Visual Congelada)
+skinparam class {
+    BackgroundColor<<entity>> #EBF3FA
+    BorderColor<<entity>> #2B6CB0
+    HeaderBackgroundColor<<entity>> #3182CE
+    
+    BackgroundColor<<value object>> #F3E8FA
+    BorderColor<<value object>> #805AD5
+    HeaderBackgroundColor<<value object>> #805AD5
+    
+    BackgroundColor<<enum>> #FFF5F5
+    BorderColor<<enum>> #E53E3E
+    HeaderBackgroundColor<<enum>> #E53E3E
+}
+
+skinparam package {
+    BorderColor #CBD5E0
+    BackgroundColor #FAFAFA
+    FontColor #1A202C
+    FontStyle bold
+}
+
+' ============================================================================
+' M01 — ORGANIZACIÓN DEL NEGOCIO (IZQUIERDA)
+' ============================================================================
+
+package "M01 — Organización del Negocio\n<size:10><font color=555555>Gestiona negocios, usuarios, roles, invitaciones y configuración general.</font></size>" as M01 {
+
+  class Usuario <<entity>> {
+    nombre
+    email : Email
+    estadoCuenta
+  }
+
+  class UsuarioNegocio <<entity>> {
+    rol : Rol
+    estado
+    fechaIncorporacion
+  }
+
+  class Negocio <<entity>> {
+    nombre
+    monedaBase : Moneda
+    modalidades : Set<ModalidadOperativa>
+    estado
+  }
+
+  class InvitacionNegocio <<entity>> {
+    emailDestino : Email
+    rolPropuesto : Rol
+    estado : EstadoInvitacion
+    vigencia
+  }
+
+  ' Estructura principal M01
+  Usuario "1" -right- "0..*" UsuarioNegocio : participa
+  UsuarioNegocio "1..*" -right- "1" Negocio : pertenece a
+  Negocio "1" -down- "0..*" InvitacionNegocio : invitaciones
+  UsuarioNegocio "1" -down- "0..*" InvitacionNegocio : emite
+
+  ' Auxiliares M01 dispuestos de forma horizontal limpia
+  class Email <<value object>>
+
+  enum Rol <<enum>> {
+    PROPIETARIO
+    ENCARGADO
+    TRABAJADOR
+  }
+
+  enum ModalidadOperativa <<enum>> {
+    REVENTA
+    PRODUCCION
+    SERVICIOS
+  }
+
+  enum EstadoInvitacion <<enum>> {
+    PENDIENTE
+    ACEPTADA
+    RECHAZADA
+    CANCELADA
+    EXPIRADA
+  }
+
+  enum Moneda <<enum>> {
+    ARS
+  }
+
+  Email -[hidden]right- Rol
+  Rol -[hidden]right- ModalidadOperativa
+  ModalidadOperativa -[hidden]right- EstadoInvitacion
+  EstadoInvitacion -[hidden]right- Moneda
+
+  InvitacionNegocio -[hidden]down- Email
+
+  ' Notas internas de M01
+  note top of Negocio
+    <b>Propietario activo</b>
+    Todo Negocio activo debe conservar
+    al menos 1 PROPIETARIO activo.
+  end note
+
+  note top of UsuarioNegocio
+    <b>Rol contextual</b>
+    El Rol pertenece a UsuarioNegocio,
+    no al Usuario global.
+  end note
+
+  note bottom of InvitacionNegocio
+    <b>Invitación</b>
+    El emisor pertenece al mismo Negocio.
+    Aceptar puede crear o reactivar UsuarioNegocio.
+  end note
+}
+
+' ============================================================================
+' M02 — CATÁLOGO (DERECHA)
+' ============================================================================
+
+package "M02 — Catálogo\n<size:10><font color=555555>Gestiona categorías, artículos y sus capacidades operativas.</font></size>" as M02 {
+
+  class Categoria <<entity>> {
+    nombre
+    estado
+  }
+
+  class ArticuloCatalogo <<entity>> {
+    nombre
+    tipo : TipoArticulo
+    unidadMedida : UnidadMedida
+    sku [0..1]
+    precioBase [0..1]
+    estado
+  }
+
+  class CapacidadesArticulo <<value object>> {
+    esComprable
+    esVendible
+    controlaStock
+    puedeUsarseEnProduccion
+    controlaVencimiento
+    permiteDescuento
+  }
+
+  ' Estructura principal M02
+  Categoria "0..1" -down- "0..*" ArticuloCatalogo : clasifica
+  ArticuloCatalogo "1" *-right- "1" CapacidadesArticulo : define
+
+  ' Auxiliares M02
+  enum TipoArticulo <<enum>> {
+    BIEN
+    SERVICIO
+  }
+
+  enum UnidadMedida <<enum>> {
+    UNIDAD
+    KG
+    G
+    L
+    ML
+    M
+    CM
+    HORA
+  }
+
+  TipoArticulo -[hidden]right- UnidadMedida
+  ArticuloCatalogo -[hidden]down- TipoArticulo
+
+  ' Nota interna de M02
+  note bottom of ArticuloCatalogo
+    <b>Catálogo por capacidades</b>
+    TipoArticulo es inmutable.
+    Si posee Categoria, pertenece al mismo Negocio.
+    CapacidadesArticulo define su comportamiento operativo.
+  end note
+}
+
+' ============================================================================
+' CONEXIONES INTER-MÓDULOS (IZQUIERDA A DERECHA)
+' ============================================================================
+
+M01 -right[hidden]- M02
+
+Negocio "1" -right- "0..*" Categoria : organiza
+Negocio "1" -right- "0..*" ArticuloCatalogo : contiene
+
+@enduml
