@@ -1,0 +1,113 @@
+@startuml
+
+title Bloque 1 — Fundación: M01 Organización\n<size:11>Diagrama de estados de InvitacionNegocio — versión oficial congelada</size>
+
+' =============================================================================
+' CONFIGURACIÓN VISUAL Y ESTILOS
+' =============================================================================
+
+skinparam shadowing false
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam ArrowFontSize 10
+
+skinparam noteFontSize 10
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #E6C200
+
+skinparam state {
+    BackgroundColor #EBF3FA
+    BorderColor #2B6CB0
+    FontColor #1A202C
+    StartColor #3182CE
+    EndColor #2B6CB0
+}
+
+hide empty description
+
+' =============================================================================
+' ESTADOS
+' =============================================================================
+
+state PENDIENTE
+state ACEPTADA
+state RECHAZADA
+state CANCELADA
+state EXPIRADA
+
+' =============================================================================
+' CREACIÓN Y TRANSICIONES DE DOMINIO
+' =============================================================================
+
+[*] --> PENDIENTE : emitir\n[emisión válida]
+
+PENDIENTE --> ACEPTADA : aceptar\n[aceptación válida]
+
+PENDIENTE --> RECHAZADA : rechazar\n[rechazo válido]
+
+PENDIENTE --> CANCELADA : cancelar\n[cancelación autorizada]
+
+PENDIENTE --> EXPIRADA : vence\n[!estaVigente()]
+
+' =============================================================================
+' ALINEACIÓN HORIZONTAL DE ESTADOS TERMINALES (LAYOUT ONLY)
+' =============================================================================
+
+ACEPTADA -[hidden]right-> RECHAZADA
+RECHAZADA -[hidden]right-> CANCELADA
+CANCELADA -[hidden]right-> EXPIRADA
+
+' =============================================================================
+' REGLAS CONTEXTUALES Y NOTAS DE ESTADO
+' =============================================================================
+
+note top of PENDIENTE
+  <b>Guardias contextuales transversales</b>
+  • Unicidad de invitación, membresía ACTIVA, autorización
+    y pertenencia al Negocio requieren contexto externo.
+  • Las guardias relevantes deben revalidarse al confirmar.
+  • Concurrencia, transacciones y persistencia se definen en Arquitectura.
+end note
+
+note right of PENDIENTE
+  <b>PENDIENTE — Reglas principales</b>
+  • PENDIENTE describe el estado persistido y NO implica por sí solo vigencia temporal.
+  • Emisión válida: PROPIETARIO ACTIVO del mismo Negocio.
+  • Rol propuesto: ENCARGADO o TRABAJADOR.
+  • Destinatario: sin membresía ACTIVA previa.
+  • Unicidad: sin otra invitación PENDIENTE y vigente equivalente.
+  • Reenvío: opera sobre la misma invitación vigente (no altera fechaExpiracion).
+  • Cambio de rol: cancelar la existente y emitir una nueva.
+end note
+
+note bottom of ACEPTADA
+  <b>ACEPTADA — Caso de Uso</b>
+  • Requiere invitación vigente e identidad coincidente.
+  • El Caso de Uso confirma atómicamente:
+      1. InvitacionNegocio -> ACEPTADA
+      2. Crear o reactivar UsuarioNegocio (membresía)
+  • InvitacionNegocio no crea directamente la membresía.
+end note
+
+note bottom of RECHAZADA
+  <b>RECHAZADA</b>
+  • Decisión explícita del destinatario.
+  • Requiere invitación vigente e identidad coincidente.
+  • No modifica membresías.
+end note
+
+note bottom of CANCELADA
+  <b>CANCELADA</b>
+  • Revocación por PROPIETARIO ACTIVO del mismo Negocio.
+  • No exige estaVigente().
+end note
+
+note bottom of EXPIRADA
+  <b>EXPIRADA</b>
+  • Fin de la ventana temporal de vigencia.
+  • No puede aceptarse ni rechazarse.
+  • La forma técnica de materializar la expiración
+    queda abierta a Arquitectura (lazy / job).
+end note
+
+@enduml
