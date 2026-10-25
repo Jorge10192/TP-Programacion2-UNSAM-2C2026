@@ -1,0 +1,206 @@
+@startuml 02-m01-organizacion-clases
+
+title Bloque 1 — Fundación: M01 Organización del Negocio\n<size:11>Diagrama de clases conceptual detallado — versión oficial congelada</size>
+
+' =============================================================================
+' CONFIGURACIÓN VISUAL Y PALETA CROMÁTICA CONGELADA
+' =============================================================================
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam noteFontSize 10
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #E6C200
+
+hide circle
+hide empty members
+
+skinparam class {
+    BackgroundColor<<entity>> #EBF3FA
+    BorderColor<<entity>> #2B6CB0
+    HeaderBackgroundColor<<entity>> #3182CE
+
+    BackgroundColor<<value object>> #F3E8FA
+    BorderColor<<value object>> #805AD5
+    HeaderBackgroundColor<<value object>> #805AD5
+
+    BackgroundColor<<enum>> #FFF5F5
+    BorderColor<<enum>> #E53E3E
+    HeaderBackgroundColor<<enum>> #E53E3E
+}
+
+skinparam package {
+    BorderColor #CBD5E0
+    BackgroundColor #FAFAFA
+    FontColor #1A202C
+    FontStyle bold
+}
+
+package "M01 — Organización del Negocio" as M01 {
+
+  ' ===========================================================================
+  ' ENTIDADES PRINCIPALES (LAYOUT HORIZONTAL LÓGICO)
+  ' ===========================================================================
+
+  class Usuario <<entity>> {
+    identidad
+    nombre
+    email : Email
+    estadoCuenta
+    fechaRegistro
+  }
+
+  class UsuarioNegocio <<entity>> {
+    rol : Rol
+    estado : EstadoMembresia
+    fechaIncorporacion
+    --
+    estaActiva() : Boolean
+    esPropietario() : Boolean
+  }
+
+  class Negocio <<entity>> {
+    identidad
+    nombre
+    rubro [0..1]
+    monedaBase : Moneda
+    modalidades : Set<ModalidadOperativa> {1..*}
+    estado
+    --
+    configurarModalidades(nuevas : Set<ModalidadOperativa>)
+    tienePropietarioActivo() : Boolean
+    desactivarMiembro(miembro : UsuarioNegocio)
+    cambiarRolMiembro(miembro : UsuarioNegocio, nuevoRol : Rol)
+    incorporarOReactivarMiembro(usuario : Usuario, rolInicial : Rol) : UsuarioNegocio
+  }
+
+  class InvitacionNegocio <<entity>> {
+    identificadorSeguro
+    emailDestino : Email
+    rolPropuesto : Rol
+    estado : EstadoInvitacion
+    fechaEmision
+    vigencia
+    --
+    estaVigente() : Boolean
+    puedeSerAceptadaPor(email : Email) : Boolean
+    aceptarPara(email : Email)
+    rechazar()
+    cancelar()
+    expirar()
+  }
+
+  ' Relaciones estructurales directas
+  Usuario "1" -right- "0..*" UsuarioNegocio : membresías
+  UsuarioNegocio "1..*" -right- "1" Negocio : pertenece a
+
+  UsuarioNegocio "1" -down- "0..*" InvitacionNegocio : emite
+  Negocio "1" -down- "0..*" InvitacionNegocio : invitaciones
+
+  ' ===========================================================================
+  ' BASE HORIZONTAL DE AUXILIARES Y ENUMS
+  ' ===========================================================================
+
+  package "Tipos del dominio M01" as TiposM01 #F7FAFC {
+
+    class Email <<value object>>
+
+    enum Rol <<enum>> {
+      PROPIETARIO
+      ENCARGADO
+      TRABAJADOR
+    }
+
+    enum EstadoMembresia <<enum>> {
+      ACTIVO
+      INACTIVO
+    }
+
+    enum ModalidadOperativa <<enum>> {
+      REVENTA
+      PRODUCCION
+      SERVICIOS
+    }
+
+    enum EstadoInvitacion <<enum>> {
+      PENDIENTE
+      ACEPTADA
+      RECHAZADA
+      CANCELADA
+      EXPIRADA
+    }
+
+    enum Moneda <<enum>> {
+      ARS
+    }
+
+    Email -[hidden]right- Rol
+    Rol -[hidden]right- EstadoMembresia
+    EstadoMembresia -[hidden]right- ModalidadOperativa
+    ModalidadOperativa -[hidden]right- EstadoInvitacion
+    EstadoInvitacion -[hidden]right- Moneda
+  }
+
+  InvitacionNegocio -[hidden]down- TiposM01
+
+  ' ===========================================================================
+  ' INVARIANTES Y REGLAS CONTEXTUALES CLAVE
+  ' ===========================================================================
+
+  note top of Usuario
+    <b>Cuenta global e IAM</b>
+    Usuario representa la cuenta global independiente (0..N membresías).
+    Desactivar membresías no afecta la cuenta global.
+    Credenciales, hashes, JWT y OAuth se resuelven en Arquitectura/IAM.
+  end note
+
+  note top of UsuarioNegocio
+    <b>Membresía contextual y única</b>
+    El Rol pertenece a UsuarioNegocio, nunca al Usuario global.
+    estado está tipado por EstadoMembresia (ACTIVO / INACTIVO).
+    1 único registro histórico por Usuario + Negocio (reincorporar reutiliza entidad).
+    Sin mutadores públicos directos (cambiarRol, desactivar, reactivar).
+  end note
+
+  note top of Negocio
+    <b>Creación y Protección del Propietario</b>
+    Crear Negocio requiere atómicamente su primer UsuarioNegocio (PROPIETARIO).
+    desactivarMiembro() y cambiarRolMiembro() re-validan internamente mantener
+    al menos 1 PROPIETARIO activo en la misma operación antes de mutar.
+    
+    incorporarOReactivarMiembro():
+    - Sin membresía: crea ACTIVA con rolInicial ∈ {ENCARGADO, TRABAJADOR}.
+    - Membresía INACTIVA: reactiva la histórica con rolInicial.
+    - Membresía ACTIVA: rechaza (no duplica ni modifica rol silenciosamente).
+    Promoción a PROPIETARIO requiere cambiarRolMiembro(..., PROPIETARIO).
+  end note
+
+  note right of Negocio
+    <b>Configuración MVP y Preparación</b>
+    Modalidades: 1..N (REVENTA / PRODUCCION / SERVICIOS).
+    Moneda base MVP: ARS.
+    La preparación del Negocio es derivada (sin estado persistido "LISTO").
+    No se define en Bloque 1 el ciclo de cierre/desactivación de Negocio ni cambio de moneda.
+  end note
+
+  note bottom of InvitacionNegocio
+    <b>Emisión y Aceptación desacoplada</b>
+    Emisión: emisor ACTIVO PROPIETARIO del mismo Negocio, rolPropuesto ∈ {ENCARGADO, TRABAJADOR}, estado inicial = PENDIENTE.
+    aceptarPara(email): valida PENDIENTE, vigencia y emailDestino, mutando SOLO la invitación.
+    La transacción completa (Invitación ACEPTADA + Negocio.incorporarOReactivarMiembro)
+    se orquesta de forma atómica dentro del Caso de Uso.
+  end note
+
+  note bottom of TiposM01
+    <b>Permisos y Decisiones Diferidas</b>
+    M01 define: Usuario + Negocio + UsuarioNegocio + Rol contextual de la membresía.
+    Cada módulo funcional determina qué operaciones concretas permite ese Rol (sin RBAC dinámico).
+    Aggregate Roots formales, UUIDs, Eventos, Factories, Repositorios y ORM se deciden en ADRs.
+  end note
+}
+
+@enduml
