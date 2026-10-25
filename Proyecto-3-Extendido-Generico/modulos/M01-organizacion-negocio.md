@@ -773,7 +773,9 @@ UsuarioNegocio activo
 Permisos suficientes
 ```
 
-El mecanismo técnico utilizado para transmitir este contexto se definirá posteriormente en arquitectura y API.
+Los permisos suficientes se determinan a partir del Rol de `UsuarioNegocio` y de las reglas específicas establecidas por el módulo funcional correspondiente.
+
+El mecanismo técnico utilizado para transmitir y validar este contexto se definirá posteriormente en arquitectura y API.
 
 ---
 
@@ -888,6 +890,77 @@ No debe:
 
 ---
 
+## `RN-ORG-017` — Permisos Específicos por Módulo
+
+M01 define:
+
+```text
+Usuario
++
+Negocio
++
+UsuarioNegocio
++
+Rol
+```
+
+y establece las responsabilidades generales asociadas a:
+
+```text
+PROPIETARIO
+ENCARGADO
+TRABAJADOR
+```
+
+Los permisos concretos sobre funcionalidades pertenecientes a otros módulos deberán definirse en la especificación funcional correspondiente.
+
+Conceptualmente:
+
+```text
+M01
+→ define qué rol posee el Usuario dentro del Negocio
+
+M02 / M03 / M04 / M05 / M06 / M07 / M08
+→ definen qué operaciones concretas puede realizar ese rol
+   dentro de cada módulo
+```
+
+Una especificación funcional de módulo puede establecer una política más restrictiva o más precisa que la descripción general del rol sin modificar el significado conceptual del rol definido por M01.
+
+Ejemplo:
+
+```text
+ENCARGADO
+
+M02 — Catálogo
+→ consultar                         Sí
+→ activar/desactivar artículos     Sí
+→ editar artículos                 No
+→ modificar precio base            No
+→ administrar categorías           No
+
+M05 — Ventas
+→ registrar venta                  Sí
+→ aplicar descuentos permitidos    Sí
+→ modificar precio de la venta     según reglas de M05
+```
+
+Las autorizaciones deben evaluarse siempre dentro de:
+
+```text
+Usuario autenticado
++
+Negocio activo
++
+UsuarioNegocio activo
++
+Rol
++
+reglas específicas del módulo
+```
+
+---
+
 # 10. Casos de Uso
 
 ## CU-ORG-01 — Registrar Usuario
@@ -931,7 +1004,7 @@ Existe un Usuario activo que puede no pertenecer todavía a ningún Negocio.
 
 ---
 
-# CU-ORG-02 — Iniciar Sesión
+## CU-ORG-02 — Iniciar Sesión
 
 ### Actor Principal
 
@@ -972,7 +1045,7 @@ El Usuario se encuentra autenticado.
 
 ---
 
-# CU-ORG-03 — Crear Negocio
+## CU-ORG-03 — Crear Negocio
 
 ### Actor Principal
 
@@ -1018,7 +1091,7 @@ al menos un PROPIETARIO activo
 
 ---
 
-# CU-ORG-04 — Invitar Miembro
+## CU-ORG-04 — Invitar Miembro
 
 ### Actor Principal
 
@@ -1084,7 +1157,7 @@ Existe una InvitacionNegocio pendiente.
 
 ---
 
-# CU-ORG-05 — Aceptar o Rechazar Invitación
+## CU-ORG-05 — Aceptar o Rechazar Invitación
 
 ### Actor Principal
 
@@ -1181,7 +1254,7 @@ La invitación queda procesada y, si fue aceptada, existe una membresía activa.
 
 ---
 
-# CU-ORG-06 — Entrar a un Negocio
+## CU-ORG-06 — Entrar a un Negocio
 
 ### Actor Principal
 
@@ -1224,7 +1297,7 @@ Las operaciones posteriores se ejecutan dentro del Negocio seleccionado.
 
 ---
 
-# CU-ORG-07 — Gestionar Roles
+## CU-ORG-07 — Gestionar Roles
 
 ### Actor Principal
 
@@ -1275,7 +1348,7 @@ El miembro posee el nuevo rol.
 
 ---
 
-# CU-ORG-08 — Desactivar Membresía
+## CU-ORG-08 — Desactivar Membresía
 
 ### Actor Principal
 
@@ -1621,9 +1694,9 @@ Los roles definidos en M01 sirven como base para determinar qué tipos de analí
 | RF-ORG-008 | RN-ORG-005, RN-ORG-006, RN-ORG-007 | HU-ORG-005 | CU-ORG-05 |
 | RF-ORG-009 | RN-ORG-006, RN-ORG-007 | HU-ORG-005 | CU-ORG-05 |
 | RF-ORG-010 | RN-ORG-007 | — | CU-ORG-04 |
-| RF-ORG-011 | RN-ORG-008 | HU-ORG-006 | CU-ORG-06 |
+| RF-ORG-011 | RN-ORG-008, RN-ORG-017 | HU-ORG-006 | CU-ORG-06 |
 | RF-ORG-012 | RN-ORG-002 | HU-ORG-007 | CU-ORG-07 |
-| RF-ORG-013 | RN-ORG-001, RN-ORG-002 | HU-ORG-007 | CU-ORG-07 |
+| RF-ORG-013 | RN-ORG-001, RN-ORG-002, RN-ORG-017 | HU-ORG-007 | CU-ORG-07 |
 | RF-ORG-014 | RN-ORG-001, RN-ORG-013 | HU-ORG-008 | CU-ORG-07 |
 | RF-ORG-015 | RN-ORG-001, RN-ORG-004, RN-ORG-016 | HU-ORG-008 | CU-ORG-08 |
 | RF-ORG-016 | RN-ORG-005 | HU-ORG-005 | CU-ORG-05 |
@@ -1663,6 +1736,9 @@ M01 podrá considerarse funcionalmente completo para el MVP cuando se verifique 
 26. El sistema puede orientar mediante un checklist de configuración progresiva.
 27. La creación del Negocio no genera ubicaciones, medios de pago ni artículos ficticios.
 28. Las modalidades adaptan la experiencia pero pueden modificarse posteriormente.
+29. M01 define los roles generales del sistema, mientras que los permisos concretos sobre operaciones de otros módulos se rigen por las especificaciones funcionales de dichos módulos.
+30. Una restricción específica de un módulo puede limitar las acciones disponibles para un rol sin modificar el rol almacenado en `UsuarioNegocio`.
+31. Toda autorización sobre una operación de negocio requiere considerar conjuntamente el Negocio activo, la membresía activa, el Rol y las reglas específicas del módulo correspondiente.
 
 ---
 
