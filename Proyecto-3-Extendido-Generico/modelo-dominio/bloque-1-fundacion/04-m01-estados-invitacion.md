@@ -50,7 +50,8 @@ Proyecto-3-Extendido-Generico/
         ├── 03-m02-catalogo-clases.md
         ├── 03-m02-catalogo-clases.puml
         ├── 04-m01-estados-invitacion.md
-        └── 04-m01-estados-invitacion.puml
+        ├── 04-m01-estados-invitacion.puml
+        └── 04-m01-estados-invitacion.png
 ```
 
 Este archivo:
@@ -578,15 +579,17 @@ NO crea otra InvitacionNegocio
 NO cambia estado
 NO cambia rolPropuesto
 NO cambia fechaExpiracion
-NO modifica identidad
+NO cambia la identidad de dominio de la invitación
 ```
 
 Conceptualmente:
 
 ```text
 reenviar
-→ misma invitación
-→ mismo enlace/identidad lógica
+→ misma InvitacionNegocio
+→ mismo estado
+→ mismo rolPropuesto
+→ misma fechaExpiracion
 → mismo ciclo de vida
 ```
 
@@ -597,6 +600,18 @@ PENDIENTE → PENDIENTE : reenviar
 ```
 
 porque reenviar no constituye una transición de dominio.
+
+Importante para implementación:
+
+```text
+misma InvitacionNegocio
+≠
+obligatoriamente mismo token o misma representación técnica del enlace
+```
+
+La estrategia concreta de enlace/token —reutilización, rotación, firma, hash u otra— pertenece a Seguridad/Arquitectura.
+
+Por lo tanto, una IA NO debe inferir a partir de esta regla que el backend está obligado a conservar exactamente el mismo token público al reenviar.
 
 ---
 
@@ -962,7 +977,7 @@ Evento/criterio conceptual:
 
 ```text
 vence
-[!estaVigente()]
+[!estaVigente(ahora)]
 ```
 
 La transición expresa la pérdida temporal de vigencia.
@@ -1193,11 +1208,24 @@ desde código externo.
 Preferir operaciones con significado:
 
 ```text
-aceptarPara(...)
-rechazar(...)
+aceptarPara(email, ahora)
+rechazarPara(email, ahora)
 cancelar()
-expirar(...)
+expirar(ahora)
 ```
+
+Las firmas conceptuales deben mantenerse coherentes con el modelo de clases de M01.
+
+El evento mostrado en un diagrama de estados puede denominarse simplemente:
+
+```text
+aceptar
+rechazar
+cancelar
+vence
+```
+
+sin que eso implique una segunda API de dominio distinta.
 
 ---
 
@@ -1280,11 +1308,11 @@ máximo una invitación PENDIENTE vigente
 por Negocio + Email equivalente
 ```
 
-Para simplificar la persistencia, una implementación relacional puede adoptar una garantía más fuerte:
+Para simplificar la persistencia, una implementación relacional puede adoptar una garantía técnica más fuerte:
 
 ```text
 máximo una invitación PENDIENTE
-por Negocio + representación normalizada de Email
+por Negocio + representación técnica equivalente de Email
 ```
 
 y, antes de insertar otra:
@@ -1294,6 +1322,15 @@ PENDIENTE vencida → EXPIRADA
 ```
 
 Esto evita depender de una restricción de unicidad condicionada por el reloj.
+
+Esta posible garantía más fuerte:
+
+```text
+NO redefine la semántica de PENDIENTE
+NO significa que toda PENDIENTE esté vigente
+```
+
+Es únicamente una estrategia técnica posible para preservar de forma segura la invariante funcional bajo concurrencia.
 
 La definición SQL exacta se decide posteriormente.
 
@@ -1332,9 +1369,11 @@ La invitación posee conceptualmente un:
 identificadorSeguro
 ```
 
-El identificador debe ser impredecible.
+Su propósito es permitir una referencia segura a la invitación cuando el flujo lo requiera.
 
-No utilizar como token público únicamente:
+Debe evitarse que una referencia pública sea predecible o derivable únicamente de datos triviales.
+
+No utilizar como mecanismo público suficiente:
 
 ```text
 ID incremental
@@ -1342,6 +1381,17 @@ email
 negocio_id
 dato fácilmente adivinable
 ```
+
+No inferir automáticamente:
+
+```text
+identificadorSeguro = primary key
+identificadorSeguro = UUID
+identificadorSeguro = token público persistido en claro
+identificadorSeguro = valor inmutable expuesto directamente en toda URL
+```
+
+La identidad técnica interna, la representación pública del enlace y la estrategia concreta de token pueden ser conceptos diferentes.
 
 La estrategia exacta se definirá en Seguridad / Arquitectura.
 
@@ -1371,7 +1421,7 @@ Una persona distinta que obtenga el enlace no debe poder aceptar la invitación 
 
 ---
 
-# 45. Token Después de Estado Terminal
+# 45. Identificador / Enlace Después de un Estado Terminal
 
 Una vez alcanzado:
 
@@ -1382,13 +1432,27 @@ CANCELADA
 EXPIRADA
 ```
 
-el identificador puede continuar existiendo para consulta/control, pero:
+la `InvitacionNegocio` continúa existiendo históricamente.
+
+Su identidad de dominio puede continuar existiendo para consulta, trazabilidad o control, pero:
 
 ```text
 NO debe habilitar nuevas transiciones
 ```
 
-La forma técnica de revocación/validación queda abierta.
+La representación pública utilizada por un enlace/token puede:
+
+```text
+seguir siendo reconocible para consulta segura
+ser invalidada
+ser revocada
+ser rotada
+resolverse mediante otro mecanismo
+```
+
+según las decisiones posteriores de Seguridad/Arquitectura.
+
+No asumir que la persistencia histórica de la entidad obliga a mantener utilizable el token público original.
 
 ---
 
@@ -1420,7 +1484,7 @@ No una transición de estado.
 
 # 47. Trazabilidad
 
-La futura implementación debe permitir responder conceptualmente:
+La futura implementación debe permitir responder conceptualmente, cuando sea requerido por M01:
 
 ```text
 ¿quién emitió?
@@ -1431,7 +1495,25 @@ La futura implementación debe permitir responder conceptualmente:
 ¿cuándo se materializó la expiración?
 ```
 
-Este requisito NO obliga todavía a modelar:
+Este requisito NO significa que todos esos datos deban convertirse automáticamente en atributos de `InvitacionNegocio`.
+
+Por ejemplo, NO inferir sin una decisión posterior:
+
+```text
+fechaAceptacion
+fechaRechazo
+fechaCancelacion
+fechaMaterializacionExpiracion
+canceladoPor
+aceptadoPor
+rechazadoPor
+```
+
+como campos obligatorios de la entidad únicamente porque exista una necesidad de trazabilidad.
+
+La información podría resolverse posteriormente mediante el modelo persistente, auditoría específica, eventos, logs estructurados u otro mecanismo adecuado.
+
+Este requisito tampoco obliga todavía a modelar:
 
 ```text
 Auditoria universal
@@ -1668,7 +1750,7 @@ Esta invitación venció. Pedí una nueva.
 
 Esta invitación fue cancelada.
 
-Esta invitación ya fue utilizada.
+Esta invitación ya fue aceptada o ya no está disponible.
 
 La invitación fue enviada a otra cuenta.
 
@@ -2033,8 +2115,10 @@ Una IA debe:
 16. evitar cambio silencioso de rol;
 17. garantizar atomicidad funcional de la aceptación;
 18. proteger concurrencia;
-19. preservar trazabilidad;
-20. mantener abiertas las decisiones técnicas todavía no aprobadas.
+19. preservar trazabilidad sin convertir automáticamente auditoría en estado de dominio;
+20. distinguir identidad de dominio de token/enlace técnico;
+21. no asumir que reenviar obliga a reutilizar exactamente el mismo token público;
+22. mantener abiertas las decisiones técnicas todavía no aprobadas.
 
 ---
 
@@ -2110,6 +2194,12 @@ usar el token como única autorización
 
 recalcular fechaExpiracion histórica
 cuando cambia la política global
+
+agregar atributos de auditoría a InvitacionNegocio
+sin una decisión de modelo explícita
+
+asumir que reenviar debe reutilizar
+exactamente el mismo token público
 ```
 
 ---
@@ -2323,9 +2413,11 @@ canal de distribución es externo
 
 ---
 
-# 79. Sincronización Necesaria con Otros Artefactos
+# 79. Checklist de Sincronización con Otros Artefactos
 
-Antes de considerar completamente sincronizado M01, revisar:
+Esta sección se conserva como checklist hasta la revisión documental final del Bloque 1.
+
+Antes de marcar todos los artefactos como `CONGELADO Y SINCRONIZADO`, revisar:
 
 ```text
 modulos/M01-organizacion-negocio.md
@@ -2350,17 +2442,17 @@ Especialmente sincronizar:
 vigencia
 → fechaExpiracion
 
-estaVigente()
-→ semántica temporal explícita
+estaVigente(ahora)
+→ semántica temporal explícita y determinista
 
-expirar()
-→ materialización conceptual
+expirar(ahora)
+→ materialización conceptual de PENDIENTE → EXPIRADA
 
 cancelar()
 → sin autorización interna
 
-aceptar/rechazar
-→ vigencia + identidad
+aceptarPara(email, ahora) / rechazarPara(email, ahora)
+→ estado + vigencia + identidad
 
 unicidad de invitación pendiente
 
@@ -2403,6 +2495,11 @@ Antes de aprobar una futura implementación de invitaciones verificar:
 [ ] InvitacionNegocio no consulta repositories.
 [ ] Backend vuelve a validar aunque la UI ya validó.
 [ ] No se congeló infraestructura prematuramente.
+[ ] Toda operación temporal utiliza un único instante `ahora` coherente.
+[ ] Reenviar no presupone obligatoriamente reutilizar el mismo token/enlace técnico.
+[ ] Identidad de dominio, PK interna y token público no se confunden automáticamente.
+[ ] Trazabilidad no se convirtió automáticamente en atributos de dominio.
+[ ] Idempotencia técnica no permite saltear guardias de estado.
 ```
 
 ---
@@ -2428,7 +2525,10 @@ La guía se considera correcta cuando permite que una IA pueda determinar sin am
 15. cómo cambiar rol propuesto;
 16. qué errores concurrentes deben impedirse;
 17. qué información debe preservar la persistencia;
-18. qué decisiones todavía NO están tomadas.
+18. cómo distinguir identidad de dominio de enlace/token técnico;
+19. por qué reenviar no obliga a reutilizar un token concreto;
+20. qué necesidades de trazabilidad existen sin sobrediseñar la entidad;
+21. qué decisiones todavía NO están tomadas.
 
 ---
 
@@ -2448,7 +2548,9 @@ Estado de esta guía:
 ✅ LISTA PARA CONGELAR
 ```
 
-La congelación documental completa requiere que los artefactos M01 relacionados sean sincronizados con estas mismas reglas.
+La congelación documental completa se realizará en la pasada transversal final del Bloque 1, una vez completados los diagramas dinámicos y secuencias pendientes.
+
+Hasta entonces, estos estados indican aprobación semántica del artefacto, no el cierre documental definitivo del bloque.
 
 ---
 
@@ -2481,6 +2583,9 @@ Persistencia
 
 Arquitectura
 → mecanismo técnico
+→ representación temporal
+→ estrategia de token/enlace
+→ mecanismo de concurrencia
 ```
 
 El código futuro debe adaptarse a estas invariantes.
