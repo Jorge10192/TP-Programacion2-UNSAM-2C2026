@@ -47,7 +47,7 @@ PENDIENTE --> RECHAZADA : rechazar\n[rechazo válido]
 
 PENDIENTE --> CANCELADA : cancelar\n[cancelación autorizada]
 
-PENDIENTE --> EXPIRADA : vence\n[!estaVigente()]
+PENDIENTE --> EXPIRADA : vence\n[!estaVigente(ahora)]
 
 ' =============================================================================
 ' ALINEACIÓN HORIZONTAL DE ESTADOS TERMINALES (LAYOUT ONLY)
@@ -63,51 +63,91 @@ CANCELADA -[hidden]right-> EXPIRADA
 
 note top of PENDIENTE
   <b>Guardias contextuales transversales</b>
+
   • Unicidad de invitación, membresía ACTIVA, autorización
     y pertenencia al Negocio requieren contexto externo.
+
+  • Las comparaciones de email respetan
+    la equivalencia funcional definida por Email.
+
   • Las guardias relevantes deben revalidarse al confirmar.
-  • Concurrencia, transacciones y persistencia se definen en Arquitectura.
+
+  • Concurrencia, transacciones y persistencia
+    se definen en Arquitectura.
 end note
 
 note right of PENDIENTE
   <b>PENDIENTE — Reglas principales</b>
-  • PENDIENTE describe el estado persistido y NO implica por sí solo vigencia temporal.
-  • Emisión válida: PROPIETARIO ACTIVO del mismo Negocio.
-  • Rol propuesto: ENCARGADO o TRABAJADOR.
-  • Destinatario: sin membresía ACTIVA previa.
-  • Unicidad: sin otra invitación PENDIENTE y vigente equivalente.
-  • Reenvío: opera sobre la misma invitación vigente (no altera fechaExpiracion).
-  • Cambio de rol: cancelar la existente y emitir una nueva.
+
+  • PENDIENTE describe el estado persistido y NO implica
+    por sí solo vigencia temporal.
+
+  • Emisión válida:
+    PROPIETARIO ACTIVO del mismo Negocio.
+
+  • Rol propuesto:
+    ENCARGADO o TRABAJADOR.
+
+  • Destinatario:
+    sin membresía ACTIVA previa.
+
+  • Unicidad:
+    sin otra invitación PENDIENTE
+    y vigente equivalente.
+
+  • Reenvío:
+    opera sobre la misma invitación vigente
+    y no altera fechaExpiracion.
+
+  • Cambio de rol:
+    cancelar la existente y emitir una nueva.
 end note
 
 note bottom of ACEPTADA
   <b>ACEPTADA — Caso de Uso</b>
-  • Requiere invitación vigente e identidad coincidente.
+
+  • Requiere invitación PENDIENTE, vigente
+    e identidad de Email coincidente.
+
+  • Antes de confirmar se revalida que el Usuario
+    no posea membresía ACTIVA en el mismo Negocio.
+
   • El Caso de Uso confirma atómicamente:
       1. InvitacionNegocio -> ACEPTADA
-      2. Crear o reactivar UsuarioNegocio (membresía)
-  • InvitacionNegocio no crea directamente la membresía.
+      2. Crear o reactivar UsuarioNegocio
+         con rolPropuesto.
+
+  • InvitacionNegocio no crea directamente
+    la membresía.
 end note
 
 note bottom of RECHAZADA
   <b>RECHAZADA</b>
+
   • Decisión explícita del destinatario.
-  • Requiere invitación vigente e identidad coincidente.
+  • Requiere invitación vigente
+    e identidad de Email coincidente.
   • No modifica membresías.
 end note
 
 note bottom of CANCELADA
   <b>CANCELADA</b>
-  • Revocación por PROPIETARIO ACTIVO del mismo Negocio.
-  • No exige estaVigente().
+
+  • Revocación por PROPIETARIO ACTIVO
+    del mismo Negocio.
+
+  • No exige vigencia temporal.
 end note
 
 note bottom of EXPIRADA
   <b>EXPIRADA</b>
+
   • Fin de la ventana temporal de vigencia.
   • No puede aceptarse ni rechazarse.
+
   • La forma técnica de materializar la expiración
-    queda abierta a Arquitectura (lazy / job).
+    queda abierta a Arquitectura
+    (lazy evaluation / job / mecanismo equivalente).
 end note
 
 @enduml
