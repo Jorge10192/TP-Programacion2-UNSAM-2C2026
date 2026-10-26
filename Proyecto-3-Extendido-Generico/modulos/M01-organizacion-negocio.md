@@ -104,7 +104,7 @@ Puede:
 
 ## 2.2. Usuario autenticado
 
-Persona que posee una cuenta activa.
+Persona que inició sesión correctamente.
 
 Puede:
 
@@ -209,6 +209,17 @@ Por lo tanto:
 
 > el rol pertenece a la relación entre Usuario y Negocio, no directamente al Usuario.
 
+`InvitacionNegocio` se vincula inicialmente al destinatario mediante `emailDestino` y puede existir antes de que ese destinatario posea un `Usuario`.
+
+Por lo tanto, no debe modelarse una relación obligatoria:
+
+```text
+InvitacionNegocio → Usuario destinatario
+```
+
+al momento de emisión.
+
+
 ---
 
 # 4. Conceptos del Dominio
@@ -219,14 +230,15 @@ Representa la identidad global de una persona dentro de la plataforma.
 
 Información conceptual mínima:
 
-- identificador;
+- identificador estable;
 - nombre;
-- email;
-- credencial de acceso;
-- estado de la cuenta;
+- email (`Email`);
+- estado de cuenta conceptual;
 - fecha de registro.
 
-El email funciona como identidad principal para el MVP.
+El email funciona como identidad funcional principal para el MVP.
+
+La autenticación mediante contraseña pertenece a la capacidad de acceso/IAM y **no debe interpretarse como obligación de almacenar contraseña, hash, JWT o cualquier credencial técnica dentro de la entidad conceptual `Usuario`**.
 
 Un Usuario puede:
 
@@ -248,6 +260,12 @@ María
       Rol: TRABAJADOR
 ```
 
+Durante el MVP no se define un Caso de Uso para cambiar el email principal de una cuenta. Si esta capacidad se incorpora posteriormente deberá revisarse explícitamente su impacto sobre identidad, invitaciones pendientes y seguridad.
+
+El ciclo técnico de autenticación, almacenamiento seguro de credenciales, sesiones y recuperación de acceso se definirá posteriormente en Arquitectura/IAM.
+
+El ciclo de vida exacto de `estado de cuenta` tampoco queda definido en M01 en esta etapa. No debe inventarse un enum `EstadoCuenta` ni endpoints de activación/desactivación hasta que exista una especificación explícita.
+
 ---
 
 ## 4.2. Negocio
@@ -256,12 +274,11 @@ Representa una organización, emprendimiento o comercio administrado mediante la
 
 Información conceptual inicial:
 
-- identificador;
+- identificador estable;
 - nombre;
 - rubro opcional;
 - moneda base;
-- modalidades operativas;
-- estado.
+- modalidades operativas.
 
 ### Datos de creación
 
@@ -272,11 +289,25 @@ Moneda       → ARS en el MVP
 Modalidades  → una o más
 ```
 
+M01 **no define todavía un ciclo de vida `ACTIVO/INACTIVO` para `Negocio`**.
+
+Por lo tanto, una implementación futura no debe inventar:
+
+```text
+EstadoNegocio
+cerrarNegocio()
+desactivarNegocio()
+```
+
+ni un campo persistente de estado a partir de este documento.
+
+Las referencias funcionales a un Negocio “disponible”, “seleccionado” u “operable” describen contexto de uso, no un enum de dominio ya aprobado.
+
 ---
 
 ## 4.3. UsuarioNegocio
 
-Representa la participación de un Usuario dentro de un Negocio.
+Representa la participación histórica de un Usuario dentro de un Negocio.
 
 Contiene conceptualmente:
 
@@ -294,7 +325,54 @@ ENCARGADO
 TRABAJADOR
 ```
 
-La relación se conserva históricamente aunque el usuario deje de participar activamente del negocio.
+Estados de membresía durante el MVP (`EstadoMembresia`):
+
+```text
+ACTIVO
+INACTIVO
+```
+
+Para una misma combinación:
+
+```text
+Usuario + Negocio
+```
+
+existe una única membresía conceptual histórica.
+
+Por lo tanto:
+
+```text
+reincorporar
+≠
+crear una segunda UsuarioNegocio
+```
+
+La relación se conserva aunque el Usuario deje de participar activamente del Negocio.
+
+La transición:
+
+```text
+ACTIVO → INACTIVO
+```
+
+desactiva la participación sin eliminar la relación.
+
+La transición:
+
+```text
+INACTIVO → ACTIVO
+```
+
+reactiva la misma membresía histórica.
+
+Cuando la reactivación ocurre como consecuencia de una nueva invitación aceptada, se aplica el `rolPropuesto` de dicha invitación.
+
+Una membresía ya `ACTIVA`:
+
+- no debe duplicarse;
+- no debe “reactivarse” nuevamente;
+- no debe cambiar silenciosamente de rol mediante una invitación.
 
 ---
 
@@ -302,18 +380,18 @@ La relación se conserva históricamente aunque el usuario deje de participar ac
 
 Representa una propuesta formal para incorporar a una persona a un Negocio.
 
-Debe existir independientemente de que el destinatario ya posea una cuenta.
+Puede existir aunque el destinatario todavía no posea una cuenta.
 
 Información conceptual:
 
 - Negocio;
-- email destino;
+- email destino (`Email`);
 - rol propuesto;
 - identificador seguro de invitación;
 - estado;
 - fecha de emisión;
-- vigencia;
-- usuario que realizó la invitación.
+- fecha de expiración;
+- membresía emisora (`UsuarioNegocio`).
 
 Estados:
 
@@ -321,9 +399,54 @@ Estados:
 PENDIENTE
 ACEPTADA
 RECHAZADA
-EXPIRADA
 CANCELADA
+EXPIRADA
 ```
+
+`PENDIENTE` significa que el ciclo de vida todavía no fue cerrado mediante un estado terminal.
+
+Importante:
+
+```text
+PENDIENTE
+NO implica por sí sola vigencia temporal.
+```
+
+La vigencia se determina conceptualmente mediante:
+
+```text
+estaVigente(ahora)
+⇔
+ahora < fechaExpiracion
+```
+
+En consecuencia:
+
+```text
+ahora >= fechaExpiracion
+→ invitación no vigente
+```
+
+Debe cumplirse:
+
+```text
+fechaExpiracion > fechaEmision
+```
+
+`fechaExpiracion` se fija al emitir la invitación.
+
+Un cambio posterior en la política general de duración de invitaciones **no modifica retroactivamente** la fecha de expiración de invitaciones ya emitidas.
+
+La duración concreta y la representación técnica del tiempo se decidirán posteriormente.
+
+La invitación protege localmente:
+
+- su estado;
+- su vigencia temporal;
+- la identidad destinataria cuando corresponda;
+- la validez de sus propias transiciones.
+
+Las reglas que requieren consultar otras membresías, invitaciones, autorización o pertenencia al Negocio son guardias contextuales coordinadas por el Caso de Uso.
 
 ---
 
@@ -401,9 +524,53 @@ No constituyen restricciones permanentes del dominio.
 
 ---
 
+
+## 4.7. Email
+
+`Email` se interpreta conceptualmente como un Value Object utilizado para identidad funcional.
+
+Se utiliza al menos en:
+
+```text
+Usuario.email
+InvitacionNegocio.emailDestino
+```
+
+Las comparaciones funcionales deben utilizar una única semántica consistente.
+
+Debe evitarse distribuir por el sistema comparaciones ad hoc como:
+
+```text
+lower(trim(email))
+```
+
+en múltiples capas.
+
+La normalización exacta:
+
+```text
+case folding
+Unicode
+espacios
+tratamiento de proveedor
+```
+
+se decidirá posteriormente.
+
+M01 exige solamente que:
+
+- la misma semántica se utilice para unicidad de Usuario;
+- la misma semántica se utilice para destinatarios de invitación;
+- la persistencia pueda proteger esas invariantes ante concurrencia.
+
+No asumir reglas específicas de proveedores, por ejemplo equivalencia automática de puntos o alias `+tag`, sin una decisión explícita.
+
+
+---
+
 # 5. Autenticación del MVP
 
-Para el MVP se utilizará un mecanismo simple basado en:
+Desde la experiencia funcional, el MVP utiliza:
 
 ```text
 Email
@@ -411,9 +578,41 @@ Email
 Contraseña
 ```
 
-El Usuario administra sus propias credenciales.
+Cada persona administra sus propias credenciales.
 
-Un Propietario nunca crea ni conoce la contraseña de otro Usuario.
+Un Propietario nunca crea, conoce ni comparte la contraseña de otro Usuario.
+
+Sin embargo:
+
+```text
+Email + Contraseña
+```
+
+describe el **mecanismo funcional de acceso**, no el modelo interno de almacenamiento de credenciales.
+
+La implementación deberá cumplir como mínimo:
+
+- nunca almacenar contraseñas en texto plano;
+- utilizar almacenamiento de credenciales mediante técnicas seguras vigentes;
+- no exponer hashes, tokens o secretos al dominio funcional;
+- utilizar mensajes de autenticación que no filtren información sensible;
+- separar autenticación de autorización contextual por Negocio.
+
+No se congela todavía:
+
+```text
+algoritmo de hashing
+proveedor IAM
+JWT
+cookies
+sesiones
+refresh tokens
+OAuth
+```
+
+Estas decisiones pertenecen a Arquitectura y Seguridad.
+
+El `Usuario` conceptual no debe convertirse en un contenedor de detalles técnicos de autenticación.
 
 ---
 
@@ -423,6 +622,7 @@ Podrán evaluarse posteriormente:
 
 - recuperación de contraseña;
 - validación adicional de email;
+- cambio de email principal;
 - PIN de acceso rápido;
 - autenticación multifactor;
 - autenticación biométrica;
@@ -430,9 +630,11 @@ Podrán evaluarse posteriormente:
 
 Estas funcionalidades no deberán condicionar el diseño funcional del MVP.
 
+Si se incorpora cambio de email, deberá revisarse explícitamente el impacto sobre invitaciones pendientes e identidad funcional.
+
 ---
 
-# 6. Invitaciones y WhatsApp
+# 6. Invitaciones y Canales de Distribución
 
 ## 6.1. Principio
 
@@ -443,11 +645,17 @@ El **canal utilizado para compartirla es independiente de la invitación**.
 ```text
 InvitacionNegocio
         ↓
-Enlace de invitación
+Referencia / enlace de invitación
         │
         ├── Compartir por WhatsApp
         ├── Copiar enlace
         └── Otros canales futuros
+```
+
+Compartir una invitación:
+
+```text
+NO constituye una transición de estado.
 ```
 
 ---
@@ -459,7 +667,7 @@ Para el MVP se priorizará:
 ```text
 Generar invitación
         ↓
-Generar enlace
+Obtener enlace
         ↓
 [ Compartir por WhatsApp ]
 ```
@@ -479,7 +687,7 @@ y aceptar la invitación:
 
 La acción abre WhatsApp o el mecanismo de compartición disponible para que el Propietario elija el contacto y envíe el mensaje.
 
-El envío efectivo queda bajo control del usuario.
+El envío efectivo queda bajo control del Usuario.
 
 ---
 
@@ -497,52 +705,118 @@ Por lo tanto:
 
 ```text
 MVP
-→ generar enlace
-→ compartir manualmente por WhatsApp
+→ obtener enlace
+→ compartir manualmente
 ```
 
-Una integración automática podrá incorporarse posteriormente.
+Una integración automática podrá incorporarse posteriormente sin modificar el ciclo de vida de `InvitacionNegocio`.
 
 ---
 
 ## 6.4. Identidad de la Invitación
 
-WhatsApp es únicamente el canal de distribución.
+WhatsApp es únicamente un canal de distribución.
 
-La identidad del destinatario continúa siendo:
+La identidad funcional del destinatario continúa siendo:
 
 ```text
-email_destino
+emailDestino : Email
 ```
 
-Por ejemplo:
+Ejemplo:
 
 ```text
 Invitación:
-email_destino = maria@email.com
+emailDestino = maria@email.com
 
-Enlace enviado por WhatsApp a María
+Enlace enviado a María
 ```
 
 Al aceptar:
 
 ```text
-Cuenta autenticada:
+Usuario autenticado:
 maria@email.com
 
-→ aceptación permitida
+→ identidad potencialmente coincidente
 ```
 
 En cambio:
 
 ```text
-Cuenta autenticada:
+Usuario autenticado:
 juan@email.com
 
 → aceptación rechazada
 ```
 
+La comparación debe respetar la equivalencia funcional del Value Object `Email`.
+
+La normalización técnica exacta se definirá posteriormente.
+
 Poseer el enlace no es suficiente para apropiarse de una invitación enviada a otra identidad.
+
+---
+
+## 6.5. Identificador Seguro
+
+Toda invitación debe poder resolverse mediante un identificador público suficientemente impredecible.
+
+No debe utilizarse como único secreto público:
+
+```text
+ID incremental
+email
+Negocio ID predecible
+```
+
+Poseer ese identificador:
+
+```text
+NO equivale a estar autorizado.
+```
+
+Para aceptar continúan siendo necesarias las validaciones de estado, vigencia, autenticación e identidad.
+
+La estrategia concreta de token, UUID, hash o almacenamiento queda abierta a Arquitectura y Seguridad.
+
+Antes de autenticación, una pantalla abierta desde el enlace no debe exponer información sensible del Negocio más allá de lo estrictamente necesario para orientar el flujo de acceso.
+
+
+---
+
+## 6.6. Reenvío
+
+Reenviar o compartir nuevamente una invitación `PENDIENTE` y vigente:
+
+```text
+utiliza la misma InvitacionNegocio
+```
+
+No debe:
+
+- crear una nueva invitación;
+- cambiar el estado;
+- cambiar `rolPropuesto`;
+- extender `fechaExpiracion`.
+
+Si se necesita una nueva ventana temporal:
+
+```text
+cancelar / expirar la invitación anterior
++
+emitir una nueva
+```
+
+Si se necesita cambiar `rolPropuesto`:
+
+```text
+cancelar la invitación existente
++
+emitir una nueva
+```
+
+La rotación o reutilización técnica del token/enlace no se define en este módulo.
 
 ---
 
@@ -616,22 +890,22 @@ En cambio, orientará al usuario hacia la configuración correspondiente.
 
 | ID | Título | Descripción | Actor | Criterio de Aceptación |
 | :--- | :--- | :--- | :--- | :--- |
-| **RF-ORG-001** | Registrar Usuario | Permitir crear una cuenta global mediante nombre, email y contraseña. | Usuario no autenticado | Se crea una cuenta válida sin requerir pertenencia a un negocio. |
-| **RF-ORG-002** | Iniciar Sesión | Permitir autenticarse mediante email y contraseña. | Usuario | Las credenciales válidas permiten acceder a la plataforma; una cuenta inactiva no puede ingresar. |
-| **RF-ORG-003** | Crear Negocio | Permitir a un Usuario autenticado crear un Negocio. | Usuario | Se registra nombre, rubro opcional y moneda ARS; el creador queda asociado como `PROPIETARIO`. |
-| **RF-ORG-004** | Configurar Modalidades | Permitir definir una o más modalidades operativas. | Propietario | El negocio conserva las modalidades seleccionadas y la interfaz puede adaptarse a ellas. |
-| **RF-ORG-005** | Consultar Negocios e Invitaciones | Mostrar las membresías activas y las invitaciones correspondientes al Usuario. | Usuario | El Usuario visualiza sus negocios activos y las invitaciones destinadas a su identidad. |
-| **RF-ORG-006** | Invitar Miembro | Permitir invitar una persona mediante email y rol propuesto. | Propietario | Se crea una `InvitacionNegocio` pendiente para `ENCARGADO` o `TRABAJADOR`. |
-| **RF-ORG-007** | Compartir Invitación | Permitir obtener y compartir el enlace de una invitación. | Propietario | El Usuario puede compartirlo por WhatsApp o copiarlo para utilizar otro canal. |
-| **RF-ORG-008** | Aceptar Invitación | Permitir aceptar una invitación válida destinada al Usuario autenticado. | Usuario invitado | Se crea o reactiva `UsuarioNegocio` con el rol de la invitación. |
-| **RF-ORG-009** | Rechazar Invitación | Permitir al destinatario rechazar una invitación. | Usuario invitado | La invitación queda `RECHAZADA` sin generar membresía. |
-| **RF-ORG-010** | Cancelar Invitación | Permitir retirar una invitación pendiente antes de su aceptación. | Propietario | La invitación pasa a `CANCELADA` y deja de ser utilizable. |
+| **RF-ORG-001** | Registrar Usuario | Permitir crear una cuenta global mediante nombre, email y contraseña desde la experiencia de acceso. | Usuario no autenticado | Se crea una cuenta válida con Email funcionalmente único sin requerir pertenencia a un Negocio. |
+| **RF-ORG-002** | Iniciar Sesión | Permitir autenticarse mediante email y contraseña. | Usuario | Credenciales válidas permiten iniciar sesión según la política de cuenta/IAM vigente; no se filtran detalles sensibles ante fallos. |
+| **RF-ORG-003** | Crear Negocio | Permitir a un Usuario autenticado crear un Negocio. | Usuario | Se registra nombre, rubro opcional, moneda ARS y modalidades; Negocio + primera membresía `ACTIVA/PROPIETARIO` se confirman de forma atómica. |
+| **RF-ORG-004** | Configurar Modalidades | Permitir definir una o más modalidades operativas. | Propietario | El Negocio conserva las modalidades seleccionadas y la interfaz puede adaptarse a ellas. |
+| **RF-ORG-005** | Consultar Negocios e Invitaciones | Mostrar las membresías activas y las invitaciones correspondientes al Usuario. | Usuario | El Usuario visualiza sus Negocios con membresía `ACTIVA` y las invitaciones destinadas funcionalmente a su Email. |
+| **RF-ORG-006** | Invitar Miembro | Permitir invitar una persona mediante email y rol propuesto. | Propietario | Se crea una `InvitacionNegocio` `PENDIENTE` para `ENCARGADO` o `TRABAJADOR`, con `fechaExpiracion` fija, destinatario sin membresía `ACTIVA` y sin otra `PENDIENTE` vigente equivalente. |
+| **RF-ORG-007** | Compartir / Reenviar Invitación | Permitir obtener y compartir nuevamente una invitación. | Propietario | Puede compartirse la misma invitación vigente por WhatsApp o enlace; reenviar no crea otra `InvitacionNegocio`, no cambia el rol ni extiende `fechaExpiracion`. |
+| **RF-ORG-008** | Aceptar Invitación | Permitir aceptar una invitación válida destinada al Usuario autenticado. | Usuario invitado | Solo una `PENDIENTE` vigente e identificada con el Email correcto puede aceptarse; se revalida que no exista membresía `ACTIVA` y aceptación + creación/reactivación de `UsuarioNegocio` se confirman atómicamente. |
+| **RF-ORG-009** | Rechazar Invitación | Permitir al destinatario rechazar una invitación. | Usuario invitado | Solo una `PENDIENTE` vigente destinada a esa identidad puede pasar a `RECHAZADA`; no se crea ni reactiva membresía. |
+| **RF-ORG-010** | Cancelar Invitación | Permitir retirar una invitación pendiente. | Propietario | Un `PROPIETARIO` con membresía `ACTIVA` del mismo Negocio puede pasar una invitación `PENDIENTE` a `CANCELADA`; no se exige que continúe vigente. |
 | **RF-ORG-011** | Entrar a un Negocio | Permitir seleccionar un Negocio donde el Usuario posea membresía activa. | Usuario | Se establece el contexto del Negocio y los permisos correspondientes al rol. |
 | **RF-ORG-012** | Consultar Miembros | Permitir visualizar los integrantes y roles del Negocio. | Miembro autorizado | Se muestran miembros, roles y estados relevantes. |
-| **RF-ORG-013** | Modificar Rol | Permitir modificar el rol de un miembro. | Propietario | Se actualiza su rol respetando la invariante del último propietario. |
+| **RF-ORG-013** | Modificar Rol | Permitir modificar el rol de un miembro. | Propietario | Se actualiza el rol respetando la invariante del último Propietario. |
 | **RF-ORG-014** | Promover Propietario | Permitir promover deliberadamente otro miembro activo a `PROPIETARIO`. | Propietario | El Negocio puede poseer múltiples propietarios activos. |
-| **RF-ORG-015** | Desactivar Membresía | Permitir desactivar lógicamente la participación de un Usuario. | Propietario | `UsuarioNegocio` queda inactivo y el historial se conserva. |
-| **RF-ORG-016** | Reactivar Membresía | Permitir reincorporar a un antiguo miembro mediante una nueva invitación. | Propietario / Usuario invitado | Se reactiva la relación histórica y se aplica el rol de la nueva invitación. |
+| **RF-ORG-015** | Desactivar Membresía | Permitir desactivar lógicamente la participación de un Usuario. | Propietario | `UsuarioNegocio` pasa de `ACTIVO` a `INACTIVO` y el historial se conserva. |
+| **RF-ORG-016** | Reactivar Membresía | Permitir reincorporar a un antiguo miembro mediante una nueva invitación. | Propietario / Usuario invitado | Se reutiliza la misma membresía histórica, pasa a `ACTIVO` y adopta el `rolPropuesto` de la invitación aceptada. |
 | **RF-ORG-017** | Consultar Preparación | Mostrar qué configuraciones adicionales resultan necesarias para las funcionalidades elegidas. | Miembro | El sistema presenta un checklist derivado sin crear datos ficticios. |
 
 ---
@@ -640,22 +914,28 @@ En cambio, orientará al usuario hacia la configuración correspondiente.
 
 ## `RN-ORG-001` — Invariante de Propietario Activo
 
-Todo Negocio activo debe poseer al menos un `UsuarioNegocio` activo con rol:
+Mientras M01 no defina un ciclo formal de cierre/eliminación del Negocio, todo Negocio debe conservar al menos un `UsuarioNegocio`:
 
 ```text
-PROPIETARIO
+estado = ACTIVO
+rol = PROPIETARIO
 ```
 
-No se podrá:
+No se podrá confirmar una operación que deje:
 
-- desactivar;
-- remover;
-- degradar de rol;
-- permitir abandonar el negocio;
+```text
+0 UsuarioNegocio con estado = ACTIVO y rol = PROPIETARIO
+```
 
-al último Propietario activo.
+Esto aplica, entre otras, a:
 
-Antes deberá existir otro Propietario activo.
+- desactivación de membresía;
+- degradación de rol;
+- una futura operación de salida del Negocio.
+
+La verificación debe realizarse dentro de la misma frontera de consistencia que la mutación.
+
+Una consulta previa de UI no constituye garantía definitiva.
 
 ---
 
@@ -663,7 +943,7 @@ Antes deberá existir otro Propietario activo.
 
 El Rol pertenece a `UsuarioNegocio`, no a `Usuario`.
 
-Un mismo Usuario puede poseer roles diferentes en distintos negocios.
+Un mismo Usuario puede poseer roles diferentes en distintos Negocios.
 
 ---
 
@@ -671,71 +951,114 @@ Un mismo Usuario puede poseer roles diferentes en distintos negocios.
 
 Un Usuario puede existir sin pertenecer a ningún Negocio.
 
-En ese estado puede:
+Puede:
 
 - iniciar sesión;
 - consultar invitaciones;
 - crear un Negocio.
 
-No puede realizar operaciones comerciales hasta ingresar a un Negocio autorizado.
+No puede realizar operaciones de un Negocio hasta poseer una membresía `ACTIVA` autorizada para ese contexto.
 
 ---
 
 ## `RN-ORG-004` — Independencia de Membresías
 
-Desactivar:
+Desactivar una membresía significa:
 
 ```text
-UsuarioNegocio.activo = False
+UsuarioNegocio.estado
+ACTIVO → INACTIVO
 ```
 
-afecta únicamente la participación en ese Negocio.
+Afecta únicamente la participación en ese Negocio.
 
-No deberá afectar:
+No debe afectar:
 
 - la cuenta global;
-- otros negocios;
+- membresías en otros Negocios;
 - operaciones históricas.
+
+`INACTIVO` es un estado de dominio.
+
+No debe inferirse automáticamente que la persistencia utilice un campo técnico `deleted_at` o un mecanismo genérico de soft-delete.
 
 ---
 
-## `RN-ORG-005` — Reactivación de Membresía
+## `RN-ORG-005` — Membresía Histórica Única y Reactivación
 
-Si un Usuario anteriormente perteneció a un Negocio y su membresía se encuentra inactiva, una nueva incorporación no deberá generar una relación conceptual duplicada.
+Para una misma combinación:
 
-Al aceptar una nueva invitación:
+```text
+Usuario + Negocio
+```
+
+existe una única `UsuarioNegocio` conceptual histórica.
+
+Si la membresía se encuentra:
+
+```text
+INACTIVO
+```
+
+una nueva incorporación no crea otra relación.
+
+Al aceptar una invitación válida:
 
 ```text
 UsuarioNegocio existente
-activo = False
+estado = INACTIVO
 
         ↓
 
-activo = True
-rol = rol_propuesto_actual
+estado = ACTIVO
+rol = rolPropuesto de la nueva invitación
 ```
 
 El rol anterior no se recupera automáticamente.
+
+Si la membresía ya está `ACTIVA`:
+
+```text
+NO duplicar;
+NO reactivar;
+NO cambiar rol mediante invitación.
+```
 
 ---
 
 ## `RN-ORG-006` — Vinculación Estricta de Invitaciones
 
-Una InvitacionNegocio solo podrá ser aceptada por una cuenta cuya identidad coincida con el destinatario definido.
+Una `InvitacionNegocio` solo puede aceptarse o rechazarse por la identidad destinataria correspondiente.
 
-Para el MVP:
+Durante el MVP:
 
 ```text
 Usuario.email
 =
-InvitacionNegocio.email_destino
+InvitacionNegocio.emailDestino
 ```
+
+se interpreta mediante la equivalencia funcional definida por el Value Object `Email`.
+
+Poseer el enlace no constituye autorización suficiente.
+
+Aceptar o rechazar requiere:
+
+```text
+Usuario autenticado
++
+identidad de Email coincidente
++
+transición de estado válida
+```
+
+La estrategia técnica de normalización de Email queda abierta.
 
 ---
 
-## `RN-ORG-007` — Ciclo de Vida de Invitaciones
+## `RN-ORG-007` — Ciclo de Vida y Vigencia de Invitaciones
 
-Una invitación puede encontrarse en:
+Estados:
 
 ```text
 PENDIENTE
@@ -745,37 +1068,86 @@ CANCELADA
 EXPIRADA
 ```
 
-Solo una invitación:
+Solo `PENDIENTE` admite transiciones de dominio salientes.
+
+La vigencia se determina mediante:
 
 ```text
-PENDIENTE
-+
-vigente
+estaVigente(ahora)
+⇔
+ahora < fechaExpiracion
 ```
 
-puede generar o reactivar una membresía.
+Por lo tanto:
 
-La duración concreta de la vigencia se definirá posteriormente como configuración técnica.
+```text
+ahora >= fechaExpiracion
+→ no vigente
+```
+
+`PENDIENTE` no implica vigencia temporal.
+
+Una invitación:
+
+```text
+PENDIENTE + vigente
+```
+
+puede ser aceptada o rechazada si se cumplen además sus guardias de identidad y contexto.
+
+Una invitación:
+
+```text
+PENDIENTE + no vigente
+```
+
+no puede aceptarse ni rechazarse.
+
+Mientras continúe persistida como `PENDIENTE` puede:
+
+```text
+→ ser CANCELADA por un PROPIETARIO ACTIVO del mismo Negocio;
+o
+→ materializarse como EXPIRADA.
+```
+
+`ACEPTADA`, `RECHAZADA`, `CANCELADA` y `EXPIRADA` son terminales.
+
+`fechaExpiracion` se fija al emitir.
+
+Cambios posteriores en la política general de duración no modifican retroactivamente invitaciones existentes.
 
 ---
 
 ## `RN-ORG-008` — Contexto de Negocio Autorizado
 
-Toda operación correspondiente al dominio de un Negocio requiere:
+Toda operación correspondiente al dominio de un Negocio requiere conceptualmente:
 
 ```text
 Usuario autenticado
 +
 Negocio identificado
 +
-UsuarioNegocio activo
+UsuarioNegocio ACTIVO
 +
-Permisos suficientes
+Rol
++
+permiso concreto de la operación
 ```
 
-Los permisos suficientes se determinan a partir del Rol de `UsuarioNegocio` y de las reglas específicas establecidas por el módulo funcional correspondiente.
+El backend debe validar este contexto.
 
-El mecanismo técnico utilizado para transmitir y validar este contexto se definirá posteriormente en arquitectura y API.
+No debe confiar en:
+
+```text
+rol enviado por frontend
+negocio seleccionado solo en cliente
+botones ocultos en UI
+```
+
+como mecanismo de autorización.
+
+La forma técnica de transmitir el contexto se definirá en Arquitectura/API.
 
 ---
 
@@ -812,81 +1184,97 @@ Durante el MVP:
 ARS
 ```
 
-Las operaciones monetarias del Negocio se interpretarán en esa moneda mientras no exista soporte multimoneda.
+Las operaciones monetarias del Negocio se interpretan en esa moneda mientras no exista soporte multimoneda.
+
+M01 no define todavía el mecanismo de cambio de moneda de un Negocio existente.
 
 ---
 
 ## `RN-ORG-011` — Canal de Invitación Independiente
 
-`InvitacionNegocio` no depende del canal utilizado para entregar el enlace.
+`InvitacionNegocio` no depende del canal utilizado para entregar su referencia/enlace.
 
-En el MVP podrá compartirse mediante:
+Durante el MVP podrá compartirse mediante:
 
 ```text
 WhatsApp
 Copiar enlace
 ```
 
-Otros canales podrán agregarse posteriormente sin modificar el concepto de invitación.
+Otros canales podrán agregarse posteriormente sin modificar el ciclo de vida de invitación.
 
 ---
 
 ## `RN-ORG-012` — WhatsApp no Determina Identidad
 
-Enviar o compartir una invitación mediante WhatsApp no convierte el número telefónico en la identidad del Usuario.
+Enviar o compartir mediante WhatsApp no convierte el número telefónico en identidad del Usuario.
 
-La autorización para aceptar la invitación continúa dependiendo de la identidad asociada a la invitación.
+La autorización continúa dependiendo de la identidad funcional asociada a `emailDestino`.
 
 ---
 
 ## `RN-ORG-013` — Invitaciones Iniciales sin Propiedad
 
-Una nueva invitación podrá proponer inicialmente:
+Una nueva invitación puede proponer inicialmente:
 
 ```text
 ENCARGADO
 TRABAJADOR
 ```
 
-La asignación del rol:
+No puede proponer:
 
 ```text
 PROPIETARIO
 ```
 
-debe realizarse posteriormente mediante una acción explícita de gestión de roles.
+La promoción a Propietario requiere una acción explícita posterior de gestión de miembros.
 
 ---
 
 ## `RN-ORG-014` — Preparación Derivada
 
-La preparación del Negocio no se representa mediante un único estado rígido.
+La preparación del Negocio no se representa mediante un estado rígido único.
 
-El sistema determina dinámicamente qué configuraciones faltan según:
+El sistema determina qué configuraciones faltan según:
 
 - modalidades;
 - funcionalidad solicitada;
 - configuraciones existentes.
 
+No crear un enum como:
+
+```text
+INCOMPLETO / OPERATIVO / COMPLETO
+```
+
+a partir de este requisito.
+
 ---
 
 ## `RN-ORG-015` — Configuración Progresiva
 
-Crear un Negocio no deberá obligar a crear automáticamente entidades pertenecientes a otros módulos.
+Crear un Negocio no obliga a crear automáticamente entidades pertenecientes a otros módulos.
 
-El Usuario podrá completar la configuración de manera progresiva.
+El Usuario puede completar configuración progresivamente.
 
 ---
 
 ## `RN-ORG-016` — Conservación Histórica
 
-La desactivación de una membresía deberá realizarse mediante borrado lógico.
+La desactivación de `UsuarioNegocio` se realiza mediante:
+
+```text
+ACTIVO → INACTIVO
+```
 
 No debe:
 
 - eliminar físicamente la relación;
 - eliminar operaciones históricas;
-- modificar la autoría de operaciones pasadas.
+- modificar autoría de operaciones pasadas.
+
+La estrategia técnica de auditoría o retención se definirá posteriormente.
 
 ---
 
@@ -904,7 +1292,7 @@ UsuarioNegocio
 Rol
 ```
 
-y establece las responsabilidades generales asociadas a:
+y las responsabilidades generales de:
 
 ```text
 PROPIETARIO
@@ -912,52 +1300,202 @@ ENCARGADO
 TRABAJADOR
 ```
 
-Los permisos concretos sobre funcionalidades pertenecientes a otros módulos deberán definirse en la especificación funcional correspondiente.
+Los permisos concretos sobre funcionalidades de otros módulos pertenecen a la especificación funcional correspondiente.
 
 Conceptualmente:
 
 ```text
 M01
-→ define qué rol posee el Usuario dentro del Negocio
+→ define el rol contextual
 
 M02 / M03 / M04 / M05 / M06 / M07 / M08
-→ definen qué operaciones concretas puede realizar ese rol
-   dentro de cada módulo
+→ definen qué operaciones concretas puede ejecutar cada rol
 ```
 
-Una especificación funcional de módulo puede establecer una política más restrictiva o más precisa que la descripción general del rol sin modificar el significado conceptual del rol definido por M01.
+Una política específica de módulo puede ser más restrictiva sin cambiar el rol almacenado en `UsuarioNegocio`.
 
-Ejemplo:
+---
+
+## `RN-ORG-018` — Unicidad, Reenvío y Nueva Emisión de Invitaciones
+
+Para una misma combinación:
 
 ```text
-ENCARGADO
-
-M02 — Catálogo
-→ consultar                         Sí
-→ activar/desactivar artículos     Sí
-→ editar artículos                 No
-→ modificar precio base            No
-→ administrar categorías           No
-
-M05 — Ventas
-→ registrar venta                  Sí
-→ aplicar descuentos permitidos    Sí
-→ modificar precio de la venta     según reglas de M05
+Negocio
++
+Email destinatario funcionalmente equivalente
 ```
 
-Las autorizaciones deben evaluarse siempre dentro de:
+puede existir como máximo una invitación `PENDIENTE` y vigente.
+
+Si ya existe:
 
 ```text
-Usuario autenticado
-+
-Negocio activo
-+
-UsuarioNegocio activo
-+
-Rol
-+
-reglas específicas del módulo
+PENDIENTE + vigente
 ```
+
+no crear otra.
+
+El sistema puede ofrecer sobre la misma entidad:
+
+```text
+reenviar
+compartir nuevamente
+copiar enlace
+cancelar
+```
+
+Reenviar:
+
+```text
+NO crea otra invitación
+NO modifica estado
+NO modifica rolPropuesto
+NO extiende fechaExpiracion
+```
+
+Si existe:
+
+```text
+PENDIENTE + no vigente
+```
+
+no debe bloquear permanentemente una nueva emisión.
+
+La nueva emisión debe poder coordinar consistentemente:
+
+```text
+PENDIENTE vencida → EXPIRADA
++
+crear nueva PENDIENTE
+```
+
+Si se desea modificar `rolPropuesto`:
+
+```text
+cancelar existente
++
+emitir nueva
+```
+
+Las invitaciones históricas en estados:
+
+```text
+ACEPTADA
+RECHAZADA
+CANCELADA
+EXPIRADA
+```
+
+no bloquean por sí solas una nueva emisión futura. La emisión sigue sujeta a las guardias actuales, especialmente a que el destinatario no posea membresía `ACTIVA`.
+
+---
+
+## `RN-ORG-019` — Invitación y Membresía Activa
+
+No debe emitirse una nueva invitación para una persona que ya posee `UsuarioNegocio` `ACTIVA` dentro del mismo Negocio.
+
+La ausencia de membresía `ACTIVA` se revalida al aceptar.
+
+Si entre emisión y aceptación el Usuario fue incorporado por otra vía:
+
+```text
+aceptación
+→ rechazada
+```
+
+La invitación no debe utilizarse para cambiar silenciosamente el rol de una membresía `ACTIVA`.
+
+Los cambios de rol pertenecen a:
+
+```text
+Negocio.cambiarRolMiembro(...)
+```
+
+---
+
+## `RN-ORG-020` — Creación Atómica de Negocio
+
+Crear un Negocio incluye funcionalmente:
+
+```text
+Negocio
++
+UsuarioNegocio del creador
+estado = ACTIVO
+rol = PROPIETARIO
+```
+
+Los dos resultados deben confirmarse juntos o no confirmarse.
+
+Nunca debe quedar creado un Negocio sin su primera membresía Propietaria.
+
+El mecanismo técnico de atomicidad se define posteriormente.
+
+---
+
+## `RN-ORG-021` — Email Global Funcionalmente Único
+
+Durante el MVP el Email funciona como identidad principal de Usuario.
+
+No deben coexistir dos cuentas cuyos emails sean funcionalmente equivalentes según las reglas del Value Object `Email`.
+
+La UI puede realizar prevalidación, pero la persistencia deberá actuar como última línea de defensa frente a registros concurrentes.
+
+La estrategia técnica de normalización e índice queda abierta.
+
+---
+
+## `RN-ORG-022` — Guardias Contextuales y Concurrencia
+
+Las consultas previas:
+
+```text
+¿existe invitación?
+¿es el último propietario?
+¿ya existe membresía?
+¿email disponible?
+```
+
+son útiles para UX, pero no constituyen garantía definitiva.
+
+Cuando una invariante depende del estado global del Negocio o de múltiples entidades, la validación relevante y la mutación deben confirmarse dentro de una frontera de consistencia apropiada.
+
+La estrategia concreta:
+
+```text
+transacciones
+locks
+optimistic concurrency
+constraints
+Unit of Work
+```
+
+se define en Arquitectura/Persistencia.
+
+M01 congela la invariante, no el mecanismo.
+
+---
+
+## `RN-ORG-023` — Trazabilidad de Operaciones Organizacionales
+
+La plataforma debe poder reconstruir conceptualmente, cuando corresponda:
+
+```text
+quién emitió una invitación
+cuándo se emitió
+quién aceptó o rechazó
+quién canceló
+cuándo se materializó una expiración
+
+quién cambió un rol
+quién desactivó/reactivó una membresía
+```
+
+Este requisito no obliga a modelar una entidad `Auditoria`, utilizar Event Sourcing ni agregar campos de auditoría universales a cada entidad.
+
+La estrategia concreta se definirá posteriormente, pero la implementación no debe perder la capacidad de atribuir operaciones organizacionales relevantes a su actor y momento cuando exista un actor humano.
+
 
 ---
 
@@ -980,27 +1518,31 @@ Ninguna.
    - nombre;
    - email;
    - contraseña.
-3. El sistema valida los datos.
-4. Verifica que el email no se encuentre asociado a otra cuenta.
-5. Crea el Usuario.
-6. Confirma que la cuenta fue creada.
-7. El Usuario puede iniciar sesión.
+3. El sistema valida formato y requisitos funcionales.
+4. Evalúa la equivalencia funcional del Email.
+5. Verifica que no exista otra cuenta equivalente.
+6. Crea el Usuario y registra sus credenciales mediante el mecanismo IAM definido técnicamente.
+7. Confirma la creación.
 
 ### Flujos Alternativos
 
-#### Email existente
+#### Email Existente
 
 El sistema informa:
 
 > El correo ingresado ya posee una cuenta. Iniciá sesión para continuar.
 
-#### Datos inválidos
+La persistencia deberá impedir duplicados incluso ante registros concurrentes.
 
-El sistema informa los campos que requieren corrección.
+#### Datos Inválidos
+
+El sistema informa los campos que requieren corrección sin exponer detalles sensibles de seguridad.
 
 ### Postcondiciones
 
-Existe un Usuario activo que puede no pertenecer todavía a ningún Negocio.
+Existe un Usuario registrado que puede no pertenecer todavía a ningún Negocio.
+
+El documento funcional no exige que las credenciales sean atributos de la entidad `Usuario`.
 
 ---
 
@@ -1012,17 +1554,16 @@ Usuario registrado.
 
 ### Precondiciones
 
-- Cuenta existente.
-- Cuenta activa.
+Cuenta existente y habilitada por la política de autenticación aplicable.
 
 ### Flujo Principal
 
-1. El Usuario ingresa email y contraseña.
-2. El sistema valida las credenciales.
+1. El Usuario ingresa Email y contraseña.
+2. El sistema valida las credenciales mediante el mecanismo de autenticación.
 3. Se inicia la sesión.
 4. Se consultan:
-   - negocios disponibles;
-   - invitaciones pendientes.
+   - Negocios con membresía `ACTIVA`;
+   - invitaciones destinadas funcionalmente a su Email.
 
 ### Flujo Alternativo — Sin Negocios
 
@@ -1035,13 +1576,15 @@ Todavía no pertenecés a ningún negocio.
 [ Ver invitaciones ]
 ```
 
-### Flujo Excepcional — Credenciales incorrectas
+### Flujo Excepcional — Credenciales Incorrectas
 
-El acceso es rechazado mediante un mensaje genérico.
+El acceso se rechaza mediante un mensaje genérico que no permita inferir información sensible sobre la cuenta.
 
 ### Postcondiciones
 
 El Usuario se encuentra autenticado.
+
+La autenticación no reemplaza la autorización contextual requerida para operar dentro de un Negocio.
 
 ---
 
@@ -1053,7 +1596,7 @@ Usuario autenticado.
 
 ### Precondiciones
 
-Sesión activa.
+Sesión autenticada válida.
 
 ### Flujo Principal
 
@@ -1065,19 +1608,28 @@ Sesión activa.
    - Reventa;
    - Producción;
    - Servicios.
-4. El sistema crea el Negocio.
-5. Asigna automáticamente:
-   - moneda base `ARS`.
-6. Vincula al creador mediante `UsuarioNegocio`.
-7. Asigna:
-   - rol `PROPIETARIO`;
-   - membresía activa.
-8. El sistema confirma la creación.
+4. El sistema valida los datos.
+5. Prepara la creación del Negocio.
+6. Asigna moneda base `ARS`.
+7. Prepara una `UsuarioNegocio` para el creador:
+   - estado `ACTIVO`;
+   - rol `PROPIETARIO`.
+8. Confirma de forma atómica:
+   - Negocio;
+   - primera membresía Propietaria.
 9. Presenta el checklist de preparación progresiva.
 
-### Flujo Alternativo — Configuración incompleta
+### Flujo Alternativo — Configuración Posterior Incompleta
 
-El Usuario puede abandonar temporalmente la configuración posterior y retomarla más adelante.
+El Usuario puede abandonar temporalmente la configuración perteneciente a otros módulos y retomarla más adelante.
+
+### Flujo Excepcional — No Puede Crearse la Membresía Inicial
+
+Si no puede confirmarse la membresía `ACTIVA/PROPIETARIO`:
+
+```text
+NO confirmar creación del Negocio.
+```
 
 ### Postcondiciones
 
@@ -1086,7 +1638,9 @@ Existe:
 ```text
 Negocio
 +
-al menos un PROPIETARIO activo
+al menos un UsuarioNegocio
+estado = ACTIVO
+rol = PROPIETARIO
 ```
 
 ---
@@ -1100,7 +1654,8 @@ Propietario.
 ### Precondiciones
 
 - Usuario autenticado.
-- Negocio activo seleccionado.
+- Negocio seleccionado.
+- `UsuarioNegocio` del actor en estado `ACTIVO`.
 - Rol `PROPIETARIO`.
 
 ### Flujo Principal
@@ -1111,11 +1666,20 @@ Propietario.
 4. Selecciona:
    - `ENCARGADO`; o
    - `TRABAJADOR`.
-5. El sistema valida que no exista una invitación pendiente equivalente.
-6. Genera `InvitacionNegocio`.
-7. La invitación queda `PENDIENTE`.
-8. El sistema genera un enlace de aceptación.
-9. Presenta:
+5. El sistema valida la equivalencia funcional del Email.
+6. Verifica que el destinatario no posea una membresía `ACTIVA` en el Negocio.
+7. Busca una invitación `PENDIENTE` equivalente para `Negocio + Email`.
+8. Si existe pero ya no está vigente:
+   - materializa `EXPIRADA`;
+   - continúa dentro de la misma frontera de consistencia.
+9. Revalida que no exista otra `PENDIENTE` que bloquee la emisión.
+10. Crea `InvitacionNegocio`:
+    - estado `PENDIENTE`;
+    - `fechaEmision`;
+    - `fechaExpiracion` calculada con la política vigente;
+    - `rolPropuesto`;
+    - identificador seguro.
+11. Presenta:
 
 ```text
 [ Compartir por WhatsApp ]
@@ -1129,31 +1693,66 @@ Propietario.
    - nombre del Negocio;
    - rol propuesto;
    - enlace de invitación.
-3. Se abre la opción de compartir mediante WhatsApp.
+3. Se abre el mecanismo de compartición.
 4. El Propietario selecciona el contacto.
 5. Confirma el envío.
 
-### Flujo Alternativo — Copiar enlace
+El canal no cambia el estado de la invitación.
 
-El Propietario copia el enlace y puede enviarlo mediante cualquier canal.
+### Flujo Alternativo — Copiar Enlace
 
-### Flujo Alternativo — Invitación pendiente existente
+El Propietario copia la referencia y puede compartirla mediante cualquier canal.
 
-El sistema informa que ya existe una invitación pendiente.
+### Flujo Alternativo — Invitación PENDIENTE y Vigente Existente
+
+El sistema informa que ya existe una invitación utilizable para esa persona.
+
+No crea otra.
 
 El Propietario puede:
 
+- reenviarla;
+- copiar nuevamente el enlace;
 - conservarla;
-- cancelarla;
-- emitir posteriormente una nueva.
+- cancelarla.
 
-### Flujo Excepcional — Intento de invitar como Propietario
+Reenviar no modifica:
 
-El sistema no ofrece `PROPIETARIO` como rol inicial de invitación.
+```text
+estado
+rolPropuesto
+fechaExpiracion
+```
+
+### Flujo Alternativo — Cambiar Rol Propuesto
+
+Si se desea cambiar el rol de una invitación ya emitida:
+
+```text
+cancelar invitación existente
++
+emitir una nueva
+```
+
+No editar silenciosamente `rolPropuesto`.
+
+### Flujo Excepcional — Miembro ya ACTIVO
+
+Si el destinatario ya posee una membresía `ACTIVA`:
+
+```text
+NO emitir.
+```
+
+El sistema orienta a la gestión de miembros si el objetivo era modificar el rol.
+
+### Flujo Excepcional — Intento de Invitar como Propietario
+
+El sistema no ofrece `PROPIETARIO` como rol inicial.
 
 ### Postcondiciones
 
-Existe una InvitacionNegocio pendiente.
+Existe como máximo una invitación `PENDIENTE` vigente equivalente para `Negocio + Email`.
 
 ---
 
@@ -1165,47 +1764,65 @@ Usuario invitado.
 
 ### Precondiciones
 
-Existencia de una invitación válida.
+Existe una referencia de invitación resoluble.
 
-### Flujo Principal
+### Flujo Inicial Común
 
-1. El Usuario recibe el enlace.
-2. Accede al enlace.
-3. El sistema identifica la invitación.
-4. Verifica que se encuentre:
-   - pendiente;
-   - vigente.
+1. El Usuario accede al enlace.
+2. El sistema identifica la `InvitacionNegocio`.
+3. Verifica su estado actual.
+4. Si el estado no es `PENDIENTE`, informa el resultado terminal correspondiente.
+5. Obtiene un instante temporal coherente `ahora`.
+6. Evalúa `estaVigente(ahora)`.
+7. Si no está vigente:
+   - no ofrece `Aceptar`;
+   - no ofrece `Rechazar`;
+   - puede materializar `EXPIRADA` según la estrategia definida.
 
-### Escenario A — El invitado no tiene cuenta
+### Escenario A — El Invitado no Tiene Cuenta
 
-5. El sistema solicita registrarse.
-6. El proceso conserva el contexto de la invitación.
-7. El Usuario finaliza el registro.
-8. Inicia sesión.
-9. El sistema verifica que el email coincida con el destinatario.
-10. Presenta los datos del Negocio y rol propuesto.
+8. El sistema solicita registrarse.
+9. Conserva el contexto de invitación.
+10. El Usuario finaliza el registro.
+11. Inicia sesión.
+12. El sistema verifica que el Email autenticado sea funcionalmente equivalente a `emailDestino`.
+13. Presenta Negocio y `rolPropuesto`.
+14. El Usuario selecciona `Aceptar`.
+15. Antes de confirmar, el sistema revalida:
+    - estado `PENDIENTE`;
+    - `estaVigente(ahora)`;
+    - identidad;
+    - ausencia de membresía `ACTIVA`.
+16. Confirma atómicamente:
+    - invitación `PENDIENTE → ACEPTADA`;
+    - creación de `UsuarioNegocio` `ACTIVA` con `rolPropuesto`.
+
+### Escenario B — El Invitado ya Posee Cuenta
+
+8. El Usuario inicia sesión.
+9. El sistema verifica identidad.
+10. Presenta la invitación.
 11. El Usuario selecciona `Aceptar`.
-12. Se crea la membresía.
-13. La invitación pasa a `ACEPTADA`.
+12. Revalida las mismas guardias de aceptación.
+13. Confirma atómicamente:
+    - `InvitacionNegocio → ACEPTADA`;
+    - crear o reactivar `UsuarioNegocio`.
 
-### Escenario B — El invitado ya posee cuenta
-
-5. El Usuario inicia sesión.
-6. El sistema verifica la identidad.
-7. Presenta la invitación.
-8. El Usuario selecciona `Aceptar`.
-9. Se crea o reactiva su membresía.
-10. La invitación pasa a `ACEPTADA`.
-
-### Escenario C — Membresía histórica inactiva
+### Escenario C — Membresía Histórica INACTIVA
 
 Al aceptar:
 
 ```text
-UsuarioNegocio
-activo = True
-rol = rol actual de la invitación
+UsuarioNegocio histórica
+estado = INACTIVO
+
+        ↓
+
+estado = ACTIVO
+rol = rolPropuesto
 ```
+
+No se crea otra membresía conceptual.
 
 ### Flujo Alternativo — Rechazar
 
@@ -1215,7 +1832,17 @@ El Usuario selecciona:
 Rechazar invitación
 ```
 
-La invitación pasa a:
+Antes de confirmar se revalida:
+
+```text
+estado = PENDIENTE
++
+estaVigente(ahora)
++
+Email coincidente
+```
+
+Resultado:
 
 ```text
 RECHAZADA
@@ -1223,34 +1850,70 @@ RECHAZADA
 
 No se crea ni reactiva membresía.
 
-### Flujo Excepcional — Email diferente
+### Flujo Excepcional — Email Diferente
+
+Si el Email autenticado no es funcionalmente equivalente a `emailDestino`:
+
+> Esta invitación fue enviada a otra cuenta. Iniciá sesión con el correo correspondiente.
+
+No se modifica la invitación.
+
+### Flujo Excepcional — Invitación Vencida
 
 Si:
 
 ```text
-email autenticado
-≠
-email destino
+estado = PENDIENTE
++
+estaVigente(ahora) = false
 ```
 
-el sistema informa:
+no puede aceptarse ni rechazarse.
 
-> Esta invitación fue enviada a otra cuenta. Iniciá sesión con el correo correspondiente.
-
-### Flujo Excepcional — Invitación inválida
+### Flujo Excepcional — Invitación Terminal
 
 Si está:
 
-- expirada;
-- cancelada;
-- aceptada;
-- rechazada;
+```text
+ACEPTADA
+RECHAZADA
+CANCELADA
+EXPIRADA
+```
 
-no puede volver a utilizarse.
+no puede utilizarse nuevamente.
+
+### Flujo Excepcional — Usuario ya Miembro ACTIVO
+
+Si al confirmar la aceptación el Usuario ya posee una membresía `ACTIVA`:
+
+```text
+NO aceptar
+NO crear otra membresía
+NO cambiar rol
+```
+
+El sistema orienta a la gestión de miembros cuando corresponda.
 
 ### Postcondiciones
 
-La invitación queda procesada y, si fue aceptada, existe una membresía activa.
+Si se aceptó correctamente:
+
+```text
+InvitacionNegocio.estado = ACEPTADA
++
+UsuarioNegocio.estado = ACTIVO
+```
+
+y ambas modificaciones pertenecen a la misma unidad funcional de consistencia.
+
+Si se rechazó:
+
+```text
+InvitacionNegocio.estado = RECHAZADA
+```
+
+sin cambios en membresías.
 
 ---
 
@@ -1305,18 +1968,21 @@ Propietario.
 
 ### Precondiciones
 
-- Negocio activo.
+- Usuario autenticado.
+- Negocio seleccionado.
+- Actor con `UsuarioNegocio` `ACTIVA`.
 - Rol `PROPIETARIO`.
+- Miembro objetivo existente.
 
 ### Flujo Principal
 
 1. Consulta los miembros.
-2. Selecciona un miembro activo.
+2. Selecciona un miembro `ACTIVO`.
 3. Consulta su rol actual.
 4. Selecciona un nuevo rol.
-5. El sistema verifica las invariantes.
-6. Actualiza `UsuarioNegocio`.
-7. Confirma el cambio.
+5. El sistema revalida autorización e invariantes.
+6. Si la modificación afectaría a un Propietario, verifica que el resultado conserve al menos un `PROPIETARIO` `ACTIVO`.
+7. Confirma el cambio de rol.
 
 ### Promoción a Propietario
 
@@ -1334,17 +2000,21 @@ El sistema deberá solicitar confirmación clara antes de realizarla.
 
 ### Flujo Excepcional — Último Propietario
 
-Si el cambio provocaría:
+Si el cambio produciría:
 
 ```text
-0 PROPIETARIOS activos
+0 UsuarioNegocio
+estado = ACTIVO
+rol = PROPIETARIO
 ```
 
 la operación se rechaza.
 
+La comprobación debe revalidarse al confirmar; una preconsulta de UI no basta.
+
 ### Postcondiciones
 
-El miembro posee el nuevo rol.
+El miembro conserva la misma identidad de `UsuarioNegocio` y posee el nuevo rol.
 
 ---
 
@@ -1356,22 +2026,30 @@ Propietario.
 
 ### Precondiciones
 
-- Negocio activo.
-- Miembro actualmente activo.
+- Usuario autenticado.
+- Negocio seleccionado.
+- Actor con `UsuarioNegocio` `ACTIVA` y rol `PROPIETARIO`.
+- Miembro objetivo actualmente `ACTIVO`.
 
 ### Flujo Principal
 
 1. El Propietario selecciona un miembro.
 2. Solicita desactivarlo.
-3. El sistema verifica la invariante del último Propietario.
+3. El sistema evalúa la invariante del último Propietario.
 4. Solicita confirmación.
-5. La membresía pasa a inactiva.
-6. El Usuario pierde acceso futuro al Negocio.
-7. El historial permanece intacto.
+5. Antes de confirmar, vuelve a validar autorización e invariante.
+6. La membresía cambia:
+
+```text
+ACTIVO → INACTIVO
+```
+
+7. El Usuario pierde acceso futuro a ese Negocio.
+8. La relación histórica y la autoría pasada permanecen intactas.
 
 ### Flujo Excepcional — Último Propietario
 
-La operación es rechazada.
+Si la operación dejaría cero Propietarios `ACTIVO`, se rechaza.
 
 Mensaje:
 
@@ -1380,10 +2058,10 @@ Mensaje:
 ### Postcondiciones
 
 ```text
-UsuarioNegocio.activo = False
+UsuarioNegocio.estado = INACTIVO
 ```
 
-conceptualmente, sin eliminar la relación histórica.
+sin eliminar la relación histórica.
 
 ---
 
@@ -1431,17 +2109,19 @@ conceptualmente, sin eliminar la relación histórica.
 
 ---
 
-## `HU-ORG-004` — Invitar por WhatsApp
+## `HU-ORG-004` — Invitar y Compartir
 
 **Como** Propietario,  
-**quiero** compartir una invitación mediante WhatsApp,  
-**para** incorporar rápidamente a una persona con la que ya me comunico por ese medio.
+**quiero** emitir y compartir una invitación,  
+**para** incorporar a una persona sin administrar sus credenciales.
 
 ### Criterio
 
-**Given** una invitación pendiente,  
-**When** selecciono `Compartir por WhatsApp`,  
-**Then** la aplicación prepara un mensaje con el enlace de incorporación para que yo elija el contacto y lo envíe.
+**Given** una invitación `PENDIENTE` y vigente,  
+**When** selecciono `Compartir por WhatsApp` o `Copiar enlace`,  
+**Then** la aplicación reutiliza la misma `InvitacionNegocio` y no extiende su `fechaExpiracion`.
+
+Si ya existe una invitación `PENDIENTE` vigente equivalente, no se crea una segunda.
 
 ---
 
@@ -1453,9 +2133,11 @@ conceptualmente, sin eliminar la relación histórica.
 
 ### Criterio
 
-**Given** una invitación dirigida a mi email,  
+**Given** una invitación `PENDIENTE` y vigente dirigida funcionalmente a mi Email,  
 **When** inicio sesión con esa identidad y acepto,  
-**Then** quedo vinculado al Negocio con el rol propuesto.
+**Then** el sistema crea o reactiva mi membresía histórica con el `rolPropuesto` y confirma la aceptación de manera atómica.
+
+Si ya poseo una membresía `ACTIVA`, la invitación no se utiliza para modificar mi rol.
 
 ---
 
@@ -1523,26 +2205,58 @@ conceptualmente, sin eliminar la relación histórica.
                          ┌──────────────┐
                          │  PENDIENTE   │
                          └──────┬───────┘
-             ┌──────────────────┼──────────────────┐
-             │                  │                  │
-             ▼                  ▼                  ▼
-       ┌──────────┐       ┌───────────┐      ┌───────────┐
-       │ ACEPTADA │       │ RECHAZADA │      │ CANCELADA │
-       └──────────┘       └───────────┘      └───────────┘
-             │
-             │
-             └── genera/reactiva membresía
-
-PENDIENTE
-    │
-    └── vence
-          ↓
-     ┌───────────┐
-     │ EXPIRADA  │
-     └───────────┘
+                ┌───────────────┼───────────────┬───────────────┐
+                │               │               │               │
+                ▼               ▼               ▼               ▼
+          ┌──────────┐    ┌───────────┐   ┌───────────┐   ┌───────────┐
+          │ ACEPTADA │    │ RECHAZADA │   │ CANCELADA │   │ EXPIRADA  │
+          └──────────┘    └───────────┘   └───────────┘   └───────────┘
 ```
 
-Los estados finales no pueden utilizarse nuevamente.
+Reglas:
+
+```text
+PENDIENTE
+≠
+vigente automáticamente
+```
+
+Aceptar:
+
+```text
+requiere PENDIENTE + vigente + identidad válida
+```
+
+Rechazar:
+
+```text
+requiere PENDIENTE + vigente + identidad válida
+```
+
+Cancelar:
+
+```text
+requiere PENDIENTE + autorización contextual
+NO requiere vigencia
+```
+
+Expirar:
+
+```text
+requiere PENDIENTE + no vigente
+```
+
+Los cuatro estados de destino son terminales.
+
+La creación/reactivación de `UsuarioNegocio` pertenece al Caso de Uso de aceptación y no a una transición interna de `InvitacionNegocio`.
+
+La especificación detallada se encuentra en:
+
+```text
+modelo-dominio/bloque-1-fundacion/
+04-m01-estados-invitacion.md
+04-m01-estados-invitacion.puml
+```
 
 ---
 
@@ -1553,19 +2267,29 @@ Los estados finales no pueden utilizarse nuevamente.
                 │ ACTIVO │
                 └───┬────┘
                     │
-          desactivar│
+           desactivar
                     ▼
                ┌──────────┐
                │ INACTIVO │
                └────┬─────┘
                     │
-        nueva invitación aceptada
+      nueva invitación aceptada
                     │
                     ▼
-                 ACTIVO
+                  ACTIVO
 ```
 
-La reactivación mantiene la identidad de la relación pero puede cambiar el rol.
+La reactivación:
+
+- conserva la misma identidad histórica de `UsuarioNegocio`;
+- puede aplicar un nuevo rol a partir de la nueva invitación;
+- no crea una segunda membresía para el mismo `Usuario + Negocio`.
+
+Las guardias relacionadas con el último Propietario se detallarán adicionalmente en:
+
+```text
+05-m01-estados-membresia.puml
+```
 
 ---
 
@@ -1587,19 +2311,25 @@ Se calculará dinámicamente mediante configuraciones existentes y funcionalidad
 
 | Condición | Efecto | Mensaje Orientado al Usuario |
 | :--- | :--- | :--- |
-| Email ya registrado | No crea una segunda cuenta. | **Este correo ya posee una cuenta. Iniciá sesión para continuar.** |
+| Email de cuenta funcionalmente existente | No crea una segunda cuenta. | **Este correo ya posee una cuenta. Iniciá sesión para continuar.** |
 | Credenciales inválidas | No inicia sesión. | **Email o contraseña incorrectos.** |
-| Cuenta global inactiva | Impide el acceso. | **Tu cuenta se encuentra inactiva.** |
-| Invitación inexistente | No muestra datos del Negocio. | **No encontramos esta invitación.** |
-| Invitación expirada | No permite incorporarse. | **Esta invitación venció. Pedí al propietario una nueva.** |
-| Invitación cancelada | No permite incorporarse. | **Esta invitación fue cancelada.** |
-| Invitación procesada | No vuelve a utilizarse. | **Esta invitación ya fue procesada.** |
-| Email autenticado diferente | No permite aceptar. | **La invitación fue enviada a otro correo. Iniciá sesión con la cuenta correspondiente.** |
-| Invitación pendiente duplicada | Evita propuestas simultáneas innecesarias. | **Ya existe una invitación pendiente para esta persona.** |
-| Negocio sin membresía activa | Impide ingresar. | **Ya no tenés acceso a este negocio.** |
-| Rol insuficiente | Rechaza la acción. | **No tenés permisos para realizar esta acción.** |
+| Cuenta no habilitada según política de acceso | Impide el acceso. | **No se puede iniciar sesión con esta cuenta.** |
+| Invitación inexistente | No muestra datos sensibles del Negocio. | **No encontramos esta invitación.** |
+| Invitación `PENDIENTE` vencida | No permite aceptar ni rechazar. | **Esta invitación venció. Pedí al propietario una nueva.** |
+| Invitación `CANCELADA` | No permite incorporarse. | **Esta invitación fue cancelada.** |
+| Invitación `ACEPTADA` / `RECHAZADA` / `EXPIRADA` | No vuelve a utilizarse. | **Esta invitación ya no está disponible.** |
+| Email autenticado diferente | No permite aceptar ni rechazar. | **La invitación fue enviada a otro correo. Iniciá sesión con la cuenta correspondiente.** |
+| Invitación `PENDIENTE` vigente equivalente | No crea una segunda invitación; reutiliza la existente. | **Ya existe una invitación pendiente para esta persona.** |
+| Destinatario ya miembro `ACTIVO` | No emite/acepta una invitación para modificar rol. | **Esta persona ya pertenece al negocio.** |
+| Negocio sin membresía `ACTIVA` para el Usuario | Impide ingresar. | **Ya no tenés acceso a este negocio.** |
+| Rol o permiso insuficiente | Rechaza la acción. | **No tenés permisos para realizar esta acción.** |
 | Último Propietario | Impide degradación/desactivación. | **El negocio debe conservar al menos un Propietario activo.** |
+| Conflicto concurrente | No confirma una mutación que rompería invariantes. | **La información cambió mientras realizabas la operación. Volvé a intentarlo.** |
 | Configuración pendiente | No genera error técnico; orienta al módulo correspondiente. | **Antes de continuar necesitás completar esta configuración.** |
+
+Los mensajes son orientativos de UX.
+
+El dominio no debe depender de cadenas de texto concretas ni utilizarlas como códigos de error.
 
 ---
 
@@ -1684,23 +2414,27 @@ Los roles definidos en M01 sirven como base para determinar qué tipos de analí
 
 | RF | RN principales | HU | CU |
 | :--- | :--- | :--- | :--- |
-| RF-ORG-001 | RN-ORG-003 | HU-ORG-001 | CU-ORG-01 |
+| RF-ORG-001 | RN-ORG-003, RN-ORG-021 | HU-ORG-001 | CU-ORG-01 |
 | RF-ORG-002 | RN-ORG-003 | HU-ORG-001 | CU-ORG-02 |
-| RF-ORG-003 | RN-ORG-001, RN-ORG-010 | HU-ORG-002 | CU-ORG-03 |
+| RF-ORG-003 | RN-ORG-001, RN-ORG-010, RN-ORG-020 | HU-ORG-002 | CU-ORG-03 |
 | RF-ORG-004 | RN-ORG-009 | HU-ORG-003 | CU-ORG-03 |
-| RF-ORG-005 | RN-ORG-002, RN-ORG-003 | HU-ORG-006 | CU-ORG-02 / CU-ORG-06 |
-| RF-ORG-006 | RN-ORG-007, RN-ORG-013 | HU-ORG-004 | CU-ORG-04 |
-| RF-ORG-007 | RN-ORG-011, RN-ORG-012 | HU-ORG-004 | CU-ORG-04 |
-| RF-ORG-008 | RN-ORG-005, RN-ORG-006, RN-ORG-007 | HU-ORG-005 | CU-ORG-05 |
-| RF-ORG-009 | RN-ORG-006, RN-ORG-007 | HU-ORG-005 | CU-ORG-05 |
-| RF-ORG-010 | RN-ORG-007 | — | CU-ORG-04 |
+| RF-ORG-005 | RN-ORG-002, RN-ORG-003, RN-ORG-008 | HU-ORG-006 | CU-ORG-02 / CU-ORG-06 |
+| RF-ORG-006 | RN-ORG-006, RN-ORG-007, RN-ORG-013, RN-ORG-018, RN-ORG-019, RN-ORG-022, RN-ORG-023 | HU-ORG-004 | CU-ORG-04 |
+| RF-ORG-007 | RN-ORG-011, RN-ORG-012, RN-ORG-018, RN-ORG-023 | HU-ORG-004 | CU-ORG-04 |
+| RF-ORG-008 | RN-ORG-005, RN-ORG-006, RN-ORG-007, RN-ORG-019, RN-ORG-022, RN-ORG-023 | HU-ORG-005 | CU-ORG-05 |
+| RF-ORG-009 | RN-ORG-006, RN-ORG-007, RN-ORG-023 | HU-ORG-005 | CU-ORG-05 |
+| RF-ORG-010 | RN-ORG-007, RN-ORG-018, RN-ORG-022, RN-ORG-023 | — | CU-ORG-04 / CU-ORG-05 |
 | RF-ORG-011 | RN-ORG-008, RN-ORG-017 | HU-ORG-006 | CU-ORG-06 |
-| RF-ORG-012 | RN-ORG-002 | HU-ORG-007 | CU-ORG-07 |
-| RF-ORG-013 | RN-ORG-001, RN-ORG-002, RN-ORG-017 | HU-ORG-007 | CU-ORG-07 |
-| RF-ORG-014 | RN-ORG-001, RN-ORG-013 | HU-ORG-008 | CU-ORG-07 |
-| RF-ORG-015 | RN-ORG-001, RN-ORG-004, RN-ORG-016 | HU-ORG-008 | CU-ORG-08 |
-| RF-ORG-016 | RN-ORG-005 | HU-ORG-005 | CU-ORG-05 |
+| RF-ORG-012 | RN-ORG-002, RN-ORG-008 | HU-ORG-007 | CU-ORG-07 |
+| RF-ORG-013 | RN-ORG-001, RN-ORG-002, RN-ORG-017, RN-ORG-022, RN-ORG-023 | HU-ORG-007 | CU-ORG-07 |
+| RF-ORG-014 | RN-ORG-001, RN-ORG-013, RN-ORG-022 | HU-ORG-008 | CU-ORG-07 |
+| RF-ORG-015 | RN-ORG-001, RN-ORG-004, RN-ORG-016, RN-ORG-022, RN-ORG-023 | HU-ORG-008 | CU-ORG-08 |
+| RF-ORG-016 | RN-ORG-005, RN-ORG-019 | HU-ORG-005 | CU-ORG-05 |
 | RF-ORG-017 | RN-ORG-009, RN-ORG-014, RN-ORG-015 | HU-ORG-009 | CU-ORG-03 / CU-ORG-06 |
+
+La matriz indica trazabilidad funcional.
+
+No implica que cada RF deba convertirse en un endpoint independiente.
 
 ---
 
@@ -1708,37 +2442,62 @@ Los roles definidos en M01 sirven como base para determinar qué tipos de analí
 
 M01 podrá considerarse funcionalmente completo para el MVP cuando se verifique que:
 
-1. Un Usuario puede registrarse mediante email y contraseña.
-2. Un Usuario puede iniciar sesión.
-3. Una cuenta puede existir sin estar asociada a ningún Negocio.
-4. Un Usuario puede crear un Negocio.
-5. El creador queda vinculado automáticamente como `PROPIETARIO`.
-6. El Negocio recibe `ARS` como moneda base.
-7. El Negocio puede definir una o más modalidades operativas.
-8. Un Usuario puede pertenecer a varios Negocios.
-9. Puede poseer roles distintos en cada uno.
-10. Un Propietario puede generar una invitación para `ENCARGADO` o `TRABAJADOR`.
-11. La invitación puede compartirse mediante WhatsApp sin requerir integración automática con WhatsApp Business.
-12. El enlace de invitación también puede copiarse y enviarse por otro medio.
-13. Un invitado sin cuenta puede registrarse y posteriormente aceptar la invitación.
-14. Un Usuario existente puede aceptar una invitación destinada a su email.
-15. Un Usuario con otro email no puede apropiarse de una invitación.
-16. Una invitación puede aceptarse, rechazarse, cancelarse o expirar.
-17. Una membresía histórica inactiva puede reactivarse.
-18. La reactivación utiliza el rol definido en la nueva invitación.
-19. Un Propietario puede modificar roles.
-20. Un miembro puede ser promovido deliberadamente a `PROPIETARIO`.
-21. El sistema nunca permite dejar un Negocio activo sin al menos un `PROPIETARIO` activo.
-22. Desactivar una membresía no elimina el Usuario.
-23. Desactivar una membresía no afecta otros Negocios.
-24. Las operaciones históricas conservan al Usuario responsable.
-25. El Usuario solo puede operar dentro de Negocios donde posee membresía activa.
-26. El sistema puede orientar mediante un checklist de configuración progresiva.
-27. La creación del Negocio no genera ubicaciones, medios de pago ni artículos ficticios.
-28. Las modalidades adaptan la experiencia pero pueden modificarse posteriormente.
-29. M01 define los roles generales del sistema, mientras que los permisos concretos sobre operaciones de otros módulos se rigen por las especificaciones funcionales de dichos módulos.
-30. Una restricción específica de un módulo puede limitar las acciones disponibles para un rol sin modificar el rol almacenado en `UsuarioNegocio`.
-31. Toda autorización sobre una operación de negocio requiere considerar conjuntamente el Negocio activo, la membresía activa, el Rol y las reglas específicas del módulo correspondiente.
+1. Un Usuario puede registrarse mediante Email y contraseña desde la experiencia funcional.
+2. El Email de Usuario es funcionalmente único.
+3. Un Usuario puede iniciar sesión.
+4. Una cuenta puede existir sin estar asociada a ningún Negocio.
+5. Un Usuario puede crear un Negocio.
+6. Negocio + primera membresía `ACTIVA/PROPIETARIO` se crean de manera atómica.
+7. El Negocio recibe `ARS` como moneda base.
+8. El Negocio define una o más modalidades operativas.
+9. Un Usuario puede pertenecer a varios Negocios.
+10. Puede poseer roles distintos en cada uno.
+11. Para un mismo `Usuario + Negocio` existe una única membresía histórica.
+12. Un Propietario puede emitir una invitación para `ENCARGADO` o `TRABAJADOR`.
+13. Una invitación posee `fechaEmision` y `fechaExpiracion`.
+14. `PENDIENTE` no implica por sí sola vigencia temporal.
+15. `ahora >= fechaExpiracion` implica invitación no vigente.
+16. Para `Negocio + Email` equivalente existe como máximo una invitación `PENDIENTE` y vigente.
+17. Una `PENDIENTE` vencida no bloquea permanentemente una nueva emisión.
+18. Reenviar reutiliza la misma invitación.
+19. Reenviar no extiende `fechaExpiracion`.
+20. Reenviar no cambia `rolPropuesto`.
+21. Cambiar rol propuesto requiere cancelar la invitación y emitir una nueva.
+22. La invitación puede compartirse por WhatsApp sin integración automática con WhatsApp Business.
+23. El enlace también puede copiarse y compartirse por otro medio.
+24. Poseer el enlace no alcanza para aceptar.
+25. Un invitado sin cuenta puede registrarse y posteriormente aceptar.
+26. Un Usuario existente puede aceptar una invitación destinada funcionalmente a su Email.
+27. Un Usuario con otro Email no puede aceptar ni rechazar la invitación.
+28. Aceptar exige `PENDIENTE + vigente`.
+29. Rechazar exige `PENDIENTE + vigente`.
+30. Cancelar exige `PENDIENTE` pero no vigencia temporal.
+31. Expirar exige `PENDIENTE + no vigente`.
+32. `ACEPTADA`, `RECHAZADA`, `CANCELADA` y `EXPIRADA` son terminales.
+33. Un destinatario con membresía `ACTIVA` no puede ser invitado para modificar su rol.
+34. La ausencia de membresía `ACTIVA` se revalida al aceptar.
+35. Una membresía histórica `INACTIVA` puede reactivarse.
+36. La reactivación reutiliza la misma `UsuarioNegocio`.
+37. La reactivación adopta el `rolPropuesto` de la nueva invitación.
+38. Aceptación + creación/reactivación de membresía se confirman atómicamente.
+39. Un Propietario puede modificar roles explícitamente.
+40. Un miembro puede ser promovido deliberadamente a `PROPIETARIO`.
+41. El sistema nunca permite dejar un Negocio sin al menos un `PROPIETARIO` `ACTIVO`.
+42. La invariante del último Propietario se revalida al confirmar.
+43. Desactivar una membresía produce `ACTIVO → INACTIVO`.
+44. Desactivar una membresía no elimina el Usuario.
+45. Desactivar una membresía no afecta otros Negocios.
+46. Las operaciones históricas conservan al Usuario responsable.
+47. El Usuario solo opera dentro de Negocios donde posee membresía `ACTIVA` y permiso suficiente.
+48. La creación del Negocio no genera ubicaciones, medios de pago ni artículos ficticios.
+49. Las modalidades adaptan la experiencia sin convertirse en restricciones rígidas.
+50. M01 define roles generales y cada módulo define permisos concretos.
+51. El backend revalida autorización; no confía en el rol o Negocio enviado únicamente por el frontend.
+52. Las prevalidaciones no sustituyen guardias definitivas ante concurrencia.
+53. `InvitacionNegocio` no necesita consultar repositories para proteger sus invariantes locales.
+54. La implementación no expone setters públicos de estado que permitan saltarse transiciones.
+55. Las operaciones organizacionales relevantes conservan trazabilidad suficiente de actor y momento.
+56. La existencia de trazabilidad no obliga a una arquitectura de Event Sourcing ni a una entidad universal de Auditoría.
 
 ---
 
@@ -1751,15 +2510,18 @@ Registro
 Login
 Crear Negocio
 UsuarioNegocio
+EstadoMembresia
 Roles
 Modalidades
 Invitaciones
-Compartir invitación por WhatsApp
-Aceptar / rechazar
+Vigencia temporal de invitaciones
+Compartir / reenviar invitación
+Aceptar / rechazar / cancelar
 Seleccionar Negocio
 Gestionar miembros
 Cambiar roles
 Desactivar membresía
+Reactivar membresía histórica
 Invariante de Propietario
 Aislamiento por Negocio
 Checklist progresivo básico
@@ -1772,6 +2534,7 @@ Checklist progresivo básico
 ```text
 Recuperación avanzada de cuenta
 Validación adicional de email
+Cambio de email principal
 PIN rápido
 Biometría
 MFA
@@ -1781,7 +2544,11 @@ Email automático de invitaciones
 Transferencia formal de propiedad
 Salida autónoma de un Propietario
 Permisos personalizados por Usuario
+Ciclo formal de cierre/desactivación de Negocio
+Soporte multimoneda
 ```
+
+Toda evolución que modifique identidad, membresías o ciclo de vida de invitaciones debe actualizar primero la documentación funcional y de dominio.
 
 ---
 
@@ -1792,7 +2559,7 @@ La organización interna debe ser suficientemente robusta para soportar:
 ```text
 Usuario
 → múltiples Negocios
-→ múltiples Roles
+→ múltiples Roles contextuales
 → múltiples colaboradores
 ```
 
@@ -1803,7 +2570,7 @@ La experiencia buscada es:
 ```text
 Crear cuenta
      ↓
-Crear negocio
+Crear Negocio
 o
 Aceptar invitación
      ↓
@@ -1812,6 +2579,524 @@ Entrar
 Trabajar
 ```
 
-La seguridad y el aislamiento pertenecen al sistema.
+La seguridad, autorización e integridad pertenecen al sistema.
 
 La simplicidad pertenece al usuario.
+
+El dominio no debe simplificarse eliminando invariantes; la UI debe ocultar complejidad sin debilitar las reglas.
+
+---
+
+# 19. Guía de Interpretación para Arquitectura e IA
+
+## 19.1. Orden de Lectura
+
+Antes de implementar M01, una IA o desarrollador debe consultar:
+
+```text
+1. M01-organizacion-negocio.md
+2. 01-modelo-dominio-bloque-1.md
+3. 01-diagrama-general.puml
+4. 02-m01-organizacion-clases.md
+5. 02-m01-organizacion-clases.puml
+6. 04-m01-estados-invitacion.md
+7. 04-m01-estados-invitacion.puml
+8. 05-m01-estados-membresia.* cuando exista
+9. ADRs / diseño técnico
+10. modelo relacional
+11. API
+12. código
+```
+
+Si las fuentes se contradicen:
+
+```text
+NO elegir silenciosamente.
+NO adaptar el dominio al código existente.
+NO inferir reglas nuevas.
+```
+
+Debe resolverse primero la contradicción documental.
+
+---
+
+## 19.2. Entidad vs. Caso de Uso
+
+Las entidades deben proteger invariantes que conocen localmente.
+
+Ejemplo `InvitacionNegocio`:
+
+```text
+estado
+fechaExpiracion
+emailDestino
+transición permitida
+```
+
+El Caso de Uso aporta contexto externo:
+
+```text
+autorización
+membresías existentes
+otras invitaciones
+Negocio
+atomicidad entre entidades
+```
+
+No introducir repositories dentro de entidades para resolver guardias contextuales.
+
+---
+
+## 19.3. Métodos de Dominio no son Endpoints
+
+Una operación como:
+
+```text
+cancelar()
+aceptarPara(...)
+cambiarRolMiembro(...)
+```
+
+no implica automáticamente:
+
+```text
+1 método = 1 endpoint
+```
+
+El contrato HTTP se diseñará posteriormente.
+
+---
+
+## 19.4. Clases UML no son Tablas
+
+No inferir:
+
+```text
+1 clase = 1 tabla
+1 enum = 1 tabla
+1 Value Object = 1 tabla
+```
+
+El Modelo Relacional debe preservar las invariantes, no copiar mecánicamente el UML.
+
+---
+
+## 19.5. Evitar Setters que Rompan Invariantes
+
+No exponer operaciones como:
+
+```text
+setEstadoInvitacion(...)
+setEstadoMembresia(...)
+setRol(...)
+```
+
+si permiten saltarse reglas.
+
+Preferir operaciones con significado de dominio.
+
+---
+
+# 20. Requisitos de Implementación y Buenas Prácticas
+
+## 20.1. Atomicidad Obligatoria
+
+Deben tratarse como unidades funcionales indivisibles al menos:
+
+```text
+Crear Negocio
++
+crear primera membresía ACTIVA/PROPIETARIO
+```
+
+```text
+Aceptar InvitacionNegocio
++
+crear/reactivar UsuarioNegocio
+```
+
+```text
+Cambiar/desactivar Propietario
++
+preservar al menos un PROPIETARIO ACTIVO
+```
+
+La tecnología concreta se define en Arquitectura.
+
+---
+
+## 20.2. Concurrencia
+
+La implementación debe proteger al menos:
+
+```text
+registro concurrente con mismo Email
+dos invitaciones equivalentes concurrentes
+dos aceptaciones de la misma invitación
+aceptación concurrente con incorporación por otra vía
+cancelación concurrente con expiración
+dos cambios concurrentes sobre el último Propietario
+```
+
+La validación en Application Service es necesaria pero puede no ser suficiente.
+
+La persistencia debe actuar como última línea de defensa donde corresponda.
+
+---
+
+## 20.3. Tiempo
+
+Para una operación dependiente del reloj:
+
+```text
+obtener un único "ahora"
+```
+
+y reutilizarlo durante la operación.
+
+Evitar llamadas dispersas al reloj del sistema.
+
+La representación técnica debe ser timezone-aware.
+
+La recomendación de implementación será trabajar con instantes normalizados y convertir a zona local solamente para presentación, sin congelar todavía una librería o tipo concreto.
+
+---
+
+## 20.4. Dinero
+
+M01 solo define moneda base.
+
+Los módulos monetarios posteriores deberán utilizar representación decimal exacta.
+
+No utilizar Float binario para valores monetarios.
+
+---
+
+## 20.5. Seguridad de Credenciales
+
+Nunca almacenar ni registrar:
+
+```text
+contraseña en texto plano
+token secreto completo en logs
+credenciales de sesión en eventos de negocio
+```
+
+El algoritmo concreto y la estrategia IAM se decidirán en Arquitectura.
+
+---
+
+## 20.6. Aislamiento por Negocio
+
+Toda mutación debe verificar del lado servidor:
+
+```text
+Usuario autenticado
++
+membresía ACTIVA
++
+Negocio correcto
++
+Rol
++
+permiso concreto
+```
+
+No confiar en identificadores o roles enviados por el cliente sin autorización contextual.
+
+---
+
+## 20.7. Idempotencia
+
+Las operaciones sensibles deben poder tratar reintentos sin duplicar efectos.
+
+Especialmente:
+
+```text
+crear Negocio
+aceptar invitación
+reenviar invitación
+```
+
+La estrategia y respuestas HTTP se definirán posteriormente.
+
+
+
+## 20.8. Acoplamiento entre Módulos
+
+El checklist de preparación puede consultar si otros módulos poseen configuraciones necesarias.
+
+Esto NO significa que la entidad `Negocio` deba importar o administrar directamente:
+
+```text
+ArticuloCatalogo
+Stock
+MedioPago
+Receta
+Caja
+```
+
+La coordinación transversal se diseñará en la capa de aplicación/consultas correspondiente.
+
+M01 conserva la responsabilidad de organización; no se convierte en un agregador de todos los dominios.
+
+---
+
+## 20.9. Autorización sin RBAC Dinámico Prematuro
+
+Durante el MVP:
+
+```text
+Rol
++
+reglas concretas por módulo
+```
+
+son suficientes para expresar autorización funcional.
+
+No crear automáticamente:
+
+```text
+Permiso
+RolPermiso
+ACL genérica
+motor de políticas dinámico
+```
+
+sin una necesidad funcional posterior.
+
+Una implementación puede centralizar políticas de autorización en código de aplicación, manteniendo las reglas explícitas y testeables.
+
+
+---
+
+# 21. Pruebas Derivables Mínimas
+
+## Usuarios
+
+1. registrar Email nuevo;
+2. impedir Email funcionalmente duplicado;
+3. autenticación válida;
+4. autenticación inválida sin filtrar detalles sensibles;
+5. Usuario sin Negocio puede existir.
+
+## Negocio
+
+6. crear Negocio con primera membresía Propietaria;
+7. si falla la membresía inicial, no confirmar Negocio;
+8. modalidades 1..N;
+9. moneda ARS en MVP.
+
+## Membresías
+
+10. Usuario puede participar en varios Negocios;
+11. rol distinto por Negocio;
+12. impedir segunda membresía histórica Usuario + Negocio;
+13. desactivar ACTIVO → INACTIVO;
+14. reactivar misma membresía histórica;
+15. reactivación aplica rol nuevo;
+16. miembro ya ACTIVO no se reincorpora;
+17. impedir desactivar al último Propietario;
+18. impedir degradar al último Propietario;
+19. permitir promover segundo Propietario.
+
+## Invitaciones
+
+20. emitir como Propietario ACTIVO;
+21. impedir emitir como Encargado/Trabajador;
+22. impedir rolPropuesto PROPIETARIO;
+23. impedir invitar miembro ya ACTIVO;
+24. crear fechaExpiracion > fechaEmision;
+25. límite `ahora == fechaExpiracion` no vigente;
+26. impedir segunda PENDIENTE vigente equivalente;
+27. PENDIENTE vencida permite nueva emisión tras materializar expiración;
+28. reenviar mantiene identidad, rol y fechaExpiracion;
+29. aceptar válida;
+30. impedir aceptar vencida;
+31. impedir aceptar con Email distinto;
+32. revalidar membresía ACTIVA al aceptar;
+33. aceptación + membresía atómicas;
+34. rechazar válida;
+35. impedir rechazar vencida;
+36. cancelar vigente;
+37. cancelar PENDIENTE ya vencida;
+38. expirar solo cuando no vigente;
+39. estados terminales no admiten nuevas transiciones.
+
+## Concurrencia
+
+40. dos registros equivalentes → una cuenta;
+41. dos emisiones equivalentes → una PENDIENTE;
+42. dos aceptaciones → una incorporación;
+43. aceptar vs incorporación paralela → sin duplicar ni cambiar rol;
+44. cancelar vs expirar → una transición;
+45. dos operaciones sobre último Propietario → nunca cero Propietarios activos.
+46. emisión/cancelación/cambio de rol conservan actor y momento según estrategia de trazabilidad.
+
+---
+
+# 22. Decisiones Técnicas que Permanecen Abiertas
+
+No decidir desde esta especificación:
+
+```text
+framework IAM
+hash concreto de contraseña
+JWT vs sesión
+refresh tokens
+cookies
+
+Aggregate Roots formales
+Repository
+Unit of Work
+Domain Events
+Service Layer concreto
+
+UUID vs otro tipo de identidad
+token de invitación exacto
+hash del token
+rotación del token
+
+Clock concreto
+tipo datetime concreto
+política de zona horaria de presentación
+
+locking optimista/pesimista
+nivel de aislamiento
+constraints SQL exactos
+índices exactos
+
+normalización técnica de Email
+
+endpoints
+DTOs
+schemas API
+
+ciclo formal de cierre del Negocio
+cambio de moneda
+```
+
+Las decisiones técnicas futuras deben **satisfacer** estas reglas.
+
+No deben redefinirlas silenciosamente.
+
+---
+
+# 23. Errores de Implementación a Evitar
+
+No implementar:
+
+```text
+Usuario.rol
+```
+
+El rol pertenece a `UsuarioNegocio`.
+
+No implementar:
+
+```text
+UsuarioNegocio activo : Boolean
+```
+
+si eso reemplaza el modelo aprobado:
+
+```text
+EstadoMembresia = ACTIVO / INACTIVO
+```
+
+No implementar:
+
+```text
+InvitacionNegocio.vigencia
+```
+
+como atributo ambiguo.
+
+Utilizar conceptualmente:
+
+```text
+fechaExpiracion
+```
+
+No asumir:
+
+```text
+PENDIENTE == vigente
+```
+
+No aceptar/rechazar invitaciones vencidas.
+
+No extender expiración al reenviar.
+
+No modificar rol de miembro ACTIVO mediante invitación.
+
+No crear una segunda membresía histórica.
+
+No crear un Negocio sin Propietario inicial.
+
+No permitir que dos operaciones concurrentes eliminen al último Propietario.
+
+No autorizar solo desde frontend.
+
+No permitir modificar estados mediante setters públicos sin invariantes.
+
+No introducir `EstadoNegocio` hasta que se defina su ciclo de vida.
+
+No introducir infraestructura dentro de entidades por comodidad.
+
+---
+
+# 24. Checklist para una Futura Implementación
+
+```text
+[ ] Email es Value Object / semántica funcional consistente.
+[ ] Email globalmente único según equivalencia funcional.
+[ ] Contraseñas no forman parte del modelo conceptual de Usuario.
+[ ] Negocio no posee ciclo ACTIVO/INACTIVO inventado.
+[ ] UsuarioNegocio usa EstadoMembresia ACTIVO/INACTIVO.
+[ ] Usuario + Negocio posee una sola membresía histórica.
+[ ] Crear Negocio + Propietario inicial es atómico.
+[ ] Último Propietario está protegido al confirmar.
+[ ] InvitacionNegocio usa fechaExpiracion.
+[ ] PENDIENTE no se confunde con vigente.
+[ ] Ahora == fechaExpiracion significa no vigente.
+[ ] Solo Propietario ACTIVO emite/cancela.
+[ ] Rol inicial no puede ser PROPIETARIO.
+[ ] Miembro ACTIVO no recibe nueva incorporación.
+[ ] Solo una PENDIENTE vigente equivalente.
+[ ] Reenvío no crea nueva invitación.
+[ ] Reenvío no extiende fechaExpiracion.
+[ ] Aceptación revalida Email, tiempo, estado y membresía.
+[ ] Aceptación + membresía es atómica.
+[ ] InvitacionNegocio no crea directamente UsuarioNegocio.
+[ ] Entidades no consultan repositories.
+[ ] Backend revalida autorización.
+[ ] Persistencia protege invariantes concurrentes.
+[ ] Tokens no son autorización suficiente.
+[ ] No existen setters públicos que salteen reglas.
+[ ] Los módulos posteriores definen permisos concretos.
+[ ] No se creó infraestructura no aprobada.
+```
+
+---
+
+# 25. Estado de la Especificación
+
+Con esta revisión, M01 queda funcionalmente preparado para sincronizarse con:
+
+```text
+01-modelo-dominio-bloque-1.md
+01-diagrama-general.puml
+02-m01-organizacion-clases.md
+02-m01-organizacion-clases.puml
+04-m01-estados-invitacion.md
+04-m01-estados-invitacion.puml
+```
+
+El siguiente artefacto de dominio pendiente es:
+
+```text
+05-m01-estados-membresia.puml
+```
+
+No corresponde comenzar implementación antes de terminar las vistas dinámicas y las decisiones arquitectónicas previstas para el Bloque 1.
