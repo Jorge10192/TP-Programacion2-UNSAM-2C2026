@@ -1,17 +1,18 @@
 @startuml 01-diagrama-general
 
-title Bloque 1 — Fundación: Mapa General de Dominio (M01 + M02)\n<size:11>Vista conceptual para referencia funcional y futura implementación</size>
+title Modelo de Dominio General — Bloque 1 (M01 + M02)\n<size:11>Vista integrada de nivel superior — versión oficial congelada</size>
 
-' ============================================================================
+' =============================================================================
 ' CONFIGURACIÓN VISUAL Y PALETA CROMÁTICA
-' ============================================================================
+' =============================================================================
 
 skinparam classAttributeIconSize 0
 skinparam linetype ortho
 skinparam packageStyle rectangle
 skinparam shadowing false
-skinparam nodesep 70
-skinparam ranksep 80
+skinparam nodesep 50
+skinparam ranksep 60
+
 skinparam noteFontSize 10
 skinparam noteBackgroundColor #FFFDE7
 skinparam noteBorderColor #E6C200
@@ -19,67 +20,63 @@ skinparam noteBorderColor #E6C200
 hide circle
 hide empty members
 
-' Colores por Estereotipo (Identidad Visual Congelada)
 skinparam class {
-    BackgroundColor<<entity>> #EBF3FA
-    BorderColor<<entity>> #2B6CB0
-    HeaderBackgroundColor<<entity>> #3182CE
-    
-    BackgroundColor<<value object>> #F3E8FA
-    BorderColor<<value object>> #805AD5
-    HeaderBackgroundColor<<value object>> #805AD5
-    
-    BackgroundColor<<enum>> #FFF5F5
-    BorderColor<<enum>> #E53E3E
-    HeaderBackgroundColor<<enum>> #E53E3E
+  BackgroundColor<<entity>> #EBF3FA
+  BorderColor<<entity>> #2B6CB0
+  HeaderBackgroundColor<<entity>> #3182CE
+
+  BackgroundColor<<value object>> #F3E8FA
+  BorderColor<<value object>> #805AD5
+  HeaderBackgroundColor<<value object>> #805AD5
+
+  BackgroundColor<<enum>> #FFF5F5
+  BorderColor<<enum>> #E53E3E
+  HeaderBackgroundColor<<enum>> #E53E3E
 }
 
 skinparam package {
-    BorderColor #CBD5E0
-    BackgroundColor #FAFAFA
-    FontColor #1A202C
-    FontStyle bold
+  BorderColor #CBD5E0
+  BackgroundColor #FAFAFA
+  FontColor #1A202C
+  FontStyle bold
 }
 
-' ============================================================================
-' M01 — ORGANIZACIÓN DEL NEGOCIO (IZQUIERDA)
-' ============================================================================
+' =============================================================================
+' MÓDULO M01 — ORGANIZACIÓN DEL NEGOCIO
+' =============================================================================
 
-package "M01 — Organización del Negocio\n<size:10><font color=555555>Gestiona negocios, usuarios, roles, invitaciones y configuración general.</font></size>" as M01 {
+package "M01 — Organización del Negocio" as M01 {
 
   class Usuario <<entity>> {
+    identidad
     nombre
     email : Email
     estadoCuenta
+    fechaRegistro
   }
 
   class UsuarioNegocio <<entity>> {
     rol : Rol
-    estado
+    estado : EstadoMembresia
     fechaIncorporacion
   }
 
   class Negocio <<entity>> {
+    identidad
     nombre
+    rubro [0..1]
     monedaBase : Moneda
-    modalidades : Set<ModalidadOperativa>
-    estado
+    modalidades : Set<ModalidadOperativa> {1..*}
   }
 
   class InvitacionNegocio <<entity>> {
+    identificadorSeguro
     emailDestino : Email
     rolPropuesto : Rol
     estado : EstadoInvitacion
-    vigencia
+    fechaExpiracion
   }
 
-  ' Estructura principal M01
-  Usuario "1" -right- "0..*" UsuarioNegocio : participa
-  UsuarioNegocio "1..*" -right- "1" Negocio : pertenece a
-  Negocio "1" -down- "0..*" InvitacionNegocio : invitaciones
-  UsuarioNegocio "1" -down- "0..*" InvitacionNegocio : emite
-
-  ' Auxiliares M01 dispuestos de forma horizontal limpia
   class Email <<value object>>
 
   enum Rol <<enum>> {
@@ -88,10 +85,9 @@ package "M01 — Organización del Negocio\n<size:10><font color=555555>Gestiona
     TRABAJADOR
   }
 
-  enum ModalidadOperativa <<enum>> {
-    REVENTA
-    PRODUCCION
-    SERVICIOS
+  enum EstadoMembresia <<enum>> {
+    ACTIVO
+    INACTIVO
   }
 
   enum EstadoInvitacion <<enum>> {
@@ -102,71 +98,58 @@ package "M01 — Organización del Negocio\n<size:10><font color=555555>Gestiona
     EXPIRADA
   }
 
+  enum ModalidadOperativa <<enum>> {
+    REVENTA
+    PRODUCCION
+    SERVICIOS
+  }
+
   enum Moneda <<enum>> {
     ARS
   }
-
-  Email -[hidden]right- Rol
-  Rol -[hidden]right- ModalidadOperativa
-  ModalidadOperativa -[hidden]right- EstadoInvitacion
-  EstadoInvitacion -[hidden]right- Moneda
-
-  InvitacionNegocio -[hidden]down- Email
-
-  ' Notas internas de M01
-  note top of Negocio
-    <b>Propietario activo</b>
-    Todo Negocio activo debe conservar
-    al menos 1 PROPIETARIO activo.
-  end note
-
-  note top of UsuarioNegocio
-    <b>Rol contextual</b>
-    El Rol pertenece a UsuarioNegocio,
-    no al Usuario global.
-  end note
-
-  note bottom of InvitacionNegocio
-    <b>Invitación</b>
-    El emisor pertenece al mismo Negocio.
-    Aceptar puede crear o reactivar UsuarioNegocio.
-  end note
 }
 
-' ============================================================================
-' M02 — CATÁLOGO (DERECHA)
-' ============================================================================
+' =============================================================================
+' MÓDULO M02 — CATÁLOGO
+' =============================================================================
 
-package "M02 — Catálogo\n<size:10><font color=555555>Gestiona categorías, artículos y sus capacidades operativas.</font></size>" as M02 {
+package "M02 — Catálogo" as M02 {
 
   class Categoria <<entity>> {
+    identidad
     nombre
-    estado
+    estado : EstadoCategoria
   }
 
   class ArticuloCatalogo <<entity>> {
+    identidad
     nombre
     tipo : TipoArticulo
     unidadMedida : UnidadMedida
     sku [0..1]
     precioBase [0..1]
-    estado
+    estado : EstadoArticulo
   }
 
   class CapacidadesArticulo <<value object>> {
-    esComprable
-    esVendible
-    controlaStock
-    puedeUsarseEnProduccion
-    controlaVencimiento
-    permiteDescuento
+    esComprable : Boolean
+    esVendible : Boolean
+    controlaStock : Boolean
+    puedeUsarseEnProduccion : Boolean
+    controlaVencimiento : Boolean
+    permiteDescuento : Boolean
   }
 
-  ' Estructura principal M02
-  Categoria "0..1" -down- "0..*" ArticuloCatalogo : clasifica
-  ArticuloCatalogo "1" *-right- "1" CapacidadesArticulo : define
+  enum EstadoCategoria <<enum>> {
+    ACTIVA
+    INACTIVA
+  }
 
-  ' Auxiliares M02
+  enum EstadoArticulo <<enum>> {
+    ACTIVO
+    INACTIVO
+  }
+
   enum TipoArticulo <<enum>> {
     BIEN
     SERVICIO
@@ -182,26 +165,44 @@ package "M02 — Catálogo\n<size:10><font color=555555>Gestiona categorías, ar
     CM
     HORA
   }
-
-  TipoArticulo -[hidden]right- UnidadMedida
-  ArticuloCatalogo -[hidden]down- TipoArticulo
-
-  ' Nota interna de M02
-  note bottom of ArticuloCatalogo
-    <b>Catálogo por capacidades</b>
-    TipoArticulo es inmutable.
-    Si posee Categoria, pertenece al mismo Negocio.
-    CapacidadesArticulo define su comportamiento operativo.
-  end note
 }
 
-' ============================================================================
-' CONEXIONES INTER-MÓDULOS (IZQUIERDA A DERECHA)
-' ============================================================================
+' =============================================================================
+' RELACIONES PRINCIPALES
+' =============================================================================
 
-M01 -right[hidden]- M02
+' Estructura M01
+Usuario "1" -- "0..*" UsuarioNegocio : membresías
+UsuarioNegocio "1..*" -- "1" Negocio : pertenece a
+Negocio "1" -- "0..*" InvitacionNegocio : invitaciones
+UsuarioNegocio "1" -- "0..*" InvitacionNegocio : emite
 
+' Conexión M01 -> M02
 Negocio "1" -right- "0..*" Categoria : organiza
 Negocio "1" -right- "0..*" ArticuloCatalogo : contiene
+
+' Estructura M02
+Categoria "0..1" -- "0..*" ArticuloCatalogo : clasifica
+ArticuloCatalogo "1" *-- "1" CapacidadesArticulo : define
+
+' =============================================================================
+' NOTAS CONCEPTUALES DE ALTO NIVEL
+' =============================================================================
+
+note top of M01
+  <b>Organización e Identidad (M01)</b>
+  • Usuario representa la identidad global (0..N membresías).
+  • Rol y Estado pertenecen a UsuarioNegocio.
+  • Existe una única membresía histórica por combinación Usuario + Negocio.
+  • Negocio debe conservar al menos 1 PROPIETARIO activo.
+  • La aceptación de invitaciones se coordina atómicamente en el Caso de Uso.
+end note
+
+note top of M02
+  <b>Catálogo Unificado (M02)</b>
+  • ArticuloCatalogo unifica BIEN y SERVICIO.
+  • CapacidadesArticulo define elegibilidad/configuración, no hechos operativos.
+  • Categoria y ArticuloCatalogo pertenecen contextualmente a un Negocio.
+end note
 
 @enduml
