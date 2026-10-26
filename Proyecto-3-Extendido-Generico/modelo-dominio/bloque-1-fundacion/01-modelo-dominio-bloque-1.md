@@ -82,13 +82,35 @@ Implementación
 Para M01:
 
 ```text
-modulos/M01-...
+modulos/M01-organizacion-negocio.md
         ↓
 01-modelo-dominio-bloque-1.md
         ↓
 02-m01-organizacion-clases.md
         ↓
 02-m01-organizacion-clases.puml
+```
+
+Para el ciclo de vida específico de `InvitacionNegocio`:
+
+```text
+modulos/M01-organizacion-negocio.md
+        ↓
+01-modelo-dominio-bloque-1.md
+        ↓
+04-m01-estados-invitacion.md
+        ↓
+04-m01-estados-invitacion.puml
+```
+
+El diagrama de clases y el diagrama de estados son vistas complementarias:
+
+```text
+02
+→ estructura y responsabilidades
+
+04
+→ ciclo de vida de InvitacionNegocio
 ```
 
 Para M02:
@@ -450,8 +472,7 @@ Negocio
 ├── nombre
 ├── rubro opcional
 ├── moneda base
-├── modalidades operativas
-└── estado conceptual
+└── modalidades operativas
 ```
 
 ### Moneda del MVP
@@ -488,28 +509,37 @@ orientan onboarding
 
 pero no funcionan como restricciones rígidas del dominio.
 
-### Estado durante el Bloque 1
+### Ciclo Administrativo del Negocio durante el Bloque 1
 
-El MVP solo necesita operar funcionalmente con:
+El Bloque 1 no define todavía un ciclo formal de estados administrativos para `Negocio`.
+
+No se introduce en esta etapa:
 
 ```text
+EstadoNegocio
 ACTIVO
+INACTIVO
+CERRADO
+SUSPENDIDO
+ELIMINADO
 ```
 
-No se implementará todavía un flujo funcional de:
+ni operaciones como:
 
 ```text
-cerrar negocio
-suspender negocio
-eliminar negocio
-reactivar negocio
+cerrarNegocio()
+suspenderNegocio()
+reactivarNegocio()
+eliminarNegocio()
 ```
 
-Por lo tanto, este documento no define todavía un `EstadoNegocio` cerrado ni sus transiciones administrativas.
+Mientras no exista una especificación funcional posterior que defina ese ciclo, una IA no debe inventarlo a partir del uso coloquial de expresiones como “Negocio activo”.
+
+Las reglas organizacionales vigentes se aplican a todo Negocio existente administrado por la plataforma.
 
 ### Invariante Principal
 
-Todo Negocio activo debe poseer:
+Todo Negocio debe poseer:
 
 ```text
 >= 1 UsuarioNegocio ACTIVO
@@ -546,7 +576,7 @@ Rol = PROPIETARIO
 Nunca debe resultar de una creación válida:
 
 ```text
-Negocio activo
+Negocio
 +
 0 Propietarios activos
 ```
@@ -700,7 +730,7 @@ cuando dichas mutaciones deban proteger la invariante del último Propietario.
 No puede realizarse una acción que deje:
 
 ```text
-Negocio activo
+Negocio
 +
 0 propietarios activos
 ```
@@ -722,43 +752,35 @@ InvitacionNegocio
 
 Representa una propuesta formal para incorporar una persona a un Negocio.
 
-La invitación puede existir aunque el destinatario todavía no posea una cuenta.
+Puede existir aunque el destinatario todavía no posea una cuenta.
+
+La entidad protege su propio ciclo de vida, vigencia temporal e identidad destinataria cuando corresponde.
+
+No debe consultar directamente repositorios ni decidir autorización organizacional contextual.
 
 ### Información Conceptual
 
 ```text
 InvitacionNegocio
 ├── Negocio
-├── identificador seguro
-├── email destino : Email
-├── rol propuesto : Rol
+├── identificadorSeguro
+├── emailDestino : Email
+├── rolPropuesto : Rol
 ├── emisor : UsuarioNegocio
 ├── estado : EstadoInvitacion
-├── fecha de emisión
-└── vigencia
+├── fechaEmision
+└── fechaExpiracion
 ```
 
-### Emisión Válida
+`fechaExpiracion` reemplaza al atributo ambiguo `vigencia`.
 
-El `emisor` representa la membresía activa desde la cual se genera la invitación.
-
-Durante el MVP debe cumplirse:
+Debe cumplirse:
 
 ```text
-emisor.estado = ACTIVO
-emisor.rol = PROPIETARIO
-emisor.negocio = invitacion.negocio
-rolPropuesto ∈ {ENCARGADO, TRABAJADOR}
-estado inicial = PENDIENTE
+fechaExpiracion > fechaEmision
 ```
 
-No puede utilizarse una invitación inicial para asignar:
-
-```text
-PROPIETARIO
-```
-
-La promoción a Propietario es una acción explícita posterior.
+La fecha concreta se fija al emitir la invitación y no cambia retroactivamente si luego cambia la política general de duración.
 
 ### Estados
 
@@ -770,23 +792,162 @@ CANCELADA
 EXPIRADA
 ```
 
-### Aceptación
+`PENDIENTE` es el único estado con transiciones de dominio salientes.
 
-Una invitación solo puede aceptarse cuando:
+Los otros cuatro son terminales:
+
+```text
+ACEPTADA
+RECHAZADA
+CANCELADA
+EXPIRADA
+```
+
+Una entidad en estado terminal permanece históricamente persistida.
+
+Estado terminal no significa eliminación física.
+
+### Estado Persistido vs. Vigencia Temporal
+
+`PENDIENTE` no implica por sí solo que la invitación siga vigente.
+
+Puede existir temporalmente:
 
 ```text
 estado = PENDIENTE
 +
-vigente
-+
-Usuario.email = InvitacionNegocio.emailDestino
+estaVigente(ahora) = false
 ```
 
-La operación conceptual de aceptación modifica el ciclo de vida de `InvitacionNegocio`, pero no debe crear o modificar directamente una membresía.
+si la expiración se materializa de manera diferida.
 
-La creación o reactivación de `UsuarioNegocio` se coordina desde el Caso de Uso correspondiente.
+La regla temporal conceptual es:
 
-Conceptualmente:
+```text
+estaVigente(ahora)
+⇔
+ahora < fechaExpiracion
+```
+
+Por lo tanto:
+
+```text
+ahora == fechaExpiracion
+→ no vigente
+
+ahora > fechaExpiracion
+→ no vigente
+```
+
+La representación técnica del tiempo, reloj y zonas horarias pertenece a Arquitectura.
+
+La futura implementación debe utilizar un instante `ahora` coherente durante cada operación dependiente del tiempo.
+
+### Emisión Válida
+
+El `emisor` es la membresía desde la cual se genera la invitación.
+
+Durante el MVP debe cumplirse:
+
+```text
+emisor.estado = ACTIVO
+emisor.rol = PROPIETARIO
+emisor.negocio = invitacion.negocio
+
+rolPropuesto ∈ {ENCARGADO, TRABAJADOR}
+
+estado inicial = PENDIENTE
+```
+
+Además, como guardias contextuales de la emisión:
+
+```text
+destinatario sin UsuarioNegocio ACTIVO
++
+sin otra InvitacionNegocio PENDIENTE y vigente
+funcionalmente equivalente para:
+Negocio + emailDestino
+```
+
+Estas condiciones requieren información externa a la instancia aislada de `InvitacionNegocio`.
+
+No implican que la entidad deba consultar repositorios.
+
+No puede utilizarse una invitación inicial para asignar:
+
+```text
+PROPIETARIO
+```
+
+La promoción a Propietario es una acción explícita posterior de gestión de membresías.
+
+### Identidad del Destinatario
+
+Durante el MVP, aceptar o rechazar una invitación requiere que:
+
+```text
+Usuario.email
+=
+InvitacionNegocio.emailDestino
+```
+
+se interprete mediante la equivalencia funcional definida por el Value Object `Email`.
+
+No debe introducirse automáticamente en el dominio un atributo técnico:
+
+```text
+emailNormalizado
+```
+
+La normalización necesaria para persistencia, búsquedas o índices se decidirá posteriormente.
+
+Poseer el enlace de invitación no constituye autorización suficiente.
+
+### Aceptación
+
+Una aceptación válida requiere:
+
+```text
+estado = PENDIENTE
++
+estaVigente(ahora)
++
+Email del Usuario autenticado equivalente a emailDestino
+```
+
+La operación local de la entidad puede expresarse conceptualmente mediante:
+
+```text
+puedeSerAceptadaPor(email, ahora)
+aceptarPara(email, ahora)
+```
+
+`aceptarPara(...)` debe volver a validar las invariantes locales.
+
+Nunca debe confiar en una preconsulta anterior como garantía definitiva.
+
+La ausencia de membresía ACTIVA es una guardia contextual que debe revalidarse al confirmar la aceptación.
+
+Si el Usuario ya posee `UsuarioNegocio ACTIVO` en el Negocio:
+
+```text
+NO aceptar
+NO crear otra membresía
+NO reactivar
+NO cambiar rol silenciosamente
+```
+
+La modificación de rol pertenece a:
+
+```text
+Negocio.cambiarRolMiembro(...)
+```
+
+### Aceptación y Membresía
+
+`InvitacionNegocio` no crea ni reactiva directamente `UsuarioNegocio`.
+
+El Caso de Uso coordina:
 
 ```text
 InvitacionNegocio
@@ -794,10 +955,24 @@ PENDIENTE → ACEPTADA
 
         +
 
-Negocio.incorporarOReactivarMiembro(...)
+Negocio.incorporarOReactivarMiembro(
+    usuario,
+    rolPropuesto
+)
 ```
 
-La operación completa debe ser atómica:
+La incorporación produce:
+
+```text
+si no existe membresía histórica:
+→ crear UsuarioNegocio ACTIVO
+
+si existe UsuarioNegocio INACTIVO:
+→ reactivar la misma membresía
+→ aplicar rolPropuesto
+```
+
+La operación completa debe ser funcionalmente atómica:
 
 ```text
 Invitación ACEPTADA
@@ -811,25 +986,248 @@ o:
 ninguna modificación confirmada
 ```
 
-Nunca debe persistirse una invitación ACEPTADA si la incorporación/reactivación correspondiente no pudo completarse.
+Nunca debe persistirse `ACEPTADA` si la incorporación/reactivación correspondiente no pudo confirmarse.
 
-La forma técnica de implementar esa atomicidad se definirá en Arquitectura.
+La estrategia técnica de atomicidad se define en Arquitectura.
+
+### Rechazo
+
+La transición:
+
+```text
+PENDIENTE → RECHAZADA
+```
+
+requiere:
+
+```text
+estado = PENDIENTE
++
+estaVigente(ahora)
++
+Email del Usuario autenticado equivalente a emailDestino
+```
+
+`RECHAZADA` representa una decisión explícita del destinatario.
+
+No crea, reactiva ni modifica membresías.
+
+Conceptualmente puede expresarse mediante:
+
+```text
+rechazarPara(email, ahora)
+```
+
+### Cancelación
+
+La transición:
+
+```text
+PENDIENTE → CANCELADA
+```
+
+no requiere vigencia temporal.
+
+La autorización contextual exige:
+
+```text
+UsuarioNegocio ACTIVO
++
+rol = PROPIETARIO
++
+mismo Negocio
+```
+
+La entidad puede proteger localmente la transición mediante:
+
+```text
+cancelar()
+```
+
+validando que su estado actual sea `PENDIENTE`.
+
+No necesita recibir el actor para decidir la autorización organizacional.
+
+Por lo tanto, una invitación:
+
+```text
+PENDIENTE + no vigente
+```
+
+puede cancelarse mientras la expiración todavía no haya sido materializada.
+
+### Expiración
+
+La transición:
+
+```text
+PENDIENTE → EXPIRADA
+```
+
+requiere:
+
+```text
+!estaVigente(ahora)
+```
+
+Conceptualmente puede existir:
+
+```text
+expirar(ahora)
+```
+
+para materializar la transición.
+
+Esto no obliga a utilizar:
+
+```text
+cron
+scheduler
+background worker
+```
+
+La expiración puede materializarse posteriormente mediante evaluación bajo demanda, proceso programado u otra estrategia equivalente.
+
+### Cancelación vs. Expiración
+
+Una invitación:
+
+```text
+PENDIENTE
++
+no vigente
+```
+
+puede estar expuesta concurrentemente a:
+
+```text
+cancelar()
+```
+
+y:
+
+```text
+expirar(ahora)
+```
+
+Solo una transición puede confirmarse.
+
+La segunda operación debe encontrar que el estado ya no es `PENDIENTE`.
+
+La estrategia técnica de concurrencia se definirá posteriormente.
+
+### Unicidad de Invitación Pendiente
+
+Regla funcional:
+
+> Para una misma combinación `Negocio + Email funcionalmente equivalente` puede existir como máximo una invitación `PENDIENTE` y vigente.
+
+Si existe una invitación `PENDIENTE` y vigente equivalente:
+
+```text
+NO crear otra.
+```
+
+La UX puede ofrecer:
+
+```text
+reenviar
+compartir nuevamente
+copiar enlace
+cancelar
+```
+
+Si existe una invitación `PENDIENTE` pero no vigente, no debe bloquear permanentemente una nueva emisión.
+
+Conceptualmente, una nueva emisión puede coordinar consistentemente:
+
+```text
+PENDIENTE vencida → EXPIRADA
++
+crear nueva PENDIENTE
+```
+
+La implementación deberá proteger esta invariante frente a concurrencia.
+
+### Reenvío
+
+Reenviar o compartir nuevamente:
+
+```text
+NO crea otra InvitacionNegocio
+NO cambia estado
+NO cambia rolPropuesto
+NO cambia fechaExpiracion
+```
+
+No se modela como transición de estado.
+
+El canal de distribución es externo al ciclo de vida.
+
+Si se desea modificar `rolPropuesto`:
+
+```text
+cancelar la invitación existente
++
+emitir una nueva
+```
+
+No editar silenciosamente el rol de una invitación ya emitida.
 
 ### Canal de Distribución
 
-El canal no forma parte de la identidad de la invitación.
+El canal no forma parte de la identidad ni del ciclo de vida de la invitación.
 
 Conceptualmente:
 
 ```text
 InvitacionNegocio
         ↓
-enlace seguro
+identificador / enlace seguro
         ↓
 WhatsApp / copiar enlace / otro canal futuro
 ```
 
 WhatsApp no constituye una entidad del dominio de Organización.
+
+La estrategia concreta del identificador seguro queda abierta:
+
+```text
+UUID
+token aleatorio
+hash almacenado
+rotación
+otra alternativa
+```
+
+Poseer el enlace no reemplaza autenticación ni coincidencia de identidad.
+
+### Guardias Locales y Contextuales
+
+Ejemplos de guardias locales:
+
+```text
+estado = PENDIENTE
+estaVigente(ahora)
+Email equivalente a emailDestino
+transición permitida
+```
+
+Ejemplos de guardias contextuales:
+
+```text
+emisor PROPIETARIO ACTIVO
+mismo Negocio
+existencia de otra PENDIENTE
+membresía ACTIVA del destinatario
+unicidad contextual
+```
+
+La entidad protege sus invariantes locales.
+
+El Caso de Uso aporta autorización, contexto, consultas externas y coordinación entre entidades.
+
+Una prevalidación utilizada por UX no sustituye la revalidación al confirmar.
 
 ---
 
@@ -1168,16 +1566,56 @@ if articulo.puedeEliminarseFisicamente():
 Email
 ```
 
-Representa una dirección de correo válida utilizada funcionalmente por Usuario e InvitacionNegocio.
-
-Participa especialmente en:
+Representa una dirección de correo válida utilizada funcionalmente por:
 
 ```text
 Usuario
 InvitacionNegocio
 ```
 
-La estrategia técnica de normalización y comparación se definirá posteriormente.
+Durante el MVP, el Email participa en dos invariantes importantes:
+
+```text
+1. identidad principal de Usuario;
+2. vinculación funcional del destinatario de una InvitacionNegocio.
+```
+
+La igualdad funcional de Email debe ser consistente en todo el sistema.
+
+Por ejemplo, si dos representaciones son consideradas equivalentes para registrar un Usuario, deben ser consideradas equivalentes también para:
+
+```text
+aceptar/rechazar invitaciones
+detectar invitaciones pendientes equivalentes
+consultar membresías por destinatario
+```
+
+No deben existir dos reglas de normalización distintas según el módulo.
+
+La estrategia técnica exacta permanece abierta:
+
+```text
+case folding
+Unicode normalization
+collation
+representación persistida
+índice funcional
+otra alternativa
+```
+
+No asumir reglas específicas de proveedores como Gmail (`+tags`, puntos, etc.) salvo decisión explícita posterior.
+
+Una IA no debe introducir automáticamente un atributo de dominio:
+
+```text
+emailNormalizado
+```
+
+aunque la persistencia pueda necesitar una representación normalizada o índice auxiliar.
+
+Durante el MVP debe preservarse además la unicidad funcional global de `Usuario.email`.
+
+La UI puede prevalidar disponibilidad, pero la persistencia debe ser la última línea de defensa frente a registros concurrentes equivalentes.
 
 ---
 
@@ -2027,7 +2465,7 @@ Negocio
 UsuarioNegocio
 ```
 
-Todo Negocio activo posee al menos una membresía ACTIVA con rol PROPIETARIO.
+Todo Negocio posee al menos una membresía ACTIVA con rol PROPIETARIO mientras no exista un ciclo formal de cierre/eliminación.
 
 Para una misma combinación:
 
@@ -2101,21 +2539,42 @@ o
 reactivar UsuarioNegocio histórico
 ```
 
-Esta consecuencia NO representa una asociación estructural directa entre InvitacionNegocio y UsuarioNegocio.
+Esta consecuencia NO representa una asociación estructural obligatoria entre `InvitacionNegocio` y `UsuarioNegocio`.
 
 La coordinación pertenece al comportamiento dinámico del Caso de Uso.
 
 Conceptualmente:
 
 ```text
-InvitacionNegocio.aceptarPara(...)
-        ↓
-Caso de Uso
-        ↓
-Negocio.incorporarOReactivarMiembro(...)
+Caso de Uso Aceptar Invitación
+        │
+        ├── revalida guardias contextuales
+        │
+        ├── InvitacionNegocio.aceptarPara(email, ahora)
+        │
+        └── Negocio.incorporarOReactivarMiembro(
+                usuario,
+                rolPropuesto
+            )
 ```
 
-La operación completa debe conservar consistencia/atomicidad funcional.
+Antes de confirmar debe revalidarse que el Usuario no posea ya una membresía `ACTIVA`.
+
+La operación completa debe preservar atomicidad funcional:
+
+```text
+InvitacionNegocio = ACEPTADA
++
+UsuarioNegocio creada/reactivada
+```
+
+o:
+
+```text
+ninguna modificación confirmada
+```
+
+No agregar automáticamente una FK estructural desde InvitacionNegocio hacia la membresía resultante solo porque ambas participan del mismo Caso de Uso.
 
 ---
 
@@ -2226,39 +2685,68 @@ Esas decisiones pertenecen al Diseño Técnico.
 
 ## Organización
 
-### INV-ORG-001
+### INV-ORG-001 — Propietario Activo
 
-Todo Negocio activo conserva al menos un Propietario activo.
+Mientras no exista un ciclo formal de cierre/eliminación de Negocio, todo Negocio debe conservar al menos un `UsuarioNegocio`:
 
-### INV-ORG-002
+```text
+estado = ACTIVO
+rol = PROPIETARIO
+```
+
+Ninguna operación puede confirmar un resultado con cero Propietarios activos.
+
+### INV-ORG-002 — Rol Contextual
 
 El Rol pertenece a `UsuarioNegocio`, no al `Usuario` global.
 
-### INV-ORG-003
+### INV-ORG-003 — Cuenta Global Independiente
 
-Un Usuario puede existir sin Negocio y puede participar en 0..N Negocios.
+Un Usuario puede existir sin Negocio y participar en `0..N` Negocios.
 
-### INV-ORG-004
+### INV-ORG-004 — Independencia de Membresías
 
-Desactivar una membresía no desactiva la cuenta global ni afecta otras membresías.
+Desactivar una membresía:
 
-### INV-ORG-005
+```text
+ACTIVO → INACTIVO
+```
 
-Para una misma combinación `Usuario + Negocio` existe una única membresía conceptual histórica.
+no desactiva la cuenta global, no afecta otros Negocios y no elimina historia.
 
-La reincorporación reutiliza esa membresía.
+### INV-ORG-005 — Membresía Histórica Única
 
-Si la membresía ya está ACTIVA, una nueva incorporación no debe duplicarla ni modificar silenciosamente su rol.
+Para una misma combinación:
 
-### INV-ORG-006
+```text
+Usuario + Negocio
+```
 
-Una invitación solamente puede ser aceptada por el Usuario cuyo email coincide con `emailDestino`.
+existe una única membresía conceptual histórica.
 
-### INV-ORG-007
+Una reincorporación reutiliza esa membresía.
 
-Solo una invitación `PENDIENTE` y vigente puede aceptarse.
+Si ya está `ACTIVA`, una incorporación no debe duplicarla ni modificar silenciosamente su rol.
 
-### INV-ORG-008
+### INV-ORG-006 — Identidad Destinataria
+
+Aceptar o rechazar una invitación requiere que el Email del Usuario autenticado sea funcionalmente equivalente a `emailDestino`.
+
+Poseer el enlace no constituye autorización suficiente.
+
+### INV-ORG-007 — Aceptación Requiere PENDIENTE + Vigencia
+
+Solo una invitación:
+
+```text
+estado = PENDIENTE
++
+estaVigente(ahora)
+```
+
+puede ser aceptada.
+
+### INV-ORG-008 — Contexto Autorizado
 
 Toda operación de Negocio exige conceptualmente:
 
@@ -2274,15 +2762,13 @@ Rol
 permiso específico del módulo
 ```
 
-### INV-ORG-009
+### INV-ORG-009 — Modalidades no Restrictivas
 
-Las modalidades adaptan la experiencia pero no funcionan como restricciones rígidas del dominio.
+Las modalidades adaptan UX, navegación y onboarding, pero no funcionan como restricciones rígidas permanentes del dominio.
 
-### INV-ORG-010
+### INV-ORG-010 — Emisor del Mismo Negocio
 
-Toda `InvitacionNegocio` debe pertenecer al mismo Negocio que la membresía `UsuarioNegocio` que la emite.
-
-Conceptualmente:
+Toda `InvitacionNegocio` pertenece al mismo Negocio que la membresía emisora:
 
 ```text
 InvitacionNegocio.negocio
@@ -2290,19 +2776,23 @@ InvitacionNegocio.negocio
 UsuarioNegocioEmisor.negocio
 ```
 
-### INV-ORG-011
+El emisor debe estar `ACTIVO` y poseer rol `PROPIETARIO` al emitir.
 
-Crear un Negocio debe crear de forma funcionalmente atómica su primera membresía:
+### INV-ORG-011 — Creación Atómica del Negocio
+
+Crear un Negocio debe producir funcionalmente:
 
 ```text
-UsuarioNegocio
+Negocio
++
+UsuarioNegocio del creador
 estado = ACTIVO
 rol = PROPIETARIO
 ```
 
-No puede resultar un Negocio activo recién creado sin Propietario.
+Los resultados se confirman juntos o no se confirma ninguno.
 
-### INV-ORG-012
+### INV-ORG-012 — Invitaciones Iniciales sin Propiedad
 
 La incorporación inicial mediante invitación solo admite:
 
@@ -2311,24 +2801,151 @@ ENCARGADO
 TRABAJADOR
 ```
 
-`PROPIETARIO` requiere una promoción explícita posterior.
+`PROPIETARIO` requiere promoción explícita posterior.
 
-### INV-ORG-013
+### INV-ORG-013 — Aceptación y Membresía Atómicas
 
-Aceptar una invitación no crea ni modifica directamente una membresía desde la entidad `InvitacionNegocio`.
+`InvitacionNegocio` no crea directamente membresías.
 
 El Caso de Uso coordina:
 
 ```text
 InvitacionNegocio → ACEPTADA
 +
-UsuarioNegocio creado/reactivado
+UsuarioNegocio creada/reactivada
 ```
 
-La operación completa debe conservar atomicidad: se confirman ambos cambios o ninguno.
+Los cambios deben confirmarse juntos o ninguno.
+
+### INV-ORG-014 — PENDIENTE no Implica Vigencia
+
+El estado persistido `PENDIENTE` y la vigencia temporal son conceptos diferentes.
+
+Puede existir temporalmente:
+
+```text
+PENDIENTE
++
+estaVigente(ahora) = false
+```
+
+### INV-ORG-015 — Expiración Determinada al Emitir
+
+Toda InvitacionNegocio posee:
+
+```text
+fechaExpiracion > fechaEmision
+```
+
+`fechaExpiracion` se fija al emitir.
+
+Cambios posteriores en la política de duración no modifican retroactivamente invitaciones existentes.
+
+### INV-ORG-016 — Límite Temporal
+
+```text
+estaVigente(ahora)
+⇔
+ahora < fechaExpiracion
+```
+
+Por lo tanto:
+
+```text
+ahora >= fechaExpiracion
+→ no vigente
+```
+
+### INV-ORG-017 — Unicidad de Invitación Pendiente Vigente
+
+Para:
+
+```text
+Negocio + Email funcionalmente equivalente
+```
+
+puede existir como máximo una invitación `PENDIENTE` y vigente.
+
+La implementación debe proteger esta invariante frente a concurrencia.
+
+### INV-ORG-018 — Reenvío sin Nuevo Ciclo
+
+Reenviar:
+
+```text
+NO crea otra InvitacionNegocio
+NO cambia estado
+NO cambia rolPropuesto
+NO cambia fechaExpiracion
+```
+
+Para cambiar rol propuesto se cancela la invitación existente y se emite una nueva.
+
+### INV-ORG-019 — Membresía ACTIVA Impide Reincorporación por Invitación
+
+No debe emitirse ni aceptarse una invitación como mecanismo para reincorporar o cambiar el rol de un Usuario que ya posee `UsuarioNegocio ACTIVO` en ese Negocio.
+
+La ausencia de membresía ACTIVA se revalida al confirmar la aceptación.
+
+### INV-ORG-020 — Cancelación no Requiere Vigencia
+
+Una invitación persistida como `PENDIENTE` puede cancelarse por un Propietario autorizado aunque:
+
+```text
+estaVigente(ahora) = false
+```
+
+si todavía no fue materializada como `EXPIRADA`.
+
+### INV-ORG-021 — Expiración
+
+Solo puede materializarse:
+
+```text
+PENDIENTE → EXPIRADA
+```
+
+cuando:
+
+```text
+ahora >= fechaExpiracion
+```
+
+La forma técnica de detectar/materializar el vencimiento queda abierta.
+
+### INV-ORG-022 — Estados Terminales
+
+```text
+ACEPTADA
+RECHAZADA
+CANCELADA
+EXPIRADA
+```
+
+no admiten transiciones posteriores de dominio.
+
+### INV-ORG-023 — Email Global Funcionalmente Único
+
+Durante el MVP no deben coexistir dos `Usuario` cuyos Emails sean funcionalmente equivalentes según las reglas del Value Object `Email`.
+
+### INV-ORG-024 — Guardias Contextuales y Concurrencia
+
+Las preconsultas sobre:
+
+```text
+último Propietario
+membresía existente
+invitación pendiente
+Email disponible
+```
+
+no constituyen garantía definitiva.
+
+La validación relevante y la mutación deben confirmarse dentro de una frontera de consistencia apropiada.
+
+La estrategia técnica se define posteriormente.
 
 ---
-
 
 ## Catálogo
 
@@ -2597,9 +3214,15 @@ Conceptualmente, toda modificación relevante debe poder responder:
 Ejemplos del Bloque 1:
 
 ```text
+emisión de invitación
+aceptación/rechazo de invitación
+cancelación de invitación
+materialización de expiración
+
 cambio de rol
-desactivación de membresía
+desactivación/reactivación de membresía
 promoción a propietario
+
 creación de artículo
 edición relevante de artículo
 cambio de SKU
@@ -2798,7 +3421,6 @@ class Negocio <<entity>> {
   rubro [0..1]
   monedaBase : Moneda
   modalidades : Set<ModalidadOperativa>
-  estado
   --
   configurarModalidades()
   tienePropietarioActivo() : Boolean
@@ -2822,14 +3444,14 @@ class InvitacionNegocio <<entity>> {
   rolPropuesto : Rol
   estado : EstadoInvitacion
   fechaEmision
-  vigencia
+  fechaExpiracion
   --
-  estaVigente() : Boolean
-  puedeSerAceptadaPor()
-  aceptarPara()
-  rechazar()
+  estaVigente(ahora) : Boolean
+  puedeSerAceptadaPor(email : Email, ahora) : Boolean
+  aceptarPara(email : Email, ahora)
+  rechazarPara(email : Email, ahora)
   cancelar()
-  expirar()
+  expirar(ahora)
 }
 
 class Email <<value object>>
@@ -2970,10 +3592,20 @@ PROPIETARIO activo.
 end note
 
 note bottom of InvitacionNegocio
-Aceptar valida invitación,
-pero el Caso de Uso coordina
-atómicamente aceptación
-+ creación/reactivación de membresía.
+PENDIENTE no implica vigencia.
+
+Aceptar/rechazar validan
+estado + tiempo + Email.
+
+Cancelar no exige vigencia.
+
+Reenviar no crea otra invitación
+ni extiende fechaExpiracion.
+
+El Caso de Uso coordina
+atómicamente ACEPTADA
++ crear/reactivar membresía,
+revalidando membresía ACTIVA.
 end note
 
 note right of ArticuloCatalogo
@@ -3009,16 +3641,29 @@ La vista general se complementa con:
 
 ```text
 01-diagrama-general.puml
+
 02-m01-organizacion-clases.md
 02-m01-organizacion-clases.puml
+
 03-m02-catalogo-clases.md
 03-m02-catalogo-clases.puml
+
+04-m01-estados-invitacion.md
+04-m01-estados-invitacion.puml
 ```
 
-y con las vistas dinámicas pendientes:
+Estado conceptual:
 
 ```text
-04-m01-estados-invitacion.puml
+01 — mapa general                         requiere sincronización puntual M01
+02 — M01 clases                           requiere sincronización puntual
+03 — M02 clases                           congelado
+04 — InvitacionNegocio estados            congelado
+```
+
+Vistas dinámicas todavía pendientes:
+
+```text
 05-m01-estados-membresia.puml
 06-m02-estados-articulo.puml
 
@@ -3028,6 +3673,8 @@ secuencias/
 ```
 
 El diagrama de clases no sustituye los diagramas dinámicos.
+
+El Diagrama 4 es la referencia visual específica para el ciclo de vida de `InvitacionNegocio`.
 
 ---
 
@@ -3383,7 +4030,7 @@ JWT / sesiones
 
 RequestContext
 
-forma de transportar/resolver Negocio activo
+forma de transportar/resolver el contexto de Negocio seleccionado/autorizado
 
 auditoría técnica
 
@@ -3392,6 +4039,14 @@ almacenamiento de imágenes
 forma concreta de consultar dependencias entre módulos
 
 forma concreta de preservar valores históricos
+
+duración configurable de invitaciones
+implementación concreta del reloj
+representación técnica de fecha/hora
+política de timezone de presentación
+materialización definitiva de expiración
+estrategia del identificador/token de invitación
+hash/rotación del token si correspondiera
 ```
 
 ## 19.1. Restricción de Interpretación
@@ -3464,9 +4119,13 @@ si entre ambas acciones el estado relevante puede cambiar.
 Ejemplos:
 
 - último Propietario activo;
+- Email global funcionalmente único;
+- emisión concurrente de invitaciones equivalentes;
+- aceptación concurrente de una invitación;
+- aceptación vs. incorporación paralela por otra vía;
+- cancelación vs. expiración;
 - SKU único;
 - nombre de Categoria único;
-- aceptación de invitación;
 - eliminación física;
 - cambios estructurales dependientes de stock/recetas.
 
@@ -3600,6 +4259,8 @@ historia cuantitativa
 dependencias estructurales
 último Propietario
 membresía histórica
+invitación PENDIENTE equivalente
+membresía ACTIVA del destinatario
 ```
 
 La preconsulta UX no reemplaza la garantía final.
@@ -3644,28 +4305,39 @@ Evitar especialmente:
 
 1. asignar Rol directamente a Usuario;
 2. duplicar UsuarioNegocio al reincorporar;
-3. dejar Negocio sin Propietario activo;
-4. marcar Invitacion ACEPTADA sin incorporar/reactivar membresía;
-5. aceptar invitación para email diferente;
-6. usar Categoria de otro Negocio;
-7. permitir nueva asociación a Categoria INACTIVA;
-8. convertir SERVICIO en artículo con stock;
-9. persistir capacidades inválidas mediante setters parciales;
-10. activar artículo sin uso operativo;
-11. habilitar venta sin precio válido;
-12. cambiar UnidadMedida reinterpretando cantidades históricas;
-13. bloquear para siempre una capacidad estructural únicamente porque existe historia;
-14. eliminar artículo/categoría después de una consulta obsoleta sin revalidar;
-15. reutilizar un SKU que sigue actualmente asignado;
-16. tratar el SKU como identidad del artículo;
-17. reconstruir ventas históricas con precio actual;
-18. utilizar Float binario para dinero;
-19. confiar únicamente en autorización del frontend;
-20. mezclar recursos de Negocios diferentes;
-21. inventar `EstadoNegocio` o un ciclo de cierre/reactivación no definido;
-22. inventar estados adicionales para Usuario, Membresía, Categoria o Articulo;
-23. tratar `identificadorSeguro` de InvitacionNegocio como una decisión cerrada sobre token/UUID/hash;
-24. convertir una precondición de UI en la única protección del backend.
+3. utilizar un Boolean `activo` en lugar de `EstadoMembresia`;
+4. dejar Negocio sin Propietario activo;
+5. inventar `EstadoNegocio` o un ciclo administrativo no definido;
+6. usar `vigencia` como atributo ambiguo de InvitacionNegocio;
+7. asumir `PENDIENTE == vigente`;
+8. aceptar o rechazar una invitación vencida;
+9. extender `fechaExpiracion` al reenviar;
+10. crear otra InvitacionNegocio al reenviar;
+11. modificar `rolPropuesto` de una invitación ya emitida;
+12. aceptar invitación para Email diferente;
+13. utilizar invitación para cambiar rol de miembro ACTIVO;
+14. marcar InvitacionNegocio ACEPTADA sin crear/reactivar membresía;
+15. confiar en una preconsulta anterior sin revalidar;
+16. consultar Repositories desde InvitacionNegocio;
+17. utilizar el identificador seguro como única autorización;
+18. permitir dos invitaciones PENDIENTES equivalentes bajo concurrencia;
+19. utilizar Categoria de otro Negocio;
+20. permitir nueva asociación a Categoria INACTIVA;
+21. convertir SERVICIO en artículo con stock;
+22. persistir capacidades inválidas mediante setters parciales;
+23. activar artículo sin uso operativo;
+24. habilitar venta sin precio válido;
+25. cambiar UnidadMedida reinterpretando cantidades históricas;
+26. bloquear para siempre una capacidad estructural solo porque existe historia;
+27. eliminar artículo/categoría después de una consulta obsoleta sin revalidar;
+28. reutilizar un SKU que sigue actualmente asignado;
+29. tratar SKU como identidad del artículo;
+30. reconstruir ventas históricas con precio actual;
+31. utilizar Float binario para dinero;
+32. confiar únicamente en autorización del frontend;
+33. mezclar recursos de Negocios diferentes;
+34. tratar `identificadorSeguro` como una decisión cerrada sobre UUID/token/hash;
+35. convertir una precondición de UI en la única protección del backend.
 
 ## 20.10. Derivación de Tests
 
@@ -3685,131 +4357,255 @@ preservación histórica
 
 ---
 
+## 20.11. Lectura Específica de `InvitacionNegocio`
+
+Una IA debe separar siempre tres niveles:
+
+```text
+InvitacionNegocio
+→ protege estado, tiempo, identidad destinataria
+  y transiciones locales.
+
+Caso de Uso
+→ aporta actor autorizado, contexto de Negocio,
+  consultas de membresía, unicidad contextual
+  y coordinación entre entidades.
+
+Persistencia
+→ aporta integridad y última línea de defensa
+  frente a carreras cuando corresponda.
+```
+
+No transformar automáticamente:
+
+```text
+estaVigente(ahora)
+```
+
+en una dependencia directa desde la entidad hacia un reloj global.
+
+Una futura implementación puede obtener un único `ahora` desde la capa coordinadora y pasarlo al dominio.
+
+No transformar:
+
+```text
+PENDIENTE y vigente única
+```
+
+en una decisión SQL concreta desde este documento.
+
+La arquitectura/modelo relacional deberá elegir una garantía técnica que preserve la invariante.
+
+Reenviar:
+
+```text
+NO constituye transición
+NO crea una entidad nueva
+NO extiende fechaExpiracion
+```
+
+El canal de distribución permanece fuera del state machine.
+
+---
+
 # 21. Criterios de Aceptación del Modelo de Dominio
 
 El Modelo de Dominio del Bloque 1 se considera válido cuando:
 
 ## Organización
 
-1. Usuario representa una cuenta global independiente de los Negocios.
-2. Usuario puede participar en 0..N Negocios mediante UsuarioNegocio.
+1. Usuario representa una identidad global independiente de los Negocios.
+2. Usuario puede participar en `0..N` Negocios mediante UsuarioNegocio.
 3. El Rol pertenece a UsuarioNegocio.
-4. EstadoMembresia se limita a ACTIVO/INACTIVO en el MVP.
+4. EstadoMembresia se limita a `ACTIVO/INACTIVO` durante el MVP.
 5. Para Usuario + Negocio existe una única membresía conceptual histórica.
 6. Reincorporar reutiliza la membresía histórica.
 7. Una membresía ya ACTIVA no se duplica ni modifica silenciosamente su rol.
-8. Un Negocio activo conserva al menos un PROPIETARIO activo.
-9. Crear Negocio incluye atómicamente su primer UsuarioNegocio ACTIVO PROPIETARIO.
+8. Todo Negocio conserva al menos un PROPIETARIO ACTIVO mientras no exista un ciclo formal de cierre.
+9. Crear Negocio incluye funcionalmente su primer UsuarioNegocio ACTIVO/PROPIETARIO.
 10. La incorporación inicial admite ENCARGADO/TRABAJADOR.
 11. PROPIETARIO requiere promoción explícita.
 12. InvitacionNegocio puede existir antes que el Usuario destinatario.
 13. InvitacionNegocio nace PENDIENTE.
-14. El emisor es UsuarioNegocio ACTIVO PROPIETARIO del mismo Negocio.
-15. Solo una invitación PENDIENTE, vigente y vinculada al email correcto puede aceptarse.
-16. Aceptar invitación + crear/reactivar membresía constituye una operación funcionalmente atómica.
-17. WhatsApp no forma parte de la identidad del Usuario ni de la Invitación.
-18. Las modalidades son orientativas y no restricciones rígidas.
+14. El emisor es UsuarioNegocio ACTIVO/PROPIETARIO del mismo Negocio.
+15. InvitacionNegocio utiliza `fechaEmision` y `fechaExpiracion`.
+16. `fechaExpiracion > fechaEmision`.
+17. `PENDIENTE` no implica vigencia temporal.
+18. `estaVigente(ahora)` equivale a `ahora < fechaExpiracion`.
+19. `ahora >= fechaExpiracion` implica no vigente.
+20. Aceptar requiere PENDIENTE + vigente + identidad destinataria coincidente.
+21. Rechazar requiere PENDIENTE + vigente + identidad destinataria coincidente.
+22. Cancelar requiere PENDIENTE pero no requiere vigencia.
+23. Expirar requiere PENDIENTE + pérdida de vigencia.
+24. ACEPTADA, RECHAZADA, CANCELADA y EXPIRADA son estados terminales.
+25. Para Negocio + Email equivalente existe como máximo una PENDIENTE vigente.
+26. Reenviar reutiliza la misma InvitacionNegocio.
+27. Reenviar no cambia estado, rolPropuesto ni fechaExpiracion.
+28. Cambiar rol propuesto requiere cancelar + emitir una nueva invitación.
+29. No se emite/acepta invitación para utilizarla como cambio de rol de miembro ACTIVO.
+30. La ausencia de membresía ACTIVA se revalida al aceptar.
+31. Aceptar invitación + crear/reactivar membresía es funcionalmente atómico.
+32. Una membresía histórica INACTIVA se reactiva en lugar de duplicarse.
+33. Email posee una única semántica de equivalencia funcional en M01.
+34. Usuario.email es funcionalmente único durante el MVP.
+35. Poseer el enlace de invitación no sustituye autenticación ni identidad coincidente.
+36. WhatsApp y otros canales de distribución no forman parte del ciclo de vida de InvitacionNegocio.
+37. El modelo no introduce un EstadoNegocio no especificado.
 
 ## Catálogo
 
-19. Cada Categoria pertenece exactamente a un Negocio.
-20. Cada ArticuloCatalogo pertenece exactamente a un Negocio.
-21. Categoria es opcional.
-22. Si existe Categoria, pertenece al mismo Negocio que el artículo.
-23. Categoria INACTIVA conserva asociaciones existentes.
-24. Categoria INACTIVA no admite nuevas asociaciones.
-25. Categoria histórica INACTIVA no bloquea reactivar el artículo.
-26. Una Categoria con artículos asociados no puede eliminarse físicamente.
-27. TipoArticulo distingue BIEN/SERVICIO y es inmutable.
-28. CapacidadesArticulo es un Value Object sin identidad propia.
-29. Las capacidades se modifican como configuración completa válida.
-30. SERVICIO no controla stock ni vencimiento y no es insumo de producción.
-31. Vencimiento implica BIEN + stock.
-32. Producción implica BIEN + stock.
-33. Descuento implica vendible.
-34. Deshabilitar venta deshabilita descuento y conserva precio.
-35. Habilitar venta exige precioBase válido.
-36. Articulo ACTIVO exige uso operativo mínimo.
-37. Articulo INACTIVO puede quedar sin uso operativo.
-38. precioBase de artículo vendible es >= 0 y cero es válido.
-39. costoReferencia opcional es >= 0 cuando existe.
-40. SKU actual es único por Negocio entre ACTIVOS e INACTIVOS.
-41. Cambiar SKU libera el valor anterior solo después de confirmar el nuevo estado.
-42. SKU no constituye identidad técnica del artículo.
-43. UnidadMedida es catálogo global normalizado.
-44. SERVICIO recibe inicialmente UNIDAD.
-45. Cambiar UnidadMedida no puede reinterpretar cantidades históricas.
-46. Capacidades comerciales pueden cambiar sin reescribir historia.
-47. Capacidades estructurales requieren validar dependencias compatibles.
-48. La mera existencia de historia no bloquea necesariamente para siempre una capacidad estructural.
-49. Desactivar artículo conserva identidad, historia, referencias y no modifica stock de M04.
-50. Reactivar revalida las invariantes necesarias.
-51. Eliminar físicamente artículo exige ausencia de historia/referencias/dependencias.
-52. M02 representa estado actual y los módulos consumidores preservan su historia necesaria.
-53. Las capacidades no se confunden con hechos operativos.
-54. Los importes utilizan Negocio.monedaBase.
-55. El dominio admite cantidades fraccionarias.
+38. Cada Categoria pertenece exactamente a un Negocio.
+39. Cada ArticuloCatalogo pertenece exactamente a un Negocio.
+40. Categoria es opcional.
+41. Si existe Categoria, pertenece al mismo Negocio que el artículo.
+42. Categoria INACTIVA conserva asociaciones existentes.
+43. Categoria INACTIVA no admite nuevas asociaciones.
+44. Categoria histórica INACTIVA no bloquea reactivar el artículo.
+45. Una Categoria con artículos asociados no puede eliminarse físicamente.
+46. TipoArticulo distingue BIEN/SERVICIO y es inmutable.
+47. CapacidadesArticulo es Value Object sin identidad propia.
+48. Las capacidades se modifican como configuración completa válida.
+49. SERVICIO no controla stock ni vencimiento y no es insumo de producción.
+50. Vencimiento implica BIEN + stock.
+51. Producción implica BIEN + stock.
+52. Descuento implica vendible.
+53. Deshabilitar venta deshabilita descuento y conserva precio.
+54. Habilitar venta exige precioBase válido.
+55. Articulo ACTIVO exige uso operativo mínimo.
+56. Articulo INACTIVO puede quedar sin uso operativo.
+57. precioBase de artículo vendible es >= 0 y cero es válido.
+58. costoReferencia opcional es >= 0 cuando existe.
+59. SKU actual es único por Negocio entre ACTIVOS e INACTIVOS.
+60. Cambiar SKU libera el valor anterior solo después de confirmar el nuevo estado.
+61. SKU no constituye identidad técnica del artículo.
+62. UnidadMedida es catálogo global normalizado.
+63. SERVICIO recibe inicialmente UNIDAD.
+64. Cambiar UnidadMedida no puede reinterpretar cantidades históricas.
+65. Capacidades comerciales pueden cambiar sin reescribir historia.
+66. Capacidades estructurales requieren validar dependencias compatibles.
+67. La mera existencia de historia no bloquea necesariamente para siempre una capacidad estructural.
+68. Desactivar artículo conserva identidad, historia, referencias y no modifica stock de M04.
+69. Reactivar revalida las invariantes necesarias.
+70. Eliminar físicamente artículo exige ausencia de historia/referencias/dependencias.
+71. M02 representa estado actual y los módulos consumidores preservan su historia necesaria.
+72. Las capacidades no se confunden con hechos operativos.
+73. Los importes utilizan Negocio.monedaBase.
+74. El dominio admite cantidades fraccionarias.
 
 ## Transversales
 
-56. Toda mutación respeta contexto autorizado y permiso concreto del módulo.
-57. Las validaciones contextuales críticas se revalidan al confirmar la mutación.
-58. Las preconsultas UX no sustituyen garantías de dominio.
-59. Trazabilidad se reconoce como responsabilidad transversal sin imponer una entidad universal.
-60. El modelo no introduce como decisiones cerradas infraestructura, ORM, Repository, Unit of Work ni Aggregate Roots formales.
+75. Toda mutación respeta contexto autorizado y permiso concreto del módulo.
+76. Las validaciones contextuales críticas se revalidan al confirmar la mutación.
+77. Las preconsultas UX no sustituyen garantías de dominio.
+78. La implementación debe preservar invariantes bajo concurrencia.
+79. Trazabilidad es responsabilidad transversal sin imponer una entidad universal.
+80. El modelo no introduce como decisiones cerradas ORM, Repository, Unit of Work, Aggregate Roots, locks, transacciones ni mecanismos de expiración.
 
 ---
 
 # 22. Estado del Documento
 
-Este documento consolida el modelo conceptual resultante de M01 y de la versión refinada de M02.
-
-Al reemplazar en el repositorio las versiones actualizadas de:
+Este documento consolida el modelo conceptual actualizado de:
 
 ```text
-modulos/M02-Catalogo.md
-modelo-dominio/bloque-1-fundacion/01-modelo-dominio-bloque-1.md
+M01 — Organización del Negocio
+M02 — Catálogo
 ```
 
-el estado documental esperado es:
+y ya incorpora la semántica congelada del Diagrama 4 de `InvitacionNegocio`.
+
+Estado documental después de reemplazar este archivo:
 
 ```text
 BLOQUE 1 — FUNDACIÓN
 
-Especificación Funcional
-├── M01 Organización                         ✅ CONGELADO
-└── M02 Catálogo                             ✅ ACTUALIZADO
+Especificación funcional
+├── M01-organizacion-negocio.md               ✅ ACTUALIZADO
+└── M02-Catalogo.md                           ✅ ACTUALIZADO
 
-Modelo de Dominio estructural
-├── 01-modelo-dominio-bloque-1.md            ✅ ACTUALIZADO
-├── 01-diagrama-general.puml                 ✅ CONGELADO
-├── 01-diagrama-general.png                  ✅ CONGELADO
-├── 02-m01-organizacion-clases.md            ✅ CONGELADO
-├── 02-m01-organizacion-clases.puml          ✅ CONGELADO
-├── 02-m01-organizacion-clases.png           ✅ CONGELADO
-├── 03-m02-catalogo-clases.puml              ✅ CONGELADO
-├── 03-m02-catalogo-clases.png               ✅ CONGELADO
-└── 03-m02-catalogo-clases.md                🟡 PENDIENTE DE SINCRONIZACIÓN FINAL
+Modelo conceptual transversal
+└── 01-modelo-dominio-bloque-1.md             ✅ ACTUALIZADO
 
-Vistas dinámicas pendientes
-├── 04-m01-estados-invitacion.puml           ⏳
-├── 05-m01-estados-membresia.puml            ⏳
-├── 06-m02-estados-articulo.puml             ⏳
-└── secuencias/
-    ├── 01-aceptar-invitacion.puml            ⏳
-    └── 02-editar-articulo.puml               ⏳
+Modelo estructural
+├── 01-diagrama-general.puml                  🟡 REQUIERE SINCRONIZACIÓN M01
+├── 01-diagrama-general.png                   🟡 REGENERAR
+├── 02-m01-organizacion-clases.md             🟡 REQUIERE SINCRONIZACIÓN
+├── 02-m01-organizacion-clases.puml           🟡 REQUIERE SINCRONIZACIÓN
+├── 02-m01-organizacion-clases.png            🟡 REGENERAR
+├── 03-m02-catalogo-clases.md                 ✅ CONGELADO
+├── 03-m02-catalogo-clases.puml               ✅ CONGELADO
+└── 03-m02-catalogo-clases.png                ✅ CONGELADO
+
+Modelo dinámico
+├── 04-m01-estados-invitacion.md              ✅ CONGELADO
+├── 04-m01-estados-invitacion.puml            ✅ CONGELADO
+├── 04-m01-estados-invitacion.png             ✅ CONGELADO
+├── 05-m01-estados-membresia.puml             ⏳ PENDIENTE
+└── 06-m02-estados-articulo.puml              ⏳ PENDIENTE
+
+Secuencias
+├── 01-aceptar-invitacion.puml                ⏳ PENDIENTE
+└── 02-editar-articulo.puml                   ⏳ PENDIENTE
 ```
 
-El Modelo de Dominio conceptual ya puede utilizarse como referencia de análisis.
+## 22.1. Trabajo Inmediato Pendiente
 
-La suite completa de dominio del Bloque 1 no se considera cerrada hasta:
+Antes de avanzar al Diagrama 5 deben sincronizarse:
 
-1. sincronizar `03-m02-catalogo-clases.md`;
-2. completar diagramas de estados;
-3. completar secuencias críticas;
-4. realizar una última verificación transversal.
+```text
+01-diagrama-general.puml
+02-m01-organizacion-clases.md
+02-m01-organizacion-clases.puml
+```
 
-Después:
+y regenerar sus PNG.
+
+La sincronización debe incluir especialmente:
+
+```text
+vigencia
+→ fechaExpiracion
+
+PENDIENTE
+≠ vigencia temporal
+
+estaVigente(ahora)
+
+aceptar/rechazar
+→ estado + tiempo + Email
+
+cancelar()
+→ no exige vigencia
+
+expirar(ahora)
+
+reenviar
+→ misma invitación
+→ no extiende fechaExpiracion
+
+membresía ACTIVA
+→ bloquea reincorporación por invitación
+
+aceptación
+→ revalida membresía ACTIVA
+
+guardias contextuales
+→ fuera de InvitacionNegocio
+```
+
+## 22.2. Suite de Dominio todavía no Finalizada
+
+El Modelo de Dominio conceptual ya puede utilizarse como referencia de análisis y diseño.
+
+Sin embargo, la suite completa del Bloque 1 no se considera finalizada hasta:
+
+1. sincronizar las vistas estructurales M01 restantes;
+2. completar `05-m01-estados-membresia.puml`;
+3. completar `06-m02-estados-articulo.puml`;
+4. completar las secuencias críticas;
+5. realizar una revisión transversal final.
+
+Después corresponde avanzar a:
 
 ```text
 DECISIONES ARQUITECTÓNICAS / ADRs
@@ -3825,6 +4621,8 @@ IMPLEMENTACIÓN
 TESTS
 ```
 
+## 22.3. Regla de Evolución Documental
+
 Cualquier modificación futura que altere:
 
 - entidades;
@@ -3832,23 +4630,26 @@ Cualquier modificación futura que altere:
 - cardinalidades;
 - estados;
 - invariantes;
+- ciclo de vida de invitaciones;
+- membresías;
 - política de SKU;
 - reglas de capacidades;
 - reglas de reactivación;
-- reglas de incorporación;
 - permisos;
 - límites entre módulos;
 
-deberá actualizar primero la especificación funcional correspondiente y luego los artefactos de dominio afectados.
+debe actualizar primero la especificación funcional correspondiente y luego los artefactos de dominio afectados.
 
-El objetivo es mantener:
+El objetivo es conservar:
 
 ```text
-documentación funcional
+especificación funcional
 =
 modelo conceptual
 =
 diagramas
+=
+arquitectura
 =
 implementación
 ```
