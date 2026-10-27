@@ -1,0 +1,245 @@
+@startuml 05-m01-estados-membresia
+
+title Bloque 1 — Fundación: M01 Organización\n<size:11>Diagrama de estados de UsuarioNegocio — versión oficial congelada</size>
+
+' =============================================================================
+' CONFIGURACIÓN VISUAL
+' =============================================================================
+
+skinparam shadowing false
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam ArrowFontSize 10
+
+skinparam noteFontSize 10
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #E6C200
+
+skinparam state {
+    BackgroundColor #EBF3FA
+    BorderColor #2B6CB0
+    FontColor #1A202C
+    StartColor #3182CE
+    EndColor #2B6CB0
+}
+
+hide empty description
+
+' =============================================================================
+' ESTADOS
+' =============================================================================
+
+state ACTIVO
+state INACTIVO
+
+' =============================================================================
+' CICLO DE VIDA ESTRUCTURAL Y TRANSICIONES
+' =============================================================================
+
+[*] --> ACTIVO : crear membresía\n[creación válida]
+
+ACTIVO --> INACTIVO : desactivar\n[operación válida y\npreserva >= 1 PROPIETARIO ACTIVO]
+note on link
+  <b>ACTIVO -> INACTIVO</b>
+
+  Puede originarse por:
+
+  • Desactivación administrativa:
+    - actor con UsuarioNegocio ACTIVO;
+    - actor PROPIETARIO ACTIVO del mismo Negocio;
+    - objetivo pertenece al mismo Negocio.
+
+  • Salida voluntaria:
+    - propio miembro ACTIVO solicita abandonar;
+    - Caso de Uso abandonarNegocio reutiliza
+      Negocio.desactivarMiembro(miembro).
+
+  En ambos casos:
+  - se conserva el último Rol almacenado;
+  - si el objetivo es PROPIETARIO, debe continuar
+    existiendo >= 1 PROPIETARIO ACTIVO.
+end note
+
+INACTIVO --> ACTIVO : reactivar\n[rolInicial = ENCARGADO o TRABAJADOR]
+note on link
+  <b>INACTIVO -> ACTIVO</b>
+
+  La reactivación:
+  • reutiliza la misma UsuarioNegocio histórica;
+  • conserva su identidad histórica (NO crea otra);
+  • exige nuevo Rol explícito (ENCARGADO o TRABAJADOR);
+  • NO restaura automáticamente el último Rol;
+  • NO permite PROPIETARIO directamente;
+  • NO reescribe fechaIncorporacion original.
+
+  Reactivación administrativa:
+  • PROPIETARIO ACTIVO del mismo Negocio;
+  • rolInicial explícito (ENCARGADO o TRABAJADOR).
+
+  Reactivación por InvitacionNegocio:
+  • aceptación de invitación válida;
+  • rolInicial = rolPropuesto (ENCARGADO o TRABAJADOR).
+end note
+
+' =============================================================================
+' NOTAS DE ESTADO
+' =============================================================================
+
+note top of ACTIVO
+  <b>Creación de membresía</b>
+
+  Existen dos contextos:
+
+  1. Creación inicial del Negocio
+     → ACTIVO + PROPIETARIO.
+
+  2. Incorporación normal a Negocio existente
+     → ACTIVO + ENCARGADO o TRABAJADOR.
+
+  Algoritmo conceptual de incorporación:
+  • Si NO existe membresía histórica Usuario + Negocio → crear;
+  • Si existe membresía INACTIVA → NO crear otra, reactivar;
+  • Si existe membresía ACTIVA → rechazar.
+
+  Incorporación/reactivación normal NO asigna PROPIETARIO.
+  PROPIETARIO requiere promoción explícita posterior.
+end note
+
+note right of ACTIVO
+  <b>ACTIVO — Reglas principales</b>
+
+  • La membresía participa actualmente del Negocio.
+
+  • El Rol es contextual:
+    PROPIETARIO / ENCARGADO / TRABAJADOR.
+
+  • ACTIVO no implica autorización universal:
+    debe evaluarse Estado + Rol + permiso concreto + Negocio.
+
+  • El cambio de Rol no cambia EstadoMembresia.
+
+  • Último PROPIETARIO ACTIVO:
+    - no puede desactivarse;
+    - no puede abandonar;
+    - no puede ser desactivado;
+    - no puede degradarse.
+end note
+
+note left of ACTIVO
+  <b>Comportamiento interno de ACTIVO — NO es transición de estado</b>
+
+  cambiarRolMiembro(miembro, nuevoRol)
+
+  • Requiere miembro objetivo ACTIVO.
+  • Requiere autorización de PROPIETARIO ACTIVO del mismo Negocio.
+  • Actor y objetivo pertenecen al mismo Negocio.
+  • Cambia únicamente el Rol contextual.
+  • EstadoMembresia continúa siendo ACTIVO.
+  • Si degrada a un PROPIETARIO, debe conservar >= 1 PROPIETARIO ACTIVO.
+
+  Aclaración:
+  ACTIVO -> ACTIVO por incorporación/reactivación = inválido;
+  cambiarRolMiembro(...) = válido porque NO constituye transición de estado.
+end note
+
+note right of INACTIVO
+  <b>INACTIVO — Reglas principales</b>
+
+  • Membresía histórica continúa existiendo.
+
+  • NO habilita participación operativa.
+
+  • Rol almacenado NO otorga autorización.
+
+  • Rol representa únicamente el último Rol de la etapa activa.
+
+  • NO representa: vacaciones, licencias, francos ni ausencia temporal.
+
+  • NO admite cambio de Rol mientras permanezca INACTIVA.
+
+  • NO existe hard delete funcional de UsuarioNegocio.
+
+  • Puede reactivarse mediante una transición válida.
+end note
+
+' =============================================================================
+' NOTAS ESTRUCTURALES Y REGION INFERIOR (GRILLA 2x2)
+' =============================================================================
+
+note as NGuardias
+  <b>Guardias contextuales</b>
+
+  Desactivación / Reactivación admin / Cambiar Rol:
+  • actor con UsuarioNegocio ACTIVA;
+  • actor PROPIETARIO del mismo Negocio;
+  • actor y objetivo del mismo Negocio;
+  • objetivo en el estado esperado.
+
+  Salida voluntaria (abandonarNegocio):
+  • actor = propio miembro objetivo;
+  • membresía del actor ACTIVA;
+  • mismo Negocio seleccionado.
+
+  Toda operación que pueda modificar estado o Rol de las membresías
+  debe preservar la invariante global: >= 1 PROPIETARIO ACTIVO.
+
+  El Caso de Uso aporta:
+  autenticación, autorización, contexto y coordinación.
+  No confiar únicamente en IDs recibidos, frontend o prechecks.
+end note
+
+note as NConcurrencia
+  <b>Concurrencia e integridad</b>
+
+  Las invariantes deben mantenerse bajo operaciones simultáneas.
+
+  Persistencia debe impedir:
+  • dos membresías históricas para Usuario + Negocio;
+  • operaciones concurrentes sobre Propietarios que puedan dejar 0 PROPIETARIOS ACTIVOS;
+  • reactivaciones concurrentes que generen duplicados o sobrescritura silenciosa de Rol;
+  • cambio de Rol confirmado sobre una membresía que ya quedó INACTIVA.
+
+  Las condiciones deben garantizarse nuevamente al confirmar.
+  Mecanismo concreto (locking/isolation/versioning) pertenece a Arquitectura.
+end note
+
+note as NInvalidas
+  <b>Operaciones inválidas — rechazo explícito</b>
+
+  NO tratar silenciosamente como éxito:
+  • incorporar/reactivar una membresía ACTIVA;
+  • desactivar una membresía INACTIVA;
+  • cambiar Rol de una membresía INACTIVA;
+  • crear una segunda membresía histórica;
+  • reactivar directamente como PROPIETARIO;
+  • usar una membresía INACTIVA para autorizar operaciones;
+  • usar una invitación para cambiar Rol de un miembro ya ACTIVO.
+
+  ACTIVO -> ACTIVO por reincorporación = inválido.
+  INACTIVO -> INACTIVO por desactivación = inválido.
+  (cambiarRolMiembro NO contradice esto porque no es transición de estado).
+end note
+
+note as NAbiertas
+  <b>Decisiones diferidas</b>
+
+  Fuera del diagrama (resuelto en Arquitectura posterior):
+  • Cierre / EstadoNegocio;
+  • Mecanismo de concurrencia y locking SQL;
+  • Persistencia concreta, ORM, Repositories;
+  • API, DTOs y códigos HTTP;
+  • Clases de excepción concretas;
+  • Auditoría, Domain Events y sistema de notificaciones.
+
+  El diagrama congela invariantes, no mecanismos técnicos.
+end note
+
+' Layout inferior grilla 2x2
+INACTIVO -[hidden]down-> NGuardias
+ACTIVO -[hidden]down-> NConcurrencia
+NGuardias -[hidden]right-> NConcurrencia
+NGuardias -[hidden]down-> NInvalidas
+NConcurrencia -[hidden]down-> NAbiertas
+NInvalidas -[hidden]right-> NAbiertas
+
+@enduml
