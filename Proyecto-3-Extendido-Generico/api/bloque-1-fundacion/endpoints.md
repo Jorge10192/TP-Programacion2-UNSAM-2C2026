@@ -1363,13 +1363,19 @@ No requiere una membresía previa en el Negocio invitante.
 
 ### Request
 
+No posee body.
+
+La autoridad proviene de:
+
 ~~~text
-AceptarInvitacionRequest
+token del path
++
+Usuario autenticado
++
+estado persistido actual
 ~~~
 
-No contiene email ni negocio_id.
-
-Puede contener la `version` pública/técnica solo si se decide exponerla en `schemas-dto.md`; la autoridad sobre estado se revalida server-side.
+La invitación se bloquea/revalida server-side dentro de la operación; no se confía en una `version` enviada por el destinatario.
 
 ### Reglas
 
@@ -1435,6 +1441,12 @@ POST /api/v1/invitaciones/{token}/rechazar
 ### Autenticación
 
 JWT destinatario.
+
+### Request
+
+No posee body.
+
+La invitación se resuelve por token y se revalida server-side.
 
 ### Reglas
 
@@ -2503,7 +2515,6 @@ Permanecen para `schemas-dto.md` o implementación:
 - política concreta de permisos M02 por rol;
 - proveedor/estrategia de storage;
 - mecanismo concreto de token compartible y rotación;
-- campos concretos del checklist de preparación;
 - límites específicos de `q`;
 - soporte futuro de cursor pagination.
 
