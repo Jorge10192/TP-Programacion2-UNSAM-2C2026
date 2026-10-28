@@ -2432,26 +2432,15 @@ El modelo relacional es válido si permite demostrar mediante tests de integraci
 
 ---
 
-## 72. Próximo artefacto
+## 72. Cierre del modelo relacional
 
-El siguiente documento es:
+El ERD asociado ya se encuentra definido en:
 
 ~~~text
 base-de-datos/bloque-1-fundacion/erd.puml
 ~~~
 
-El ERD deberá representar exactamente este modelo físico:
-
-- PK;
-- FK;
-- relaciones;
-- nulabilidad relevante;
-- tablas puente;
-- cardinalidades;
-- principales UNIQUE;
-- separación entre tablas funcionales y auditoría.
-
-Después del ERD se realizará una revisión transversal:
+La revisión transversal:
 
 ~~~text
 Dominio
@@ -2463,4 +2452,6 @@ Modelo Relacional
 ERD
 ~~~
 
-antes de escribir los primeros SQLAlchemy Models y migraciones Alembic.
+fue completada sin contradicciones estructurales pendientes.
+
+La siguiente etapa documental es el contrato API del Bloque 1, antes de iniciar los primeros SQLAlchemy Models y migraciones Alembic.
