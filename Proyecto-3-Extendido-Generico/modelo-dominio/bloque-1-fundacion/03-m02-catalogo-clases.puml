@@ -1,17 +1,18 @@
 @startuml 03-m02-catalogo-clases
 
-title Bloque 1 — Fundación: M02 Catálogo\n<size:11>Diagrama de clases conceptual detallado — versión oficial congelada</size>
+title Bloque 1 — Fundación: M02 Catálogo\n<size:11>Diagrama de clases conceptual detallado — versión sincronizada — candidata a congelación tras auditoría del Bloque 1</size>
 
 ' =============================================================================
-' CONFIGURACIÓN VISUAL Y PALETA DE COLORES
+' CONFIGURACIÓN VISUAL OPTIMIZADA PARA RENDERING STABLE
 ' =============================================================================
 
 skinparam classAttributeIconSize 0
-skinparam linetype ortho
+skinparam linetype polyline
 skinparam packageStyle rectangle
 skinparam shadowing false
-skinparam nodesep 45
-skinparam ranksep 50
+
+skinparam nodesep 55
+skinparam ranksep 65
 skinparam ArrowFontSize 10
 
 skinparam noteFontSize 10
@@ -47,28 +48,30 @@ skinparam package {
 
 
 ' =============================================================================
-' REFERENCIA CONTEXTUAL M01 (UBICADA ARRIBA A LA IZQUIERDA DEL PAQUETE M02)
+' REFERENCIA CONTEXTUAL M01
 ' =============================================================================
 
 class Negocio <<entity>> {
-  identidad
-  nombre : String
+    identidad
+    nombre : String
 }
 
 note top of Negocio
-  <b>Referencia contextual M01</b>
+    <b>Referencia contextual M01</b>
 
-  Negocio se define en M01.
+    Negocio se define en M01.
 
-  M02 lo utiliza para:
-- pertenencia;
-- aislamiento entre Negocios;
-- unicidad contextual de Categoria y SKU;
-- moneda base;
-- autorización contextual.
+    M02 lo utiliza para:
+    - pertenencia;
+    - aislamiento entre Negocios;
+    - unicidad de Categoria;
+    - unicidad de nombre de ArticuloCatalogo;
+    - unicidad de SKU;
+    - moneda base;
+    - autorización contextual.
 
-  Las reglas internas de membresía
-  pertenecen a M01.
+    Las reglas internas de membresía
+    pertenecen a M01.
 end note
 
 
@@ -76,516 +79,406 @@ end note
 ' M02 — CATÁLOGO
 ' =============================================================================
 
-package "M02 — Catálogo" as M02 {
+package "M02 — Catálogo" {
 
-  class Categoria <<entity>> {
-    identidad
-    nombre : String
-    estado : EstadoCategoria
-    --
-    estaActiva() : Boolean
-    cambiarNombre(nuevoNombre : String)
-    desactivar()
-    reactivar()
-    puedeEliminarseFisicamente() : Boolean
-  }
+    ' =========================================================================
+    ' ENTIDADES Y VALUE OBJECTS
+    ' =========================================================================
 
-  class ArticuloCatalogo <<entity>> {
-    identidad
-    nombre : String
-    descripcion [0..1] : String
-    tipo : TipoArticulo
-    unidadMedida : UnidadMedida
-    sku [0..1] : String
-    precioBase [0..1] : Decimal
-    costoReferencia [0..1] : Decimal
-    imagenPrincipal [0..1]
-    estado : EstadoArticulo
-    --
-    estaActivo() : Boolean
-    asignarCategoria(categoria : Categoria)
-    quitarCategoria()
-    actualizarCapacidades(nuevas : CapacidadesArticulo)
-    cambiarPrecioBase(nuevoPrecio : Decimal)
-    cambiarCostoReferencia(nuevoCosto : Decimal)
-    cambiarUnidad(nuevaUnidad : UnidadMedida)
-    puedeEliminarseFisicamente() : Boolean
-    desactivar()
-    reactivar()
-  }
-
-  class CapacidadesArticulo <<value object>> {
-    esComprable : Boolean
-    esVendible : Boolean
-    controlaStock : Boolean
-    puedeUsarseEnProduccion : Boolean
-    controlaVencimiento : Boolean
-    permiteDescuento : Boolean
-    --
-    esCoherenteCon(tipo : TipoArticulo) : Boolean
-  }
-
-
-  ' ===========================================================================
-  ' RELACIONES INTERNAS
-  ' ===========================================================================
-
-  Categoria "0..1" -right- "0..*" ArticuloCatalogo : clasifica >
-  ArticuloCatalogo "1" *-right- "1" CapacidadesArticulo : define >
-
-
-  ' ===========================================================================
-  ' TIPOS DEL DOMINIO (SIN FLECHAS PUENTEDAS REDUNDANTES)
-  ' ===========================================================================
-
-  package "Tipos del dominio M02" as TiposM02 #F7FAFC {
-
-    enum EstadoCategoria <<enum>> {
-      ACTIVA
-      INACTIVA
+    class Categoria <<entity>> {
+        identidad
+        nombre : String
+        estado : EstadoCategoria
+        --
+        estaActiva() : Boolean
+        cambiarNombre(nuevoNombre : String)
+        desactivar()
+        reactivar()
     }
 
-    enum EstadoArticulo <<enum>> {
-      ACTIVO
-      INACTIVO
+
+    class ArticuloCatalogo <<entity>> {
+        identidad
+        nombre : String
+        descripcion [0..1] : String
+        tipo : TipoArticulo
+        unidadMedida : UnidadMedida
+        sku [0..1] : String
+        precioBase [0..1] : Decimal
+        costoReferencia [0..1] : Decimal
+        imagenes [0..3]
+        estado : EstadoArticulo
+        --
+        estaActivo() : Boolean
+        aplicarEdicion(propuesta : PropuestaEdicionPreparada)
+        desactivar()
+        reactivar()
     }
 
-    enum TipoArticulo <<enum>> {
-      BIEN
-      SERVICIO
+
+    class CapacidadesArticulo <<value object>> {
+        esComprable : Boolean
+        esVendible : Boolean
+        controlaStock : Boolean
+        puedeUsarseEnProduccion : Boolean
+        controlaVencimiento : Boolean
+        permiteDescuento : Boolean
+        --
+        esCoherenteCon(tipo : TipoArticulo) : Boolean
     }
 
-    enum UnidadMedida <<enum>> {
-      UNIDAD
-      KG
-      G
-      L
-      ML
-      M
-      CM
-      HORA
+
+    ' =========================================================================
+    ' TIPOS DEL DOMINIO
+    ' =========================================================================
+
+    package "Tipos del dominio M02" {
+
+        enum EstadoCategoria <<enum>> {
+            ACTIVA
+            INACTIVA
+        }
+
+        enum EstadoArticulo <<enum>> {
+            ACTIVO
+            INACTIVO
+        }
+
+        enum TipoArticulo <<enum>> {
+            BIEN
+            SERVICIO
+        }
+
+        enum UnidadMedida <<enum>> {
+            UNIDAD
+            KG
+            G
+            L
+            ML
+            M
+            CM
+            HORA
+        }
     }
 
-    EstadoCategoria -[hidden]right- EstadoArticulo
-    EstadoArticulo -[hidden]right- TipoArticulo
-    TipoArticulo -[hidden]right- UnidadMedida
-  }
-
-
-  ' ===========================================================================
-  ' CATEGORIA — REGLAS Y ESTADO
-  ' ===========================================================================
-
-  note top of Categoria
-    <b>Categoria — reglas y estado</b>
-
-- Nombre funcionalmente único por Negocio.
-- Unicidad incluye ACTIVA + INACTIVA.
-
-    INACTIVA:
-- conserva asociaciones existentes;
-- NO admite nuevas asociaciones;
-- NO admite nuevas reasignaciones.
-
-    desactivar():
-- NO desactiva ArticuloCatalogo;
-- NO modifica capacidades;
-- NO recalcula precios.
-
-    reactivar():
-- reutiliza la misma entidad.
-
-    puedeEliminarseFisicamente():
-- es consulta para UX/diagnóstico;
-- NO constituye autorización definitiva.
-
-    La eliminación real debe revalidar
-    asociaciones y dependencias al confirmar.
-  end note
-
-
-  ' ===========================================================================
-  ' ARTICULO CATALOGO — NOTAS Y CONDICIONAMIENTO DE MÉTODOS
-  ' ===========================================================================
-
-  note top of ArticuloCatalogo
-    <b>ArticuloCatalogo — identidad, edición y estado</b>
-
-    Identidad:
-- nombre NO es identidad;
-- SKU NO es identidad;
-- TipoArticulo es ESTRICTAMENTE INMUTABLE;
-- la ausencia de un método UML no implica inmutabilidad.
-
-    Edición normal:
-- requiere estado = ACTIVO;
-- requiere PROPIETARIO autorizado.
-
-    Métodos de modificación directa:
-- actualizarCapacidades(...)
-- cambiarPrecioBase(...)
-- cambiarCostoReferencia(...)
-- cambiarUnidad(...)
-- asignarCategoria(...)
-- quitarCategoria()
-    son válidos ÚNICAMENTE sobre estado ACTIVO.
-    NO deben ejecutarse individualmente sobre INACTIVO.
-
-    INACTIVO:
-- conserva identidad, configuración e historia;
-- NO admite edición individual en MVP;
-- puede reactivarse.
-    La reconfiguración de un INACTIVO se realiza
-    únicamente mediante la operación atómica coordinada
-    por el Caso de Uso de reactivación con reconfiguración.
 
-    ACTIVO: exige >= 1 uso operativo.
-    INACTIVO: puede conservar 0 usos operativos.
-  end note
+    ' =========================================================================
+    ' RELACIONES INTERNAS (ASOCIACIONES NEUTRALES)
+    ' =========================================================================
+
+    Categoria "0..1" -- "0..*" ArticuloCatalogo : clasifica
+
+    ArticuloCatalogo "1" *-- "1" CapacidadesArticulo : define
+
+
+    ' =========================================================================
+    ' CATEGORIA — REGLAS PRINCIPALES
+    ' =========================================================================
+
+    note left of Categoria
+        <b>Categoria — reglas principales</b>
+
+        Nombre:
+        - funcionalmente único por Negocio;
+        - considera ACTIVA + INACTIVA;
+        - normalización técnica exacta abierta.
+
+        Categoria INACTIVA:
+        - conserva asociaciones existentes;
+        - NO permite nuevas asociaciones;
+        - NO permite nuevas reasignaciones.
+
+        desactivar():
+        - no desactiva artículos;
+        - no modifica capacidades;
+        - no recalcula precios;
+        - no modifica promociones.
+
+        reactivar():
+        - reutiliza la misma entidad.
+
+        Eliminar físicamente:
+        - es excepcional y la coordina el Caso de Uso;
+        - requiere ausencia de asociaciones
+          y dependencias externas al confirmar.
+    end note
+
+
+    ' =========================================================================
+    ' ARTICULO — IDENTIDAD Y EDICIÓN
+    ' =========================================================================
+
+    note top of ArticuloCatalogo
+        <b>ArticuloCatalogo — identidad y edición</b>
+
+        Identidad:
+        - identidad es estable;
+        - nombre NO es identidad;
+        - SKU NO es identidad;
+        - TipoArticulo es INMUTABLE.
 
+        Edición:
+        - puede realizarse sobre ACTIVO;
+        - puede realizarse sobre INACTIVO;
+        - NO cambia EstadoArticulo.
 
-  ' ===========================================================================
-  ' SKU Y REACTIVACIÓN
-  ' ===========================================================================
-
-  note right of ArticuloCatalogo
-    <b>SKU y Reactivación</b>
+        ACTIVO:
+        - configuración resultante debe conservar
+          al menos un uso operativo.
 
-    SKU:
-- opcional;
-- ausencia canónica = null;
-- input "" -> null;
-- NO es identidad;
-- único por Negocio (ACTIVO + INACTIVO);
-- desactivar NO libera SKU.
+        INACTIVO:
+        - puede editarse administrativamente;
+        - puede conservar 0 usos;
+        - editar NO reactiva.
 
-    Transiciones SKU:
-- A -> B: validar B, asignar B, liberar A solo al confirmar;
-- A -> null: liberar A al confirmar;
-- null -> B: validar B;
-- A -> A: no-op funcional.
+        aplicarEdicion(propuesta : PropuestaEdicionPreparada):
+        - PropuestaEdicionPreparada es parameter object conceptual aceptado por Domain;
+        - NO es DTO de API / HTTP request / Pydantic model;
+        - NO implica dependencia Domain -> Application;
+        - no posee identidad ni ciclo de vida propio;
+        - no se persiste por sí mismo;
+        - su representación técnica definitiva permanece abierta;
+        - recibe la propuesta preparada por Application;
+        - valida TODA la configuración resultante;
+        - si falla, no consolida mutaciones observables;
+        - si pasa, aplica coherentemente todo.
 
-    Hard delete confirmado:
-- libera el SKU actual.
+        No implementar edición mediante
+        una cadena pública de setters.
+    end note
 
-    No congelar todavía:
-- case sensitivity, trim, Unicode, regex, formato.
 
-    reactivar():
-- método conceptual en la entidad.
+    ' =========================================================================
+    ' NOMBRE / SKU / REACTIVACIÓN
+    ' =========================================================================
 
-    Reactivación simple:
-- utiliza configuración almacenada;
-- PROPIETARIO o ENCARGADO;
-- revalida invariantes.
+    note right of ArticuloCatalogo
+        <b>Nombre, SKU y ciclo de vida</b>
 
-    Reactivación con reconfiguración:
-- solo PROPIETARIO;
-- Caso de Uso construye configuración candidata;
-- configuración + validación + paso a ACTIVO
-      se confirman conjuntamente (todo-o-nada);
-- fallo deja INACTIVO sin cambios parciales.
+        Nombre:
+        - editable;
+        - único funcionalmente por Negocio;
+        - ACTIVO + INACTIVO reservan nombre;
+        - equivalencia funcional compartida;
+        - algoritmo concreto abierto.
 
-    En UX: "activar" = reactivar.
-  end note
+        SKU:
+        - opcional;
+        - ausencia canónica = null;
+        - vacío / espacios -> null;
+        - único por Negocio;
+        - ACTIVO + INACTIVO reservan SKU;
+        - desactivar NO libera SKU.
 
+        Reactivación:
+        - exige estado actual INACTIVO;
+        - reutiliza la misma entidad;
+        - usa configuración vigente ya confirmada;
+        - NO recibe payload libre de edición;
+        - reactivar() en entidad revalida invariantes LOCALES de ACTIVO;
+        - el Caso de Uso coordina guardias CONTEXTUALES externas.
 
-  ' ===========================================================================
-  ' VALUE OBJECT — REGLAS E INMUTABILIDAD
-  ' ===========================================================================
+        Editar y reactivar
+        son operaciones separadas.
 
-  note right of CapacidadesArticulo
-    <b>CapacidadesArticulo — Value Object inmutable</b>
+        Hard delete confirmado:
+        - libera SKU;
+        - deja libre el nombre.
+    end note
 
-    Representa una configuración completa.
 
-    Caso de Uso:
-1. interpreta intención;
-2. construye propuesta completa;
-3. solicita validación/reemplazo.
+    ' =========================================================================
+    ' IMÁGENES
+    ' =========================================================================
 
-    El VO:
-- valida;
-- acepta o rechaza.
+    note bottom of ArticuloCatalogo
+        <b>Imágenes</b>
 
-    El VO NO:
-- usa setters parciales;
-- muta flags existentes;
-- aplica auto-fixes silenciosos;
-- interpreta intención de negocio;
-- consulta repositories.
+        Cardinalidad:
+        0..3 imágenes.
 
-    Reglas internas:
+        Si N = 0:
+        - no existe principal.
 
-    SERVICIO:
-    -> controlaStock = false
-    -> controlaVencimiento = false
-    -> puedeUsarseEnProduccion = false
+        Si N > 0:
+        - exactamente una debe ser principal.
 
-    controlaVencimiento = true
-    -> BIEN + controlaStock = true
+        Application puede prevalidar.
+        Domain protege la invariante final.
 
-    puedeUsarseEnProduccion = true
-    -> BIEN + controlaStock = true
+        "imagenes" representa referencias lógicas.
 
-    permiteDescuento = true
-    -> esVendible = true
+        Este modelo NO fija:
+        - S3; CDN; filesystem; Cloudinary;
+        - URL pública; Base64; blob SQL.
 
-    Si se propone esVendible = false y permiteDescuento = true:
-    -> RECHAZAR. El VO NO auto-corrige.
-  end note
+        El lifecycle físico de archivos
+        pertenece a Arquitectura.
 
+        No ejecutar efectos externos irreversibles
+        antes de una confirmación segura.
+    end note
 
-  ' ===========================================================================
-  ' CAPACIDADES VS. HECHOS OPERATIVOS
-  ' ===========================================================================
 
-  note right of CapacidadesArticulo
-    <b>Capacidades ≠ hechos operativos</b>
+    ' =========================================================================
+    ' CAPACIDADES
+    ' =========================================================================
 
-    controlaStock != stock actual
-    controlaVencimiento != fecha de vencimiento
-    puedeUsarseEnProduccion != Receta
-    esVendible != Venta
-    esComprable != Compra
+    note right of CapacidadesArticulo
+        <b>CapacidadesArticulo — VO inmutable</b>
 
-    ArticuloCatalogo NO contiene:
-- stock, lotes, movimientos;
-- compras, ventas, recetas, producciones.
+        Representa una configuración completa.
 
-    Capacidades comerciales:
-- afectan operaciones futuras;
-- no reescriben historia.
+        NO:
+        - setters parciales;
+        - mutación interna de flags;
+        - auto-fixes silenciosos;
+        - repositories;
+        - interpretación de intención del usuario.
 
-    Capacidades estructurales:
-- pueden requerir contexto externo.
+        Reglas:
 
-    esCoherenteCon(tipo) valida únicamente:
-    TipoArticulo + CapacidadesArticulo.
-  end note
+        SERVICIO
+        -> controlaStock = false
+        -> controlaVencimiento = false
+        -> puedeUsarseEnProduccion = false
 
+        controlaVencimiento = true
+        -> tipo = BIEN
+        -> controlaStock = true
 
-  ' ===========================================================================
-  ' GUARDIAS LOCALES
-  ' ===========================================================================
+        puedeUsarseEnProduccion = true
+        -> tipo = BIEN
+        -> controlaStock = true
 
-  note as NLocales
-    <b>Guardias locales — Entidad / VO</b>
+        permiteDescuento = true
+        -> esVendible = true
 
-    Pueden validarse sin repositories:
+        esVendible = false
+        + permiteDescuento = true
+        -> RECHAZAR
 
-- TipoArticulo + CapacidadesArticulo.
+        Las capacidades son internas al dominio.
 
-- Si esVendible = true:
-        precioBase != null
-        precioBase >= 0.
+        La UI NO está obligada a mostrar
+        cada flag técnico directamente.
+    end note
 
-- Si costoReferencia != null:
-        costoReferencia >= 0.
 
-- ACTIVO:
-        >= 1 uso operativo.
+    ' =========================================================================
+    ' GUARDIAS LOCALES
+    ' =========================================================================
 
-- TipoArticulo:
-        inmutable.
+    note "Guardias locales:\n\n- TipoArticulo inmutable.\n- Tipo + Capacidades coherentes.\n- Vendible -> precioBase != null y precioBase >= 0.\n- costoReferencia, si existe, >= 0.\n- ACTIVO -> >= 1 uso operativo.\n- imágenes 0..3.\n- si hay imágenes -> exactamente 1 principal.\n\nArticuloCatalogo valida toda la propuesta\nANTES de consolidar cambios." as NLocales
 
-- Coherencia del Value Object.
-  end note
+    NLocales .. ArticuloCatalogo
 
 
-  ' ===========================================================================
-  ' GUARDIAS CONTEXTUALES Y PERMISOS
-  ' ===========================================================================
+    ' =========================================================================
+    ' GUARDIAS CONTEXTUALES
+    ' =========================================================================
 
-  note as NContextuales
-    <b>Guardias contextuales y permisos</b>
+    note "Guardias contextuales:\n\n- Usuario autenticado.\n- Negocio identificado.\n- UsuarioNegocio ACTIVO.\n- permiso conceptual requerido.\n- tenant correcto.\n- nombre único por Negocio.\n- SKU único por Negocio.\n- Categoria del mismo Negocio.\n- nueva Categoria debe estar ACTIVA.\n- dependencias estructurales.\n- referencias para hard delete.\n\nDomain NO consulta repositories.\n\nLa matriz completa Rol -> Permiso\npermanece abierta." as NContexto
 
-    Requieren contexto externo:
+    NContexto .. ArticuloCatalogo
 
-- Usuario autenticado;
-- Negocio identificado;
-- UsuarioNegocio ACTIVO;
-- Rol + permiso concreto M02;
-- mismo Negocio;
-- SKU único;
-- Categoria del mismo Negocio;
-- Categoria ACTIVA para nueva asociación;
-- historia cuantitativa;
-- dependencias estructurales;
-- referencias para hard delete.
 
-    Permisos por Rol:
+    ' =========================================================================
+    ' PRECIO
+    ' =========================================================================
 
-    PROPIETARIO:
-- crear, editar ACTIVO, desactivar, reactivar simple,
-      reactivar con reconfiguración, eliminar cuando corresponda.
+    note "Precio y venta:\n\nHabilitar venta:\n- esVendible = true -> precioBase != null y precioBase >= 0\n\nprecioBase = 0 satisface la invariante\nestructural, pero M02 no fija todavía\nsu semántica comercial definitiva.\n\nCambiar precioBase:\n- aplica hacia futuro;\n- no modifica promociones;\n- no reescribe ventas históricas.\n\nDeshabilitar venta:\nApplication construye una configuración\ncoherente; el VO no auto-corrige.\n\nSi un ACTIVO queda con 0 usos:\nRECHAZAR; no desactivar automáticamente." as NPrecio
 
-    ENCARGADO:
-- consultar, desactivar, reactivar SIN modificar configuración.
+    NPrecio .. CapacidadesArticulo
 
-    TRABAJADOR:
-- consultar.
 
-    No autorizar exclusivamente por rol == PROPIETARIO.
-    El objeto de dominio NO consulta repositories directamente.
-  end note
+    ' =========================================================================
+    ' UNIDAD DE MEDIDA
+    ' =========================================================================
 
+    note bottom of UnidadMedida
+        <b>UnidadMedida e historia</b>
 
-  ' ===========================================================================
-  ' DESHABILITAR VENTA
-  ' ===========================================================================
+        Catálogo global normalizado.
 
-  note as NVenta
-    <b>Transiciones comerciales</b>
+        BIEN requiere unidad válida.
 
-    Habilitar venta:
-    esVendible false -> true
-    requiere:
-- precioBase != null;
-- precioBase >= 0.
+        SERVICIO puede utilizar:
+        - UNIDAD;
+        - HORA;
+        - otra unidad normalizada apropiada.
 
-    Deshabilitar venta:
-    El Caso de Uso construye explícitamente:
-    esVendible = false
-    permiteDescuento = false
+        La unidad vigente puede cambiar
+        para operaciones futuras.
 
-    El VO valida la propuesta.
-    El VO NO realiza el ajuste por sí solo.
-    precioBase ACTUAL se conserva.
+        Las operaciones históricas conservan:
+        - unidad original;
+        - cantidad original.
 
-    Si la configuración resultante dejara
-    un ArticuloCatalogo ACTIVO con 0 usos operativos:
-    -> RECHAZAR. NO desactivar automáticamente.
-  end note
+        No reconstruir historia usando
+        la UnidadMedida actual.
 
+        La mera existencia de historia
+        NO congela para siempre
+        la configuración actual.
 
-  ' ===========================================================================
-  ' CONCURRENCIA E INTEGRIDAD
-  ' ===========================================================================
+        No crear automáticamente:
+        tieneHistoriaOperativa : Boolean.
+    end note
 
-  note as NConcurrencia
-    <b>Concurrencia e integridad</b>
 
-    Persistencia debe impedir:
-- SKU duplicado en mismo Negocio;
-- dos asignaciones concurrentes del mismo SKU;
-- reactivaciones concurrentes con sobrescritura silenciosa;
-- edición confirmada sobre ACTIVO ya obsoleto;
-- hard delete concurrente con aparición de referencia.
+    ' =========================================================================
+    ' CONCURRENCIA
+    ' =========================================================================
 
-    Caso TOCTOU:
-    Articulo ACTIVO seleccionado
-          ↓
-    otro proceso lo desactiva
-          ↓
-    nueva operación consumidora intenta confirmar
-          ↓
-    revalidar elegibilidad.
+    note "Concurrencia e integridad:\n\nLas prevalidaciones NO garantizan exclusión.\n\nPersistencia / confirmación debe detectar:\n- nombre duplicado concurrentemente;\n- SKU duplicado concurrentemente;\n- modificación concurrente del artículo;\n- lost update;\n- edición vs desactivación/reactivación;\n- cambio concurrente relevante de Categoria;\n- hard delete vs nueva referencia.\n\nSi existe conflicto:\n- operación completa falla;\n- ningún cambio queda confirmado.\n\nNo se congela mecanismo de locking,\nversionado ni aislamiento." as NConcurrencia
 
-    Preconsulta UX != garantía de confirmación.
-  end note
+    NConcurrencia .. ArticuloCatalogo
 
 
-  ' ===========================================================================
-  ' HARD DELETE
-  ' ===========================================================================
+    ' =========================================================================
+    ' HISTORIA
+    ' =========================================================================
 
-  note as NDelete
-    <b>Eliminación física</b>
+    note "Estado actual vs historia:\n\nM02 representa configuración ACTUAL.\n\nPuede cambiar hacia futuro:\n- nombre;\n- descripción;\n- Categoria;\n- SKU;\n- precioBase;\n- costoReferencia;\n- imágenes;\n- UnidadMedida;\n- capacidades.\n\nLos módulos transaccionales preservan\nsus valores históricos originales.\n\nEditar catálogo != reescribir pasado." as NHistoria
 
-    puedeEliminarseFisicamente():
-- consulta conceptual / diagnóstico;
-- NO autorización final resuelta por la entidad aislada.
-- La implementación puede requerir un Query/Application Service.
+    NHistoria .. ArticuloCatalogo
 
-    eliminarFisicamente():
-- NO es EstadoArticulo;
-- NO genera ELIMINADO;
-- NO es transición de estado;
-- es una operación administrativa excepcional.
 
-    Solo confirmar si NO existen:
-- historia relevante;
-- referencias;
-- dependencias que deban conservarse.
+    ' =========================================================================
+    ' HARD DELETE
+    ' =========================================================================
 
-    La ausencia de dependencias se revalida al confirmar.
-    Si existen -> NO eliminar.
-    Si está ACTIVO y se desea retirar -> desactivar.
+    note "Eliminación física de ArticuloCatalogo:\n\nNO es método de la entidad.\nNO es EstadoArticulo.\nNO genera ELIMINADO.\nNO es transición de estado.\n\nEs una operación administrativa excepcional coordinada por el Caso de Uso.\n\nMVP exige al confirmar:\n- PROPIETARIO;\n- ArticuloCatalogo INACTIVO;\n- sin historia relevante;\n- sin referencias;\n- sin dependencias a conservar.\n\nSi está ACTIVO y se quiere retirar:\n-> desactivar.\n\nLa ausencia de dependencias\nse revalida al confirmar." as NDelete
 
-    Hard delete confirmado: SKU actual queda disponible.
-  end note
+    NDelete .. ArticuloCatalogo
 
 
-  ' ===========================================================================
-  ' DECISIONES TÉCNICAS DIFERIDAS
-  ' ===========================================================================
+    ' =========================================================================
+    ' AUDITORÍA
+    ' =========================================================================
 
-  note as NAbiertas
-    <b>Decisiones técnicas diferidas</b>
+    note "Auditoría conceptual:\n\nToda modificación relevante debe permitir\nreconstruir:\n- quién;\n- cuándo;\n- qué recurso;\n- qué cambio fue confirmado.\n\nEditarArticulo preserva contexto suficiente:\nusuario + artículo + cambios + instante.\n\nNo obliga todavía a:\n- AuditRepository;\n- Event Sourcing;\n- Domain Events;\n- tabla universal de auditoría." as NAuditoria
 
-    Este diagrama NO define:
-- Aggregate Roots formales;
-- tablas / foreign keys;
-- índices / constraints SQL;
-- ORM / Repository / Unit of Work;
-- DTOs / Commands / endpoints / HTTP;
-- excepciones concretas;
-- locking / versionado / aislamiento;
-- Domain Events;
-- normalización avanzada de SKU;
-- representación física de imagen.
+    NAuditoria .. ArticuloCatalogo
 
-    El diagrama congela:
-    estructura + responsabilidades + invariantes.
-    NO mecanismos técnicos.
-  end note
 
+    ' =========================================================================
+    ' DECISIONES ABIERTAS
+    ' =========================================================================
 
-  ' ===========================================================================
-  ' UNIDAD DE MEDIDA — NOTA
-  ' ===========================================================================
+    note "Decisiones técnicas abiertas:\n\n- Aggregate Roots.\n- tablas / foreign keys.\n- índices / constraints SQL.\n- ORM.\n- Repository.\n- Unit of Work.\n- DTO / Command / HTTP.\n- excepciones concretas.\n- locking / versionado / aislamiento.\n- Domain Events.\n- normalización exacta de nombre / SKU.\n- representación de propuestaEdicionPreparada.\n- representación física de imágenes.\n- lifecycle técnico de archivos.\n- matriz completa Rol -> Permiso.\n- semántica comercial definitiva de precio 0.\n\nEl UML fija dominio e invariantes,\nNO mecanismos técnicos." as NAbiertas
 
-  note bottom of UnidadMedida
-    <b>UnidadMedida e historia cuantitativa</b>
-
-- Catálogo global normalizado.
-- BIEN requiere unidad válida.
-- SERVICIO comienza normalmente en UNIDAD; puede usar HORA.
-- cambiarUnidad() no debe alterar el significado de cantidades históricas.
-- Historia cuantitativa = guardia contextual.
-- No crear automáticamente: tieneHistoriaOperativa : Boolean.
-  end note
-
-
-  ' ===========================================================================
-  ' LAYOUT AUXILIAR EN GRILLA INFERIOR
-  ' ===========================================================================
-
-  Categoria -[hidden]down-> TiposM02
-
-  ArticuloCatalogo -[hidden]down-> NLocales
-  CapacidadesArticulo -[hidden]down-> NContextuales
-
-  NLocales -[hidden]right-> NContextuales
-
-  NLocales -[hidden]down-> NVenta
-  NContextuales -[hidden]down-> NConcurrencia
-
-  NVenta -[hidden]right-> NConcurrencia
-
-  NVenta -[hidden]down-> NDelete
-  NConcurrencia -[hidden]down-> NAbiertas
-
-  NDelete -[hidden]right-> NAbiertas
+    NAbiertas .. CapacidadesArticulo
 }
 
 
 ' =============================================================================
-' RELACIONES DESDE NEGOCIO (DESDE ARRIBA A LA IZQUIERDA HACIA M02)
+' RELACIONES CON M01 (ASOCIACIONES NEUTRALES)
 ' =============================================================================
 
-Negocio "1" -down-> "0..*" Categoria : organiza
-Negocio "1" -down-> "0..*" ArticuloCatalogo : contiene
+Negocio "1" -- "0..*" Categoria : organiza
+
+Negocio "1" -- "0..*" ArticuloCatalogo : contiene
 
 @enduml
