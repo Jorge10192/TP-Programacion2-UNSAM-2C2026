@@ -1,6 +1,6 @@
 # 01 — Modelo de Dominio del Bloque 1
 
-> **Estado documental:** versión sincronizada — candidata a congelación tras auditoría transversal del Bloque 1.
+> **Estado documental:** versión sincronizada y auditada transversalmente — congelada como referencia de implementación del Bloque 1.
 
 ## 1. Propósito
 
