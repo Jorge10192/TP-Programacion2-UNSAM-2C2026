@@ -1,7 +1,7 @@
 # 02 — Módulo de Catálogo
 ## Versión funcional actualizada — sincronizada con `secuencias/02-editar-articulo.puml`
 
-> **Estado documental:** M02 funcionalmente sincronizado con Diagrama 3, Diagrama 6 y la secuencia de edición. Pendiente únicamente de auditoría transversal del Bloque 1 antes de congelación definitiva.
+> **Estado documental:** M02 funcionalmente sincronizado con Diagrama 3, Diagrama 6 y la secuencia de edición. Auditoría transversal del Bloque 1 completada; versión congelada como referencia para implementación.
 
 ---
 
