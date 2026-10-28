@@ -1,6 +1,6 @@
 @startuml 02-m01-organizacion-clases
 
-title Bloque 1 — Fundación: M01 Organización del Negocio\n<size:11>Diagrama de clases conceptual detallado — versión oficial congelada</size>
+title Bloque 1 — Fundación: M01 Organización del Negocio\n<size:11>Diagrama de clases conceptual detallado — versión sincronizada — candidata a congelación tras auditoría del Bloque 1</size>
 
 ' =============================================================================
 ' CONFIGURACIÓN VISUAL
@@ -75,7 +75,7 @@ package "M01 — Organización del Negocio" as M01 {
     tienePropietarioActivo() : Boolean
     desactivarMiembro(miembro : UsuarioNegocio)
     cambiarRolMiembro(miembro : UsuarioNegocio, nuevoRol : Rol)
-    incorporarOReactivarMiembro(usuario : Usuario, rolInicial : Rol) : UsuarioNegocio
+    incorporarOReactivarMiembro(usuario : Usuario, rolInicial : Rol, membresiaHistorica : UsuarioNegocio [0..1]) : UsuarioNegocio
   }
 
   class InvitacionNegocio <<entity>> {
@@ -219,6 +219,10 @@ package "M01 — Organización del Negocio" as M01 {
     >= 1 PROPIETARIO ACTIVO.
 
     incorporarOReactivarMiembro():
+    - Application suministra membresiaHistorica [0..1];
+    - Negocio NO consulta repositories;
+    - si existe, revalida mismo Usuario + mismo Negocio;
+    - rolInicial pertenece a {ENCARGADO, TRABAJADOR}.
 
     - sin membresía:
       crea ACTIVA con rolInicial
