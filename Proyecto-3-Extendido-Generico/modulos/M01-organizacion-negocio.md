@@ -303,6 +303,83 @@ ni un campo persistente de estado a partir de este documento.
 
 Las referencias funcionales a un Negocio “disponible”, “seleccionado” u “operable” describen contexto de uso, no un enum de dominio ya aprobado.
 
+### 4.2.1. Incorporación y Reactivación de Membresías
+
+La incorporación de una persona a un Negocio se expresa conceptualmente mediante la operación de dominio:
+
+```text
+Negocio.incorporarOReactivarMiembro(
+    usuario : Usuario,
+    rolInicial : Rol,
+    membresiaHistorica : UsuarioNegocio [0..1]
+) : UsuarioNegocio
+```
+
+La firma refleja una separación explícita de responsabilidades:
+
+```text
+Application
+→ consulta la membresía histórica mediante persistencia
+→ entrega Usuario + rolInicial + membresiaHistorica opcional al dominio
+
+Negocio
+→ NO consulta repositories
+→ protege las invariantes de incorporación/reactivación
+```
+
+El `rolInicial` aceptado por esta operación utiliza una whitelist cerrada:
+
+```text
+{ ENCARGADO, TRABAJADOR }
+```
+
+No debe implementarse simplemente como:
+
+```text
+rolInicial != PROPIETARIO
+```
+
+porque una extensión futura del enum `Rol` podría habilitar accidentalmente roles no previstos para incorporación normal.
+
+Comportamiento:
+
+```text
+membresiaHistorica = null
+→ crear exactamente una nueva UsuarioNegocio
+→ estado = ACTIVO
+→ rol = rolInicial
+```
+
+```text
+membresiaHistorica.estado = INACTIVO
+→ reutilizar la MISMA UsuarioNegocio histórica
+→ estado = ACTIVO
+→ rol = rolInicial
+```
+
+```text
+membresiaHistorica.estado = ACTIVO
+→ RECHAZAR
+→ NO duplicar
+→ NO cambiar Rol silenciosamente
+```
+
+Si se proporciona `membresiaHistorica`, `Negocio` debe revalidar que corresponda:
+
+- al mismo `Usuario`;
+- al mismo `Negocio`.
+
+Una membresía histórica incoherente no debe corregirse, reasignarse ni reutilizarse silenciosamente.
+
+La operación anterior es responsable de la **incorporación/reactivación**. No reemplaza otras operaciones explícitas del ciclo de vida, como:
+
+```text
+desactivarMiembro(...)
+cambiarRolMiembro(...)
+```
+
+La promoción a `PROPIETARIO` continúa siendo una operación deliberada separada.
+
 ---
 
 ## 4.3. UsuarioNegocio
@@ -897,7 +974,7 @@ En cambio, orientará al usuario hacia la configuración correspondiente.
 | **RF-ORG-005** | Consultar Negocios e Invitaciones | Mostrar las membresías activas y las invitaciones correspondientes al Usuario. | Usuario | El Usuario visualiza sus Negocios con membresía `ACTIVA` y las invitaciones destinadas funcionalmente a su Email. |
 | **RF-ORG-006** | Invitar Miembro | Permitir invitar una persona mediante email y rol propuesto. | Propietario | Se crea una `InvitacionNegocio` `PENDIENTE` para `ENCARGADO` o `TRABAJADOR`, con `fechaExpiracion` fija, destinatario sin membresía `ACTIVA` y sin otra `PENDIENTE` vigente equivalente. |
 | **RF-ORG-007** | Compartir / Reenviar Invitación | Permitir obtener y compartir nuevamente una invitación. | Propietario | Puede compartirse la misma invitación vigente por WhatsApp o enlace; reenviar no crea otra `InvitacionNegocio`, no cambia el rol ni extiende `fechaExpiracion`. |
-| **RF-ORG-008** | Aceptar Invitación | Permitir aceptar una invitación válida destinada al Usuario autenticado. | Usuario invitado | Solo una `PENDIENTE` vigente e identificada con el Email correcto puede aceptarse; se revalida que no exista membresía `ACTIVA` y aceptación + creación/reactivación de `UsuarioNegocio` se confirman atómicamente. |
+| **RF-ORG-008** | Aceptar Invitación | Permitir aceptar una invitación válida destinada al Usuario autenticado. | Usuario invitado | Solo una `PENDIENTE` vigente e identificada con el Email correcto puede aceptarse; se consulta la membresía histórica por `Usuario + Negocio`, una `ACTIVA` provoca rechazo, una `INACTIVA` se reutiliza, y aceptación + incorporación/reactivación se confirman como una única postcondición funcional. |
 | **RF-ORG-009** | Rechazar Invitación | Permitir al destinatario rechazar una invitación. | Usuario invitado | Solo una `PENDIENTE` vigente destinada a esa identidad puede pasar a `RECHAZADA`; no se crea ni reactiva membresía. |
 | **RF-ORG-010** | Cancelar Invitación | Permitir retirar una invitación pendiente. | Propietario | Un `PROPIETARIO` con membresía `ACTIVA` del mismo Negocio puede pasar una invitación `PENDIENTE` a `CANCELADA`; no se exige que continúe vigente. |
 | **RF-ORG-011** | Entrar a un Negocio | Permitir seleccionar un Negocio donde el Usuario posea membresía activa. | Usuario | Se establece el contexto del Negocio y los permisos correspondientes al rol. |
@@ -994,6 +1071,52 @@ Usuario + Negocio
 
 existe una única `UsuarioNegocio` conceptual histórica.
 
+El Caso de Uso que necesita incorporar o reincorporar a una persona debe resolver primero, mediante persistencia:
+
+```text
+membresiaHistorica : UsuarioNegocio | null
+```
+
+y entregar ese resultado al dominio.
+
+Conceptualmente:
+
+```text
+Application
+→ buscar membresía histórica por Usuario + Negocio
+→ Negocio.incorporarOReactivarMiembro(
+      usuario,
+      rolInicial,
+      membresiaHistorica
+  )
+```
+
+`Negocio` no consulta repositories para descubrir la membresía.
+
+La operación debe defender nuevamente:
+
+```text
+rolInicial ∈ {ENCARGADO, TRABAJADOR}
+```
+
+y, cuando existe `membresiaHistorica`, debe comprobar que corresponde:
+
+```text
+al mismo Usuario
++
+al mismo Negocio
+```
+
+Si no existe membresía histórica:
+
+```text
+null
+↓
+crear exactamente una UsuarioNegocio
+estado = ACTIVO
+rol = rolInicial
+```
+
 Si la membresía se encuentra:
 
 ```text
@@ -1010,6 +1133,7 @@ estado = INACTIVO
 
         ↓
 
+MISMA identidad histórica
 estado = ACTIVO
 rol = rolPropuesto de la nueva invitación
 ```
@@ -1021,8 +1145,13 @@ Si la membresía ya está `ACTIVA`:
 ```text
 NO duplicar;
 NO reactivar;
-NO cambiar rol mediante invitación.
+NO cambiar rol mediante invitación;
+RECHAZAR la incorporación.
 ```
+
+Una membresía histórica perteneciente a otro Usuario o a otro Negocio también debe provocar rechazo explícito.
+
+La persistencia debe actuar como defensa final frente a carreras concurrentes que intenten crear o activar más de una membresía para la misma combinación `Usuario + Negocio`.
 
 ---
 
@@ -1766,65 +1895,142 @@ Usuario invitado.
 
 Existe una referencia de invitación resoluble.
 
+Poseer esa referencia **no constituye autorización suficiente**.
+
 ### Flujo Inicial Común
 
-1. El Usuario accede al enlace.
-2. El sistema identifica la `InvitacionNegocio`.
-3. Verifica su estado actual.
-4. Si el estado no es `PENDIENTE`, informa el resultado terminal correspondiente.
-5. Obtiene un instante temporal coherente `ahora`.
+1. El Usuario accede a la referencia de invitación.
+2. El sistema intenta resolver la `InvitacionNegocio`.
+3. Si no existe, finaliza el escenario sin exponer información sensible del Negocio.
+4. Obtiene **un único instante temporal coherente `ahora`** para las validaciones temporales de esta operación.
+5. Verifica que el estado sea `PENDIENTE`.
 6. Evalúa `estaVigente(ahora)`.
 7. Si no está vigente:
-   - no ofrece `Aceptar`;
-   - no ofrece `Rechazar`;
-   - puede materializar `EXPIRADA` según la estrategia definida.
+   - no permite aceptar;
+   - no permite rechazar;
+   - la falta de vigencia lógica **no obliga** a materializar `EXPIRADA` dentro de este Caso de Uso.
+8. Si el Usuario todavía no está autenticado, el sistema solicita registro o inicio de sesión conservando la referencia de invitación.
+9. Una vez autenticado, compara `usuarioActual.email` con `emailDestino` mediante la equivalencia funcional del Value Object `Email`.
+10. Si la identidad no coincide, finaliza sin modificar la invitación.
+11. Presenta el Negocio y el `rolPropuesto`.
+12. El Usuario elige `Aceptar` o `Rechazar`.
 
-### Escenario A — El Invitado no Tiene Cuenta
+### Escenario A — Aceptar
 
-8. El sistema solicita registrarse.
-9. Conserva el contexto de invitación.
-10. El Usuario finaliza el registro.
-11. Inicia sesión.
-12. El sistema verifica que el Email autenticado sea funcionalmente equivalente a `emailDestino`.
-13. Presenta Negocio y `rolPropuesto`.
-14. El Usuario selecciona `Aceptar`.
-15. Antes de confirmar, el sistema revalida:
-    - estado `PENDIENTE`;
-    - `estaVigente(ahora)`;
-    - identidad;
-    - ausencia de membresía `ACTIVA`.
-16. Confirma atómicamente:
-    - invitación `PENDIENTE → ACEPTADA`;
-    - creación de `UsuarioNegocio` `ACTIVA` con `rolPropuesto`.
-
-### Escenario B — El Invitado ya Posee Cuenta
-
-8. El Usuario inicia sesión.
-9. El sistema verifica identidad.
-10. Presenta la invitación.
-11. El Usuario selecciona `Aceptar`.
-12. Revalida las mismas guardias de aceptación.
-13. Confirma atómicamente:
-    - `InvitacionNegocio → ACEPTADA`;
-    - crear o reactivar `UsuarioNegocio`.
-
-### Escenario C — Membresía Histórica INACTIVA
-
-Al aceptar:
+Antes de mutar, el sistema revalida utilizando el mismo `ahora`:
 
 ```text
-UsuarioNegocio histórica
-estado = INACTIVO
-
-        ↓
-
-estado = ACTIVO
-rol = rolPropuesto
+estado = PENDIENTE
++
+estaVigente(ahora)
++
+Email funcionalmente coincidente
 ```
 
-No se crea otra membresía conceptual.
+También valida que:
 
-### Flujo Alternativo — Rechazar
+```text
+rolPropuesto ∈ {ENCARGADO, TRABAJADOR}
+```
+
+A continuación:
+
+1. Carga el `Negocio` asociado.
+2. Dentro de la frontera lógica de consistencia, revalida que la invitación siga siendo aceptable.
+3. Consulta mediante persistencia:
+
+```text
+membresiaHistorica por Usuario + Negocio
+```
+
+4. Si existe y está `ACTIVA`:
+
+```text
+RECHAZAR
+NO aceptar invitación
+NO cambiar Rol
+NO persistir incorporación
+```
+
+y el escenario finaliza.
+
+5. Si existe y está `INACTIVA`, Application entrega esa misma entidad histórica a:
+
+```text
+Negocio.incorporarOReactivarMiembro(
+    usuarioActual,
+    rolPropuesto,
+    membresiaHistorica
+)
+```
+
+6. Si no existe, Application invoca:
+
+```text
+Negocio.incorporarOReactivarMiembro(
+    usuarioActual,
+    rolPropuesto,
+    null
+)
+```
+
+7. `Negocio` revalida:
+   - whitelist del rol;
+   - pertenencia de la membresía histórica al mismo Usuario;
+   - pertenencia de la membresía histórica al mismo Negocio;
+   - estado compatible con incorporación/reactivación.
+8. El resultado se conserva como una referencia local del Caso de Uso:
+
+```text
+membresiaResultado
+```
+
+En una reactivación:
+
+```text
+membresiaResultado
+=
+misma UsuarioNegocio histórica reactivada
+```
+
+9. Solo después de obtener una membresía válida se solicita:
+
+```text
+InvitacionNegocio.aceptarPara(usuarioActual.email, ahora)
+```
+
+10. Se registran conceptualmente los cambios de:
+    - `InvitacionNegocio`;
+    - `membresiaResultado`.
+11. Persistencia debe detectar conflictos concurrentes relevantes, al menos:
+    - otra transición sobre la misma invitación;
+    - duplicidad `Usuario + Negocio`;
+    - activación/cambio concurrente incompatible de la membresía.
+12. La operación se confirma como una única postcondición funcional.
+
+### Postcondición de Aceptación
+
+Si se aceptó correctamente:
+
+```text
+InvitacionNegocio.estado = ACEPTADA
++
+UsuarioNegocio.estado = ACTIVO
++
+UsuarioNegocio.rol = rolPropuesto
+```
+
+Las tres condiciones pertenecen a la misma unidad funcional de consistencia.
+
+Si falla una validación, persistencia o conflicto concurrente:
+
+```text
+ninguna modificación queda confirmada
+```
+
+El mecanismo técnico que garantiza atomicidad se define posteriormente en Arquitectura/Persistencia.
+
+### Escenario B — Rechazar
 
 El Usuario selecciona:
 
@@ -1832,20 +2038,20 @@ El Usuario selecciona:
 Rechazar invitación
 ```
 
-Antes de confirmar se revalida:
+Antes de confirmar se revalida, utilizando el mismo `ahora`:
 
 ```text
 estado = PENDIENTE
 +
 estaVigente(ahora)
 +
-Email coincidente
+Email funcionalmente coincidente
 ```
 
 Resultado:
 
 ```text
-RECHAZADA
+InvitacionNegocio.estado = RECHAZADA
 ```
 
 No se crea ni reactiva membresía.
@@ -1870,6 +2076,8 @@ estaVigente(ahora) = false
 
 no puede aceptarse ni rechazarse.
 
+No es obligatorio materializar `EXPIRADA` como efecto lateral de este Caso de Uso.
+
 ### Flujo Excepcional — Invitación Terminal
 
 Si está:
@@ -1890,30 +2098,39 @@ Si al confirmar la aceptación el Usuario ya posee una membresía `ACTIVA`:
 ```text
 NO aceptar
 NO crear otra membresía
+NO reactivar
 NO cambiar rol
 ```
 
-El sistema orienta a la gestión de miembros cuando corresponda.
+El flujo termina antes de mutar `InvitacionNegocio`.
+
+### Flujo Excepcional — Membresía Histórica Incoherente
+
+Si la membresía cargada no corresponde al mismo Usuario o al mismo Negocio:
+
+```text
+RECHAZAR
+NO corregir silenciosamente
+NO reasignar la membresía
+```
 
 ### Postcondiciones
 
-Si se aceptó correctamente:
+Aceptación exitosa:
 
 ```text
 InvitacionNegocio.estado = ACEPTADA
 +
 UsuarioNegocio.estado = ACTIVO
++
+UsuarioNegocio.rol = rolPropuesto
 ```
 
-y ambas modificaciones pertenecen a la misma unidad funcional de consistencia.
-
-Si se rechazó:
+Rechazo exitoso:
 
 ```text
 InvitacionNegocio.estado = RECHAZADA
 ```
-
-sin cambios en membresías.
 
 ---
 
@@ -2248,7 +2465,7 @@ requiere PENDIENTE + no vigente
 
 Los cuatro estados de destino son terminales.
 
-La creación/reactivación de `UsuarioNegocio` pertenece al Caso de Uso de aceptación y no a una transición interna de `InvitacionNegocio`.
+La **coordinación** de aceptación pertenece al Caso de Uso. La creación/reactivación de `UsuarioNegocio` se ejecuta mediante `Negocio.incorporarOReactivarMiembro(...)`; no pertenece a una transición interna de `InvitacionNegocio` y no requiere que la invitación consulte repositories.
 
 La especificación detallada se encuentra en:
 
@@ -2282,12 +2499,29 @@ modelo-dominio/bloque-1-fundacion/
 La reactivación:
 
 - conserva la misma identidad histórica de `UsuarioNegocio`;
-- puede aplicar un nuevo rol a partir de la nueva invitación;
+- aplica el `rolPropuesto` de la nueva invitación;
 - no crea una segunda membresía para el mismo `Usuario + Negocio`.
 
-Las guardias relacionadas con el último Propietario se detallarán adicionalmente en:
+La coordinación del flujo pertenece al Caso de Uso de aceptación:
 
 ```text
+Application
+→ consulta membresiaHistorica
+→ Negocio.incorporarOReactivarMiembro(
+      usuario,
+      rolPropuesto,
+      membresiaHistorica
+  )
+```
+
+`Negocio` protege la coherencia de la membresía recibida y no consulta persistencia.
+
+Una membresía `ACTIVA` no es una transición válida de “reactivación”; la incorporación debe rechazarse.
+
+Las guardias relacionadas con el último Propietario se detallan adicionalmente en:
+
+```text
+05-m01-estados-membresia.md
 05-m01-estados-membresia.puml
 ```
 
@@ -2599,13 +2833,15 @@ Antes de implementar M01, una IA o desarrollador debe consultar:
 3. 01-diagrama-general.puml
 4. 02-m01-organizacion-clases.md
 5. 02-m01-organizacion-clases.puml
-6. 04-m01-estados-invitacion.md
-7. 04-m01-estados-invitacion.puml
-8. 05-m01-estados-membresia.* cuando exista
-9. ADRs / diseño técnico
-10. modelo relacional
-11. API
-12. código
+6. secuencias/01-aceptar-invitacion.puml
+7. 04-m01-estados-invitacion.md
+8. 04-m01-estados-invitacion.puml
+9. 05-m01-estados-membresia.md
+10. 05-m01-estados-membresia.puml
+11. ADRs / diseño técnico
+12. modelo relacional
+13. API
+14. código
 ```
 
 Si las fuentes se contradicen:
@@ -2645,6 +2881,23 @@ atomicidad entre entidades
 
 No introducir repositories dentro de entidades para resolver guardias contextuales.
 
+Ejemplo `Negocio.incorporarOReactivarMiembro(...)`:
+
+```text
+Application:
+- consulta membresiaHistorica por Usuario + Negocio;
+- entrega la entidad o null.
+
+Negocio:
+- valida rolInicial;
+- valida pertenencia de la membresía recibida;
+- rechaza si ya está ACTIVA;
+- reutiliza si está INACTIVA;
+- crea si es null.
+```
+
+La entidad protege la invariante con los objetos que recibe; no descubre por sí misma el estado global mediante persistencia.
+
 ---
 
 ## 19.3. Métodos de Dominio no son Endpoints
@@ -2655,6 +2908,7 @@ Una operación como:
 cancelar()
 aceptarPara(...)
 cambiarRolMiembro(...)
+incorporarOReactivarMiembro(...)
 ```
 
 no implica automáticamente:
@@ -2734,6 +2988,8 @@ registro concurrente con mismo Email
 dos invitaciones equivalentes concurrentes
 dos aceptaciones de la misma invitación
 aceptación concurrente con incorporación por otra vía
+creación/activación concurrente de UsuarioNegocio para el mismo Usuario + Negocio
+transición concurrente de la misma InvitacionNegocio
 cancelación concurrente con expiración
 dos cambios concurrentes sobre el último Propietario
 ```
@@ -2891,47 +3147,55 @@ Una implementación puede centralizar políticas de autorización en código de 
 
 10. Usuario puede participar en varios Negocios;
 11. rol distinto por Negocio;
-12. impedir segunda membresía histórica Usuario + Negocio;
-13. desactivar ACTIVO → INACTIVO;
-14. reactivar misma membresía histórica;
-15. reactivación aplica rol nuevo;
-16. miembro ya ACTIVO no se reincorpora;
-17. impedir desactivar al último Propietario;
-18. impedir degradar al último Propietario;
-19. permitir promover segundo Propietario.
+12. impedir segunda membresía histórica `Usuario + Negocio`;
+13. desactivar `ACTIVO → INACTIVO`;
+14. reactivar la misma membresía histórica;
+15. reactivación aplica el rol nuevo propuesto;
+16. miembro ya `ACTIVO` no se reincorpora ni cambia de rol;
+17. `incorporarOReactivarMiembro(..., null)` crea exactamente una membresía;
+18. `incorporarOReactivarMiembro(..., membresiaINACTIVA)` devuelve/reutiliza la misma identidad histórica;
+19. rechazar `membresiaHistorica` perteneciente a otro Usuario;
+20. rechazar `membresiaHistorica` perteneciente a otro Negocio;
+21. rechazar rol inicial fuera de `{ENCARGADO, TRABAJADOR}`;
+22. impedir desactivar al último Propietario;
+23. impedir degradar al último Propietario;
+24. permitir promover segundo Propietario.
 
 ## Invitaciones
 
-20. emitir como Propietario ACTIVO;
-21. impedir emitir como Encargado/Trabajador;
-22. impedir rolPropuesto PROPIETARIO;
-23. impedir invitar miembro ya ACTIVO;
-24. crear fechaExpiracion > fechaEmision;
-25. límite `ahora == fechaExpiracion` no vigente;
-26. impedir segunda PENDIENTE vigente equivalente;
-27. PENDIENTE vencida permite nueva emisión tras materializar expiración;
-28. reenviar mantiene identidad, rol y fechaExpiracion;
-29. aceptar válida;
-30. impedir aceptar vencida;
-31. impedir aceptar con Email distinto;
-32. revalidar membresía ACTIVA al aceptar;
-33. aceptación + membresía atómicas;
-34. rechazar válida;
-35. impedir rechazar vencida;
-36. cancelar vigente;
-37. cancelar PENDIENTE ya vencida;
-38. expirar solo cuando no vigente;
-39. estados terminales no admiten nuevas transiciones.
+25. emitir como Propietario `ACTIVO`;
+26. impedir emitir como Encargado/Trabajador;
+27. impedir `rolPropuesto = PROPIETARIO`;
+28. impedir invitar miembro ya `ACTIVO`;
+29. crear `fechaExpiracion > fechaEmision`;
+30. límite `ahora == fechaExpiracion` no vigente;
+31. impedir segunda `PENDIENTE` vigente equivalente;
+32. `PENDIENTE` vencida permite nueva emisión tras materializar expiración cuando corresponda;
+33. reenviar mantiene identidad, rol y `fechaExpiracion`;
+34. aceptar válida usando un único `ahora`;
+35. impedir aceptar vencida;
+36. impedir aceptar con Email distinto;
+37. revalidar membresía `ACTIVA` al aceptar;
+38. aceptación prepara membresía válida antes de mutar invitación a `ACEPTADA`;
+39. aceptación + membresía se confirman atómicamente;
+40. rechazo válido;
+41. impedir rechazar vencida;
+42. cancelar vigente;
+43. cancelar `PENDIENTE` ya vencida;
+44. expirar solo cuando no vigente;
+45. estados terminales no admiten nuevas transiciones.
 
 ## Concurrencia
 
-40. dos registros equivalentes → una cuenta;
-41. dos emisiones equivalentes → una PENDIENTE;
-42. dos aceptaciones → una incorporación;
-43. aceptar vs incorporación paralela → sin duplicar ni cambiar rol;
-44. cancelar vs expirar → una transición;
-45. dos operaciones sobre último Propietario → nunca cero Propietarios activos.
-46. emisión/cancelación/cambio de rol conservan actor y momento según estrategia de trazabilidad.
+46. dos registros equivalentes → una cuenta;
+47. dos emisiones equivalentes → una `PENDIENTE`;
+48. dos aceptaciones → una sola incorporación;
+49. aceptar vs incorporación paralela → sin duplicar membresía ni cambiar rol;
+50. aceptación vs cancelación/rechazo/expiración concurrente → una única transición válida;
+51. creación/activación concurrente de membresía → una única `UsuarioNegocio` histórica;
+52. cancelar vs expirar → una transición;
+53. dos operaciones sobre último Propietario → nunca cero Propietarios activos;
+54. emisión/cancelación/cambio de rol conservan actor y momento según estrategia de trazabilidad.
 
 ---
 
@@ -3032,6 +3296,14 @@ No modificar rol de miembro ACTIVO mediante invitación.
 
 No crear una segunda membresía histórica.
 
+No hacer que `Negocio` consulte repositories para descubrir `membresiaHistorica`.
+
+No instanciar/reactivar `UsuarioNegocio` directamente desde Application saltándose `Negocio.incorporarOReactivarMiembro(...)`.
+
+No reutilizar una `membresiaHistorica` perteneciente a otro Usuario o a otro Negocio.
+
+No implementar la whitelist de incorporación únicamente como `rolInicial != PROPIETARIO`.
+
 No crear un Negocio sin Propietario inicial.
 
 No permitir que dos operaciones concurrentes eliminen al último Propietario.
@@ -3055,6 +3327,12 @@ No introducir infraestructura dentro de entidades por comodidad.
 [ ] Negocio no posee ciclo ACTIVO/INACTIVO inventado.
 [ ] UsuarioNegocio usa EstadoMembresia ACTIVO/INACTIVO.
 [ ] Usuario + Negocio posee una sola membresía histórica.
+[ ] Application consulta membresiaHistorica y la entrega al dominio; Negocio no consulta repositories.
+[ ] incorporarOReactivarMiembro(...) recibe membresiaHistorica opcional.
+[ ] Rol de incorporación usa whitelist {ENCARGADO, TRABAJADOR}.
+[ ] Membresía INACTIVA reutiliza la misma identidad histórica.
+[ ] Membresía ACTIVA provoca rechazo y no modifica Rol.
+[ ] Negocio revalida que membresiaHistorica corresponda al mismo Usuario y Negocio.
 [ ] Crear Negocio + Propietario inicial es atómico.
 [ ] Último Propietario está protegido al confirmar.
 [ ] InvitacionNegocio usa fechaExpiracion.
@@ -3066,9 +3344,12 @@ No introducir infraestructura dentro de entidades por comodidad.
 [ ] Solo una PENDIENTE vigente equivalente.
 [ ] Reenvío no crea nueva invitación.
 [ ] Reenvío no extiende fechaExpiracion.
-[ ] Aceptación revalida Email, tiempo, estado y membresía.
+[ ] Aceptación utiliza un único instante temporal coherente ahora.
+[ ] Aceptación revalida Email, tiempo, estado y membresía antes de mutar.
+[ ] Aceptación prepara una membresía válida antes de pasar InvitacionNegocio a ACEPTADA.
 [ ] Aceptación + membresía es atómica.
 [ ] InvitacionNegocio no crea directamente UsuarioNegocio.
+[ ] Ningún camino de error de aceptación puede confluir con éxito.
 [ ] Entidades no consultan repositories.
 [ ] Backend revalida autorización.
 [ ] Persistencia protege invariantes concurrentes.
@@ -3082,7 +3363,7 @@ No introducir infraestructura dentro de entidades por comodidad.
 
 # 25. Estado de la Especificación
 
-Con esta revisión, M01 queda funcionalmente preparado para sincronizarse con:
+Con esta revisión, el documento funcional de M01 queda sincronizado conceptualmente con las decisiones actuales de:
 
 ```text
 01-modelo-dominio-bloque-1.md
@@ -3091,12 +3372,40 @@ Con esta revisión, M01 queda funcionalmente preparado para sincronizarse con:
 02-m01-organizacion-clases.puml
 04-m01-estados-invitacion.md
 04-m01-estados-invitacion.puml
+05-m01-estados-membresia.md
+05-m01-estados-membresia.puml
+secuencias/01-aceptar-invitacion.puml
 ```
 
-El siguiente artefacto de dominio pendiente es:
+En particular queda fijado que:
 
 ```text
-05-m01-estados-membresia.puml
+Application
+→ resuelve membresiaHistorica mediante persistencia
+
+Negocio
+→ incorporarOReactivarMiembro(
+      usuario,
+      rolInicial,
+      membresiaHistorica
+  )
+
+InvitacionNegocio
+→ protege su propia transición local
+
+Persistencia
+→ protege atomicidad, unicidad y conflictos concurrentes
 ```
 
-No corresponde comenzar implementación antes de terminar las vistas dinámicas y las decisiones arquitectónicas previstas para el Bloque 1.
+La revisión de etiquetas documentales globales como:
+
+```text
+congelado
+sincronizado
+cerrado
+```
+
+se realizará al finalizar la sincronización transversal de todo el Bloque 1.
+
+No corresponde comenzar implementación definitiva mientras existan contradicciones entre los artefactos estructurales, de estados y de secuencia del Bloque 1.
+
