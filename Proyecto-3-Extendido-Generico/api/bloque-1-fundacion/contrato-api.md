@@ -1256,10 +1256,19 @@ Además de los campos de la operación.
 Esto aplica a:
 
 - PATCH de entidad;
-- cambio de estado;
+- cambio de estado administrativo;
 - comandos administrativos que mutan una entidad versionada.
 
 No se requiere `version` al crear un recurso nuevo.
+
+Tampoco se exige una `version` aportada por el cliente en comandos cuya autoridad deriva de una capability/identidad y que revalidan el estado actual bajo lock en servidor, como:
+
+~~~text
+POST /api/v1/invitaciones/{token}/aceptar
+POST /api/v1/invitaciones/{token}/rechazar
+~~~
+
+En esos casos la protección concurrente sigue siendo obligatoria, pero no depende de un estado previamente leído por el cliente.
 
 ---
 
