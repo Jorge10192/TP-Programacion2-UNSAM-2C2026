@@ -1,17 +1,14 @@
 @startuml 01-diagrama-general
 
-title Modelo de Dominio General — Bloque 1 (M01 + M02)\n<size:11>Vista integrada de nivel superior — versión oficial congelada</size>
-
-' =============================================================================
-' CONFIGURACIÓN VISUAL Y PALETA CROMÁTICA
-' =============================================================================
+title Modelo de Dominio General — Bloque 1 (M01 + M02)
+<size:11>Vista integrada de nivel superior — versión sincronizada — candidata a congelación tras auditoría del Bloque 1</size>
 
 skinparam classAttributeIconSize 0
-skinparam linetype ortho
+skinparam linetype polyline
 skinparam packageStyle rectangle
 skinparam shadowing false
-skinparam nodesep 50
-skinparam ranksep 60
+skinparam nodesep 55
+skinparam ranksep 65
 
 skinparam noteFontSize 10
 skinparam noteBackgroundColor #FFFDE7
@@ -41,18 +38,12 @@ skinparam package {
   FontStyle bold
 }
 
-' =============================================================================
-' MÓDULO M01 — ORGANIZACIÓN DEL NEGOCIO
-' =============================================================================
-
 package "M01 — Organización del Negocio" as M01 {
 
   class Usuario <<entity>> {
     identidad
     nombre
     email : Email
-    estadoCuenta
-    fechaRegistro
   }
 
   class UsuarioNegocio <<entity>> {
@@ -67,6 +58,12 @@ package "M01 — Organización del Negocio" as M01 {
     rubro [0..1]
     monedaBase : Moneda
     modalidades : Set<ModalidadOperativa> {1..*}
+    --
+    incorporarOReactivarMiembro(
+      usuario : Usuario,
+      rolInicial : Rol,
+      membresiaHistorica : UsuarioNegocio [0..1]
+    ) : UsuarioNegocio
   }
 
   class InvitacionNegocio <<entity>> {
@@ -109,10 +106,6 @@ package "M01 — Organización del Negocio" as M01 {
   }
 }
 
-' =============================================================================
-' MÓDULO M02 — CATÁLOGO
-' =============================================================================
-
 package "M02 — Catálogo" as M02 {
 
   class Categoria <<entity>> {
@@ -128,7 +121,12 @@ package "M02 — Catálogo" as M02 {
     unidadMedida : UnidadMedida
     sku [0..1]
     precioBase [0..1]
+    imagenes [0..3]
     estado : EstadoArticulo
+    --
+    aplicarEdicion(propuesta : PropuestaEdicionPreparada)
+    desactivar()
+    reactivar()
   }
 
   class CapacidadesArticulo <<value object>> {
@@ -167,42 +165,86 @@ package "M02 — Catálogo" as M02 {
   }
 }
 
-' =============================================================================
-' RELACIONES PRINCIPALES
-' =============================================================================
-
-' Estructura M01
 Usuario "1" -- "0..*" UsuarioNegocio : membresías
 UsuarioNegocio "1..*" -- "1" Negocio : pertenece a
 Negocio "1" -- "0..*" InvitacionNegocio : invitaciones
 UsuarioNegocio "1" -- "0..*" InvitacionNegocio : emite
 
-' Conexión M01 -> M02
-Negocio "1" -right- "0..*" Categoria : organiza
-Negocio "1" -right- "0..*" ArticuloCatalogo : contiene
-
-' Estructura M02
+Negocio "1" -- "0..*" Categoria : organiza
+Negocio "1" -- "0..*" ArticuloCatalogo : contiene
 Categoria "0..1" -- "0..*" ArticuloCatalogo : clasifica
 ArticuloCatalogo "1" *-- "1" CapacidadesArticulo : define
 
-' =============================================================================
-' NOTAS CONCEPTUALES DE ALTO NIVEL
-' =============================================================================
+note right of UsuarioNegocio
+  El Rol pertenece a la membresía.
 
-note top of M01
-  <b>Organización e Identidad (M01)</b>
-  • Usuario representa la identidad global (0..N membresías).
-  • Rol y Estado pertenecen a UsuarioNegocio.
-  • Existe una única membresía histórica por combinación Usuario + Negocio.
-  • Negocio debe conservar al menos 1 PROPIETARIO activo.
-  • La aceptación de invitaciones se coordina atómicamente en el Caso de Uso.
+  Para Usuario + Negocio existe
+  una única membresía histórica.
+
+  INACTIVO no autoriza operaciones.
 end note
 
-note top of M02
-  <b>Catálogo Unificado (M02)</b>
-  • ArticuloCatalogo unifica BIEN y SERVICIO.
-  • CapacidadesArticulo define elegibilidad/configuración, no hechos operativos.
-  • Categoria y ArticuloCatalogo pertenecen contextualmente a un Negocio.
+note right of Negocio
+  Crear Negocio incluye funcionalmente
+  su primer UsuarioNegocio
+  ACTIVO + PROPIETARIO.
+
+  incorporarOReactivarMiembro(...)
+  recibe la membresía histórica opcional
+  desde Application; Domain no consulta repositories.
+
+  La incorporación normal usa:
+  ENCARGADO / TRABAJADOR.
+end note
+
+note bottom of InvitacionNegocio
+  PENDIENTE no implica vigencia.
+
+  Aceptar/rechazar validan:
+  estado + tiempo + Email.
+
+  El Caso de Uso coordina atómicamente:
+  ACEPTADA + crear/reactivar membresía.
+end note
+
+note right of ArticuloCatalogo
+  TipoArticulo es inmutable.
+
+  ACTIVO requiere >= 1 uso operativo.
+
+  Editar ACTIVO -> ACTIVO.
+  Editar INACTIVO -> INACTIVO.
+  Editar nunca reactiva.
+
+  Nombre y SKU son únicos por Negocio
+  considerando ACTIVO + INACTIVO.
+
+  Imágenes: 0..3;
+  si existen, exactamente una principal.
+end note
+
+note right of CapacidadesArticulo
+  Capacidades = configuración/elegibilidad,
+  no hechos operativos.
+
+  SERVICIO:
+  sin stock, vencimiento
+  ni producción.
+
+  El VO es inmutable
+  y no aplica auto-fixes silenciosos.
+end note
+
+note bottom of M02
+  Hard delete NO es EstadoArticulo.
+
+  En el MVP exige:
+  PROPIETARIO + INACTIVO
+  + sin historia/referencias/dependencias.
+
+  El detalle de concurrencia, persistencia,
+  auditoría y storage pertenece a las
+  vistas detalladas / Arquitectura.
 end note
 
 @enduml
