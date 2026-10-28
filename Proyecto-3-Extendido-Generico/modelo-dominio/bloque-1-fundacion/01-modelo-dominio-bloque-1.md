@@ -959,7 +959,8 @@ PENDIENTE → ACEPTADA
 
 Negocio.incorporarOReactivarMiembro(
     usuario,
-    rolPropuesto
+    rolPropuesto,
+    membresiaHistorica
 )
 ```
 
