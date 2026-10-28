@@ -3099,92 +3099,45 @@ permanece abierto.
 
 # 47. Estado Actual de la Especificación Funcional M02
 
-Con esta actualización:
+Con la sincronización actual:
 
 ```text
 BLOQUE 1 — FUNDACIÓN
 
 M01 Organización
-🟡 CONTENIDO FUNCIONAL ACTUALIZADO
-   pendiente de revisión transversal final del Bloque 1
+🟡 SINCRONIZADO FUNCIONALMENTE
+   pendiente de auditoría transversal final
 
 M02 Catálogo
-🟡 MARKDOWN FUNCIONAL ACTUALIZADO
-✅ SINCRONIZADO CON LAS DECISIONES DE CLIENTE MÁS RECIENTES
+🟡 SINCRONIZADO FUNCIONALMENTE
+✅ ALINEADO CON Diagrama 3
+✅ ALINEADO CON Diagrama 6
 ✅ ALINEADO CON secuencias/02-editar-articulo.puml
-⚠️ REQUIERE RESINCRONIZAR CLASES Y ESTADOS
 ```
 
 Estado de artefactos M02:
 
 ```text
 M02-Catalogo.md
-✅ ACTUALIZADO — fuente funcional vigente para la resincronización
+✅ SINCRONIZADO
+
+03-m02-catalogo-clases.md
+✅ SINCRONIZADO
+
+03-m02-catalogo-clases.puml
+✅ SINCRONIZADO
+
+06-m02-estados-articulo.md
+✅ SINCRONIZADO
+
+06-m02-estados-articulo.puml
+✅ SINCRONIZADO
 
 secuencias/02-editar-articulo.puml
-✅ SECUENCIA ACTUAL VÁLIDA
-
-secuencias/02-editar-articulo.png
-✅ REPRESENTACIÓN ACTUAL
-
-03-m02-catalogo-clases.md
-⚠️ DESACTUALIZADO EN REGLAS DE EDICIÓN/PERMISOS/IMÁGENES
-
-03-m02-catalogo-clases.puml
-⚠️ DESACTUALIZADO EN REGLAS DE EDICIÓN/PERMISOS/IMÁGENES
-
-06-m02-estados-articulo.md
-⚠️ DESACTUALIZADO: todavía bloquea edición de INACTIVO
-   y conserva reactivación con reconfiguración
-
-06-m02-estados-articulo.puml
-⚠️ DESACTUALIZADO: debe reflejar que editar ACTIVO/INACTIVO
-   no es transición de estado y que reactivar es separado
-
-06-m02-estados-articulo.png
-⚠️ REGENERAR después de actualizar el .puml
+✅ SINCRONIZADO
 ```
 
-Cambios obligatorios a propagar:
+La congelación definitiva del Bloque 1 se realizará únicamente después de la auditoría transversal de todos los artefactos M01/M02.
 
-```text
-1. editar ACTIVO e INACTIVO;
-2. editar INACTIVO NO reactiva;
-3. reactivación separada, sin payload libre de edición;
-4. autorización mediante permiso conceptual, sin matriz rígida por Rol;
-5. imágenes 0..3, exactamente una principal si existen;
-6. nombre de artículo único por Negocio entre ACTIVO+INACTIVO;
-7. operación compuesta aplicarEdicion(...);
-8. validar antes de mutar;
-9. DTO de Application no cruza al Domain;
-10. entrada parcial, confirmación todo-o-nada;
-11. unidad nueva aplica hacia futuro sin reescribir historia;
-12. precio nuevo no modifica promociones ni historia;
-13. concurrencia protege nombre, SKU, artículo y Categoria relevante;
-14. hard delete: PROPIETARIO + INACTIVO + sin dependencias;
-15. auditoría conceptual de edición.
-```
+No reabrir decisiones funcionales cerradas durante esa auditoría salvo que se detecte una contradicción real.
 
-No volver a declarar `03-m02-catalogo-clases.*` ni `06-m02-estados-articulo.*` como “congelados” hasta completar esa sincronización y una revisión transversal final.
-
-El siguiente artefacto recomendado para actualizar es:
-
-```text
-03-m02-catalogo-clases.puml
-```
-
-seguido por:
-
-```text
-03-m02-catalogo-clases.md
-06-m02-estados-articulo.puml
-06-m02-estados-articulo.md
-```
-
-Después:
-
-```text
-revisión transversal completa del Bloque 1
-```
-
-y recién entonces evaluar el avance a M03.
