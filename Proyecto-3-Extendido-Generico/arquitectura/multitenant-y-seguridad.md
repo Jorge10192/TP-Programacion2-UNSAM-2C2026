@@ -138,6 +138,33 @@ El tenant queda:
 
 Un header de tenant podrá evaluarse en el futuro si aparece un caso concreto que lo justifique, pero no coexistirá como segunda fuente autoritativa sin necesidad real.
 
+### 5.1 Fuente autoritativa del tenant
+
+Para endpoints tenant-scoped, el valor autoritativo de `negocio_id` será el obtenido desde el path y posteriormente validado contra la membresía autenticada.
+
+Los schemas de request de recursos pertenecientes a un Negocio **no deberán aceptar `negocio_id` como un campo libre del payload** cuando el tenant ya está determinado por la URL.
+
+Ejemplo:
+
+~~~text
+POST /api/v1/negocios/{negocio_id}/articulos
+~~~
+
+El artículo se crea para el `negocio_id` validado del path.
+
+No se permitirá:
+
+~~~json
+{
+  "negocio_id": "otro-negocio",
+  "nombre": "..."
+}
+~~~
+
+como mecanismo para elegir o sobrescribir el tenant.
+
+Si por compatibilidad futura algún contrato recibiera el dato duplicado en más de una fuente, el backend no deberá confiar en el body: deberá rechazarse la inconsistencia o ignorarse el valor redundante según el contrato definido. Nunca se utilizará silenciosamente un tenant diferente del path autenticado.
+
 ---
 
 ## 6. Flujo general
@@ -419,6 +446,18 @@ class PasswordHasher(Protocol):
 
 La implementación concreta pertenece a Infrastructure.
 
+### 18.1 Ejecución del hashing y modelo de concurrencia
+
+Argon2id es deliberadamente costoso en CPU y memoria. Por eso no deberá ejecutarse de forma que bloquee un event loop asíncrono.
+
+La implementación seguirá la convención de concurrencia que finalmente adopte el backend:
+
+- si el flujo HTTP es síncrono y FastAPI lo ejecuta en su worker threadpool, el hashing/verificación podrá permanecer como llamada síncrona;
+- si el flujo se implementa con `async def`, una operación síncrona costosa deberá ejecutarse fuera del event loop, por ejemplo mediante un worker thread compatible con AnyIO;
+- no se mezclará código async con operaciones bloqueantes sin una decisión explícita.
+
+Esta regla se concretará junto con la elección definitiva de SQLAlchemy síncrono o asíncrono.
+
 ---
 
 ## 19. Normalización del Email
@@ -654,6 +693,27 @@ WHERE id = :id
 para recursos multi-tenant.
 
 El tenant deberá formar parte de la selección o el objeto deberá provenir de una recuperación tenant-scoped previa.
+
+### 27.1 Creación de recursos e inmutabilidad del tenant
+
+La protección multi-tenant también aplica a operaciones de creación.
+
+En un endpoint como:
+
+~~~text
+POST /api/v1/negocios/{negocio_id}/articulos
+~~~
+
+Application deberá:
+
+1. tomar el `negocio_id` del contexto validado del path;
+2. verificar la membresía ACTIVA del Usuario autenticado;
+3. construir la nueva entidad asociada a ese Negocio;
+4. ignorar o rechazar cualquier intento del cliente de inyectar otro tenant.
+
+El `negocio_id` de una entidad tenant-scoped no será un atributo libremente editable después de la creación.
+
+Mover un recurso de un Negocio a otro, si alguna vez existiera como requerimiento, deberá modelarse como una operación administrativa explícita y no como una edición ordinaria.
 
 ---
 
