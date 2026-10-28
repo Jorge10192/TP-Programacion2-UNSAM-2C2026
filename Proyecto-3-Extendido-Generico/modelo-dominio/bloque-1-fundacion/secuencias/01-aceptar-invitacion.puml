@@ -1,6 +1,6 @@
 @startuml 01-aceptar-invitacion
 
-title Bloque 1 — Fundación: M01 Organización\n<size:11>Secuencia — Aceptar invitación a Negocio — versión oficial congelada</size>
+title Bloque 1 — Fundación: M01 Organización\n<size:11>Secuencia — Aceptar invitación a Negocio — versión sincronizada — candidata a congelación tras auditoría del Bloque 1</size>
 
 ' =============================================================================
 ' CONFIGURACIÓN VISUAL Y PALETA INSTITUCIONAL
