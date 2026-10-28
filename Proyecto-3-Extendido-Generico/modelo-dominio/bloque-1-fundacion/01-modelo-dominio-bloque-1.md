@@ -1,5 +1,7 @@
 # 01 — Modelo de Dominio del Bloque 1
 
+> **Estado documental:** versión sincronizada — candidata a congelación tras auditoría transversal del Bloque 1.
+
 ## 1. Propósito
 
 Este documento define el **Modelo de Dominio conceptual del Bloque 1 — Fundación**, correspondiente a:
@@ -590,7 +592,7 @@ Las mutaciones de membresía que pueden afectar invariantes organizacionales se 
 ```text
 desactivarMiembro(miembro)
 cambiarRolMiembro(miembro, nuevoRol)
-incorporarOReactivarMiembro(usuario, rolInicial)
+incorporarOReactivarMiembro(usuario, rolInicial, membresiaHistorica)
 ```
 
 `cambiarRolMiembro(..., PROPIETARIO)` representa conceptualmente la promoción explícita a Propietario.
@@ -1274,98 +1276,37 @@ INACTIVA
 
 ### Invariantes
 
-Cada Categoria pertenece a exactamente:
+Cada Categoria pertenece exactamente a un Negocio.
 
-```text
-1 Negocio
-```
+Su nombre es funcionalmente único dentro de ese Negocio considerando tanto categorías `ACTIVAS` como `INACTIVAS`.
 
-Dentro de un mismo Negocio no pueden existir dos Categorías con nombre funcionalmente equivalente después de aplicar la normalización definida por el sistema.
+La equivalencia funcional debe ser compartida por validación, búsqueda y persistencia, pero la normalización técnica exacta permanece abierta.
 
-Ejemplos conceptualmente equivalentes:
-
-```text
-Snacks
-SNACKS
- snacks
-```
-
-La regla considera:
-
-```text
-ACTIVAS
-+
-INACTIVAS
-```
-
-Si existe una Categoria equivalente INACTIVA:
-
-```text
-NO crear duplicado
-→ informar existencia
-→ ofrecer reactivar
-```
-
-La normalización técnica exacta permanece abierta.
-
-### Asociación con Artículos
-
-Una Categoria INACTIVA:
+Una Categoria `INACTIVA`:
 
 - continúa existiendo;
-- conserva artículos asociados;
-- no desactiva esos artículos;
-- no modifica sus capacidades;
+- conserva asociaciones existentes;
+- no desactiva los artículos asociados;
+- no modifica capacidades;
 - no recalcula precios;
-- no modifica historia.
+- no reescribe historia;
+- no admite nuevas asociaciones ni nuevas reasignaciones hacia ella.
 
-Pero:
-
-```text
-Categoria INACTIVA
-→ no admite nuevas asociaciones
-→ no admite reasignaciones nuevas hacia ella
-```
-
-Una asociación histórica existente sigue siendo válida.
-
-### Reactivación
+La reactivación:
 
 ```text
 INACTIVA → ACTIVA
 ```
 
-reutiliza la misma entidad.
+reutiliza la misma entidad y conserva sus asociaciones.
 
-La reactivación:
+### Eliminación física
 
-- conserva identidad;
-- conserva asociaciones;
-- no recrea artículos;
-- no recalcula información comercial.
+La elegibilidad para eliminación física es contextual.
 
-### Eliminación
+No se modela `puedeEliminarseFisicamente()` como una decisión autosuficiente de la entidad, porque la confirmación puede requerir conocer artículos asociados y otras dependencias externas.
 
-`puedeEliminarseFisicamente()` representa una consulta conceptual para UX/diagnóstico.
-
-No constituye la autorización definitiva de borrado.
-
-Una Categoria solo puede eliminarse físicamente cuando:
-
-```text
-0 ArticuloCatalogo asociados
-+
-0 otras dependencias que deban conservarse
-```
-
-Esto incluye artículos:
-
-```text
-ACTIVOS
-INACTIVOS
-```
-
-La operación real de eliminación debe revalidar las condiciones relevantes al confirmar el cambio.
+La eliminación solo puede confirmarse cuando no existan asociaciones o dependencias que deban conservarse, revalidando la condición al confirmar.
 
 ---
 
@@ -1382,36 +1323,14 @@ ArticuloCatalogo
 
 Representa cualquier bien o servicio que el Negocio necesite utilizar comercial u operativamente.
 
-Ejemplos:
+No administra los hechos operativos producidos por módulos consumidores:
 
 ```text
-Harina
-Collar
-Snack de pollo
-Remera negra M
-Maquillaje social
-Asesoramiento por hora
-```
-
-No administra las operaciones que posteriormente utilicen el artículo.
-
-En particular:
-
-```text
-esComprable
-≠ Compra
-
-esVendible
-≠ Venta
-
-controlaStock
-≠ stock actual
-
-controlaVencimiento
-≠ fecha concreta de vencimiento
-
-puedeUsarseEnProduccion
-≠ receta
+esComprable              ≠ Compra
+esVendible               ≠ Venta
+controlaStock             ≠ stock actual
+controlaVencimiento       ≠ vencimiento concreto
+puedeUsarseEnProduccion   ≠ Receta / Producción
 ```
 
 ### Información Conceptual
@@ -1421,16 +1340,31 @@ ArticuloCatalogo
 ├── identidad
 ├── Negocio
 ├── nombre
-├── descripción opcional
+├── descripcion [0..1]
 ├── tipo : TipoArticulo
-├── Categoria opcional
+├── Categoria [0..1]
 ├── unidadMedida : UnidadMedida
-├── SKU opcional
-├── imagen principal opcional
-├── precio base opcional
-├── costo de referencia opcional
+├── sku [0..1]
+├── imagenes [0..3]
+├── precioBase [0..1]
+├── costoReferencia [0..1]
 ├── capacidades : CapacidadesArticulo
 └── estado : EstadoArticulo
+```
+
+Si existen imágenes, exactamente una debe identificarse como principal.
+
+### Identidad e inmutabilidad
+
+La identidad es estable.
+
+`nombre` y `sku` no son identidad.
+
+`TipoArticulo` es estrictamente inmutable durante el MVP:
+
+```text
+BIEN ↛ SERVICIO
+SERVICIO ↛ BIEN
 ```
 
 ### Estados
@@ -1440,51 +1374,45 @@ ACTIVO
 INACTIVO
 ```
 
-Un artículo ACTIVO debe poseer al menos un uso operativo:
+Un artículo `ACTIVO` debe poseer al menos un uso operativo:
 
 ```text
 esComprable
-o
-esVendible
-o
-puedeUsarseEnProduccion
+OR esVendible
+OR puedeUsarseEnProduccion
 ```
 
-Un artículo INACTIVO puede no poseer ninguno de esos usos.
+Un artículo `INACTIVO` puede conservar cero usos operativos.
 
-### Invariante de Tipo
+### Edición administrativa
 
-El Tipo:
+La edición genérica se expresa conceptualmente mediante:
 
 ```text
-BIEN
-SERVICIO
+aplicarEdicion(propuesta : PropuestaEdicionPreparada)
 ```
 
-es inmutable después de la creación.
+`PropuestaEdicionPreparada` es un parameter object conceptual aceptado por Domain. No es DTO HTTP, no posee identidad ni ciclo de vida propio, no se persiste por sí mismo y no implica dependencia `Domain -> Application`.
 
-No se permite:
+La edición:
+
+- puede ejecutarse sobre `ACTIVO` e `INACTIVO`;
+- modifica configuración vigente hacia futuro;
+- no cambia `EstadoArticulo`;
+- no modifica identidad ni `TipoArticulo`;
+- valida la configuración resultante completa antes de consolidar mutaciones;
+- se confirma todo-o-nada.
+
+Por lo tanto:
 
 ```text
-BIEN → SERVICIO
-SERVICIO → BIEN
+editar ACTIVO   → permanece ACTIVO
+editar INACTIVO → permanece INACTIVO
 ```
 
-Si nunca fue utilizado:
+Un `ACTIVO` debe continuar cumpliendo el uso operativo mínimo.
 
-```text
-eliminar
-+
-crear correctamente
-```
-
-Si posee historia:
-
-```text
-desactivar
-+
-crear nuevo artículo
-```
+Un `INACTIVO` debe respetar las invariantes intrínsecas, pero no necesita satisfacer todavía el uso operativo mínimo.
 
 ### Categoria
 
@@ -1496,62 +1424,108 @@ ArticuloCatalogo.negocio
 Categoria.negocio
 ```
 
-Una Categoria históricamente asociada que posteriormente quede INACTIVA no bloquea la operación normal ni la reactivación del artículo.
+Una nueva asociación o reasignación requiere Categoria `ACTIVA` del mismo Negocio.
 
-Solo se prohíben nuevas asociaciones hacia Categorías INACTIVAS.
+Una Categoria ya asociada que posteriormente quede `INACTIVA` conserva la asociación y no bloquea por sí sola una reactivación.
 
-### Reactivación
+### Nombre y SKU
 
-`reactivar()` no representa únicamente:
+El nombre es funcionalmente único por Negocio considerando artículos `ACTIVOS` e `INACTIVOS`.
+
+El SKU:
+
+- es opcional;
+- ausencia canónica = `null`;
+- vacío/espacios se normalizan a `null`;
+- es único por Negocio considerando `ACTIVOS` e `INACTIVOS`;
+- no se libera al desactivar.
+
+### Precio y costo
+
+Si:
 
 ```text
-estado = ACTIVO
+esVendible = true
 ```
 
-Debe revalidar las invariantes vigentes necesarias para volver a operar.
+entonces:
 
-Conceptualmente puede requerir verificar:
+```text
+precioBase != null
+precioBase >= 0
+```
 
-- coherencia Tipo + Capacidades;
-- uso operativo mínimo;
-- precio válido cuando sea vendible;
-- dependencias estructurales compatibles.
+`precioBase = 0` satisface la invariante estructural; su semántica comercial definitiva se difiere a Ventas/Promociones.
 
-La reactivación no reescribe historia.
+Si `costoReferencia` existe:
+
+```text
+costoReferencia >= 0
+```
 
 ### Desactivación
 
-`desactivar()`:
-
-- conserva identidad;
-- conserva SKU actual;
-- conserva historia;
-- conserva referencias;
-- no altera existencias administradas por M04;
-- retira el artículo del uso normal en nuevas operaciones.
-
-### Eliminación Física
-
-`puedeEliminarseFisicamente()` es una consulta conceptual.
-
-La respuesta puede necesitar información proveniente de módulos consumidores.
-
-Solo puede resultar verdadero cuando no existen:
+`desactivar()` produce:
 
 ```text
-historia relevante
-referencias
-dependencias que deban conservarse
+ACTIVO → INACTIVO
 ```
 
-La eliminación real debe volver a validar las condiciones relevantes dentro de la operación que confirma el borrado.
+y conserva identidad, nombre, SKU, configuración, referencias e historia.
 
-No debe implementarse como:
+No altera stock, lotes ni movimientos de M04.
+
+### Reactivación
+
+`reactivar()` produce:
 
 ```text
-if articulo.puedeEliminarseFisicamente():
-    eliminar_sin_revalidar()
+INACTIVO → ACTIVO
 ```
+
+Es un Caso de Uso separado de la edición.
+
+Opera sobre la configuración vigente ya confirmada y no recibe un payload libre de edición.
+
+La entidad protege las invariantes locales necesarias para `ACTIVO`; Application coordina las guardias contextuales externas.
+
+Si la configuración no es activable:
+
+```text
+EditarArticulo
+→ permanece INACTIVO
+→ corregir configuración
+
+ReactivarArticulo
+→ ACTIVO
+```
+
+### Eliminación física
+
+Hard delete:
+
+- no es `EstadoArticulo`;
+- no genera `ELIMINADO`;
+- no es una transición;
+- no se decide mediante un método autosuficiente de la entidad.
+
+En el MVP requiere:
+
+```text
+PROPIETARIO
++
+ArticuloCatalogo INACTIVO
++
+sin historia relevante
++
+sin referencias
++
+sin dependencias que deban conservarse
+```
+
+La ausencia de dependencias debe revalidarse al confirmar.
+
+Hard delete confirmado libera el nombre funcional y el SKU.
 
 ---
 
@@ -2375,63 +2349,39 @@ La implementación técnica se definirá posteriormente.
 
 # 9. UnidadMedida e Historia Operativa
 
-UnidadMedida define el significado de las cantidades registradas para un artículo.
+`UnidadMedida` define el significado de la configuración cuantitativa vigente del artículo.
 
-La UnidadMedida puede modificarse mientras el cambio no altere el significado de historia cuantitativa existente.
+La unidad actual puede modificarse para operaciones futuras, siempre que se respeten las invariantes intrínsecas de M02 y las guardias adicionales que futuros módulos consumidores puedan definir.
 
-Conceptualmente:
+Los hechos históricos NO se reinterpretan utilizando la unidad actual.
 
-```text
-ArticuloCatalogo
-        ↓
-¿el cambio altera historia cuantitativa?
-        │
-        ├── No → puede permitirse
-        │
-        └── Sí → bloquear
-```
-
-La existencia de información cuantitativa relevante es una condición derivada de módulos consumidores como:
+Los módulos transaccionales deben conservar, cuando corresponda:
 
 ```text
-M03 Compras
-M04 Inventario
-M05 Ventas
-M07 Producción
+unidad original
+cantidad original
+precio transaccional original
+otros snapshots necesarios
 ```
 
-No debe implementarse automáticamente un atributo:
+Por lo tanto:
 
 ```text
-tiene_historia_operativa
+UnidadMedida actual
+≠ necesariamente UnidadMedida histórica
 ```
 
-dentro de ArticuloCatalogo.
+La mera existencia de historia no congela permanentemente la UnidadMedida vigente.
 
-La forma técnica de consultar dependencias se decidirá posteriormente.
-
-La mera existencia de cualquier historia no implica necesariamente bloqueo permanente.
-
-La regla es preservar el significado histórico de cantidades anteriores.
-
-Ejemplo:
+No debe agregarse automáticamente a ArticuloCatalogo un atributo:
 
 ```text
-Harina
-unidad = KG
-
-Compra histórica = 5 KG
+tieneHistoriaOperativa : Boolean
 ```
 
-una edición directa:
+Las dependencias y guardias operativas concretas se definirán al diseñar M03/M04/M05/M07.
 
-```text
-KG → UNIDAD
-```
-
-que reinterpretara esos `5 KG` como `5 UNIDAD` no es válida.
-
-Las conversiones históricas quedan fuera del MVP.
+Las conversiones históricas continúan fuera del alcance del MVP.
 
 ---
 
@@ -2554,7 +2504,8 @@ Caso de Uso Aceptar Invitación
         │
         └── Negocio.incorporarOReactivarMiembro(
                 usuario,
-                rolPropuesto
+                rolPropuesto,
+                membresiaHistorica
             )
 ```
 
@@ -3025,9 +2976,10 @@ es_vendible
 False → True
 ```
 
-debe existir:
+debe cumplirse:
 
 ```text
+precio_base != null
 precio_base >= 0
 ```
 
@@ -3050,10 +3002,11 @@ ArticuloCatalogo INACTIVO puede no cumplir ninguna.
 Artículo vendible requiere:
 
 ```text
+precio_base != null
 precio_base >= 0
 ```
 
-El valor cero es válido.
+El valor cero satisface la invariante estructural; su semántica comercial definitiva permanece abierta.
 
 ### INV-CAT-012 — Costo de Referencia
 
@@ -3110,7 +3063,21 @@ Una Categoria referenciada por cualquier ArticuloCatalogo ACTIVO o INACTIVO no p
 
 ### INV-CAT-019 — Eliminación de ArticuloCatalogo
 
-ArticuloCatalogo solo puede eliminarse físicamente cuando no posee historia relevante, referencias ni dependencias que deban conservarse.
+En el MVP el hard delete requiere:
+
+```text
+PROPIETARIO
++
+ArticuloCatalogo INACTIVO
++
+sin historia relevante
++
+sin referencias
++
+sin dependencias que deban conservarse
+```
+
+La ausencia de dependencias debe revalidarse al confirmar.
 
 ### INV-CAT-020 — UnidadMedida
 
@@ -3196,6 +3163,41 @@ ArticuloCatalogo no posee moneda independiente.
 ### INV-CAT-030 — Cantidades Fraccionarias
 
 El dominio admite cantidades fraccionarias cuando la UnidadMedida lo requiere.
+
+### INV-CAT-031 — Edición Conserva Estado
+
+Editar un artículo no cambia su EstadoArticulo:
+
+```text
+editar ACTIVO   → ACTIVO
+editar INACTIVO → INACTIVO
+```
+
+Editar INACTIVO nunca reactiva implícitamente.
+
+### INV-CAT-032 — Edición Todo-o-Nada
+
+`aplicarEdicion(...)` valida la configuración resultante completa antes de consolidar mutaciones.
+
+Si alguna invariante local, guardia contextual, unicidad o confirmación de persistencia falla, ningún cambio queda confirmado.
+
+### INV-CAT-033 — Imágenes
+
+ArticuloCatalogo admite:
+
+```text
+0..3 imágenes
+```
+
+Si existen imágenes, exactamente una debe identificarse como principal.
+
+La representación física del storage permanece abierta.
+
+### INV-CAT-034 — Nombre de ArticuloCatalogo
+
+El nombre es funcionalmente único por Negocio considerando artículos ACTIVOS e INACTIVOS.
+
+Un artículo INACTIVO continúa reservando su nombre.
 
 ---
 
@@ -3315,19 +3317,29 @@ UsuarioNegocio.rol
 
 Cada módulo determina qué operaciones permite ese Rol.
 
-Ejemplo:
+La matriz exhaustiva `Rol → Permiso` para M02 permanece abierta durante el Bloque 1.
+
+No debe inferirse de este documento que una operación concreta pertenece necesariamente a un único Rol.
+
+La autorización estable exige conceptualmente:
 
 ```text
-ENCARGADO
+Usuario autenticado
++
+Negocio identificado
++
+UsuarioNegocio ACTIVO
++
+permiso conceptual requerido
++
+recurso del mismo Negocio
+```
 
-M02
-├── consultar catálogo          Sí
-├── activar artículo            Sí
-├── desactivar artículo         Sí
-├── reactivar artículo          Sí
-├── editar artículo             No
-├── cambiar precio_base         No
-└── gestionar categorías        No
+Excepción funcional explícitamente cerrada:
+
+```text
+hard delete de ArticuloCatalogo
+→ requiere PROPIETARIO
 ```
 
 No se crea durante el MVP una entidad:
@@ -3385,23 +3397,25 @@ La estrategia técnica para transportar/resolver el contexto de Negocio se defin
 
 # 14. Diagrama UML Conceptual
 
-El siguiente diagrama representa una vista integrada y simplificada del Modelo de Dominio del Bloque 1.
+El siguiente diagrama representa una vista integrada y deliberadamente resumida del Modelo de Dominio del Bloque 1.
 
-Los diagramas detallados específicos de M01 y M02 son la referencia visual principal para responsabilidades finas.
+Los diagramas detallados específicos continúan siendo la referencia principal para responsabilidades e invariantes finas.
 
 Este UML general:
 
 - no es un modelo ORM;
 - no define Aggregate Roots;
-- no define navegabilidad técnica;
-- no enumera todos los métodos posibles;
-- prioriza relaciones e invariantes centrales.
+- no congela navegabilidad técnica;
+- no enumera todos los métodos;
+- prioriza relaciones, estados e invariantes centrales.
 
 ```plantuml
 @startuml
 
 skinparam classAttributeIconSize 0
-skinparam linetype ortho
+skinparam linetype polyline
+hide circle
+hide empty members
 
 title Modelo de Dominio — Bloque 1 (M01 + M02)
 
@@ -3411,31 +3425,24 @@ class Usuario <<entity>> {
   identidad
   nombre
   email : Email
-  estadoCuenta
-  fechaRegistro
 }
 
 class Negocio <<entity>> {
   identidad
   nombre
-  rubro [0..1]
   monedaBase : Moneda
   modalidades : Set<ModalidadOperativa>
   --
-  configurarModalidades()
-  tienePropietarioActivo() : Boolean
-  desactivarMiembro()
-  cambiarRolMiembro()
-  incorporarOReactivarMiembro()
+  incorporarOReactivarMiembro(
+    usuario : Usuario,
+    rolInicial : Rol,
+    membresiaHistorica : UsuarioNegocio [0..1]
+  ) : UsuarioNegocio
 }
 
 class UsuarioNegocio <<entity>> {
   rol : Rol
   estado : EstadoMembresia
-  fechaIncorporacion
-  --
-  estaActiva() : Boolean
-  esPropietario() : Boolean
 }
 
 class InvitacionNegocio <<entity>> {
@@ -3443,15 +3450,7 @@ class InvitacionNegocio <<entity>> {
   emailDestino : Email
   rolPropuesto : Rol
   estado : EstadoInvitacion
-  fechaEmision
   fechaExpiracion
-  --
-  estaVigente(ahora) : Boolean
-  puedeSerAceptadaPor(email : Email, ahora) : Boolean
-  aceptarPara(email : Email, ahora)
-  rechazarPara(email : Email, ahora)
-  cancelar()
-  expirar(ahora)
 }
 
 class Email <<value object>>
@@ -3467,18 +3466,18 @@ enum EstadoMembresia <<enum>> {
   INACTIVO
 }
 
-enum ModalidadOperativa <<enum>> {
-  REVENTA
-  PRODUCCION
-  SERVICIOS
-}
-
 enum EstadoInvitacion <<enum>> {
   PENDIENTE
   ACEPTADA
   RECHAZADA
   CANCELADA
   EXPIRADA
+}
+
+enum ModalidadOperativa <<enum>> {
+  REVENTA
+  PRODUCCION
+  SERVICIOS
 }
 
 enum Moneda <<enum>> {
@@ -3493,33 +3492,19 @@ class Categoria <<entity>> {
   identidad
   nombre
   estado : EstadoCategoria
-  --
-  estaActiva() : Boolean
-  cambiarNombre()
-  desactivar()
-  reactivar()
-  puedeEliminarseFisicamente() : Boolean
 }
 
 class ArticuloCatalogo <<entity>> {
   identidad
   nombre
-  descripcion [0..1]
   tipo : TipoArticulo
   unidadMedida : UnidadMedida
   sku [0..1]
   precioBase [0..1]
-  costoReferencia [0..1]
-  imagenPrincipal [0..1]
+  imagenes [0..3]
   estado : EstadoArticulo
   --
-  asignarCategoria()
-  quitarCategoria()
-  actualizarCapacidades()
-  cambiarPrecioBase()
-  cambiarCostoReferencia()
-  cambiarUnidad()
-  puedeEliminarseFisicamente() : Boolean
+  aplicarEdicion(propuesta : PropuestaEdicionPreparada)
   desactivar()
   reactivar()
 }
@@ -3531,8 +3516,6 @@ class CapacidadesArticulo <<value object>> {
   puedeUsarseEnProduccion : Boolean
   controlaVencimiento : Boolean
   permiteDescuento : Boolean
-  --
-  esCoherenteCon(tipo : TipoArticulo) : Boolean
 }
 
 enum EstadoCategoria <<enum>> {
@@ -3565,79 +3548,18 @@ enum UnidadMedida <<enum>> {
 
 Usuario "1" -- "0..*" UsuarioNegocio : membresías
 UsuarioNegocio "1..*" -- "1" Negocio : pertenece a
-
 Negocio "1" -- "0..*" InvitacionNegocio : invitaciones
 UsuarioNegocio "1" -- "0..*" InvitacionNegocio : emite
 
 Negocio "1" -- "0..*" Categoria : organiza
 Negocio "1" -- "0..*" ArticuloCatalogo : contiene
-
 Categoria "0..1" -- "0..*" ArticuloCatalogo : clasifica
-
 ArticuloCatalogo "1" *-- "1" CapacidadesArticulo : define
-
-note right of UsuarioNegocio
-El Rol pertenece a la membresía.
-Las mutaciones que afectan invariantes
-organizacionales se coordinan desde Negocio.
-end note
-
-note right of Negocio
-Crear Negocio incluye atómicamente
-su primer UsuarioNegocio
-ACTIVO PROPIETARIO.
-
-Nunca puede quedar sin
-PROPIETARIO activo.
-end note
-
-note bottom of InvitacionNegocio
-PENDIENTE no implica vigencia.
-
-Aceptar/rechazar validan
-estado + tiempo + Email.
-
-Cancelar no exige vigencia.
-
-Reenviar no crea otra invitación
-ni extiende fechaExpiracion.
-
-El Caso de Uso coordina
-atómicamente ACEPTADA
-+ crear/reactivar membresía,
-revalidando membresía ACTIVA.
-end note
-
-note right of ArticuloCatalogo
-TipoArticulo es inmutable.
-
-ACTIVO requiere uso operativo.
-
-SKU actual es único por Negocio.
-Modificar SKU no cambia identidad.
-
-Categoria histórica INACTIVA
-no bloquea reactivación.
-end note
-
-note right of CapacidadesArticulo
-Capacidades = elegibilidad,
-no hechos operativos.
-
-SERVICIO:
-sin stock, vencimiento
-ni producción.
-
-Cambios estructurales pueden
-requerir dependencias externas.
-end note
 
 @enduml
 ```
 
 ### Diagramas Detallados Asociados
-
-La vista general se complementa con:
 
 ```text
 01-diagrama-general.puml
@@ -3650,21 +3572,11 @@ La vista general se complementa con:
 
 04-m01-estados-invitacion.md
 04-m01-estados-invitacion.puml
-```
 
-Estado conceptual:
-
-```text
-01 — mapa general                         requiere sincronización puntual M01
-02 — M01 clases                           requiere sincronización puntual
-03 — M02 clases                           congelado
-04 — InvitacionNegocio estados            congelado
-```
-
-Vistas dinámicas todavía pendientes:
-
-```text
+05-m01-estados-membresia.md
 05-m01-estados-membresia.puml
+
+06-m02-estados-articulo.md
 06-m02-estados-articulo.puml
 
 secuencias/
@@ -3672,9 +3584,14 @@ secuencias/
 └── 02-editar-articulo.puml
 ```
 
-El diagrama de clases no sustituye los diagramas dinámicos.
+Estado del conjunto:
 
-El Diagrama 4 es la referencia visual específica para el ciclo de vida de `InvitacionNegocio`.
+```text
+Todas las vistas principales están sincronizadas conceptualmente.
+Congelación definitiva pendiente únicamente de auditoría transversal del Bloque 1.
+```
+
+El diagrama de clases no sustituye los diagramas dinámicos.
 
 ---
 
