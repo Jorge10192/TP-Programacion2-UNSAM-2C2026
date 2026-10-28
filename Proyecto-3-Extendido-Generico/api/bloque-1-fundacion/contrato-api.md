@@ -221,6 +221,43 @@ Este contexto se obtiene desde datos persistidos actuales.
 
 No desde valores enviados libremente por el frontend.
 
+### 8.1. Resolución mediante dependencias de FastAPI
+
+La frontera HTTP podrá resolver este contexto mediante dependencias del estilo:
+
+~~~python
+Depends(get_current_user)
+Depends(get_tenant_context)
+~~~
+
+Conceptualmente:
+
+~~~text
+JWT válido
+    ↓
+sub = usuario_id
+    ↓
+negocio_id extraído del path
+    ↓
+buscar UsuarioNegocio(usuario_id, negocio_id)
+    ↓
+validar estado ACTIVO
+    ↓
+construir TenantContext
+    ↓
+invocar Caso de Uso
+~~~
+
+La dependencia debe utilizar el `negocio_id` ya parseado desde la URL.
+
+No debe:
+
+- aceptar un segundo tenant desde body/header;
+- confiar en un rol incluido por el cliente;
+- trasladar reglas de dominio internas al sistema de dependencias.
+
+`Depends(...)` pertenece exclusivamente a la capa API/composition boundary. Application recibe un contexto ya resuelto mediante tipos propios y no importa FastAPI.
+
 ---
 
 ## 9. Membresía activa
@@ -478,10 +515,15 @@ Los schemas Pydantic de PATCH deberán preservar esta distinción mediante campo
 
 ## 20. Campos desconocidos
 
-Los DTOs de mutación utilizarán política equivalente a:
+Los DTOs de mutación utilizarán Pydantic v2 con una política equivalente a:
 
 ~~~python
-extra="forbid"
+from pydantic import BaseModel, ConfigDict
+
+class MutationRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 ~~~
 
 No se ignorarán silenciosamente propiedades desconocidas.
@@ -505,6 +547,23 @@ Esto también evita aceptar accidentalmente:
 ~~~
 
 en schemas que no lo contemplan.
+
+### 20.1. Whitespace en Pydantic v2
+
+No se utilizará `str_strip_whitespace=True` como configuración global indiscriminada para todos los requests.
+
+Puede aplicarse selectivamente en schemas/campos funcionales donde el contrato establezca que los espacios externos no tienen significado, por ejemplo nombres o textos normalizados.
+
+No debe modificar silenciosamente valores sensibles cuyo contenido debe tratarse de manera exacta, especialmente:
+
+~~~text
+password
+access_token
+token de invitación
+otros secretos
+~~~
+
+La normalización funcional definitiva continúa perteneciendo a los Value Objects / normalizadores compartidos correspondientes y no a una regla genérica distinta de Pydantic.
 
 ---
 
@@ -714,6 +773,34 @@ Authentication Error
 ~~~
 
 a HTTP.
+
+En particular, FastAPI genera su propia estructura de validación para `RequestValidationError`. La implementación deberá interceptarla y transformarla al contrato uniforme del sistema.
+
+Ejemplo conceptual:
+
+~~~python
+@app.exception_handler(RequestValidationError)
+async def request_validation_handler(request, exc):
+    ...
+~~~
+
+Salida pública:
+
+~~~json
+{
+  "code": "REQUEST_VALIDATION_ERROR",
+  "message": "La solicitud contiene valores inválidos.",
+  "details": [
+    {
+      "field": "sku",
+      "issue": "El valor no cumple el formato esperado."
+    }
+  ],
+  "timestamp": "2026-10-28T21:00:00Z"
+}
+~~~
+
+El adaptador HTTP puede utilizar internamente la información estructurada de `exc.errors()`, pero debe sanearla y mapearla a `field` / `issue` sin exponer detalles internos innecesarios.
 
 Domain y Application no deberán lanzar:
 
@@ -1695,6 +1782,10 @@ Esto facilita clientes generados y documentación.
 42. Response schemas nunca exponen secretos ni modelos ORM accidentalmente.
 43. Pydantic/FastAPI pertenecen a API, no a Domain.
 44. Domain/Application no conocen status HTTP.
+45. `RequestValidationError` se intercepta globalmente y se transforma al error uniforme del sistema.
+46. `extra="forbid"` se implementa mediante `ConfigDict` en schemas de mutación.
+47. El stripping automático de whitespace no se aplica globalmente a secretos/credenciales.
+48. `TenantContext` se resuelve en la capa API desde JWT + `negocio_id` del path mediante dependencias de FastAPI, sin introducir FastAPI en Application.
 
 ---
 
