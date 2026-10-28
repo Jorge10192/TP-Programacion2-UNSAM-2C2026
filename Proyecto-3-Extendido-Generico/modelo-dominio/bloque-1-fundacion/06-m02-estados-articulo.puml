@@ -1,14 +1,15 @@
 @startuml 06-m02-estados-articulo
 
-title Bloque 1 — Fundación: M02 Catálogo\n<size:11>Diagrama de estados de ArticuloCatalogo — versión oficial congelada</size>
+title Bloque 1 — Fundación: M02 Catálogo\n<size:11>Diagrama de estados de ArticuloCatalogo — versión sincronizada — candidata a congelación tras auditoría del Bloque 1</size>
 
 ' =============================================================================
-' CONFIGURACIÓN VISUAL Y DESACOPLAMIENTO DE NODOS
+' CONFIGURACIÓN VISUAL OPTIMIZADA (LAYOUT MATRICIAL BALANCEADO)
 ' =============================================================================
 
 skinparam shadowing false
-skinparam nodesep 70
-skinparam ranksep 60
+skinparam linetype polyline
+skinparam nodesep 60
+skinparam ranksep 50
 skinparam ArrowFontSize 10
 
 skinparam noteFontSize 10
@@ -25,229 +26,136 @@ skinparam state {
 
 hide empty description
 
+
 ' =============================================================================
-' ESTADOS ESTRICTOS (ÚNICOS PERMITIDOS)
+' ESTADOS OFICIALES Y MÁQUINA DE ESTADOS
 ' =============================================================================
 
 state ACTIVO
 state INACTIVO
 
-' =============================================================================
-' CICLO DE VIDA ESTRUCTURAL Y TRANSICIONES
-' =============================================================================
+[*] --> ACTIVO : crear artículo\n[En el MVP, nace directamente ACTIVO\ncon configuración inicial válida]
 
-[*] -down-> ACTIVO : crear artículo\n[configuración inicial válida]
+ACTIVO --> INACTIVO : desactivar\n[autorización contextual válida]
 
-ACTIVO -right-> INACTIVO : desactivar\n[autorización válida]
 note on link
-  <b>ACTIVO -> INACTIVO</b>
+    <b>ACTIVO -> INACTIVO (desactivar)</b>
 
-  • Actor autorizado: PROPIETARIO o ENCARGADO.
-  • Requiere: Usuario autenticado, Negocio identificado,
-    UsuarioNegocio ACTIVO, permiso concreto M02, mismo Negocio.
-  • Conserva: identidad, TipoArticulo, CapacidadesArticulo,
-    precioBase, costoReferencia, SKU, Categoria, UnidadMedida, imagen.
-  • NO: libera SKU, pone capacidades en false, borra precio,
-    cambia TipoArticulo, consulta stock para decidir, modifica stock,
-    elimina lotes ni movimientos de M04.
-  • Regla explícita: stock > 0 NO impide desactivar.
+    Transición explícita de ciclo de vida.
+
+    Conserva:
+    - identidad, nombre, descripción, SKU;
+    - TipoArticulo, UnidadMedida, precioBase, costoReferencia;
+    - Categoria, CapacidadesArticulo, imágenes, historia.
+
+    NO:
+    - libera nombre ni SKU;
+    - altera capacidades ni borra precio;
+    - modifica stock en M04 ni borra lotes/movimientos.
+
+    Stock > 0 en M04 NO impide desactivar.
 end note
 
-INACTIVO -left-> ACTIVO : reactivar\n[configuración final válida +\nautorización válida]
-note on link
-  <b>INACTIVO -> ACTIVO</b>
+INACTIVO --> ACTIVO : reactivar\n[configuración vigente válida +\nautorización contextual válida]
 
-  • <b>Reactivación simple:</b> reutiliza la misma entidad, conserva
-    identidad, usa configuración almacenada, revalida invariantes.
-    Ejecutada por PROPIETARIO o ENCARGADO (si no requiere reconfigurar).
-  • <b>Reactivación con reconfiguración:</b> solo PROPIETARIO.
-    Configuración candidata + validación + cambio de Estado se confirman
-    como una única operación atómica. Si falla alguna guardia, no cambia
-    Estado ni se persisten mutaciones parciales.
-  • reactivar(payload) != editar INACTIVO libremente.
-    ENCARGADO no puede usar el payload para saltarse permisos de edición.
-    Si un ENCARGADO intenta reactivar una configuración no válida, se rechaza
-    indicando que requiere reconfiguración por un PROPIETARIO.
-  • <b>Terminología:</b> en UI/permisos puede usarse "activar", pero la
-    transición semántica oficial es reactivar. No modelar activar() y reactivar()
-    como ciclos distintos.
+note on link
+    <b>INACTIVO -> ACTIVO (reactivar)</b>
+
+    Caso de Uso separado de EditarArticulo.
+
+    reactivar():
+    - exige estado actual INACTIVO;
+    - reutiliza la misma entidad;
+    - usa configuración vigente ya confirmada;
+    - NO recibe payload libre de edición;
+    - revalida invariantes LOCALES de ACTIVO (incluye >= 1 uso operativo).
+
+    Caso de Uso valida guardias CONTEXTUALES.
+
+    Si la config vigente no es activable:
+    -> RECHAZAR.
+    (Editar primero para corregir -> reactivar después).
 end note
 
+
 ' =============================================================================
-' NOTAS PRINCIPALES DEL NÚCLEO
+' NOTAS VINCULADAS A LOS ESTADOS
 ' =============================================================================
 
 note left of ACTIVO
-  <b>Creación de ArticuloCatalogo</b>
-  Un artículo nuevo se crea directamente en estado ACTIVO.
-  Debe cumplir desde el origen:
-  • TipoArticulo válido e inmutable.
-  • CapacidadesArticulo válidas (VO inmutable).
-  • Al menos 1 uso operativo (esComprable OR esVendible OR puedeUsarseEnProduccion).
-  • Si esVendible = true: precioBase != null y precioBase >= 0 (0 es válido).
-  • costoReferencia, si existe: costoReferencia >= 0.
-  • SKU opcional: ausencia canónica = null; input "" se normaliza a null;
-    si existe, es único por Negocio considerando ACTIVOS e INACTIVOS.
-  • Categoria opcional: si se asigna, debe estar ACTIVA y pertenecer al mismo Negocio.
-  • UnidadMedida válida.
+    <b>ACTIVO — Reglas centrales</b>
 
-  <b>ACTIVO — Estado y comportamiento interno</b>
-  • Puede participar en NUEVAS operaciones compatibles.
-  • Debe conservar >= 1 uso operativo activo.
-  • <b>Comportamiento interno (NO son transiciones):</b>
-    Editar datos, cambiar precioBase, costoReferencia, SKU, Categoria, UnidadMedida.
-    Reemplazar CapacidadesArticulo (VO inmutable).
-    Edición normal: solo PROPIETARIO.
-    TipoArticulo: siempre inmutable.
-    Si una modificación propuesta deja todos los usos en false: RECHAZAR.
-  • No se dibuja self-transition ACTIVO -> ACTIVO.
+    <b>Creación (MVP)</b>
+    - En el MVP, el artículo nace directamente en ACTIVO.
+    - Configuración inicial debe ser completa y válida.
+
+    <b>Invariante de Uso Operativo</b>
+    Debe cumplir al menos 1 uso:
+    - esComprable = true OR
+    - esVendible = true OR
+    - puedeUsarseEnProduccion = true.
+
+    <b>Edición</b>
+    - aplicarEdicion(propuesta : PropuestaEdicionPreparada)
+    - Edición de ACTIVO -> permanece ACTIVO.
+    - Valida todas las invariantes intrínsecas.
+    - Exige conservar >= 1 uso operativo.
+    - Si propuesta deja 0 usos operativos: RECHAZAR (no desactivar).
+    - TipoArticulo es inmutable.
 end note
 
 note right of INACTIVO
-  <b>INACTIVO — Reglas principales</b>
+    <b>INACTIVO — Reglas centrales</b>
 
-  • La entidad histórica continúa existiendo y conserva identidad/configuración.
-  • Permanece disponible para: historial, reportes, auditoría, consultas y reactivación.
-  • NO se ofrece normalmente en selectores/autocompletados de nuevas operaciones.
-  • Puede conservar 0 usos operativos mientras permanezca INACTIVO.
-  • Regla MVP: NO admite edición individual de atributos.
-  • Mantiene su SKU reservado dentro del Negocio.
-  • Stock existente pertenece a M04 y permanece intacto.
-  • Categoria históricamente asociada INACTIVA NO bloquea por sí sola una reactivación.
+    <b>Comportamiento</b>
+    - Entidad histórica conservada.
+    - No participa en nuevas operaciones normales.
+    - Disponible para reportes, auditoría y reactivación.
+    - Puede conservar 0 usos operativos.
+
+    <b>Edición Administrativa</b>
+    - Permite corregir/completar datos progresivamente.
+    - Edición de INACTIVO -> permanece INACTIVO.
+    - NO reactiva automáticamente.
+    - Valida invariantes intrínsecas (tipo, capacidades, precio si vendible).
+    - NO necesita satisfacer >= 1 uso operativo mientras permanezca INACTIVO.
+    - Nombre y SKU continúan reservados en el Negocio.
+    - Categoria asociada INACTIVA no bloquea reactivación si se conserva.
 end note
+
 
 ' =============================================================================
-' NOTAS ESTRUCTURALES (GRILLA PERFECTA DE 3 FILAS x 2 COLUMNAS AL PIE)
+' BLOQUES DE SOPORTE DEL DOMINIO (GRID BALANCEADO EN 2 COLUMNAS)
 ' =============================================================================
 
-note as NCapacidades
-  <b>CapacidadesArticulo — VO inmutable</b>
+note "<b>EditarArticulo y PropuestaEdicionPreparada:</b>\n- Editar NO es transición de EstadoArticulo (sin self-loops).\n- Opera sobre ACTIVO e INACTIVO aplicando las guardias correspondientes al estado objetivo.\n- PropuestaEdicionPreparada es parameter object conceptual aceptado por Domain.\n- NO es DTO HTTP / Pydantic model / request de API.\n- NO genera dependencia Domain -> Application.\n- Sin identidad ni ciclo de vida propio; no se persiste por sí mismo.\n- Ejecución todo-o-nada: validar todo -> aplicar todo O rechazar todo.\n- Prohibida la cadena pública de setters parciales." as NEdicion
 
-  <b>Flujo conceptual:</b>
-  1. Caso de Uso: interpreta intención, construye propuesta completa y solicita VO.
-  2. Value Object: valida y acepta o rechaza.
-  3. VO:
-     • NO usa setters parciales.
-     • NO muta flags existentes.
-     • NO aplica auto-fixes silenciosos.
-     • NO interpreta la intención del Caso de Uso.
+note "<b>Multi-tenant, Identificadores y Categoria:</b>\n- Nombre funcional único por Negocio (ACTIVO + INACTIVO reservan).\n- SKU opcional, único por Negocio (ausencia canónica = null; espacios -> null).\n- Desactivar NO libera nombre ni SKU.\n- Categoria opcional; nueva asociación/reasignación exige Categoria ACTIVA del mismo Negocio.\n- Categoria que pasa a INACTIVA conserva asociación sin desactivar el artículo.\n- Imágenes 0..3 (si N > 0, exactamente 1 principal)." as NCatalogo
 
-  <b>Reglas estructurales:</b>
-  • SERVICIO: controlaStock=false, controlaVencimiento=false, puedeUsarseEnProduccion=false.
-  • controlaVencimiento=true => BIEN + controlaStock=true.
-  • puedeUsarseEnProduccion=true => BIEN + controlaStock=true.
-  • permiteDescuento=true => esVendible=true.
-  • Si recibe permiteDescuento=true y esVendible=false: RECHAZAR. El VO NO autocorrige.
-  • Para deshabilitar venta, el Caso de Uso construye explícitamente: esVendible=false y permiteDescuento=false.
-  • Se conserva el precioBase ACTUAL (nunca usar "precioBase histórico").
-end note
+note "<b>CapacidadesArticulo (VO Inmutable):</b>\n- Representa configuración operativa completa sin identidad propia.\n- Acepta o rechaza; NO aplica auto-fixes silenciosos.\n- SERVICIO -> controlaStock=false, controlaVencimiento=false, puedeUsarseEnProduccion=false.\n- controlaVencimiento=true -> BIEN + controlaStock=true.\n- puedeUsarseEnProduccion=true -> BIEN + controlaStock=true.\n- permiteDescuento=true -> esVendible=true.\n- esVendible=false + permiteDescuento=true -> RECHAZAR." as NCapacidades
 
-note as NSku
-  <b>SKU, Categoria y contexto</b>
+note "<b>Precio, Unidad e Historia:</b>\n- esVendible = true -> precioBase != null y precioBase >= 0.\n- precioBase = 0 es estructuralmente válido (semántica comercial abierta).\n- costoReferencia >= 0 si existe.\n- UnidadMedida vigente puede cambiar hacia futuro.\n- M02 representa configuración ACTUAL; hechos transaccionales preservan snapshots.\n- Editar catálogo != reescribir pasado." as NHistoria
 
-  <b>SKU:</b>
-  • Opcional. Ausencia canónica = null (input "" -> null). No es identidad.
-  • Único por Negocio (incluye ACTIVOS e INACTIVOS). Desactivar NO libera SKU.
-  • <i>No se define aquí: case-sensitivity, trim, Unicode ni formato/regex exacto (Diseño Técnico).</i>
-  • No existe escenario normal donde A INACTIVO conserva SKU y B obtiene el mismo SKU.
-    Colisiones solo ocurren por cambio solicitado, concurrencia o migración.
+note "<b>Guardias, Concurrencia y TOCTOU:</b>\n- Domain valida guardias locales; Caso de Uso valida guardias contextuales.\n- Matriz Rol -> Permiso abierta (salvo hard delete = PROPIETARIO).\n- Prevalidaciones UX NO garantizan exclusión.\n- Persistencia previene lost update, duplicados concurrentes de nombre/SKU, carreras de edición/desactivación, edición/reactivación, reactivaciones concurrentes, cambios de Categoria y hard delete vs nueva referencia.\n- TOCTOU: Selección previa de artículo no garantiza elegibilidad al confirmar; consumidor revalida." as NGuardias
 
-  <b>Categoria:</b>
-  • Opcional. Nueva asociación o reasignación exige Categoria ACTIVA del mismo Negocio.
-  • Si la Categoria pasa a INACTIVA: NO desactiva el artículo, NO modifica capacidades/precio,
-    NO borra la asociación existente.
-  • Categoria históricamente asociada INACTIVA NO bloquea por sí sola la reactivación.
-end note
+note "<b>Operaciones Inválidas, Hard Delete y Auditoría:</b>\n- Operaciones inválidas se rechazan explícitamente (sin no-op silenciosos).\n- Hard Delete NO es EstadoArticulo ni transición; es operación administrativa excepcional.\n- Hard Delete exige: PROPIETARIO + INACTIVO + sin historia/referencias/dependencias.\n- Hard Delete confirmed libera nombre y SKU.\n- Auditoría conceptual: aplica a toda modificación relevante (quién, cuándo, qué recurso y qué cambio fue confirmado)." as NInvalidasDeleteAuditoria
 
-note as NGuardias
-  <b>Guardias y permisos contextuales</b>
-
-  <b>Guardias locales (validadas por Entidad / VO):</b>
-  • Tipo + Capacidades.
-  • Si esVendible = true => precioBase != null y precioBase >= 0.
-  • Si costoReferencia != null => costoReferencia >= 0.
-  • Uso operativo mínimo en ACTIVO, TipoArticulo inmutable, coherencia del VO.
-
-  <b>Guardias contextuales (requieren contexto externo):</b>
-  • Autorización, UsuarioNegocio ACTIVO, mismo Negocio.
-  • SKU único por Negocio, Categoria mismo Negocio / ACTIVA para nueva asociación.
-  • Dependencias para cambiar UnidadMedida o capacidades estructurales.
-  • Referencias para hard delete. <i>El dominio NO consulta repositorios directamente.</i>
-
-  <b>Permisos por Rol (mismo Negocio + UsuarioNegocio ACTIVO):</b>
-  • <b>PROPIETARIO:</b> crear, editar, desactivar, reactivar simple,
-    reactivar con reconfiguración, eliminar físicamente cuando corresponda.
-  • <b>ENCARGADO:</b> consultar, desactivar, reactivar SIN modificar configuración.
-  • <b>TRABAJADOR:</b> consultar.
-end note
-
-note as NConcurrencia
-  <b>Concurrencia e integridad</b>
-
-  La persistencia debe impedir:
-  • Dos artículos con el mismo SKU en el mismo Negocio.
-  • Asignaciones concurrentes del mismo SKU a dos artículos distintos.
-  • Reactivaciones concurrentes con payload diferente.
-  • Edición vs. desactivación concurrente.
-  • Hard delete vs. aparición concurrente de una referencia.
-
-  <b>Caso TOCTOU explícito:</b>
-  Artículo ACTIVO seleccionado por Usuario A -> Usuario B lo desactiva -> Usuario A intenta
-  confirmar una <b>nueva operación consumidora</b>. La selección previa NO garantiza elegibilidad al confirmar.
-  El módulo consumidor debe revalidar.
-
-  <i>Prevalidación UX != garantía de confirmación. Locking/Isolation pertenece a Arquitectura.</i>
-end note
-
-note as NInvalidas
-  <b>Operaciones inválidas — rechazo explícito</b>
-
-  NO tratar silenciosamente como éxito:
-  • BIEN ↔ SERVICIO (cambio de tipo).
-  • Editar un artículo INACTIVO directamente en MVP.
-  • Construir un VO inválido o aplicar auto-fix silencioso en VO.
-  • Dejar un artículo ACTIVO con 0 usos operativos.
-  • Reactivar un artículo ACTIVO o Desactivar un artículo INACTIVO (no-ops silenciosos).
-  • Usar payload de reactivación como ENCARGADO para editar.
-  • Nueva asociación a Categoria INACTIVA o de otro Negocio.
-  • SKU duplicado dentro del mismo Negocio.
-
-  <i>Aclaración: la edición de un artículo ACTIVO que conserva ACTIVO NO es una transición
-  de EstadoArticulo (no se representa con self-loop).</i>
-end note
-
-note as NEliminacion
-  <b>Eliminación física y decisiones diferidas</b>
-
-  <b>Eliminación física (eliminarFisicamente):</b>
-  • NO es EstadoArticulo, NO genera Estado ELIMINADO, NO es flecha de estado.
-  • Operación administrativa excepcional.
-  • Solo se permite si NO existen historia, referencias ni dependencias que deban conservarse
-    (la evaluación puede requerir módulos consumidores actuales o futuros).
-  • Si existen historia/referencias/dependencias: NO eliminar. Si además el artículo continúa ACTIVO y se desea retirarlo -> desactivar.
-  • La ausencia de dependencias debe revalidarse al confirmar.
-
-  <b>Decisiones técnicas diferidas (Arquitectura):</b>
-  • DTOs, endpoints, códigos HTTP, excepciones concretas, SQL, ORM, Repositories, Unit of Work,
-    índices, locking, versioning, nivel de aislamiento, auditoría, Domain Events, normalización avanzada de SKU.
-  • <i>El diagrama congela invariantes, no mecanismos técnicos.</i>
-end note
 
 ' =============================================================================
-' LAYOUT RIGUROSO EN GRILLA 3x2 (EVITA SOLAPAMIENTOS Y ANCHOS DESPROPORCIONADOS)
+' DISPOSICIÓN VISUAL BALANCEADA (2 COLUMNAS)
 ' =============================================================================
 
-ACTIVO -[hidden]down-> NCapacidades
-INACTIVO -[hidden]down-> NSku
+ACTIVO -[hidden]down-> NEdicion
+INACTIVO -[hidden]down-> NCatalogo
 
-NCapacidades -[hidden]right-> NSku
+NEdicion -[hidden]right-> NCatalogo
+NEdicion -[hidden]down-> NCapacidades
+NCatalogo -[hidden]down-> NHistoria
+
+NCapacidades -[hidden]right-> NHistoria
 NCapacidades -[hidden]down-> NGuardias
-NSku -[hidden]down-> NConcurrencia
+NHistoria -[hidden]down-> NInvalidasDeleteAuditoria
 
-NGuardias -[hidden]right-> NConcurrencia
-NGuardias -[hidden]down-> NInvalidas
-NConcurrencia -[hidden]down-> NEliminacion
-
-NInvalidas -[hidden]right-> NEliminacion
+NGuardias -[hidden]right-> NInvalidasDeleteAuditoria
 
 @enduml
