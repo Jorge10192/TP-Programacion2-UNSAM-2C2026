@@ -1,0 +1,442 @@
+@startuml 01-aceptar-invitacion
+
+title Bloque 1 — Fundación: M01 Organización\n<size:11>Secuencia — Aceptar invitación a Negocio — versión oficial congelada</size>
+
+' =============================================================================
+' CONFIGURACIÓN VISUAL Y PALETA INSTITUCIONAL
+' =============================================================================
+
+skinparam shadowing false
+skinparam BoxPadding 12
+hide footbox
+
+skinparam sequence {
+    ArrowColor #2D3748
+    LifeLineBorderColor #2D3748
+    LifeLineBackgroundColor #F7FAFC
+
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF3FA
+    ParticipantFontColor #1A202C
+
+    ActorBorderColor #2B6CB0
+    ActorBackgroundColor #EBF3FA
+    ActorFontColor #1A202C
+
+    GroupBorderColor #4A5568
+    GroupHeaderFontColor #1A202C
+
+    MessageAlign center
+}
+
+skinparam participant {
+    BackgroundColor<<application>> #EBF3FA
+    BorderColor<<application>> #2B6CB0
+
+    BackgroundColor<<service>> #F3E8FA
+    BorderColor<<service>> #805AD5
+
+    BackgroundColor<<repository>> #FAFAFA
+    BorderColor<<repository>> #718096
+
+    BackgroundColor<<entity>> #FFF5F5
+    BorderColor<<entity>> #E53E3E
+}
+
+skinparam note {
+    BackgroundColor #FFFDE7
+    BorderColor #E6C200
+    FontColor #1A202C
+}
+
+
+' =============================================================================
+' PARTICIPANTES Y PUERTOS DE PERSISTENCIA
+' =============================================================================
+
+actor "Usuario Autenticado" as Usuario
+
+box "Application" #F7FAFC
+    participant "AceptarInvitacionUseCase" as UseCase <<application>>
+    participant "Reloj" as Reloj <<service>>
+end box
+
+box "Puertos de Persistencia — abstracciones conceptuales" #FAFAFA
+    participant "InvitacionRepository" as InvitacionRepo <<repository>>
+    participant "NegocioRepository" as NegocioRepo <<repository>>
+    participant "UsuarioNegocioRepository" as MembresiaRepo <<repository>>
+end box
+
+box "Domain — M01" #FFFDFD
+    participant "invitacion : InvitacionNegocio" as Invitacion <<entity>>
+    participant "negocio : Negocio" as Negocio <<entity>>
+    participant "membresiaHistorica : UsuarioNegocio" as MembresiaHist <<entity>>
+end box
+
+
+' =============================================================================
+' 1. ENTRADA Y AUTENTICACIÓN
+' =============================================================================
+
+Usuario -> UseCase : ejecutar(referenciaInvitacion)
+activate UseCase
+
+note over Usuario, UseCase
+    <b>Contexto autenticado</b>
+
+    El Caso de Uso obtiene al Usuario actual desde el contexto de autenticación.
+    NO confiar en usuarioId/email enviados por el cliente.
+    Poseer enlace, token o referencia NO concede autorización por sí solo.
+end note
+
+
+' =============================================================================
+' 2. RESOLVER INVITACIÓN
+' =============================================================================
+
+UseCase -> InvitacionRepo : resolver(referenciaInvitacion)
+activate InvitacionRepo
+InvitacionRepo --> UseCase : invitacion | no encontrada
+deactivate InvitacionRepo
+
+
+break [invitación no encontrada]
+
+    UseCase --> Usuario : <<error>> invitación inexistente
+
+    note over UseCase
+        <b>Terminación de Escenario</b>
+        El break representa la terminación incondicional del flujo nominal actual.
+        Ninguna interacción posterior debe ejecutarse.
+    end note
+
+end
+
+
+' =============================================================================
+' 3. OBTENER UN ÚNICO "AHORA"
+' =============================================================================
+
+UseCase -> Reloj : ahora()
+activate Reloj
+Reloj --> UseCase : ahora
+deactivate Reloj
+
+note over UseCase, Reloj
+    <b>Semántica temporal</b>
+
+    Se obtiene UN único valor "ahora" para toda la operación.
+    InvitacionNegocio NO consulta la hora del sistema.
+end note
+
+
+' =============================================================================
+' 4. PREVALIDACIONES DE INVITACIÓN
+' =============================================================================
+
+break [invitacion.estado != PENDIENTE]
+
+    UseCase --> Usuario : <<error>> estado de invitación no aceptable
+
+end
+
+
+UseCase -> Invitacion : estaVigente(ahora)
+activate Invitacion
+Invitacion --> UseCase : vigente : Boolean
+deactivate Invitacion
+
+
+break [vigente == false]
+
+    UseCase --> Usuario : <<error>> invitación fuera de vigencia
+
+    note over UseCase, Invitacion
+        <b>Expiración Lógica</b>
+        ahora >= fechaExpiracion -> invitación no utilizable.
+        NO obliga a persistir o materializar el estado EXPIRADA en este caso de uso.
+    end note
+
+end
+
+
+' =============================================================================
+' 5. VALIDACIÓN DEL EMAIL
+' =============================================================================
+
+UseCase -> UseCase : evaluar equivalencia funcional\nusuarioActual.email ≡ invitacion.emailDestino
+
+
+break [Email no equivalente]
+
+    UseCase --> Usuario : <<error>> identidad no coincide con emailDestino
+
+    note over UseCase
+        Compara usando la semántica del Value Object Email.
+        NO comparar Strings crudos.
+    end note
+
+end
+
+
+' =============================================================================
+' 6. VALIDAR ROL PROPUESTO (WHITELIST)
+' =============================================================================
+
+break [rolPropuesto ∉ {ENCARGADO, TRABAJADOR}]
+
+    UseCase --> Usuario : <<error>> rolPropuesto inválido
+
+    note over UseCase
+        La incorporación normal mediante invitación NO asigna PROPIETARIO
+        ni ningún otro rol no explícitamente habilitado.
+    end note
+
+end
+
+
+' =============================================================================
+' 7. CARGAR NEGOCIO
+' =============================================================================
+
+UseCase -> NegocioRepo : buscarPorId(invitacion.negocioId)
+activate NegocioRepo
+NegocioRepo --> UseCase : negocio | no encontrado
+deactivate NegocioRepo
+
+
+break [negocio no encontrado]
+
+    UseCase --> Usuario : <<error>> negocio inexistente
+
+end
+
+
+' =============================================================================
+' 8. FRONTERA DE CONSISTENCIA ATÓMICA
+' =============================================================================
+
+group Frontera de consistencia atómica — mecanismo técnico diferido
+
+    note over UseCase, MembresiaRepo
+        <b>Límite de Consistencia Lógica</b>
+        Delimita las operaciones que deben confirmarse conjuntamente (todo-o-nada).
+        NO prescribe la línea técnica exacta donde inicia la transacción en BD.
+    end note
+
+    ' -------------------------------------------------------------------------
+    ' 8.1 REVALIDACIÓN LOCAL DE INVITACIÓN
+    ' -------------------------------------------------------------------------
+
+    UseCase -> Invitacion : puedeSerAceptadaPor(\nusuarioActual.email,\nahora)
+    activate Invitacion
+    Invitacion --> UseCase : puedeAceptar : Boolean
+    deactivate Invitacion
+
+
+    break [puedeAceptar == false]
+
+        UseCase --> Usuario : <<error>> invitación dejó de ser aceptable
+
+    end
+
+
+    ' -------------------------------------------------------------------------
+    ' 8.2 BUSCAR MEMBRESÍA HISTÓRICA
+    ' -------------------------------------------------------------------------
+
+    UseCase -> MembresiaRepo : buscarPorUsuarioYNegocio(\nusuarioActual.id,\nnegocio.identidad)
+    activate MembresiaRepo
+    MembresiaRepo --> UseCase : membresiaHistorica | null
+    deactivate MembresiaRepo
+
+    note over UseCase, MembresiaHist
+        <b>Instancia Condicional</b>
+        La lifeline membresiaHistorica representa un objeto existente
+        únicamente cuando la consulta retorna un resultado != null.
+    end note
+
+
+    ' -------------------------------------------------------------------------
+    ' 8.3 EVALUACIÓN DE MEMBRESÍA Y COMPORTAMIENTO DE DOMINIO
+    ' -------------------------------------------------------------------------
+
+    alt [membresiaHistorica != null]
+
+        UseCase -> MembresiaHist : estaActiva()
+        activate MembresiaHist
+        MembresiaHist --> UseCase : activa : Boolean
+        deactivate MembresiaHist
+
+
+        break [activa == true]
+
+            UseCase --> Usuario : <<error>> membresía ya ACTIVA
+
+            note over UseCase, MembresiaHist
+                <b>TERMINACIÓN OBLIGATORIA</b>
+
+                - NO duplicar UsuarioNegocio;
+                - NO modificar rol activo;
+                - NO aceptar la invitación;
+                - NO tratarlo como éxito silencioso;
+                - NO persistir ningún cambio.
+            end note
+
+        end
+
+
+        ' Camino INACTIVO
+        UseCase -> Negocio : incorporarOReactivarMiembro(\nusuarioActual,\ninvitacion.rolPropuesto,\nmembresiaHistorica)
+
+        activate Negocio
+
+        Negocio -> Negocio : revalidar: membresiaHistorica.usuarioIdentidad ≡ usuarioActual.identidad\ny membresiaHistorica.negocioIdentidad ≡ negocio.identidad
+        Negocio -> Negocio : revalidar: rolPropuesto ∈ {ENCARGADO, TRABAJADOR}
+        Negocio -> Negocio : reactivar membresía histórica con rolPropuesto
+
+        Negocio --> UseCase : membresiaResultado = membresiaHistorica (reactivada)
+
+        deactivate Negocio
+
+        note over Negocio, MembresiaHist
+            <b>Reactivación Encapsulada</b>
+            Se conserva la identidad e historia original.
+            NO implica setters públicos directos.
+            membresiaResultado es una referencia local del UseCase a la misma entidad histórica.
+            Si la membresía no corresponde a usuarioActual y negocio -> Excepción de Dominio.
+        end note
+
+
+    else [membresiaHistorica == null]
+
+        ' Camino SIN MEMBRESÍA
+        UseCase -> Negocio : incorporarOReactivarMiembro(\nusuarioActual,\ninvitacion.rolPropuesto,\nnull)
+
+        activate Negocio
+
+        Negocio -> Negocio : revalidar: rolPropuesto ∈ {ENCARGADO, TRABAJADOR}
+        Negocio -> Negocio : crear UsuarioNegocio ACTIVA con rolPropuesto
+
+        Negocio --> UseCase : membresiaResultado = nueva UsuarioNegocio
+
+        deactivate Negocio
+
+        note over Negocio
+            <b>Creación encapsulada en el dominio</b>
+            La creación de UsuarioNegocio pertenece a Negocio.
+            Application NO instancia directamente UsuarioNegocio.
+        end note
+
+    end
+
+
+    ' -------------------------------------------------------------------------
+    ' 8.4 MUTACIÓN FINAL DE INVITACIÓN
+    ' -------------------------------------------------------------------------
+
+    UseCase -> Invitacion : aceptarPara(\nusuarioActual.email,\nahora)
+
+    activate Invitacion
+
+    Invitacion -> Invitacion : revalidar PENDIENTE, vigencia y Email
+    Invitacion -> Invitacion : cambiar estado a ACEPTADA
+
+    Invitacion --> UseCase
+    deactivate Invitacion
+
+
+    ' -------------------------------------------------------------------------
+    ' 8.5 PERSISTENCIA CONJUNTA Y DEFENSAS DE CONCURRENCIA
+    ' -------------------------------------------------------------------------
+
+    UseCase -> InvitacionRepo : registrarCambio(invitacion)
+    activate InvitacionRepo
+    InvitacionRepo --> UseCase
+    deactivate InvitacionRepo
+
+    UseCase -> MembresiaRepo : registrarCambio(membresiaResultado)
+    activate MembresiaRepo
+    MembresiaRepo --> UseCase
+    deactivate MembresiaRepo
+
+    note over UseCase, MembresiaRepo
+        <b>Defensa de Concurrencia / TOCTOU</b>
+
+        Las lecturas previas NO garantizan exclusión.
+        La capa de persistencia debe prevenir/detectar conflictos concurrentes sobre:
+        - la misma InvitacionNegocio (transición concurrente a CANCELADA/RECHAZADA/ACEPTADA/EXPIRADA);
+        - la unicidad Usuario + Negocio;
+        - la activación o cambio concurrente de membresía.
+
+        Si existe conflicto: la operación completa falla.
+    end note
+
+
+    ' -------------------------------------------------------------------------
+    ' 8.6 CONFIRMACIÓN ATÓMICA
+    ' -------------------------------------------------------------------------
+
+    alt [confirmación exitosa (mecanismo técnico de persistencia)]
+
+        UseCase --> Usuario : aceptación confirmada
+
+        note over UseCase
+            <b>Postcondición de Éxito</b>
+
+            InvitacionNegocio.estado = ACEPTADA
+            Y
+            UsuarioNegocio.estado = ACTIVO
+            UsuarioNegocio.rol = rolPropuesto
+        end note
+
+
+    else [fallo de validación / persistencia / concurrencia]
+
+        UseCase --> Usuario : <<error>> operación no confirmada
+
+        note over UseCase
+            Si la confirmación falla, ninguna modificación queda confirmada.
+            El mecanismo técnico para garantizarlo pertenece a Arquitectura/Persistencia.
+        end note
+
+    end
+
+end
+
+deactivate UseCase
+
+
+' =============================================================================
+' 9. CONTRATO ANTI-BUGS
+' =============================================================================
+
+note over Usuario, MembresiaHist
+    <b>Contrato anti-bugs para implementación asistida por IA</b>
+
+1. Referencia/token NO autoriza por sí solo.
+2. El Usuario proviene exclusivamente del contexto autenticado.
+3. Email se compara mediante equivalencia funcional (VO Email).
+4. Se utiliza un único "ahora". Expiración lógica ≠ persistir EXPIRADA.
+5. Entidades de dominio NO consultan repositorios.
+6. Application NO instancia directamente UsuarioNegocio (la creación/reactivación pertenece a Negocio).
+7. Roles de invitación se validan mediante whitelist: rolPropuesto ∈ {ENCARGADO, TRABAJADOR}.
+8. Membresía ACTIVA implica rechazo y TERMINACIÓN incondicional del flujo nominal (break).
+9. Membresía INACTIVA reutiliza la misma entidad histórica. La rama activa == false presupone EstadoMembresia ∈ {ACTIVO, INACTIVO}.
+10. Sin membresía se crea exactamente una instancia mediante Negocio.
+11. membresiaResultado es una referencia local del Caso de Uso, no una nueva identidad de dominio en la reactivación.
+12. Negocio revalida que la membresía corresponda a usuarioActual.identidad y negocio.identidad.
+13. Negocio.incorporarOReactivarMiembro(...) es la operación de dominio responsable de la incorporación en este caso de uso.
+14. No usar setters públicos para saltarse invariantes del dominio.
+15. La lifeline de membresiaHistorica aplica solo si la consulta retorna entidad != null.
+16. La invitación se muta a ACEPTADA solo tras preparar una membresiaResultado válida.
+17. Invitación aceptada + membresía activa forman una postcondición atómica (todo-o-nada).
+18. registrarCambio() no implica commit independiente por repositorio.
+19. Persistencia debe detectar conflictos por transiciones concurrentes de invitación o duplicidad de miembro.
+20. Ningún camino de error puede confluir con éxito.
+21. No modelar rollback manual en memoria.
+22. No emitir efectos externos irreversibles antes de confirmar.
+23. ORM, HTTP, excepciones concretas, UnitOfWork, locking y aislamiento permanecen abiertos para Arquitectura.
+end note
+
+@enduml
