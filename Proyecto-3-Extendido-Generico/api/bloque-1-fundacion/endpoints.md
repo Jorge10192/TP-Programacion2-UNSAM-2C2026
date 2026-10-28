@@ -127,6 +127,7 @@ hard delete de ArticuloCatalogo
 | --- | --- | --- | --- |
 | POST | `/api/v1/negocios/{negocio_id}/invitaciones` | PROPIETARIO | Emitir invitación |
 | GET | `/api/v1/negocios/{negocio_id}/invitaciones` | PROPIETARIO | Consultar invitaciones del Negocio |
+| GET | `/api/v1/negocios/{negocio_id}/invitaciones/{invitacion_id}` | PROPIETARIO | Consultar invitación del Negocio |
 | POST | `/api/v1/negocios/{negocio_id}/invitaciones/{invitacion_id}/cancelar` | PROPIETARIO | Cancelar invitación |
 | POST | `/api/v1/negocios/{negocio_id}/invitaciones/{invitacion_id}/enlace-compartible` | PROPIETARIO | Obtener/reemitir referencia compartible |
 | GET | `/api/v1/invitaciones/{token}` | Pública | Vista pública mínima |
@@ -212,13 +213,19 @@ Response:
 UsuarioResponse
 ~~~
 
-Location:
+No se devuelve `Location` en este endpoint porque Bloque 1 no expone una URI navegable de lectura general:
 
 ~~~text
-/api/v1/usuarios/{usuario_id}
+GET /api/v1/usuarios/{usuario_id}
 ~~~
 
-Aunque no se exponga en Bloque 1 una ruta pública genérica de lectura por ID, la URI identifica conceptualmente el recurso creado. Si se prefiere no publicar una URI no navegable, `Location` podrá omitirse para este endpoint y esa decisión deberá mantenerse consistente en OpenAPI.
+La identidad autenticada se consulta mediante:
+
+~~~text
+GET /api/v1/usuarios/me
+~~~
+
+No se publicará una cabecera `Location` que apunte a una ruta inexistente.
 
 ### Errores específicos
 
@@ -739,6 +746,35 @@ GET seguro e idempotente.
 
 ## 19. Cambiar Rol de Miembro
 
+### Identidad del recurso
+
+En todas las rutas:
+
+~~~text
+/miembros/{miembro_id}
+~~~
+
+`miembro_id` corresponde a:
+
+~~~text
+usuario_negocio.id
+~~~
+
+y **no** a:
+
+~~~text
+usuario.id
+~~~
+
+La membresía es el recurso contextual que posee rol, estado y version dentro del Negocio.
+
+Las consultas deben resolverla con alcance tenant:
+
+~~~text
+usuario_negocio.id = :miembro_id
+AND usuario_negocio.negocio_id = :negocio_id
+~~~
+
 ### Endpoint
 
 ~~~http
@@ -1060,7 +1096,79 @@ GET seguro e idempotente.
 
 ---
 
-## 24. Cancelar Invitación
+## 24. Consultar Invitación del Negocio
+
+### Endpoint
+
+~~~http
+GET /api/v1/negocios/{negocio_id}/invitaciones/{invitacion_id}
+~~~
+
+### Autenticación
+
+JWT + membresía ACTIVA + PROPIETARIO.
+
+### Intención
+
+Permite consultar el recurso administrativo creado por:
+
+~~~text
+POST /api/v1/negocios/{negocio_id}/invitaciones
+~~~
+
+y convierte la cabecera `Location` de creación en una URI navegable real.
+
+### Success
+
+~~~text
+200 OK
+InvitacionNegocioResponse
+~~~
+
+Puede incluir:
+
+- id;
+- email_destino;
+- rol_propuesto;
+- estado;
+- fecha_emision;
+- fecha_expiracion;
+- vigencia derivada;
+- emisor cuando resulte útil;
+- version.
+
+Nunca expone:
+
+- token_hash;
+- secretos;
+- credenciales.
+
+### Errores
+
+~~~text
+401 AUTHENTICATION_REQUIRED / TOKEN_INVALIDO
+403 PERMISO_DENEGADO
+404 RECURSO_NO_ENCONTRADO
+422 REQUEST_VALIDATION_ERROR
+~~~
+
+La búsqueda es tenant-scoped por:
+
+~~~text
+invitacion_id
++
+negocio_id
+~~~
+
+por lo que una invitación de otro Negocio también se presenta públicamente como 404.
+
+### Idempotencia
+
+GET seguro e idempotente.
+
+---
+
+## 25. Cancelar Invitación
 
 ### Endpoint
 
@@ -1113,7 +1221,7 @@ InvitacionNegocioResponse
 
 ---
 
-## 25. Obtener Enlace Compartible
+## 26. Obtener Enlace Compartible
 
 ### Endpoint
 
@@ -1188,7 +1296,7 @@ No se garantiza idempotencia porque la implementación puede rotar la referencia
 
 ---
 
-## 26. Vista Pública de Invitación
+## 27. Vista Pública de Invitación
 
 ### Endpoint
 
@@ -1239,7 +1347,7 @@ GET seguro e idempotente.
 
 ---
 
-## 27. Aceptar Invitación
+## 28. Aceptar Invitación
 
 ### Endpoint
 
@@ -1316,7 +1424,7 @@ Un segundo intento después de aceptación debe observar estado ya procesado, no
 
 ---
 
-## 28. Rechazar Invitación
+## 29. Rechazar Invitación
 
 ### Endpoint
 
@@ -1369,7 +1477,7 @@ Un segundo rechazo observa estado terminal.
 
 # PARTE V — CATEGORÍAS
 
-## 29. Listar Categorías
+## 30. Listar Categorías
 
 ### Endpoint
 
@@ -1392,20 +1500,27 @@ sort
 order
 ~~~
 
-Filtros:
+Filtro `estado` repetible:
 
 ~~~text
-estado = ACTIVA | INACTIVA
-~~~
-
-Default recomendado:
-
-~~~text
-sin filtro explícito
+sin estado
 → ACTIVA
+
+?estado=ACTIVA
+→ solo ACTIVAS
+
+?estado=INACTIVA
+→ solo INACTIVAS
+
+?estado=ACTIVA&estado=INACTIVA
+→ ambas
 ~~~
 
-El comportamiento exacto queda congelado aquí para simplificar UX inicial.
+No se introduce un valor artificial `TODAS`, porque no pertenece a `EstadoCategoria`.
+
+En FastAPI podrá modelarse conceptualmente como una lista de `EstadoCategoria` recibida por query param.
+
+El default de ausencia continúa siendo únicamente `ACTIVA` para simplificar la UX inicial.
 
 ### Success
 
@@ -1420,7 +1535,7 @@ GET seguro e idempotente.
 
 ---
 
-## 30. Consultar Categoría
+## 31. Consultar Categoría
 
 ### Endpoint
 
@@ -1449,7 +1564,7 @@ incluyendo cross-tenant.
 
 ---
 
-## 31. Crear Categoría
+## 32. Crear Categoría
 
 ### Endpoint
 
@@ -1503,7 +1618,7 @@ No idempotente.
 
 ---
 
-## 32. Editar Categoría
+## 33. Editar Categoría
 
 ### Endpoint
 
@@ -1546,7 +1661,7 @@ CategoriaResponse
 
 ---
 
-## 33. Desactivar Categoría
+## 34. Desactivar Categoría
 
 ### Endpoint
 
@@ -1593,7 +1708,7 @@ CategoriaResponse
 
 ---
 
-## 34. Reactivar Categoría
+## 35. Reactivar Categoría
 
 ### Endpoint
 
@@ -1636,7 +1751,7 @@ CategoriaResponse
 
 ---
 
-## 35. Eliminar Categoría
+## 36. Eliminar Categoría
 
 ### Endpoint
 
@@ -1691,7 +1806,7 @@ Un reintento posterior puede devolver 404.
 
 # PARTE VI — ARTÍCULOS
 
-## 36. Consultar Catálogo
+## 37. Consultar Catálogo
 
 ### Endpoint
 
@@ -1724,11 +1839,25 @@ tipo = BIEN | SERVICIO
 categoria_id = UUID
 ~~~
 
-Default:
+El filtro `estado` es repetible:
 
 ~~~text
-estado = ACTIVO
+sin estado
+→ ACTIVO
+
+?estado=ACTIVO
+→ solo ACTIVOS
+
+?estado=INACTIVO
+→ solo INACTIVOS
+
+?estado=ACTIVO&estado=INACTIVO
+→ ambos
 ~~~
+
+No se agrega `TODOS` al enum HTTP.
+
+En FastAPI podrá modelarse conceptualmente como una lista de `EstadoArticulo` recibida por query param.
 
 Ordenamiento inicial permitido:
 
@@ -1753,7 +1882,7 @@ GET seguro e idempotente.
 
 ---
 
-## 37. Consultar Artículo
+## 38. Consultar Artículo
 
 ### Endpoint
 
@@ -1796,7 +1925,7 @@ incluyendo cross-tenant.
 
 ---
 
-## 38. Crear Artículo
+## 39. Crear Artículo
 
 ### Endpoint
 
@@ -1888,7 +2017,7 @@ No idempotente.
 
 ---
 
-## 39. Editar Artículo
+## 40. Editar Artículo
 
 ### Endpoint
 
@@ -1996,7 +2125,7 @@ con nueva `version`.
 
 ---
 
-## 40. Desactivar Artículo
+## 41. Desactivar Artículo
 
 ### Endpoint
 
@@ -2052,7 +2181,7 @@ ArticuloResponse
 
 ---
 
-## 41. Reactivar Artículo
+## 42. Reactivar Artículo
 
 ### Endpoint
 
@@ -2106,7 +2235,7 @@ ArticuloResponse
 
 ---
 
-## 42. Eliminar Artículo
+## 43. Eliminar Artículo
 
 ### Endpoint
 
@@ -2162,7 +2291,7 @@ Un reintento posterior puede retornar 404.
 
 # PARTE VII — REGLAS TRANSVERSALES POR ENDPOINT
 
-## 43. Tenant scoping
+## 44. Tenant scoping
 
 Para toda ruta:
 
@@ -2190,7 +2319,7 @@ como estrategia normal.
 
 ---
 
-## 44. Authorization context
+## 45. Authorization context
 
 El router/dependency resuelve:
 
@@ -2208,7 +2337,7 @@ El body no puede elevar privilegios.
 
 ---
 
-## 45. Versionado optimista
+## 46. Versionado optimista
 
 Las mutaciones de:
 
@@ -2224,7 +2353,7 @@ Los endpoints de creación no requieren version.
 
 ---
 
-## 46. Auditoría
+## 47. Auditoría
 
 Las operaciones mutantes relevantes deben proporcionar a Application el actor autenticado necesario para registrar:
 
@@ -2241,7 +2370,7 @@ La tabla de auditoría es infraestructura de trazabilidad, no un recurso adminis
 
 ---
 
-## 47. Responses de mutaciones
+## 48. Responses de mutaciones
 
 Cuando la entidad posee version y continúa existiendo, se prefiere:
 
@@ -2261,7 +2390,7 @@ Hard delete utiliza 204.
 
 ---
 
-## 48. Operaciones que no existen
+## 49. Operaciones que no existen
 
 Bloque 1 **no expone**:
 
@@ -2286,7 +2415,7 @@ Motivo:
 
 # PARTE VIII — MAPEO CASO DE USO → ENDPOINT
 
-## 49. M01
+## 50. M01
 
 | Caso de Uso / RF | Endpoint principal |
 | --- | --- |
@@ -2296,7 +2425,7 @@ Motivo:
 | RF-ORG-004 Configurar Modalidades | `PUT /negocios/{negocio_id}/modalidades` |
 | RF-ORG-005 Consultar Negocios | `GET /usuarios/me/negocios` |
 | RF-ORG-005 Consultar Invitaciones | `GET /usuarios/me/invitaciones` |
-| RF-ORG-006 Invitar Miembro | `POST /negocios/{negocio_id}/invitaciones` |
+| RF-ORG-006 Invitar Miembro | `POST /negocios/{negocio_id}/invitaciones` + `GET .../invitaciones/{id}` |
 | RF-ORG-007 Compartir/Reenviar | `POST .../invitaciones/{id}/enlace-compartible` |
 | RF-ORG-008 Aceptar | `POST /invitaciones/{token}/aceptar` |
 | RF-ORG-009 Rechazar | `POST /invitaciones/{token}/rechazar` |
@@ -2311,7 +2440,7 @@ Motivo:
 
 ---
 
-## 50. M02
+## 51. M02
 
 | Caso de Uso | Endpoint principal |
 | --- | --- |
@@ -2328,36 +2457,41 @@ Motivo:
 
 # PARTE IX — DECISIONES CONGELADAS
 
-## 51. Decisiones
+## 52. Decisiones
 
 1. Registro y login viven bajo `/auth`.
 2. Identidad autenticada se consulta mediante `/usuarios/me`.
-3. Seleccionar Negocio no crea sesión de tenant server-side.
-4. Modalidades se reemplazan como colección completa mediante PUT.
-5. Cambio de rol general y promoción a PROPIETARIO son intenciones separadas.
-6. Reactivación de membresía no posee endpoint administrativo directo.
-7. Reincorporación de miembro ocurre mediante nueva invitación aceptada.
-8. Invitaciones administrativas tenant-scoped utilizan `invitacion_id`.
-9. Aceptación/rechazo del destinatario utiliza token público.
-10. El token público nunca reemplaza autenticación del destinatario.
-11. Compartir/reemitir referencia no crea otra InvitacionNegocio.
-12. Categorias poseen endpoints de estado explícitos.
-13. Articulos poseen endpoints de estado explícitos.
-14. PATCH de artículo nunca reactiva implícitamente.
-15. TipoArticulo no tiene endpoint de modificación.
-16. Imágenes se administran dentro de creación/edición de ArticuloCatalogo durante Bloque 1.
-17. Hard delete de Articulo requiere PROPIETARIO.
-18. Hard delete de Categoria requiere permiso conceptual GESTIONAR_CATEGORIAS.
-19. DELETE usa `version` como query param para evitar depender de body en DELETE.
-20. No existe API genérica de auditoría.
-21. Listados de catálogo muestran ACTIVO por defecto salvo filtro explícito.
-22. Cross-tenant se oculta mediante 404.
+3. El registro de Usuario no devuelve `Location` porque no existe `GET /usuarios/{usuario_id}`.
+4. Seleccionar Negocio no crea sesión de tenant server-side.
+5. Modalidades se reemplazan como colección completa mediante PUT.
+6. `miembro_id` identifica `usuario_negocio.id`, no `usuario.id`.
+7. Cambio de rol general y promoción a PROPIETARIO son intenciones separadas.
+8. Reactivación de membresía no posee endpoint administrativo directo.
+9. Reincorporación de miembro ocurre mediante nueva invitación aceptada.
+10. Invitaciones administrativas tenant-scoped utilizan `invitacion_id`.
+11. Existe `GET /negocios/{negocio_id}/invitaciones/{invitacion_id}` como URI administrativa navegable.
+12. La creación de invitación devuelve `Location` hacia esa URI.
+13. Aceptación/rechazo del destinatario utiliza token público.
+14. El token público nunca reemplaza autenticación del destinatario.
+15. Compartir/reemitir referencia no crea otra InvitacionNegocio.
+16. Categorias poseen endpoints de estado explícitos.
+17. Articulos poseen endpoints de estado explícitos.
+18. Los filtros `estado` de Categoria y Articulo son repetibles; no existe un valor artificial TODOS.
+19. PATCH de artículo nunca reactiva implícitamente.
+20. TipoArticulo no tiene endpoint de modificación.
+21. Imágenes se administran dentro de creación/edición de ArticuloCatalogo durante Bloque 1.
+22. Hard delete de Articulo requiere PROPIETARIO.
+23. Hard delete de Categoria requiere permiso conceptual GESTIONAR_CATEGORIAS.
+24. DELETE usa `version` como query param para evitar depender de body en DELETE.
+25. No existe API genérica de auditoría.
+26. Listados de catálogo muestran ACTIVO/ACTIVA por defecto salvo filtro explícito.
+27. Cross-tenant se oculta mediante 404.
 
 ---
 
 # PARTE X — DECISIONES DIFERIDAS
 
-## 52. Diferidas
+## 53. Diferidas
 
 Permanecen para `schemas-dto.md` o implementación:
 
@@ -2379,7 +2513,7 @@ No deben inventarse silenciosamente durante implementación.
 
 # PARTE XI — CRITERIO DE ACEPTACIÓN
 
-## 53. Criterio de aceptación
+## 54. Criterio de aceptación
 
 El catálogo de endpoints se considera consistente si:
 
@@ -2402,11 +2536,14 @@ El catálogo de endpoints se considera consistente si:
 17. responses de mutación devuelven nueva version cuando el recurso persiste;
 18. 404 protege recursos cross-tenant;
 19. errores esperables pueden mapearse al contrato uniforme;
-20. OpenAPI puede documentar todas las rutas sin exponer modelos ORM.
+20. OpenAPI puede documentar todas las rutas sin exponer modelos ORM;
+21. toda cabecera Location apunta a una URI realmente navegable;
+22. `miembro_id` no puede confundirse con `usuario.id`;
+23. los listados pueden solicitar simultáneamente estados activos e inactivos sin inventar valores fuera de los enums de dominio.
 
 ---
 
-## 54. Próximo documento
+## 55. Próximo documento
 
 El siguiente artefacto es:
 
