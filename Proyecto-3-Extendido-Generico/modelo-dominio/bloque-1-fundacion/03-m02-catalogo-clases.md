@@ -2,7 +2,7 @@
 
 ## 1. Propósito del Documento
 
-Este documento acompaña al diagrama oficial:
+Este documento acompaña al diagrama:
 
 ```text
 03-m02-catalogo-clases.puml
@@ -46,20 +46,29 @@ El documento explica:
 - qué invariantes están cerradas;
 - qué operaciones necesitan información contextual;
 - qué información pertenece a módulos posteriores;
-- qué riesgos de implementación deben evitarse;
+- cómo se edita coherentemente un `ArticuloCatalogo`;
+- cómo se separan edición, desactivación y reactivación;
+- qué riesgos de concurrencia e implementación deben evitarse;
 - qué decisiones siguen abiertas para Arquitectura;
 - cómo derivar código y tests sin convertir el UML mecánicamente en ORM o CRUD.
 
 Este archivo constituye la **guía semántica del Diagrama 3**.
 
-Debe leerse junto con:
+Durante la resincronización actual debe leerse especialmente junto con:
+
+```text
+modulos/M02-Catalogo.md
+secuencias/02-editar-articulo.puml
+```
+
+y, una vez actualizado, junto con:
 
 ```text
 06-m02-estados-articulo.md
 06-m02-estados-articulo.puml
 ```
 
-porque ambas vistas son complementarias:
+Las vistas son complementarias:
 
 ```text
 Diagrama 3
@@ -67,22 +76,41 @@ Diagrama 3
 → relaciones
 → responsabilidades
 → invariantes estáticas
+→ comportamiento de edición encapsulado
 
 Diagrama 6
 → ciclo de vida
-→ transiciones
-→ restricciones dependientes de EstadoArticulo
+→ transiciones ACTIVO / INACTIVO
+
+Secuencia 02
+→ coordinación Application / Domain / Persistencia
+→ edición parcial de entrada
+→ validación antes de mutar
+→ atomicidad y concurrencia
 ```
 
 No reemplaza la especificación funcional `M02-Catalogo.md`.
 
-No debe introducir una regla funcional nueva que contradiga esa especificación.
+No debe introducir una regla funcional nueva que contradiga dicha especificación.
+
+En particular, esta versión incorpora las decisiones funcionales más recientes:
+
+```text
+editar ACTIVO o INACTIVO
+editar NO cambia EstadoArticulo
+reactivación separada de edición
+0..3 imágenes
+autorización por permiso conceptual
+nombre de artículo único por Negocio
+validar antes de mutar
+confirmación todo-o-nada
+```
 
 ---
 
 # 2. Ubicación dentro de la Documentación
 
-La estructura esperada es:
+La estructura relevante es:
 
 ```text
 Proyecto-3-Extendido-Generico/
@@ -96,45 +124,77 @@ Proyecto-3-Extendido-Generico/
         ├── 02-m01-organizacion-clases.png
         ├── 03-m02-catalogo-clases.md
         ├── 03-m02-catalogo-clases.puml
-        └── 03-m02-catalogo-clases.png
-
+        ├── 03-m02-catalogo-clases.png
+        ├── 06-m02-estados-articulo.md
+        ├── 06-m02-estados-articulo.puml
+        ├── 06-m02-estados-articulo.png
+        └── secuencias/
+            ├── 01-aceptar-invitacion.puml
+            ├── 01-aceptar-invitacion.png
+            ├── 02-editar-articulo.puml
+            └── 02-editar-articulo.png
 ```
 
 Este archivo:
 
 ```text
 03-m02-catalogo-clases.md
-
 ```
 
 documenta cómo debe interpretarse:
 
 ```text
 03-m02-catalogo-clases.puml
-
 ```
+
+La secuencia:
+
+```text
+secuencias/02-editar-articulo.puml
+```
+
+es una vista dinámica especializada que ya fija decisiones relevantes que deben reflejarse en esta guía y posteriormente en el Diagrama 3.
 
 ---
 
 # 3. Estado del Artefacto
 
-El Diagrama 3 forma parte de la especificación de Fundación y su **semántica queda cerrada con este documento**.
-
-Estado semántico objetivo:
+Esta versión de la guía se resincroniza con:
 
 ```text
-03-m02-catalogo-clases.md      ✅ SEMÁNTICA SINCRONIZADA
-03-m02-catalogo-clases.puml    🟡 DEBE COINCIDIR CON ESTA GUÍA
-03-m02-catalogo-clases.png     🟡 DEBE DERIVARSE DEL PUML SINCRONIZADO
+modulos/M02-Catalogo.md
++
+secuencias/02-editar-articulo.puml
 ```
 
-Una vez que el `.puml` y su render hayan sido revisados contra esta guía, el estado documental puede actualizarse a:
+Estado documental actual:
 
 ```text
-03-m02-catalogo-clases.md      ✅ CONGELADO Y SINCRONIZADO
-03-m02-catalogo-clases.puml    ✅ CONGELADO Y SINCRONIZADO
-03-m02-catalogo-clases.png     ✅ CONGELADO Y SINCRONIZADO
+03-m02-catalogo-clases.md
+✅ GUÍA SEMÁNTICA ACTUALIZADA
+
+03-m02-catalogo-clases.puml
+⚠️ PENDIENTE DE RESINCRONIZACIÓN CON ESTA GUÍA
+
+03-m02-catalogo-clases.png
+⚠️ REGENERAR DESPUÉS DE ACTUALIZAR EL PUML
+
+06-m02-estados-articulo.md / .puml
+⚠️ TODAVÍA REQUIEREN SINCRONIZACIÓN
 ```
+
+Por lo tanto, todavía NO corresponde declarar el conjunto M02:
+
+```text
+CONGELADO Y SINCRONIZADO
+```
+
+Ese estado solo debe asignarse después de:
+
+1. actualizar `03-m02-catalogo-clases.puml`;
+2. revisar/renderizar su PNG;
+3. actualizar `06-m02-estados-articulo.md/.puml`;
+4. realizar una auditoría transversal del Bloque 1.
 
 La palabra **congelado** significa:
 
@@ -145,7 +205,7 @@ no deben modificarse silenciosamente durante implementación
 
 No significa que el modelo nunca pueda evolucionar.
 
-Si una necesidad futura exige modificar entidades, cardinalidades, estados, invariantes, política de SKU, reglas de Categoria, capacidades o permisos de reactivación, primero debe modificarse la especificación funcional y luego resincronizarse el conjunto documental.
+Si una necesidad futura exige modificar entidades, cardinalidades, estados, invariantes, política de SKU, reglas de Categoria, imágenes, capacidades o permisos, primero debe modificarse la especificación funcional y luego resincronizarse el conjunto documental.
 
 No deben coexistir dos fuentes con semánticas incompatibles.
 
@@ -153,43 +213,48 @@ No deben coexistir dos fuentes con semánticas incompatibles.
 
 # 4. Fuentes de Verdad y Orden de Interpretación
 
-Para interpretar o implementar M02 debe utilizarse este orden:
+Para interpretar M02 durante esta resincronización debe utilizarse:
 
 ```text
 1. modulos/M02-Catalogo.md
-   → especificación funcional
+   → especificación funcional vigente
 
-2. modelo-dominio/bloque-1-fundacion/
-   01-modelo-dominio-bloque-1.md
-   → reglas transversales del Bloque 1
+2. secuencias/02-editar-articulo.puml
+   → decisiones dinámicas ya validadas para edición
 
 3. modelo-dominio/bloque-1-fundacion/
+   01-modelo-dominio-bloque-1.md
+   → reglas transversales del Bloque 1
+   → sujeto a auditoría transversal final
+
+4. modelo-dominio/bloque-1-fundacion/
    03-m02-catalogo-clases.md
    03-m02-catalogo-clases.puml
    → estructura y responsabilidades
 
-4. modelo-dominio/bloque-1-fundacion/
+5. modelo-dominio/bloque-1-fundacion/
    06-m02-estados-articulo.md
    06-m02-estados-articulo.puml
-   → ciclo de vida y restricciones por estado
+   → ciclo de vida
+   → deben resincronizarse después de Diagrama 3
 
-5. ADRs / Diseño Técnico
-6. Modelo Relacional
-7. Contrato API
-8. Código
+6. ADRs / Diseño Técnico
+7. Modelo Relacional
+8. Contrato API
+9. Código
 ```
 
-Los Diagramas 3 y 6 son **vistas complementarias del mismo dominio**.
+Los Diagramas 3 y 6, junto con la Secuencia 02, son **vistas complementarias del mismo dominio**.
 
 Si dos fuentes parecen incompatibles:
 
 ```text
 NO elegir silenciosamente una
-NO inferir una solución
-NO corregir desde el código
+NO inferir una solución por conveniencia
+NO corregir únicamente desde el código
 ```
 
-Debe resolverse primero la contradicción documental.
+La contradicción debe resolverse primero en documentación.
 
 La implementación nunca se convierte en fuente superior por haber sido escrita después.
 
@@ -212,21 +277,28 @@ El Diagrama 3 debe permitir responder:
 
 ¿Qué capacidades son estructurales?
 
+¿Qué información puede editarse?
+
+¿Qué información es inmutable?
+
+¿Cómo se expresa una edición compuesta sin setters públicos indiscriminados?
+
+¿Qué significa ACTIVO?
+
+¿Qué significa INACTIVO?
+
+¿Por qué un INACTIVO puede editarse administrativamente
+sin reactivarse?
+
+¿Cómo se separan editar, desactivar y reactivar?
+
 ¿Qué reglas puede validar un objeto con información local?
 
 ¿Qué reglas necesitan contexto del Negocio?
 
 ¿Qué reglas necesitan información de módulos posteriores?
 
-¿Qué significa ACTIVO?
-
-¿Qué significa INACTIVO?
-
-¿Por qué un artículo INACTIVO no admite edición individual en MVP?
-
-¿Cómo se diferencia la reactivación simple de la reactivación con reconfiguración?
-
-¿Qué significa desactivar?
+¿Cómo se modelan 0..3 imágenes sin congelar storage?
 
 ¿Qué significa eliminar físicamente?
 
@@ -235,7 +307,6 @@ El Diagrama 3 debe permitir responder:
 ¿Qué historia debe preservarse fuera de M02?
 
 ¿Qué decisiones pertenecen todavía a Arquitectura?
-
 ```
 
 ---
@@ -333,19 +404,40 @@ EstadoCategoria
 EstadoArticulo
 TipoArticulo
 UnidadMedida
-
 ```
 
 También representa:
 
-* relaciones;
-* cardinalidades;
-* composición conceptual;
-* estado;
-* comportamiento relevante;
-* invariantes principales;
-* restricciones de modificación;
-* dependencia conceptual de información externa.
+- relaciones;
+- cardinalidades;
+- composición conceptual;
+- estado;
+- comportamiento relevante;
+- invariantes principales;
+- edición compuesta y encapsulada;
+- restricciones de modificación;
+- dependencia conceptual de información externa;
+- colección conceptual de 0..3 imágenes por artículo.
+
+No obliga a representar como entidad persistente:
+
+```text
+PropuestaEdicionDTO
+propuestaEdicionPreparada
+```
+
+`PropuestaEdicionDTO` pertenece a Application/API.
+
+`propuestaEdicionPreparada` expresa conceptualmente una intención de edición ya normalizada y con referencias resueltas, pero:
+
+```text
+NO posee identidad propia
+NO implica tabla
+NO implica Repository
+NO se persiste como entidad
+```
+
+La representación exacta de esa estructura permanece abierta.
 
 ---
 
@@ -456,7 +548,6 @@ Por lo tanto:
 ArticuloCatalogo.identidad
 ≠
 ArticuloCatalogo.sku
-
 ```
 
 y:
@@ -465,7 +556,6 @@ y:
 ArticuloCatalogo.identidad
 ≠
 ArticuloCatalogo.nombre
-
 ```
 
 El SKU:
@@ -475,20 +565,46 @@ es opcional
 es editable
 puede quitarse
 puede reutilizarse cuando queda libre después de confirmar
-
 ```
 
-El nombre también es editable.
+El nombre:
 
-Ninguno debe utilizarse como identidad técnica primaria del artículo.
+```text
+es editable
+NO es identidad
+```
 
-La misma regla conceptual aplica a Categoria:
+pero posee una regla funcional adicional:
+
+```text
+nombre funcionalmente único
+por Negocio
+considerando ACTIVO + INACTIVO
+```
+
+Por lo tanto, un artículo `INACTIVO` continúa reservando su nombre.
+
+La estrategia exacta de equivalencia/normalización del nombre permanece abierta.
+
+No congelar automáticamente:
+
+```text
+lower()
+trim()
+casefold()
+Unicode exacto
+tratamiento exacto de acentos
+collation SQL
+```
+
+como especificación de dominio.
+
+La misma regla conceptual de identidad aplica a Categoria:
 
 ```text
 Categoria.identidad
 ≠
 Categoria.nombre
-
 ```
 
 Renombrar una Categoria no crea otra entidad.
@@ -824,8 +940,11 @@ Snack de pollo
 Remera negra M
 Maquillaje social
 Asesoramiento por hora
-
 ```
+
+`ArticuloCatalogo` mantiene la **configuración vigente** del elemento.
+
+No contiene los hechos transaccionales producidos por otros módulos.
 
 ## 20.2. Información Conceptual
 
@@ -839,65 +958,216 @@ ArticuloCatalogo
 ├── Categoria opcional
 ├── unidadMedida : UnidadMedida
 ├── SKU opcional
-├── imagenPrincipal opcional
+├── imágenes [0..3]
+│   └── exactamente una principal si N > 0
 ├── precioBase opcional
 ├── costoReferencia opcional
 ├── capacidades : CapacidadesArticulo
 └── estado : EstadoArticulo
-
 ```
+
+Reglas estructurales relevantes:
+
+```text
+identidad
+→ inmutable
+
+TipoArticulo
+→ inmutable en MVP
+
+nombre
+→ no es identidad
+→ funcionalmente único por Negocio
+→ ACTIVO + INACTIVO participan
+
+SKU
+→ no es identidad
+→ opcional
+→ único por Negocio si existe
+
+imágenes
+→ 0..3
+→ si N > 0, exactamente una principal
+```
+
+La representación física de imágenes no forma parte de la entidad conceptual.
 
 ---
 
-# 21. Edición de Atributos y Regla MVP en Estado INACTIVO
+# 21. Edición de `ArticuloCatalogo`
 
-El Diagrama 3 muestra principalmente operaciones que poseen comportamiento o invariantes relevantes.
+La edición de catálogo representa:
 
-La ausencia de un método específico NO implica inmutabilidad.
+```text
+cambiar configuración vigente hacia futuro
+```
 
-Por ejemplo, conceptualmente pueden editarse:
+y NO:
+
+```text
+reescribir hechos históricos
+```
+
+La edición administrativa está permitida sobre:
+
+```text
+ACTIVO
+INACTIVO
+```
+
+pero nunca cambia implícitamente `EstadoArticulo`.
+
+Por lo tanto:
+
+```text
+editar ACTIVO
+→ sigue ACTIVO
+→ solo si la configuración resultante continúa siendo válida
+
+editar INACTIVO
+→ sigue INACTIVO
+→ puede corregirse o prepararse para una futura reactivación
+```
+
+La reactivación es un Caso de Uso separado.
+
+## 21.1. Campos Editables
+
+Conceptualmente pueden editarse, sujeto a invariantes:
 
 ```text
 nombre
 descripcion
 SKU
-imagenPrincipal
+imágenes
 precioBase
 costoReferencia
 UnidadMedida
-CapacidadesArticulo
+CapacidadesArticulo / configuración operativa
 Categoria
-
 ```
 
-Únicamente:
+No pueden editarse mediante este caso de uso:
 
 ```text
+identidad
 TipoArticulo
-
+EstadoArticulo
 ```
 
-está definido explícitamente como **estrictamente inmutable**.
+`EstadoArticulo` cambia mediante operaciones explícitas de ciclo de vida.
 
-### Regla MVP — Edición Bloqueada en INACTIVO
+## 21.2. Entrada Parcial
+
+Application puede recibir una propuesta parcial.
+
+Debe distinguir:
 
 ```text
-Edición normal de atributos:
-→ permitida ÚNICAMENTE si estado == ACTIVO
-→ autorizada solo para PROPIETARIO
+campo NO enviado
+→ conservar valor actual
 
+campo enviado como null
+→ quitar / desasociar, cuando el campo lo permite
 ```
 
-Mientras un artículo permanezca en estado `INACTIVO`:
+Ejemplos:
 
 ```text
-NO admite edición individual de atributos
+Categoria omitida
+→ conservar
 
+Categoria = null
+→ quitar
+
+SKU omitido
+→ conservar
+
+SKU = null
+→ quitar
 ```
 
-No deben existir comandos o endpoints normales que modifiquen datos dejando al artículo `INACTIVO`.
+## 21.3. DTO vs Dominio
 
-Para incorporar cambios de configuración a un artículo `INACTIVO` se debe utilizar el flujo de reactivación con reconfiguración por un `PROPIETARIO`.
+`PropuestaEdicionDTO` pertenece a Application/API.
+
+No debe enviarse directamente a la entidad.
+
+Flujo conceptual:
+
+```text
+PropuestaEdicionDTO
+        ↓
+Application normaliza entrada
+        ↓
+resuelve referencias
+        ↓
+prevalida contexto / unicidades
+        ↓
+construye propuestaEdicionPreparada
+        ↓
+ArticuloCatalogo
+```
+
+La estructura preparada no define infraestructura ni persistencia propia.
+
+## 21.4. Operación Compuesta de Dominio
+
+La edición genérica debe expresarse conceptualmente mediante una operación coherente:
+
+```text
+ArticuloCatalogo.aplicarEdicion(propuestaEdicionPreparada)
+```
+
+La entidad debe:
+
+```text
+validar TODA la configuración resultante
+        ↓
+si falla
+→ rechazar SIN consolidar mutaciones observables
+        ↓
+si pasa
+→ aplicar todos los cambios coherentemente
+```
+
+No implementar `EditarArticulo` como una cadena pública de setters independientes.
+
+Operaciones especializadas pueden existir para otros Casos de Uso, pero no deben utilizarse para romper la atomicidad de la edición compuesta.
+
+## 21.5. Atomicidad
+
+La entrada puede ser parcial.
+
+La confirmación de la edición debe ser:
+
+```text
+TODO
+o
+NADA
+```
+
+Si falla cualquier:
+
+```text
+invariante local
+guardia contextual
+unicidad
+persistencia
+conflicto concurrente
+```
+
+ninguna modificación queda confirmada.
+
+No modelar:
+
+```text
+mutar parcialmente
+→ descubrir error
+→ revertir manualmente atributos
+```
+
+como estrategia de dominio.
 
 ---
 
@@ -1012,128 +1282,117 @@ No desactivar automáticamente.
 
 ---
 
-# 25. Reactivación de ArticuloCatalogo
+# 25. Reactivación de `ArticuloCatalogo`
+
+La reactivación es una operación explícita y separada de la edición.
+
+Representa únicamente la transición:
+
+```text
+INACTIVO → ACTIVO
+```
+
+sobre la **configuración vigente ya confirmada**.
 
 `reactivar()` no es una asignación ciega:
 
 ```text
 estado = ACTIVO
-
 ```
 
-Representa la transición semántica `INACTIVO → ACTIVO` y revalida todas las invariantes vigentes necesarias para volver a operar:
+Antes de confirmar debe verificarse que la configuración vigente permita un artículo ACTIVO válido, incluyendo las guardias locales y contextuales aplicables:
 
 ```text
 coherencia Tipo + Capacidades
 uso operativo mínimo
-precioBase != null y >= 0 si esVendible
-costoReferencia >= 0 si existe
-compatibilidad con dependencias estructurales
+precioBase válido si esVendible
+costoReferencia válido si existe
+UnidadMedida válida
+dependencias estructurales aplicables
 otras guardias contextuales necesarias
-
 ```
-
-No reescribe historia ni reconstruye operaciones anteriores.
 
 Una Categoria históricamente asociada que actualmente se encuentre INACTIVA:
 
 ```text
 NO bloquea por sí sola la reactivación
-
 ```
 
----
+porque no constituye una nueva asociación.
 
-## 25.1. Reactivación Simple
+## 25.1. Separación entre Editar y Reactivar
 
-Utiliza la configuración almacenada.
+No existe en este modelo vigente una “reactivación con payload libre de edición” como mecanismo normal.
 
-Pueden ejecutarla:
+Si el artículo INACTIVO necesita cambios:
 
 ```text
-PROPIETARIO
-ENCARGADO
-
+EditarArticulo
+→ confirmar cambios
+→ continúa INACTIVO
+→ ReactivarArticulo
 ```
 
-Siempre que la configuración actual de la entidad cumpla todas las invariantes vigentes.
-
----
-
-## 25.2. Reactivación con Reconfiguración
-
-Necesaria cuando la configuración almacenada de un artículo INACTIVO es inválida o requiere cambios para volver a operar.
-
-Solo puede ejecutarla:
+La reactivación:
 
 ```text
-PROPIETARIO
-
+NO incorpora cambios comerciales arbitrarios
+NO cambia precio
+NO cambia SKU
+NO cambia Categoria
+NO cambia UnidadMedida
+NO cambia imágenes
+NO reconfigura capacidades mediante payload libre
 ```
 
-Flujo:
+Si la configuración vigente no permite volver a ACTIVO:
 
 ```text
-Configuración candidata propuesta
-+
-validación local y contextual completa
-+
-transición a ACTIVO
-
+RECHAZAR reactivación
 ```
 
-Se confirman como **una única operación atómica**.
+y el artículo permanece `INACTIVO`.
 
-Si falla cualquier guardia o validación:
+## 25.2. Identidad e Historia
+
+Reactivar:
+
+- reutiliza la misma entidad;
+- conserva identidad;
+- no crea una copia;
+- no reescribe hechos históricos;
+- no reconstruye operaciones anteriores.
+
+## 25.3. Autorización
+
+La reactivación requiere un permiso conceptual específico.
+
+La matriz completa:
 
 ```text
-artículo permanece INACTIVO
-+
-NO se persisten cambios parciales
-
+Rol → Permiso
 ```
 
----
+no se congela en esta guía.
 
-## 25.3. Bloqueo de Bypass para ENCARGADO
-
-```text
-reactivar(payload)
-≠
-editarArticuloInactivo()
-
-```
-
-Un `ENCARGADO` NO puede utilizar un payload de reactivación para saltarse la prohibición de edición.
-
-Si un `ENCARGADO` intenta reactivar un artículo cuya configuración almacenada no es válida:
-
-```text
-RECHAZAR operación
-→ indicar que requiere reconfiguración por un PROPIETARIO
-
-```
-
----
+No asumir automáticamente que una determinada clase de Rol puede o no reactivar salvo regla explícita de la especificación funcional.
 
 ## 25.4. Equivalencia Semántica `activar` / `reactivar`
 
-En interfaces de usuario o catálogos de permisos puede utilizarse el término:
+En interfaces de usuario puede utilizarse:
 
 ```text
 activar
-
 ```
 
-Sin embargo, para un artículo histórico existente en estado `INACTIVO`, la transición semántica del dominio es:
+pero para un artículo histórico existente en `INACTIVO`, la transición semántica oficial es:
 
 ```text
 INACTIVO → ACTIVO
 = reactivar
-
 ```
 
-No deben modelarse ni implementarse dos ciclos de vida distintos (`activar()` y `reactivar()`).
+No modelar dos ciclos de vida distintos para la misma transición.
 
 ---
 
@@ -1683,7 +1942,6 @@ Si:
 
 ```text
 esVendible = True
-
 ```
 
 debe cumplir:
@@ -1691,21 +1949,40 @@ debe cumplir:
 ```text
 precioBase != null
 precioBase >= 0
-
 ```
 
-Se permite:
+M02 no acepta precios negativos.
+
+Respecto de:
 
 ```text
 precioBase = 0
-
 ```
 
-Modificar precioBase:
+M02 mantiene únicamente la invariante estructural:
+
+```text
+precioBase >= 0
+```
+
+pero **no congela todavía la semántica comercial definitiva** de una venta normal con precio base cero.
+
+No inferir automáticamente:
+
+```text
+precioBase = 0
+→ promoción
+→ descuento 100 %
+→ gratuidad
+```
+
+La semántica de precio efectivo, promociones, bonificaciones y descuentos corresponde a M05/Promociones.
+
+Modificar `precioBase`:
 
 ```text
 NO reescribe ventas históricas
-
+NO elimina ni modifica promociones existentes
 ```
 
 El artículo no posee moneda independiente.
@@ -1714,14 +1991,12 @@ Los importes utilizan:
 
 ```text
 Negocio.monedaBase
-
 ```
 
 Durante el MVP:
 
 ```text
 ARS
-
 ```
 
 ---
@@ -1759,26 +2034,27 @@ El SKU:
 es opcional
 es editable
 NO es identidad técnica
-
 ```
 
 ### Ausencia Canónica y Normalización
 
-La ausencia funcional de SKU se representa en el dominio y persistencia como:
+La ausencia funcional de SKU se representa en dominio y persistencia como:
 
 ```text
 null
-
 ```
 
-Antes de validar o persistir, cualquier entrada de cadena vacía debe normalizarse:
+Antes de validar o persistir:
 
 ```text
-input "" → null
-
+input ""
+input compuesto solo por espacios
+→ null
 ```
 
-No utilizar `""` como segunda representación de "sin SKU".
+No utilizar cadenas vacías como una segunda representación de “sin SKU”.
+
+La estrategia técnica exacta de normalización permanece abierta.
 
 ### Unicidad Contextual
 
@@ -1787,7 +2063,6 @@ Cuando existe:
 ```text
 SKU ACTUAL
 → único dentro del Negocio
-
 ```
 
 considerando artículos:
@@ -1796,24 +2071,27 @@ considerando artículos:
 ACTIVOS
 +
 INACTIVOS
-
 ```
 
 Desactivar un artículo:
 
 ```text
 NO libera su SKU actual
-
 ```
 
-### Decisiones Técnicas Diferidas (Arquitectura)
+Los prechecks de disponibilidad mejoran UX.
 
-No se definen en esta especificación de dominio:
+La defensa final de unicidad debe resistir concurrencia.
 
-* case sensitivity;
-* trim automático de espacios intermedios/extremos;
-* normalización Unicode;
-* formato regex exacto.
+### Decisiones Técnicas Diferidas
+
+No se definen aquí:
+
+- case sensitivity;
+- trim exacto;
+- normalización Unicode;
+- regex/formato;
+- collation SQL.
 
 ---
 
@@ -1976,68 +2254,123 @@ Asesoramiento
 
 ---
 
-# 44. Cambio de Unidad e Historia Cuantitativa
+# 44. Evolución de `UnidadMedida`
 
-`cambiarUnidad()` no debe alterar el significado de cantidades históricas.
+`UnidadMedida` representa la unidad vigente para operaciones futuras.
+
+Puede modificarse administrativamente cuando la configuración propuesta sea válida.
+
+Regla temporal:
+
+```text
+cambiar unidad vigente
+→ afecta operaciones futuras
+
+NO
+→ reescribe cantidades históricas
+```
 
 Ejemplo:
 
 ```text
 Harina
-Unidad = KG
+Unidad vigente = KG
 Compra histórica = 5 KG
-
 ```
 
-No convertir mediante simple edición:
+Si posteriormente la unidad vigente cambia, la Compra histórica continúa siendo:
 
 ```text
-KG → UNIDAD
-
+5 KG
 ```
 
-si eso vuelve ambiguas o incorrectas las cantidades registradas.
+y no debe reinterpretarse utilizando el valor actual del catálogo.
 
-La existencia de historia cuantitativa:
+Por lo tanto, la existencia de historia cuantitativa:
 
 ```text
-es una condición derivada
-
+NO bloquea automáticamente para siempre
+todo cambio de UnidadMedida
 ```
 
-NO agregar automáticamente:
+Las futuras reglas que determinen cuándo un cambio de unidad resulta operacionalmente incompatible con:
 
 ```text
-ArticuloCatalogo.tieneHistoriaOperativa : Boolean
-
+stock actual
+lotes
+recetas
+producción
+otras dependencias
 ```
 
-La forma técnica de consultar esa información queda abierta.
+se definirán al diseñar los módulos consumidores correspondientes.
+
+M02 no introduce de forma prematura:
+
+```text
+tieneHistoriaOperativa : Boolean
+```
+
+ni una librería completa de conversiones.
+
+La historia se preserva en los hechos transaccionales correspondientes.
 
 ---
 
-# 45. Imagen Principal
+# 45. Imágenes del Artículo
 
 Durante el MVP:
 
 ```text
 ArticuloCatalogo
-→ 0..1 imagenPrincipal
-
+→ 0..3 imágenes
 ```
 
-El diagrama no decide:
+Regla:
+
+```text
+N = 0
+→ no existe imagen principal
+
+N > 0
+→ exactamente una imagen debe ser principal
+```
+
+La prevalidación puede realizarse en Application para brindar feedback temprano.
+
+La invariante debe quedar protegida también por Domain.
+
+No se obliga todavía a introducir una clase concreta como:
+
+```text
+ColeccionImagenesArticulo
+```
+
+si no resulta necesaria.
+
+Tampoco se decide:
 
 ```text
 filesystem
 S3
 blob SQL
+CDN
 URL pública
+Cloudinary
 Base64
-
 ```
 
-La estrategia de almacenamiento pertenece a Diseño Técnico.
+La representación física y lifecycle de archivos pertenecen a Diseño Técnico.
+
+Regla de seguridad:
+
+```text
+una edición lógica de referencias de imágenes
+NO debe provocar efectos externos irreversibles inseguros
+antes de que la modificación pueda confirmarse
+```
+
+Por ejemplo, no borrar físicamente una imagen previa de forma irreversible antes de una confirmación segura sin una estrategia arquitectónica adecuada.
 
 ---
 
@@ -2111,7 +2444,7 @@ No congelar estas políticas dentro de M02.
 
 ---
 
-# 48. Eliminación Física de ArticuloCatalogo
+# 48. Eliminación Física de `ArticuloCatalogo`
 
 `eliminarFisicamente()`:
 
@@ -2119,50 +2452,48 @@ No congelar estas políticas dentro de M02.
 NO es EstadoArticulo
 NO crea estado ELIMINADO
 NO es una transición de la máquina de estados
-
 ```
 
 Es una operación administrativa excepcional.
 
-Solo puede confirmarse cuando no existan:
+En el MVP requiere explícitamente:
 
 ```text
-historia operativa relevante
-referencias
-dependencias que deban conservarse
-
+Usuario con Rol PROPIETARIO
++
+ArticuloCatalogo INACTIVO
++
+sin historia operativa relevante
++
+sin referencias
++
+sin dependencias que deban conservarse
 ```
 
-Normalmente:
+Si el artículo continúa ACTIVO y se desea retirarlo:
 
 ```text
-artículo utilizado
-→ desactivar
-
+desactivar
 ```
 
-No:
+antes de evaluar un hard delete.
 
-```text
-artículo utilizado
-→ eliminar físicamente
-
-```
-
-La ausencia de dependencias debe revalidarse al momento de confirmar.
+La ausencia de historia, referencias y dependencias debe revalidarse al momento de confirmar.
 
 Si la eliminación física se confirma:
 
 ```text
 SKU actual queda disponible para reutilización
-
+nombre actual deja de estar reservado por ese artículo
 ```
+
+La operación no debe utilizarse para borrar un artículo únicamente porque “molesta” en los selectores; para ese caso existe `INACTIVO`.
 
 ---
 
 # 49. `puedeEliminarseFisicamente()`
 
-Representa una consulta conceptual.
+Representa, como máximo, una consulta conceptual de apoyo.
 
 Puede utilizarse para:
 
@@ -2170,27 +2501,34 @@ Puede utilizarse para:
 UX
 diagnóstico
 orientación
-
 ```
 
 No significa:
 
 ```text
 la entidad aislada conoce toda la respuesta
-
 ```
 
-La respuesta puede depender de módulos consumidores.
+porque la posibilidad real de eliminación puede depender de módulos consumidores.
 
 Tampoco significa:
 
 ```text
-si devuelve True
+si devuelve True ahora
 → eliminar después sin revalidar
-
 ```
 
-La eliminación real debe volver a garantizar las condiciones al confirmar.
+La operación final debe volver a garantizar:
+
+```text
+artículo INACTIVO
+PROPIETARIO autorizado
+sin historia relevante
+sin referencias
+sin dependencias
+```
+
+al confirmar.
 
 ---
 
@@ -2199,11 +2537,10 @@ La eliminación real debe volver a garantizar las condiciones al confirmar.
 M02 representa:
 
 ```text
-estado ACTUAL del catálogo
-
+configuración ACTUAL del catálogo
 ```
 
-Pueden cambiar:
+Pueden cambiar hacia futuro:
 
 ```text
 nombre
@@ -2212,73 +2549,105 @@ Categoria
 SKU
 precioBase
 costoReferencia
-imagen
+imágenes
+UnidadMedida
 capacidades permitidas
-estado
-
+estado mediante casos de uso explícitos
 ```
 
 Los módulos transaccionales deben preservar los valores históricos que necesiten para interpretar correctamente sus operaciones.
 
-No reconstruir una operación histórica leyendo solamente:
+No reconstruir una operación pasada consultando exclusivamente la configuración vigente.
+
+Ejemplos:
 
 ```text
-ArticuloCatalogo.nombre actual
-ArticuloCatalogo.sku actual
-ArticuloCatalogo.precioBase actual
-Categoria actual
+precioBase actual
+≠ precio aplicado en Venta histórica
 
+UnidadMedida actual
+≠ unidad registrada necesariamente en una Compra histórica
+
+nombre actual
+≠ nombre que necesariamente se mostró en una operación anterior
 ```
 
-si esa operación necesita los valores existentes al momento original.
-
-Este documento no impone la técnica concreta:
+Principio:
 
 ```text
-snapshot
-campos copiados
-versionado
-otra estrategia
+editar catálogo
+=
+cambiar configuración hacia futuro
 
+editar catálogo
+≠
+reescribir pasado
 ```
 
 ---
 
 # 51. Validaciones Locales vs. Contextuales
 
-Debe garantizarse una separación estricta de responsabilidades entre el objeto de dominio y la capa de aplicación/persistencia.
+Debe mantenerse una separación explícita.
 
-## Guardias Locales (Validadas por Entidad / VO)
+## Guardias Locales — Entidad / Value Objects
 
-Se resuelven exclusivamente con la información contenida en el propio objeto o propuesta:
-
-```text
-• TipoArticulo + CapacidadesArticulo
-• Si esVendible == true => precioBase != null y precioBase >= 0
-• Si costoReferencia != null => costoReferencia >= 0
-• Uso operativo mínimo en ACTIVO (>= 1 entre comprable, vendible o producción)
-• TipoArticulo inmutable
-• Coherencia interna e inmutabilidad del Value Object
-
-```
-
-## Guardias Contextuales (Caso de Uso / Persistencia)
-
-Requieren consultar información externa al objeto de dominio:
+Pueden resolverse con la configuración candidata y el estado local del artículo:
 
 ```text
-• Usuario autenticado y membresía UsuarioNegocio ACTIVA
-• Tenant / pertenencia al mismo Negocio
-• SKU único por Negocio (considerando ACTIVOS e INACTIVOS)
-• Categoria del mismo Negocio
-• Categoria ACTIVA para nueva asociación o reasignación
-• Historia cuantitativa relevante
-• Dependencias estructurales en M04 / M07
-• Ausencia de referencias para eliminación física
+TipoArticulo inmutable
 
+Tipo + CapacidadesArticulo coherentes
+
+si esVendible:
+    precioBase != null
+    precioBase >= 0
+
+si costoReferencia != null:
+    costoReferencia >= 0
+
+si estado == ACTIVO:
+    >= 1 uso operativo
+
+imágenes:
+    0..3
+    si N > 0 exactamente una principal
+
+coherencia interna de Value Objects
 ```
 
-El objeto de dominio **NO consulta repositorios directamente** para resolver guardias contextuales.
+La entidad debe validar la propuesta completa antes de consolidar mutaciones observables.
+
+## Guardias Contextuales — Application / Persistencia / Módulos Consumidores
+
+Necesitan información externa:
+
+```text
+Usuario autenticado
+Negocio autorizado
+UsuarioNegocio ACTIVO
+permiso conceptual
+
+tenant correcto
+
+nombre funcionalmente único por Negocio
+SKU único por Negocio
+
+Categoria del mismo Negocio
+Categoria ACTIVA para nueva asociación
+vigencia concurrente de la Categoria utilizada
+
+dependencias estructurales
+compatibilidad operativa de cambios de UnidadMedida
+
+historia / referencias para hard delete
+```
+
+El dominio no consulta repositories directamente para resolverlas.
+
+Los prechecks de Application mejoran UX.
+
+No sustituyen las defensas finales de persistencia.
 
 ---
 
@@ -2288,10 +2657,10 @@ Una consulta previa puede orientar la UX:
 
 ```text
 puedeEliminarseFisicamente()
+nombreDisponible()
 skuDisponible()
-categoriaDisponible()
-puedeCambiarUnidad()
-
+Categoria válida para nueva asociación
+compatibilidad preliminar de un cambio estructural
 ```
 
 Pero:
@@ -2300,7 +2669,6 @@ Pero:
 preconsulta
 ≠
 garantía definitiva
-
 ```
 
 Patrón peligroso:
@@ -2309,10 +2677,18 @@ Patrón peligroso:
 if puede():
     # pasa tiempo / otra operación modifica el sistema
     guardar_sin_revalidar()
-
 ```
 
 Las guardias contextuales relevantes y la mutación deben confirmarse de manera consistente.
+
+En particular, antes de confirmar una edición deben seguir siendo válidas las condiciones relevantes sobre:
+
+```text
+nombre
+SKU
+Categoria
+versión/estado lógico del propio ArticuloCatalogo
+```
 
 La forma técnica puede incluir posteriormente:
 
@@ -2321,45 +2697,105 @@ constraints SQL
 transacciones
 locking
 versionado
+aislamiento
 otra estrategia
-
 ```
 
 pero no se decide en este UML.
 
 ---
 
-# 53. Concurrencia y Carrera TOCTOU
+# 53. Concurrencia, TOCTOU y Lost Update
 
 Existe un riesgo general de:
 
 ```text
 Time Of Check
         ↓
-Time Of Use (TOCTOU)
-
+Time Of Use
 ```
 
-cuando se separa la prevalidación de la confirmación.
+cuando una condición se verifica antes de confirmar.
 
-Ejemplo explícito:
+## Elegibilidad Operativa
 
 ```text
 T0: Artículo X está ACTIVO
-T1: Usuario A selecciona Artículo X en una pantalla de nueva operación
-T2: Usuario B desactiva concurrentemente el Artículo X
-T3: Usuario A intenta confirmar la nueva operación consumidora
-
+T1: Usuario A lo selecciona
+T2: Usuario B lo desactiva
+T3: Usuario A intenta confirmar una nueva operación consumidora
 ```
 
-Regla de integridad:
+Regla:
 
 ```text
-La selección previa NO garantiza elegibilidad al confirmar.
-
+selección previa
+≠
+elegibilidad garantizada al confirmar
 ```
 
-El módulo consumidor (M03, M05, M07) debe revalidar el estado del artículo en el momento exacto de la confirmación.
+El módulo consumidor debe revalidar.
+
+## Unicidad de Nombre y SKU
+
+Dos ediciones concurrentes no pueden confirmar:
+
+```text
+mismo nombre funcional
+```
+
+o:
+
+```text
+mismo SKU
+```
+
+en el mismo Negocio cuando la regla exige unicidad.
+
+Los prechecks no son la defensa final.
+
+## Edición Concurrente del Mismo Artículo
+
+```text
+T0 Usuario A carga versión lógica X
+T1 Usuario B carga versión lógica X
+T2 Usuario A confirma cambios
+T3 Usuario B intenta confirmar sobre estado obsoleto
+```
+
+Regla:
+
+```text
+T3 NO puede sobrescribir silenciosamente T2
+```
+
+Debe detectarse el conflicto.
+
+## Categoria Concurrentemente Invalidada
+
+Si una edición pretende asignar una Categoria que estaba ACTIVA durante la lectura pero deja de ser válida antes de confirmar:
+
+```text
+NO confirmar silenciosamente la asociación
+```
+
+## Mecanismo Técnico
+
+La especificación exige el comportamiento, no la tecnología.
+
+Permanece abierto:
+
+```text
+version
+timestamp
+optimistic locking
+locking pesimista
+constraint
+aislamiento
+otra estrategia
+```
+
+No congelar uno de esos mecanismos desde el UML conceptual.
 
 ---
 
@@ -2368,13 +2804,22 @@ El módulo consumidor (M03, M05, M07) debe revalidar el estado del artículo en 
 Los métodos del dominio:
 
 ```text
+NO autentican usuarios
 NO autorizan actores
-
 ```
 
-No agregar parámetros como `rol`, `usuarioActual` o `token` a los métodos de `ArticuloCatalogo` o `Categoria`.
+No agregar parámetros como:
 
-Antes de ejecutar cualquier mutación, el Caso de Uso debe validar:
+```text
+token
+request HTTP
+usuarioActual
+rol enviado por cliente
+```
+
+a los métodos de `ArticuloCatalogo` o `Categoria` para resolver autorización.
+
+Antes de ejecutar una mutación, Application debe disponer de contexto confiable:
 
 ```text
 Usuario autenticado
@@ -2383,78 +2828,98 @@ Negocio identificado
 +
 UsuarioNegocio ACTIVO
 +
-Rol
-+
-permiso concreto de M02
+permiso conceptual requerido
 +
 recurso perteneciente al mismo Negocio
-
 ```
 
-No autorizar únicamente mediante `rol == PROPIETARIO` sin comprobar la membresía ACTIVA y el Negocio correspondiente.
+El Rol contextual proviene de M01 y puede ser utilizado por la política de autorización.
+
+Sin embargo, M02 no congela una matriz rígida completa:
+
+```text
+Rol → Permiso
+```
+
+para todas las operaciones.
+
+No confiar en:
+
+```text
+usuarioId enviado por request
+negocioId arbitrario del cliente
+rol enviado por request
+```
+
+como fuente de autorización.
 
 ---
 
-# 55. Permisos M02 por Rol
+# 55. Permisos Conceptuales y Matriz de Roles Diferida
 
-## PROPIETARIO
+M02 requiere permisos conceptuales por operación.
 
-Puede:
-
-```text
-consultar
-crear artículos
-editar artículos ACTIVOS
-desactivar artículos
-reactivar artículos (simple)
-reactivar artículos con reconfiguración
-eliminar físicamente cuando corresponda
-administrar Categorias (crear, editar, activar, desactivar, eliminar)
-modificar precioBase
-modificar costoReferencia
-modificar capacidades
-modificar SKU
-modificar UnidadMedida cuando corresponda
-
-```
-
-## ENCARGADO
-
-Puede:
+Ejemplos:
 
 ```text
-consultar catálogo y categorías
-desactivar artículos
-reactivar artículos SIN modificar configuración (reactivación simple)
-
+CONSULTAR_CATALOGO
+CREAR_ARTICULO
+EDITAR_CATALOGO
+DESACTIVAR_ARTICULO
+REACTIVAR_ARTICULO
+GESTIONAR_CATEGORIAS
 ```
 
-No puede:
+Los nombres exactos no quedan congelados como clases, enums ni registros persistentes.
 
-* crear o editar artículos;
-* eliminar artículos;
-* modificar precioBase, costo, SKU, capacidades o UnidadMedida;
-* administrar Categorias.
-
-Si la reactivación de un artículo exige reconfiguración:
+La matriz completa:
 
 ```text
-ENCARGADO -> RECHAZAR operación -> requiere PROPIETARIO
-
+PROPIETARIO / ENCARGADO / TRABAJADOR
+        ↓
+permisos M02
 ```
 
-## TRABAJADOR
+permanece deliberadamente abierta hasta diseñar de forma transversal la autorización del sistema.
 
-Puede:
+Por lo tanto, esta guía NO debe utilizarse para inferir automáticamente:
 
 ```text
-consultar catálogo
-buscar artículos
-visualizar información necesaria para operar
-
+solo PROPIETARIO puede editar
+ENCARGADO nunca puede editar
+TRABAJADOR nunca podrá recibir un permiso adicional
 ```
 
-No modifica M02.
+sin una decisión funcional explícita.
+
+La secuencia de edición exige únicamente:
+
+```text
+permiso conceptual para editar catálogo
+```
+
+además de:
+
+```text
+Usuario autenticado
+UsuarioNegocio ACTIVO
+mismo Negocio
+tenant scoping
+```
+
+## Restricción Explícita Conservada
+
+Para hard delete de `ArticuloCatalogo` en el MVP sí existe una decisión funcional específica:
+
+```text
+PROPIETARIO
++
+ArticuloCatalogo INACTIVO
++
+sin historia/referencias/dependencias
+```
+
+Esta excepción explícita no debe generalizarse automáticamente a todas las operaciones de M02.
 
 ---
 
@@ -2487,31 +2952,52 @@ La estrategia técnica de aislamiento multitenant se decidirá en Arquitectura.
 
 ---
 
-# 57. Trazabilidad
+# 57. Trazabilidad y Auditoría Conceptual
 
 Toda modificación relevante debe poder responder conceptualmente:
 
 ```text
 ¿Quién?
 ¿Cuándo?
-¿Qué hizo?
-
+¿Qué recurso?
+¿Qué cambio fue confirmado?
 ```
 
-Ejemplos:
+Para `EditarArticulo`, una confirmación debe conservar contexto suficiente para reconstruir al menos:
+
+```text
+usuario
+artículo
+cambios confirmados
+instante de confirmación
+```
+
+Otros ejemplos relevantes:
 
 ```text
 crear artículo
-modificar SKU
+cambiar SKU
 cambiar precio
 cambiar capacidades
 desactivar
 reactivar
 renombrar Categoria
-
+hard delete
 ```
 
-Esto no obliga a implementar auditoría universal ni Event Sourcing en el MVP.
+Esto no obliga a implementar:
+
+```text
+Event Sourcing
+AuditRepository
+tabla universal de auditoría
+Domain Events
+middleware específico
+```
+
+en este momento.
+
+El mecanismo técnico pertenece a Arquitectura.
 
 ---
 
@@ -2574,47 +3060,65 @@ M02 no contiene recetas, producciones ni consumos.
 
 # 62. Implicancias para Arquitectura
 
-Este diagrama exige que Arquitectura pueda resolver posteriormente:
+Este modelo exige que Arquitectura pueda resolver posteriormente:
 
 ```text
+unicidad contextual de nombre de artículo
 unicidad contextual de SKU y Categoria
 guardias contextuales
 atomicidad semántica
 concurrencia y aislamiento
+detección de lost updates
 consultas de dependencias
 autorización multitenant
 trazabilidad
-reactivación todo-o-nada
 hard delete seguro
+lifecycle seguro de archivos de imagen
 ```
 
 Especialmente sensibles:
 
 ```text
+edición compuesta
 cambio de SKU
-reactivación con reconfiguración
+cambio de nombre
 cambio estructural de capacidades
 cambio de UnidadMedida
+asignación concurrente de Categoria
 eliminación física
-edición concurrente con desactivación
+edición concurrente del mismo artículo
+edición vs desactivación
+```
+
+La arquitectura debe permitir:
+
+```text
+entrada parcial
+→ propuesta coherente completa
+→ validación local
+→ defensas contextuales
+→ confirmación todo-o-nada
 ```
 
 Pero este documento NO prescribe:
 
 ```text
 ORM
-Repository
-Unit of Work
-transacción SQL concreta
+Repository concreto
+Unit of Work concreto
+transacción SQL exacta
 SELECT FOR UPDATE
 optimistic locking
 pessimistic locking
 nivel de aislamiento
 Domain Events
 microservicios
+storage de imágenes
 ```
 
-La arquitectura futura debe adaptarse a las invariantes ya definidas.
+La arquitectura futura debe adaptarse a las invariantes.
+
+Las invariantes no deben debilitarse para simplificar una implementación.
 
 La entidad de dominio NO consulta repositories directamente para resolver guardias contextuales.
 
@@ -2622,23 +3126,72 @@ La entidad de dominio NO consulta repositories directamente para resolver guardi
 
 # 63. Implicancias para el Modelo Relacional
 
-No traducir mecánicamente `1 clase UML = 1 tabla`.
+No traducir mecánicamente:
+
+```text
+1 clase UML = 1 tabla
+```
 
 En particular:
 
 ```text
 CapacidadesArticulo <<value object>>
-
 ```
 
-no obliga a una tabla separada (puede mapearse como columnas empaquetadas o JSON en la tabla del artículo).
+no obliga a una tabla separada.
+
+Puede representarse técnicamente de distintas maneras siempre que preserve sus invariantes.
 
 ```text
 UnidadMedida <<enum>>
-
 ```
 
 no obliga a una tabla propia.
+
+La colección conceptual:
+
+```text
+0..3 imágenes
+```
+
+tampoco congela todavía:
+
+```text
+tabla separada
+array
+JSON
+entidad Imagen
+Value Object
+storage externo
+```
+
+La representación relacional deberá preservar:
+
+```text
+máximo 3 referencias
+exactamente una principal si existen
+pertenencia correcta al artículo
+```
+
+sin filtrar decisiones de storage hacia el dominio.
+
+Del mismo modo:
+
+```text
+propuestaEdicionPreparada
+```
+
+NO debe traducirse automáticamente a una tabla o entidad persistente.
+
+Las restricciones de unicidad funcional de:
+
+```text
+nombre de artículo
+SKU
+nombre de Categoria
+```
+
+deben contar con una defensa consistente en persistencia, pero la forma exacta se define posteriormente.
 
 ---
 
@@ -2646,61 +3199,83 @@ no obliga a una tabla propia.
 
 Una API futura no debe permitir saltarse invariantes mediante modificaciones ciegas.
 
-HTTP `PATCH` parcial NO significa setter parcial en el dominio.
-
-Flujo conceptual:
+HTTP `PATCH` parcial:
 
 ```text
-payload
+NO significa
+setter parcial en el dominio
+```
+
+Flujo conceptual de edición:
+
+```text
+payload parcial
 ↓
 autorización contextual
 ↓
-carga de ArticuloCatalogo + contexto
+carga tenant-scoped de ArticuloCatalogo
 ↓
-validar EstadoArticulo esperado
+distinguir campo omitido / null explícito
 ↓
-construir propuesta completa
+normalizar entrada
 ↓
-crear/reemplazar VO necesarios
+resolver Categoria si corresponde
 ↓
-validaciones locales
+prevalidar nombre, SKU e imágenes
 ↓
-guardias contextuales
+construir propuestaEdicionPreparada
 ↓
-confirmación consistente
+ArticuloCatalogo valida TODA la configuración resultante
+↓
+si es válida, aplica coherentemente
+↓
+persistencia protege unicidades / concurrencia
+↓
+confirmación todo-o-nada
 ```
 
-Si:
+La API NO debe rechazar la edición únicamente porque:
 
 ```text
 estado = INACTIVO
 ```
 
-un endpoint normal de edición debe:
+Editar un INACTIVO es válido administrativamente y lo deja INACTIVO.
+
+La API tampoco debe:
 
 ```text
-RECHAZAR
+editar INACTIVO
+→ reactivar automáticamente
 ```
 
-No debe editar igual ni reactivar implícitamente.
+La reactivación es otra operación.
 
-La API podrá distinguir:
+`ReactivarArticulo` utiliza la configuración vigente y no debe convertirse en un endpoint alternativo con payload libre para modificar:
 
 ```text
-reactivación simple
-reactivación con reconfiguración
+precio
+SKU
+Categoria
+UnidadMedida
+capacidades
+imágenes
 ```
 
-sin obligar a que la entidad exponga exactamente `reactivar(payload)`.
+Si la configuración requiere cambios:
 
-ENCARGADO no puede utilizar reactivación para modificar precio, costo, SKU, Categoria, UnidadMedida o capacidades.
+```text
+editar
+→ confirmar
+→ reactivar
+```
 
 Quedan abiertas:
 
 ```text
 endpoint
 verbo HTTP
-DTO
+DTO concreto
 Command
 status code
 error code
@@ -2720,53 +3295,77 @@ UX previene errores
 única capa de validación
 ```
 
-El backend debe validar todas las invariantes.
+El backend protege todas las invariantes.
 
 ## Artículo ACTIVO
 
-PROPIETARIO puede acceder a edición normal.
+La UX puede ofrecer edición administrativa cuando el Usuario posea el permiso correspondiente.
+
+Una edición válida:
+
+```text
+mantiene ACTIVO
+```
+
+Si la configuración candidata dejaría al artículo sin los requisitos locales necesarios para permanecer ACTIVO:
+
+```text
+rechazar edición
+```
+
+No desactivarlo silenciosamente.
 
 ## Artículo INACTIVO
 
-La UX normal:
+La UX administrativa puede permitir:
 
 ```text
-NO ofrece edición individual
+corregir nombre
+preparar precio
+modificar Categoria
+gestionar SKU
+ajustar UnidadMedida
+actualizar configuración/capacidades
+gestionar imágenes
 ```
 
-Debe orientar hacia:
+según permisos.
+
+Guardar esos cambios:
 
 ```text
-reactivar
+NO reactiva
 ```
 
-Si la configuración almacenada sigue siendo válida:
+El artículo sigue `INACTIVO`.
+
+Después, si se desea:
 
 ```text
-PROPIETARIO o ENCARGADO
-→ reactivación simple
+Reactivar
 ```
 
-Si requiere reconfiguración:
+es una acción explícita separada.
 
-```text
-PROPIETARIO
-→ revisar/configurar
-→ reactivar
+## Capacidades
 
-ENCARGADO
-→ informar que requiere PROPIETARIO
-```
+La UI no debe exponer obligatoriamente al operador todos los flags internos de `CapacidadesArticulo`.
+
+Puede presentar conceptos comerciales comprensibles y derivar internamente la configuración necesaria.
+
+## Imágenes
+
+Puede mostrarse una imagen principal en listados/carrito y permitir visualizar hasta tres imágenes donde corresponda.
 
 ## SKU vacío
 
-Una entrada vacía se interpreta como:
+Una entrada vacía o compuesta solo por espacios se interpreta como:
 
 ```text
 null
 ```
 
-no como un SKU real `""`.
+no como un SKU real vacío.
 
 ---
 
@@ -2786,15 +3385,22 @@ Evitar el uso de `Float` binario para valores monetarios.
 
 # 67. Problemas de Diseño que Este Modelo Busca Evitar
 
-1. **Jerarquías Rígidas:** Evitar clases `Producto`, `Insumo`, `Servicio`.
-2. **Setteritis:** Evitar setters individuales para cambiar configuraciones interdependientes.
-3. **Pérdida de Historia:** Evitar borrados físicos cuando existe historial.
-4. **SKU como PK:** Evitar usar SKU como clave primaria técnica.
-5. **Auto-Fix Silencioso:** Evitar que el Value Object altere datos para corregir incoherencias sin lanzar error.
-6. **Edición en INACTIVO:** Evitar modificar atributos en estado inactivo sin pasar por el flujo atómico de reactivación.
-7. **Bypass de ENCARGADO:** Evitar que el Encargado edite artículos usando el payload de reactivación.
-8. **Check-Then-Save Inseguro:** Evitar validar en preconsulta sin revalidar al confirmar.
-9. **Acoplamiento de Inventario/Producción:** Evitar meter stock, lotes o recetas en el catálogo.
+1. **Jerarquías rígidas:** evitar clases `Producto`, `Insumo`, `Servicio`.
+2. **Setteritis:** evitar una secuencia pública de setters para una edición compuesta.
+3. **Mutación antes de validar:** evitar dejar una entidad parcialmente modificada en memoria ante un error posterior.
+4. **Pérdida de historia:** evitar reescribir operaciones pasadas usando valores actuales.
+5. **SKU o nombre como identidad:** son claves funcionales editables, no identidad técnica.
+6. **Auto-fix silencioso:** el VO rechaza configuraciones incoherentes.
+7. **Bloqueo artificial de INACTIVO:** un INACTIVO puede editarse administrativamente sin reactivarse.
+8. **Reactivación como bypass de edición:** reactivar no lleva payload libre de configuración.
+9. **Matriz rígida de permisos prematura:** no congelar `Rol → Permiso` sin decisión funcional.
+10. **Check-then-save inseguro:** prevalidar no reemplaza la defensa final de persistencia.
+11. **Lost update:** dos ediciones concurrentes no deben sobrescribirse silenciosamente.
+12. **Acoplamiento con Inventario/Producción:** no meter stock, lotes o recetas en el catálogo.
+13. **Imagen única accidental:** el MVP admite hasta 3 imágenes.
+14. **Efectos externos irreversibles:** no borrar archivos antes de una confirmación segura.
+15. **Bloqueo histórico excesivo de UnidadMedida:** la historia debe conservar su propia unidad; el catálogo actual evoluciona hacia futuro.
+16. **Acoplar precio a promociones:** cambiar `precioBase` no modifica promociones existentes.
 
 ---
 
@@ -2802,17 +3408,42 @@ Evitar el uso de `Float` binario para valores monetarios.
 
 Una IA debe:
 
-1. leer `M02-Catalogo.md` y `06-m02-estados-articulo.md`;
-2. respetar la identidad estable de las entidades (SKU no es ID);
-3. mantener `TipoArticulo` inmutable;
-4. tratar `CapacidadesArticulo` como VO inmutable sin auto-fix;
-5. bloquear la edición individual de artículos `INACTIVOS`;
-6. exigir `precioBase != null y >= 0` al habilitar venta;
-7. normalizar `SKU "" → null` antes de validar o persistir;
-8. exigir unicidad de SKU entre artículos `ACTIVOS` e `INACTIVOS`;
-9. aplicar permisos estrictos por rol en la reactivación;
-10. revalidar guardias contextuales al confirmar operaciones;
-11. mantener abiertas las decisiones de arquitectura técnica.
+1. leer primero `M02-Catalogo.md`;
+2. utilizar `secuencias/02-editar-articulo.puml` para comprender la edición;
+3. respetar la identidad estable de las entidades;
+4. mantener `TipoArticulo` inmutable;
+5. tratar `CapacidadesArticulo` como VO inmutable sin auto-fix;
+6. permitir edición administrativa de ACTIVO e INACTIVO;
+7. mantener el estado durante una edición;
+8. separar estrictamente edición y reactivación;
+9. diferenciar en entrada parcial campo omitido de `null` explícito;
+10. impedir que el DTO de API cruce directamente al dominio;
+11. construir una propuesta preparada y coherente;
+12. validar toda la propuesta antes de mutar;
+13. aplicar la edición de forma compuesta, no mediante setters públicos indiscriminados;
+14. proteger nombre y SKU únicos entre ACTIVOS e INACTIVOS;
+15. normalizar SKU vacío a `null`;
+16. exigir Categoria ACTIVA y del mismo Negocio para una nueva asociación;
+17. proteger 0..3 imágenes y exactamente una principal cuando existan;
+18. no modificar promociones al cambiar `precioBase`;
+19. preservar historia de precio, unidad y cantidades;
+20. detectar conflictos de concurrencia y lost updates;
+21. aplicar tenant scoping;
+22. autorizar mediante permiso conceptual;
+23. mantener abiertas las decisiones técnicas que no han sido aprobadas.
+
+Una IA NO debe asumir que el diagrama de clases define por sí solo:
+
+```text
+ORM
+tablas
+endpoints
+Aggregate Roots
+Repository
+locking
+storage de archivos
+matriz completa Rol → Permiso
+```
 
 ---
 
@@ -2829,136 +3460,188 @@ Una IA debe:
 7. Impedir producción sin stock.
 8. Rechazar descuento sin venta.
 9. Verificar que el VO NO auto-corrige.
-10. Reemplazar capacidades con un VO completo válido.
-11. Verificar TipoArticulo inmutable.
+10. Reemplazar capacidades con una configuración completa válida.
+11. Verificar `TipoArticulo` inmutable.
 
 ## B. EstadoArticulo y Edición
 
-12. Crear ACTIVO con >=1 uso operativo.
-13. Impedir ACTIVO con 0 usos.
-14. Permitir INACTIVO con 0 usos.
-15. Permitir edición de ACTIVO por PROPIETARIO.
-16. Rechazar edición individual de INACTIVO.
-17. Rechazar edición que deja ACTIVO con 0 usos.
-18. Editar ACTIVO no cambia EstadoArticulo.
-19. Rechazar reactivar ACTIVO.
-20. Rechazar desactivar INACTIVO.
+12. Crear ACTIVO con al menos un uso operativo.
+13. Impedir ACTIVO con cero usos.
+14. Permitir INACTIVO con cero usos.
+15. Permitir editar un ACTIVO con permiso correspondiente.
+16. Permitir editar un INACTIVO con permiso correspondiente.
+17. Editar ACTIVO mantiene ACTIVO.
+18. Editar INACTIVO mantiene INACTIVO.
+19. Rechazar edición que dejaría ACTIVO con cero usos.
+20. Verificar que editar no constituye transición de `EstadoArticulo`.
+21. Verificar que identidad y TipoArticulo no formen parte de la propuesta editable.
+22. Entrada parcial conserva campos omitidos.
+23. `null` explícito quita campos opcionales cuando corresponde.
+24. Error en cualquier campo evita toda confirmación parcial.
+25. Validación de dominio falla sin mutación observable.
+26. El DTO de Application no se utiliza como objeto de dominio.
 
-## C. Precio, Costo y Venta
+## C. Precio, Costo y Promociones
 
-21. Vendible exige precioBase.
-22. Precio 0 es válido.
-23. Precio negativo se rechaza.
-24. No vendible puede tener precioBase null.
-25. costoReferencia puede ser null.
-26. costoReferencia negativo se rechaza.
-27. Deshabilitar venta construye vendible=False + descuento=False.
-28. Conserva precioBase actual.
-29. VO no hace el ajuste por sí mismo.
+27. Vendible exige `precioBase`.
+28. Precio negativo se rechaza.
+29. `precioBase = 0` satisface la invariante estructural `>= 0`.
+30. M02 no interpreta automáticamente precio cero como promoción.
+31. `costoReferencia` puede ser null.
+32. Costo negativo se rechaza.
+33. Deshabilitar venta construye `vendible=False + descuento=False`.
+34. Deshabilitar venta conserva `precioBase`.
+35. Cambiar `precioBase` no modifica promociones existentes.
+36. Cambiar `precioBase` no reescribe ventas históricas.
 
-## D. Reactivación y Roles
+## D. Reactivación
 
-30. PROPIETARIO puede reactivar simple.
-31. ENCARGADO puede reactivar simple.
-32. PROPIETARIO puede reactivar con reconfiguración.
-33. Cambios + ACTIVO confirman juntos.
-34. Fallo mantiene INACTIVO sin cambios parciales.
-35. ENCARGADO no puede reconfigurar.
-36. Rechazo de ENCARGADO distingue necesidad de PROPIETARIO.
-37. Categoria histórica INACTIVA no bloquea por sí sola.
+37. Reactivar INACTIVO válido produce ACTIVO.
+38. Reactivar reutiliza la misma identidad.
+39. Reactivar ACTIVO se rechaza como operación inválida/no-op no silencioso.
+40. Reactivación con configuración vigente inválida se rechaza.
+41. Reactivación fallida mantiene INACTIVO.
+42. Reactivación no acepta payload libre de edición.
+43. Preparar INACTIVO mediante EditarArticulo y luego reactivar funciona como dos operaciones separadas.
+44. Categoria histórica INACTIVA no bloquea por sí sola.
 
-## E. SKU
+## E. Nombre y SKU
 
-38. Permitir sin SKU.
-39. Normalizar `""` a `null`.
-40. Impedir duplicado con ACTIVO.
-41. Impedir duplicado con INACTIVO.
-42. Desactivar no libera SKU.
-43. A→B valida B y libera A al confirmar.
-44. A→null libera A al confirmar.
-45. null→B valida B.
-46. A→A es no-op.
-47. Dos asignaciones concurrentes no confirman el mismo SKU.
+45. Nombre de artículo es único por Negocio.
+46. INACTIVO continúa reservando nombre.
+47. Dos Negocios pueden reutilizar el mismo nombre.
+48. Conflicto concurrente de nombre no confirma duplicado.
+49. Permitir artículo sin SKU.
+50. Normalizar `""` o espacios a `null`.
+51. Impedir SKU duplicado con ACTIVO.
+52. Impedir SKU duplicado con INACTIVO.
+53. Desactivar no libera SKU.
+54. A→B valida B y libera A al confirmar.
+55. A→null libera A al confirmar.
+56. null→B valida B.
+57. A→A es no-op funcional.
+58. Dos asignaciones concurrentes no confirman el mismo SKU.
 
 ## F. Categoria y Tenant
 
-48. Nueva asociación exige Categoria ACTIVA.
-49. Reasignación a Categoria INACTIVA se rechaza.
-50. Categoria de otro Negocio se rechaza.
-51. Inactivar Categoria no inactiva artículos.
-52. Asociación histórica se conserva.
-53. Usuario de otro Negocio no modifica el recurso.
+59. Nueva asociación exige Categoria ACTIVA.
+60. Reasignación a Categoria INACTIVA se rechaza.
+61. Categoria de otro Negocio se rechaza.
+62. Inactivar Categoria no inactiva artículos.
+63. Asociación histórica se conserva.
+64. Usuario autorizado en otro Negocio no modifica el recurso.
+65. Categoria que se inactiva concurrentemente antes de confirmar una nueva asociación provoca rechazo/conflicto.
 
-## G. Desactivación, Inventario y Hard Delete
+## G. Imágenes
 
-54. Desactivar conserva identidad/configuración.
-55. Desactivar con stock >0 está permitido.
-56. Desactivar no modifica M04.
-57. Hard delete con dependencias se rechaza.
-58. Hard delete válido libera SKU al confirmar.
-59. Hard delete no crea ELIMINADO.
-60. Dependencias se revalidan al confirmar.
+66. Permitir cero imágenes.
+67. Permitir una imagen principal.
+68. Permitir dos o tres imágenes con exactamente una principal.
+69. Rechazar cuatro imágenes.
+70. Rechazar colección no vacía sin principal.
+71. Rechazar más de una principal.
+72. Domain protege la invariante aunque Application haya prevalidado.
+73. Falla de persistencia no debe dejar referencias lógicas parcialmente confirmadas.
+74. Lifecycle físico no debe borrar irreversiblemente recursos previos antes de una confirmación segura.
 
-## H. UnidadMedida e Historia
+## H. Desactivación y Hard Delete
 
-61. BIEN exige UnidadMedida válida.
-62. SERVICIO admite UNIDAD.
-63. SERVICIO admite HORA.
-64. Cambio incompatible con historia cuantitativa se rechaza.
-65. No se requiere `tieneHistoriaOperativa`.
+75. Desactivar conserva identidad/configuración.
+76. Desactivar con stock > 0 está permitido desde M02.
+77. Desactivar no modifica M04.
+78. Hard delete de ACTIVO se rechaza.
+79. Hard delete por actor no permitido se rechaza.
+80. Hard delete con dependencias se rechaza.
+81. Hard delete válido libera SKU al confirmar.
+82. Hard delete no crea `ELIMINADO`.
+83. Dependencias se revalidan al confirmar.
 
-## I. Concurrencia / TOCTOU
+## I. UnidadMedida e Historia
 
-66. Edición concurrente con desactivación no confirma sobre estado obsoleto.
-67. Nueva operación revalida artículo desactivado tras selección.
-68. Reactivaciones concurrentes no duplican.
-69. Reactivaciones con configuraciones distintas no hacen overwrite silencioso.
-70. Hard delete concurrente con nueva referencia no viola integridad.
+84. BIEN exige UnidadMedida válida.
+85. SERVICIO admite UNIDAD.
+86. SERVICIO admite HORA.
+87. Cambiar UnidadMedida afecta configuración futura.
+88. Operaciones históricas conservan su unidad original.
+89. La mera existencia de historia no bloquea automáticamente todo cambio.
+90. Dependencias operativas futuras pueden impedir cambios incompatibles.
+91. No se requiere `tieneHistoriaOperativa`.
+
+## J. Concurrencia / TOCTOU / Auditoría
+
+92. Edición concurrente del mismo artículo no produce lost update silencioso.
+93. Edición concurrente con desactivación se resuelve sin estado inválido confirmado.
+94. Nueva operación consumidora revalida artículo desactivado después de selección.
+95. Conflicto de nombre concurrente se detecta.
+96. Conflicto de SKU concurrente se detecta.
+97. Cambio concurrente relevante de Categoria se detecta.
+98. Hard delete concurrente con nueva referencia no viola integridad.
+99. Edición confirmada permite reconstruir quién, cuándo, qué artículo y qué cambios.
+100. `registrarCambio()` no se interpreta como commit independiente obligatorio.
 
 ---
 
 # 70. Estado del Artefacto y Próximo Paso
 
-Con este documento quedan alineadas semánticamente:
+Con esta versión queda actualizada semánticamente:
+
+```text
+03-m02-catalogo-clases.md
+✅ ALINEADO CON M02-Catalogo.md
+✅ ALINEADO CON secuencias/02-editar-articulo.puml
+```
+
+Todavía falta propagar estas decisiones a:
+
+```text
+03-m02-catalogo-clases.puml
+03-m02-catalogo-clases.png
+
+06-m02-estados-articulo.md
+06-m02-estados-articulo.puml
+06-m02-estados-articulo.png
+```
+
+Estado actual del Bloque 1 relevante para M02:
 
 ```text
 M02-Catalogo.md
-03-m02-catalogo-clases.md
-06-m02-estados-articulo.md
+✅ ACTUALIZADO
+
+03 — M02 Catálogo — Guía de Clases
+✅ ACTUALIZADA
+
+03 — M02 Catálogo — PUML
+⚠️ SIGUIENTE ARTEFACTO A SINCRONIZAR
+
+06 — M02 ArticuloCatalogo — Estados
+⚠️ PENDIENTE DESPUÉS DE 03
+
+Secuencia 02 — Editar Artículo
+✅ REFERENCIA DINÁMICA VIGENTE
 ```
 
-Estado del Bloque 1:
+Después de actualizar 03 y 06 corresponde:
 
 ```text
-01 — Mapa General                       ✅ CONGELADO
-02 — M01 Organización — Clases         ✅ CONGELADO
-03 — M02 Catálogo — Clases             ✅ SEMÁNTICA CERRADA
-04 — M01 Invitacion — Estados          ✅ CONGELADO
-05 — M01 Membresia — Estados           ✅ CONGELADO
-06 — M02 Articulo — Estados            ✅ CONGELADO
+auditoría transversal del Bloque 1
 ```
 
-Antes de marcar el `.puml` y `.png` de Diagrama 3 como:
+Esa auditoría debe revisar también:
 
 ```text
-✅ CONGELADO Y SINCRONIZADO
+01-modelo-dominio-bloque-1.md
+01-diagrama-general.puml
+artefactos M01
+referencias de estado documental
+firmas
+invariantes
+permisos
+cardinalidades
+secuencias
 ```
 
-debe comprobarse que reflejen esta guía.
-
-Después corresponde:
-
-```text
-secuencias/
-├── 01-aceptar-invitacion.puml
-└── 02-editar-articulo.puml
-```
-
-Luego se realiza una limpieza transversal de estados documentales y referencias obsoletas.
-
-No corresponde reabrir 01–06 salvo contradicción real detectada por las secuencias.
-
----
+No declarar el Bloque 1 completamente congelado antes de esa revisión cruzada.
 
 ---
 
@@ -2981,17 +3664,40 @@ CQRS
 microservicios
 ```
 
-No inferir:
+Tampoco inferir:
 
 ```text
-atributo editable → editable también en INACTIVO
-reactivar() → cualquier Rol puede reconfigurar
-deshabilitar venta → el VO auto-corrige
+INACTIVO → no editable
+
+editar INACTIVO → reactivar
+
+reactivar() → recibir payload libre de edición
+
+PROPIETARIO → único Rol capaz de editar
+sin decisión explícita de autorización
+
+atributo editable → setter público independiente
+
+HTTP PATCH → setters parciales del dominio
+
 SKU opcional → "" y null son dos ausencias persistibles
+
+nombre editable → duplicados permitidos si uno está INACTIVO
+
 precioBase [0..1] → puede faltar cuando esVendible=True
+
+precioBase = 0 → promoción o gratuidad automática
+
+cambiar precio → recalcular promociones
+
+cambiar unidad → reescribir cantidades históricas
+
+tener historia → bloquear para siempre UnidadMedida
+
+imagen principal → solo puede existir una imagen total
 ```
 
-La implementación se deriva de invariantes, no de una traducción mecánica del dibujo.
+La implementación se deriva del conjunto de invariantes, no de una traducción mecánica del dibujo.
 
 ---
 
@@ -3059,6 +3765,8 @@ Domain Events
 
 transacciones
 optimistic/pessimistic locking
+version column
+timestamp de concurrencia
 nivel de aislamiento
 
 tablas
@@ -3069,13 +3777,23 @@ ORM
 
 SKU:
 - case sensitivity
-- trim
+- trim exacto
 - Unicode
 - regex/formato
 - collation SQL
 
+nombre de artículo / Categoria:
+- algoritmo exacto de equivalencia funcional
+- normalización técnica concreta
+
 precisión SQL exacta
-almacenamiento de imágenes
+
+imágenes:
+- clase/VO concreto para colección
+- storage
+- CDN
+- lifecycle físico
+- estrategia de borrado
 
 DTOs
 Commands
@@ -3083,9 +3801,24 @@ endpoints
 códigos HTTP
 clases de excepción
 error codes
+
+matriz completa Rol → Permiso M02
+mecanismo concreto de auditoría
 ```
 
-Estas decisiones futuras deben satisfacer las invariantes ya congeladas.
+También permanece deliberadamente abierta la regla comercial definitiva de:
+
+```text
+venta normal con precioBase = 0
+```
+
+M02 congela únicamente la invariante estructural:
+
+```text
+precioBase >= 0
+```
+
+Estas decisiones futuras deben satisfacer las invariantes ya definidas.
 
 ---
 
@@ -3097,26 +3830,41 @@ Estas decisiones futuras deben satisfacer las invariantes ya congeladas.
 3. EstadoArticulo = ACTIVO | INACTIVO.
 4. ACTIVO exige >=1 uso operativo.
 5. INACTIVO puede tener 0 usos.
-6. Edición normal solo sobre ACTIVO.
-7. INACTIVO no admite edición individual.
-8. PROPIETARIO puede editar ACTIVO.
-9. ENCARGADO no edita configuración.
-10. Reactivación simple: PROPIETARIO o ENCARGADO.
-11. Reactivación con reconfiguración: solo PROPIETARIO.
-12. Reactivación con cambios es todo-o-nada.
-13. CapacidadesArticulo es VO inmutable.
-14. VO valida y acepta/rechaza; no auto-corrige.
-15. Caso de Uso construye configuración candidata.
-16. SERVICIO no controla stock/vencimiento/producción.
-17. Descuento implica vendible.
-18. Si vendible, precioBase existe y >=0.
-19. costoReferencia es opcional; si existe >=0.
-20. SKU opcional; ausencia=null; ""→null.
-21. SKU único por Negocio entre ACTIVO+INACTIVO.
-22. Desactivar no libera SKU ni modifica M04.
-23. Categoria INACTIVA no desactiva artículos.
-24. Guardias contextuales no se resuelven desde la entidad con repositories.
-25. Hard delete no es estado y revalida referencias al confirmar.
+6. ACTIVO e INACTIVO pueden editarse administrativamente.
+7. Editar NO cambia EstadoArticulo.
+8. Reactivar es un Caso de Uso separado: INACTIVO → ACTIVO.
+9. Reactivar utiliza configuración vigente; no recibe payload libre de edición.
+10. Identidad y TipoArticulo no forman parte de una edición.
+11. La entrada de edición puede ser parcial.
+12. Campo omitido ≠ null explícito.
+13. PropuestaEdicionDTO pertenece a Application/API.
+14. Domain recibe una propuesta preparada independiente del transporte.
+15. ArticuloCatalogo valida toda la propuesta antes de mutar.
+16. Edición se aplica todo-o-nada.
+17. No implementar EditarArticulo como cadena de setters públicos.
+18. CapacidadesArticulo es VO inmutable.
+19. VO valida y acepta/rechaza; no auto-corrige.
+20. SERVICIO no controla stock/vencimiento/producción.
+21. Descuento implica vendible.
+22. Si vendible, precioBase existe y >=0.
+23. Precio cero no recibe semántica comercial automática desde M02.
+24. Cambiar precio no altera promociones ni historia.
+25. costoReferencia es opcional; si existe >=0.
+26. Nombre de artículo es único por Negocio entre ACTIVO+INACTIVO.
+27. SKU opcional; ausencia=null; ""/espacios→null.
+28. SKU único por Negocio entre ACTIVO+INACTIVO.
+29. Categoria nueva/reasignada debe estar ACTIVA y ser del mismo Negocio.
+30. Artículo admite 0..3 imágenes y exactamente una principal si existen.
+31. Cambiar UnidadMedida aplica hacia futuro; historia conserva unidad original.
+32. Desactivar no libera SKU ni modifica M04.
+33. Hard delete requiere PROPIETARIO + INACTIVO + sin dependencias.
+34. Guardias contextuales no se resuelven desde entidad consultando repositories.
+35. Prechecks no reemplazan defensas finales de persistencia.
+36. Lost updates y duplicidades concurrentes no pueden confirmarse silenciosamente.
+37. Toda consulta/mutación respeta tenant scoping.
+38. Autorización se expresa mediante permiso conceptual; matriz de roles abierta salvo reglas explícitas.
+39. Edición confirmada debe ser auditable conceptualmente.
+40. Módulos consumidores preservan hechos históricos.
 ```
 
 ---
@@ -3125,49 +3873,82 @@ Estas decisiones futuras deben satisfacer las invariantes ya congeladas.
 
 ```text
 [ ] TipoArticulo inmutable.
-[ ] Solo ACTIVO/INACTIVO.
-[ ] Edición normal exige ACTIVO.
-[ ] INACTIVO sin edición individual.
-[ ] Reactivación simple respeta roles.
-[ ] Reactivación con reconfiguración exige PROPIETARIO.
-[ ] Reactivación fallida sin cambios parciales.
+[ ] Solo ACTIVO / INACTIVO.
+[ ] ACTIVO exige >=1 uso operativo.
+[ ] INACTIVO puede tener 0 usos.
+
+[ ] Editar ACTIVO permitido con autorización.
+[ ] Editar INACTIVO permitido con autorización.
+[ ] Edición no cambia estado.
+[ ] Reactivación separada de edición.
+[ ] Reactivación sin payload libre de edición.
+
+[ ] Entrada parcial distingue omitido/null.
+[ ] DTO de API no cruza al Domain.
+[ ] propuestaEdicionPreparada no es entidad persistente.
+[ ] Validar propuesta completa antes de mutar.
+[ ] Edición todo-o-nada.
+[ ] Sin cadena pública de setters para EditarArticulo.
 
 [ ] CapacidadesArticulo inmutable.
 [ ] Sin setters parciales sobre VO.
 [ ] Sin auto-fixes.
 [ ] Combinación inválida se rechaza.
-[ ] Caso de Uso construye propuesta completa.
 
 [ ] Vendible exige precioBase válido.
-[ ] precioBase=0 válido.
-[ ] costoReferencia opcional.
-[ ] costo existente >=0.
-[ ] Deshabilitar venta construye descuento=False.
-[ ] Conserva precioBase actual.
+[ ] precioBase negativo rechazado.
+[ ] precioBase=0 no recibe semántica promocional automática.
+[ ] costoReferencia opcional y >=0 si existe.
+[ ] Cambiar precio no cambia promociones.
+[ ] Historia de precios intacta.
+
+[ ] Nombre no es identidad.
+[ ] Nombre único por Negocio ACTIVO+INACTIVO.
+[ ] INACTIVO reserva nombre.
 
 [ ] SKU no es identidad.
-[ ] SKU="" → null.
+[ ] SKU vacío/espacios → null.
 [ ] SKU único ACTIVO+INACTIVO.
 [ ] Desactivar no libera SKU.
 
 [ ] Categoria nueva/reasignada ACTIVA.
 [ ] Categoria del mismo Negocio.
 [ ] Categoria histórica INACTIVA conserva asociación.
+[ ] Cambio concurrente relevante de Categoria protegido.
 
-[ ] Desactivar no modifica M04.
-[ ] stock >0 no impide desactivar.
-[ ] UnidadMedida protege historia cuantitativa.
+[ ] Imágenes 0..3.
+[ ] Si hay imágenes, exactamente una principal.
+[ ] Domain protege la invariante de imágenes.
+[ ] Storage físico no filtrado al dominio.
+[ ] Sin efectos irreversibles inseguros antes de confirmar.
+
+[ ] UnidadMedida vigente aplica hacia futuro.
+[ ] Historia conserva unidad/cantidad originales.
+[ ] No bloquear todo cambio solo por existir historia.
 [ ] M02 no contiene stock/lotes/recetas/ventas/compras.
 
-[ ] UsuarioNegocio ACTIVO + tenant + permiso.
-[ ] No autorizar solo por Rol.
-[ ] Guardias contextuales revalidadas al confirmar.
-[ ] Preconsulta UX no es garantía.
-[ ] Concurrencia de SKU protegida.
-[ ] Edición vs desactivación protegida.
+[ ] Desactivar no modifica M04.
+[ ] stock >0 no impide por sí solo desactivar.
+
+[ ] Hard delete exige INACTIVO.
+[ ] Hard delete reservado a PROPIETARIO.
 [ ] Hard delete revalida dependencias.
 [ ] Hard delete no crea ELIMINADO.
 
+[ ] Usuario y Negocio provienen de contexto confiable.
+[ ] UsuarioNegocio ACTIVO.
+[ ] Permiso conceptual requerido.
+[ ] Tenant scoping en consultas.
+[ ] No autorizar solo por un ID/rol enviado por cliente.
+[ ] Matriz completa Rol→Permiso no inventada.
+
+[ ] Preconsulta UX no es garantía.
+[ ] Nombre/SKU concurrentes protegidos.
+[ ] Lost update protegido.
+[ ] Edición vs desactivación protegida.
+[ ] registrarCambio() no interpretado como commit independiente obligatorio.
+
+[ ] Auditoría conceptual de edición.
 [ ] Dinero decimal exacto.
 [ ] Cantidades fraccionarias.
 [ ] Sin infraestructura inventada.
@@ -3189,10 +3970,11 @@ No es:
 especificación automática de ORM
 tablas
 endpoints
+infraestructura
 ```
 
 Principio final:
 
-> **ArticuloCatalogo mantiene identidad y configuración actual; EstadoArticulo determina si puede utilizarse y editarse normalmente; CapacidadesArticulo expresa elegibilidad mediante un Value Object inmutable; los Casos de Uso coordinan autorización y contexto; la Persistencia protege integridad y concurrencia; los módulos consumidores preservan sus hechos históricos.**
+> **ArticuloCatalogo mantiene identidad y configuración vigente; TipoArticulo permanece inmutable; EstadoArticulo determina su habilitación para nuevas operaciones, pero no bloquea la edición administrativa; editar cambia configuración hacia futuro sin alterar el estado ni reescribir historia; reactivar es una operación separada; CapacidadesArticulo expresa elegibilidad mediante un Value Object inmutable; Application coordina contexto y referencias; Domain valida antes de mutar; Persistencia protege unicidad, atomicidad y concurrencia; los módulos consumidores preservan sus hechos históricos.**
 
 > **La implementación debe adaptarse a estas invariantes. Las invariantes no deben debilitarse para adaptarse a una implementación ya escrita.**
