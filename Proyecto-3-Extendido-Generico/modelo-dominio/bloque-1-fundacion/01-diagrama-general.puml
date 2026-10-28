@@ -1,17 +1,18 @@
 @startuml 01-diagrama-general
 
-title Modelo de Dominio General — Bloque 1 (M01 + M02)\n<size:11>Vista integrada de nivel superior — versión oficial congelada</size>
+title Modelo de Dominio General — Bloque 1 (M01 + M02)\n<size:11>Vista integrada de nivel superior — versión sincronizada — candidata a congelación tras auditoría del Bloque 1</size>
 
 ' =============================================================================
-' CONFIGURACIÓN VISUAL Y PALETA CROMÁTICA
+' CONFIGURACIÓN VISUAL
 ' =============================================================================
 
 skinparam classAttributeIconSize 0
-skinparam linetype ortho
+skinparam linetype polyline
 skinparam packageStyle rectangle
 skinparam shadowing false
-skinparam nodesep 50
-skinparam ranksep 60
+skinparam nodesep 55
+skinparam ranksep 65
+skinparam ArrowFontSize 10
 
 skinparam noteFontSize 10
 skinparam noteBackgroundColor #FFFDE7
@@ -21,188 +22,420 @@ hide circle
 hide empty members
 
 skinparam class {
-  BackgroundColor<<entity>> #EBF3FA
-  BorderColor<<entity>> #2B6CB0
-  HeaderBackgroundColor<<entity>> #3182CE
+    BackgroundColor<<entity>> #EBF3FA
+    BorderColor<<entity>> #2B6CB0
+    HeaderBackgroundColor<<entity>> #3182CE
+    FontColor<<entity>> #1A202C
 
-  BackgroundColor<<value object>> #F3E8FA
-  BorderColor<<value object>> #805AD5
-  HeaderBackgroundColor<<value object>> #805AD5
+    BackgroundColor<<value object>> #F3E8FA
+    BorderColor<<value object>> #805AD5
+    HeaderBackgroundColor<<value object>> #805AD5
+    FontColor<<value object>> #1A202C
 
-  BackgroundColor<<enum>> #FFF5F5
-  BorderColor<<enum>> #E53E3E
-  HeaderBackgroundColor<<enum>> #E53E3E
+    BackgroundColor<<enum>> #FFF5F5
+    BorderColor<<enum>> #E53E3E
+    HeaderBackgroundColor<<enum>> #E53E3E
+    FontColor<<enum>> #1A202C
 }
 
 skinparam package {
-  BorderColor #CBD5E0
-  BackgroundColor #FAFAFA
-  FontColor #1A202C
-  FontStyle bold
+    BorderColor #CBD5E0
+    BackgroundColor #FAFAFA
+    FontColor #1A202C
+    FontStyle bold
 }
 
+
 ' =============================================================================
-' MÓDULO M01 — ORGANIZACIÓN DEL NEGOCIO
+' M01 — ORGANIZACIÓN DEL NEGOCIO
 ' =============================================================================
 
 package "M01 — Organización del Negocio" as M01 {
 
-  class Usuario <<entity>> {
-    identidad
-    nombre
-    email : Email
-    estadoCuenta
-    fechaRegistro
-  }
+    class Usuario <<entity>> {
+        identidad
+        nombre
+        email : Email
+    }
 
-  class UsuarioNegocio <<entity>> {
-    rol : Rol
-    estado : EstadoMembresia
-    fechaIncorporacion
-  }
 
-  class Negocio <<entity>> {
-    identidad
-    nombre
-    rubro [0..1]
-    monedaBase : Moneda
-    modalidades : Set<ModalidadOperativa> {1..*}
-  }
+    class UsuarioNegocio <<entity>> {
+        rol : Rol
+        estado : EstadoMembresia
+        fechaIncorporacion
+    }
 
-  class InvitacionNegocio <<entity>> {
-    identificadorSeguro
-    emailDestino : Email
-    rolPropuesto : Rol
-    estado : EstadoInvitacion
-    fechaExpiracion
-  }
 
-  class Email <<value object>>
+    class Negocio <<entity>> {
+        identidad
+        nombre
+        rubro [0..1]
+        monedaBase : Moneda
+        modalidades : Set<ModalidadOperativa> {1..*}
+        --
+        incorporarOReactivarMiembro(
+            usuario : Usuario,
+            rolInicial : Rol,
+            membresiaHistorica : UsuarioNegocio [0..1]
+        ) : UsuarioNegocio
+    }
 
-  enum Rol <<enum>> {
-    PROPIETARIO
-    ENCARGADO
-    TRABAJADOR
-  }
 
-  enum EstadoMembresia <<enum>> {
-    ACTIVO
-    INACTIVO
-  }
+    class InvitacionNegocio <<entity>> {
+        identificadorSeguro
+        emailDestino : Email
+        rolPropuesto : Rol
+        estado : EstadoInvitacion
+        fechaExpiracion
+    }
 
-  enum EstadoInvitacion <<enum>> {
-    PENDIENTE
-    ACEPTADA
-    RECHAZADA
-    CANCELADA
-    EXPIRADA
-  }
 
-  enum ModalidadOperativa <<enum>> {
-    REVENTA
-    PRODUCCION
-    SERVICIOS
-  }
+    class Email <<value object>>
 
-  enum Moneda <<enum>> {
-    ARS
-  }
+
+    enum Rol <<enum>> {
+        PROPIETARIO
+        ENCARGADO
+        TRABAJADOR
+    }
+
+
+    enum EstadoMembresia <<enum>> {
+        ACTIVO
+        INACTIVO
+    }
+
+
+    enum EstadoInvitacion <<enum>> {
+        PENDIENTE
+        ACEPTADA
+        RECHAZADA
+        CANCELADA
+        EXPIRADA
+    }
+
+
+    enum ModalidadOperativa <<enum>> {
+        REVENTA
+        PRODUCCION
+        SERVICIOS
+    }
+
+
+    enum Moneda <<enum>> {
+        ARS
+    }
 }
 
+
 ' =============================================================================
-' MÓDULO M02 — CATÁLOGO
+' M02 — CATÁLOGO
 ' =============================================================================
 
 package "M02 — Catálogo" as M02 {
 
-  class Categoria <<entity>> {
-    identidad
-    nombre
-    estado : EstadoCategoria
-  }
+    class Categoria <<entity>> {
+        identidad
+        nombre
+        estado : EstadoCategoria
+    }
 
-  class ArticuloCatalogo <<entity>> {
-    identidad
-    nombre
-    tipo : TipoArticulo
-    unidadMedida : UnidadMedida
-    sku [0..1]
-    precioBase [0..1]
-    estado : EstadoArticulo
-  }
 
-  class CapacidadesArticulo <<value object>> {
-    esComprable : Boolean
-    esVendible : Boolean
-    controlaStock : Boolean
-    puedeUsarseEnProduccion : Boolean
-    controlaVencimiento : Boolean
-    permiteDescuento : Boolean
-  }
+    class ArticuloCatalogo <<entity>> {
+        identidad
+        nombre
+        descripcion [0..1]
+        tipo : TipoArticulo
+        unidadMedida : UnidadMedida
+        sku [0..1]
+        precioBase [0..1]
+        costoReferencia [0..1]
+        imagenes [0..3]
+        estado : EstadoArticulo
+        --
+        aplicarEdicion(
+            propuesta : PropuestaEdicionPreparada
+        )
+        desactivar()
+        reactivar()
+    }
 
-  enum EstadoCategoria <<enum>> {
-    ACTIVA
-    INACTIVA
-  }
 
-  enum EstadoArticulo <<enum>> {
-    ACTIVO
-    INACTIVO
-  }
+    class CapacidadesArticulo <<value object>> {
+        esComprable : Boolean
+        esVendible : Boolean
+        controlaStock : Boolean
+        puedeUsarseEnProduccion : Boolean
+        controlaVencimiento : Boolean
+        permiteDescuento : Boolean
+    }
 
-  enum TipoArticulo <<enum>> {
-    BIEN
-    SERVICIO
-  }
 
-  enum UnidadMedida <<enum>> {
-    UNIDAD
-    KG
-    G
-    L
-    ML
-    M
-    CM
-    HORA
-  }
+    enum EstadoCategoria <<enum>> {
+        ACTIVA
+        INACTIVA
+    }
+
+
+    enum EstadoArticulo <<enum>> {
+        ACTIVO
+        INACTIVO
+    }
+
+
+    enum TipoArticulo <<enum>> {
+        BIEN
+        SERVICIO
+    }
+
+
+    enum UnidadMedida <<enum>> {
+        UNIDAD
+        KG
+        G
+        L
+        ML
+        M
+        CM
+        HORA
+    }
 }
 
+
 ' =============================================================================
-' RELACIONES PRINCIPALES
+' RELACIONES PRINCIPALES — M01
+'
+' Se usan asociaciones neutrales "--".
+' No se congela navegabilidad técnica ni colecciones ORM.
 ' =============================================================================
 
-' Estructura M01
 Usuario "1" -- "0..*" UsuarioNegocio : membresías
+
 UsuarioNegocio "1..*" -- "1" Negocio : pertenece a
+
 Negocio "1" -- "0..*" InvitacionNegocio : invitaciones
+
 UsuarioNegocio "1" -- "0..*" InvitacionNegocio : emite
 
-' Conexión M01 -> M02
-Negocio "1" -right- "0..*" Categoria : organiza
-Negocio "1" -right- "0..*" ArticuloCatalogo : contiene
 
-' Estructura M02
+' =============================================================================
+' RELACIONES PRINCIPALES — M01 -> M02
+' =============================================================================
+
+Negocio "1" -- "0..*" Categoria : organiza
+
+Negocio "1" -- "0..*" ArticuloCatalogo : contiene
+
+
+' =============================================================================
+' RELACIONES INTERNAS — M02
+' =============================================================================
+
 Categoria "0..1" -- "0..*" ArticuloCatalogo : clasifica
+
 ArticuloCatalogo "1" *-- "1" CapacidadesArticulo : define
 
+
 ' =============================================================================
-' NOTAS CONCEPTUALES DE ALTO NIVEL
+' NOTAS M01
 ' =============================================================================
 
-note top of M01
-  <b>Organización e Identidad (M01)</b>
-  • Usuario representa la identidad global (0..N membresías).
-  • Rol y Estado pertenecen a UsuarioNegocio.
-  • Existe una única membresía histórica por combinación Usuario + Negocio.
-  • Negocio debe conservar al menos 1 PROPIETARIO activo.
-  • La aceptación de invitaciones se coordina atómicamente en el Caso de Uso.
+note right of UsuarioNegocio
+    <b>Membresía</b>
+
+    El Rol pertenece a UsuarioNegocio,
+    no a Usuario.
+
+    Para Usuario + Negocio existe
+    una única membresía histórica.
+
+    INACTIVO:
+    - conserva historia;
+    - no autoriza operaciones.
 end note
 
-note top of M02
-  <b>Catálogo Unificado (M02)</b>
-  • ArticuloCatalogo unifica BIEN y SERVICIO.
-  • CapacidadesArticulo define elegibilidad/configuración, no hechos operativos.
-  • Categoria y ArticuloCatalogo pertenecen contextualmente a un Negocio.
+
+note right of Negocio
+    <b>Organización</b>
+
+    Crear Negocio incluye funcionalmente
+    su primer UsuarioNegocio:
+
+    ACTIVO + PROPIETARIO.
+
+    incorporarOReactivarMiembro(...):
+    - recibe membresiaHistorica [0..1]
+      desde Application;
+    - Domain NO consulta repositories;
+    - reutiliza la membresía histórica
+      cuando corresponde.
+
+    Incorporación normal:
+    ENCARGADO o TRABAJADOR.
+
+    La promoción a PROPIETARIO
+    es una operación explícita separada.
+
+    Debe conservarse al menos
+    un PROPIETARIO ACTIVO.
 end note
+
+
+note bottom of InvitacionNegocio
+    <b>Invitaciones</b>
+
+    PENDIENTE no implica vigencia.
+
+    Aceptar / rechazar revalidan:
+    - estado;
+    - tiempo;
+    - Email del destinatario.
+
+    La aceptación coordina atómicamente:
+
+    InvitacionNegocio -> ACEPTADA
+
+    +
+
+    crear/reactivar UsuarioNegocio.
+
+    Posesión del token/referencia
+    NO constituye autorización.
+end note
+
+
+' =============================================================================
+' NOTAS M02
+' =============================================================================
+
+note right of ArticuloCatalogo
+    <b>ArticuloCatalogo</b>
+
+    TipoArticulo es estrictamente inmutable
+    durante el MVP.
+
+    ACTIVO:
+    requiere >= 1 uso operativo.
+
+    Edición:
+
+    ACTIVO
+    -> permanece ACTIVO.
+
+    INACTIVO
+    -> permanece INACTIVO.
+
+    Editar nunca reactiva.
+
+    aplicarEdicion(...)
+    valida la configuración resultante
+    antes de consolidar cambios.
+
+    Nombre y SKU son únicos por Negocio
+    considerando ACTIVO + INACTIVO.
+
+    Imágenes:
+    0..3.
+
+    Si existen:
+    exactamente una principal.
+end note
+
+
+note right of CapacidadesArticulo
+    <b>CapacidadesArticulo</b>
+
+    Value Object inmutable.
+
+    Representa configuración/elegibilidad,
+    NO hechos operativos.
+
+    controlaStock
+    != stock actual
+
+    esVendible
+    != Venta
+
+    esComprable
+    != Compra
+
+    puedeUsarseEnProduccion
+    != Producción / Receta.
+
+    SERVICIO:
+    - no controla stock;
+    - no controla vencimiento;
+    - no participa en producción.
+
+    El VO:
+    - acepta o rechaza;
+    - no aplica auto-fixes silenciosos.
+end note
+
+
+note bottom of M02
+    <b>Reglas transversales M02</b>
+
+    Si esVendible = true:
+
+    precioBase != null
+    y precioBase >= 0.
+
+    La configuración actual aplica
+    hacia futuro.
+
+    Editar catálogo
+    != reescribir historia.
+
+    Hard delete NO es EstadoArticulo
+    ni transición.
+
+    En el MVP requiere:
+
+    PROPIETARIO
+    +
+    ArticuloCatalogo INACTIVO
+    +
+    sin historia relevante
+    +
+    sin referencias
+    +
+    sin dependencias que conservar.
+
+    Concurrencia, persistencia,
+    auditoría, locking y storage
+    se detallan en vistas específicas
+    y/o Arquitectura.
+end note
+
+
+' =============================================================================
+' NOTA DE ALCANCE
+' =============================================================================
+
+note as NAlcance
+    <b>Alcance de esta vista</b>
+
+    Este es un diagrama conceptual
+    de nivel superior.
+
+    NO define:
+    - Aggregate Roots;
+    - ORM;
+    - tablas;
+    - foreign keys;
+    - Repository concreto;
+    - Unit of Work;
+    - locking;
+    - aislamiento;
+    - endpoints;
+    - DTOs;
+    - storage físico de imágenes.
+
+    Los diagramas detallados 02..06
+    y las secuencias son la referencia
+    para invariantes y comportamiento fino.
+end note
+
 
 @enduml

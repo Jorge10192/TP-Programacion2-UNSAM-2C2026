@@ -1,14 +1,15 @@
-@startuml
+@startuml 04-m01-estados-invitacion
 
-title Bloque 1 — Fundación: M01 Organización\n<size:11>Diagrama de estados de InvitacionNegocio — versión oficial congelada</size>
+title Bloque 1 — Fundación: M01 Organización\n<size:11>Diagrama de estados de InvitacionNegocio — versión sincronizada — candidata a congelación tras auditoría del Bloque 1</size>
 
 ' =============================================================================
-' CONFIGURACIÓN VISUAL Y ESTILOS
+' CONFIGURACIÓN VISUAL
 ' =============================================================================
 
 skinparam shadowing false
-skinparam nodesep 70
-skinparam ranksep 80
+skinparam linetype polyline
+skinparam nodesep 50
+skinparam ranksep 45
 skinparam ArrowFontSize 10
 
 skinparam noteFontSize 10
@@ -25,8 +26,9 @@ skinparam state {
 
 hide empty description
 
+
 ' =============================================================================
-' ESTADOS
+' ESTADOS OFICIALES
 ' =============================================================================
 
 state PENDIENTE
@@ -35,8 +37,9 @@ state RECHAZADA
 state CANCELADA
 state EXPIRADA
 
+
 ' =============================================================================
-' CREACIÓN Y TRANSICIONES DE DOMINIO
+' TRANSICIONES REALES DE DOMINIO
 ' =============================================================================
 
 [*] --> PENDIENTE : emitir\n[emisión válida]
@@ -49,105 +52,146 @@ PENDIENTE --> CANCELADA : cancelar\n[cancelación autorizada]
 
 PENDIENTE --> EXPIRADA : vence\n[!estaVigente(ahora)]
 
+
 ' =============================================================================
-' ALINEACIÓN HORIZONTAL DE ESTADOS TERMINALES (LAYOUT ONLY)
+' LAYOUT DE ESTADOS TERMINALES
 ' =============================================================================
 
 ACEPTADA -[hidden]right-> RECHAZADA
 RECHAZADA -[hidden]right-> CANCELADA
 CANCELADA -[hidden]right-> EXPIRADA
 
+
 ' =============================================================================
-' REGLAS CONTEXTUALES Y NOTAS DE ESTADO
+' PENDIENTE — CONTEXTO
 ' =============================================================================
 
-note top of PENDIENTE
-  <b>Guardias contextuales transversales</b>
+note left of PENDIENTE
+    <b>Guardias contextuales transversales</b>
 
-  • Unicidad de invitación, membresía ACTIVA, autorización
-    y pertenencia al Negocio requieren contexto externo.
+    <b>Contexto externo:</b>
+    - autorización contextual;
+    - UsuarioNegocio ACTIVO;
+    - pertenencia al Negocio;
+    - unicidad de invitación;
+    - existencia/estado de membresía histórica.
 
-  • Las comparaciones de email respetan
-    la equivalencia funcional definida por Email.
+    Email utiliza la equivalencia funcional
+    definida por el Value Object Email.
 
-  • Las guardias relevantes deben revalidarse al confirmar.
+    Las guardias relevantes
+    se revalidan al confirmar.
 
-  • Concurrencia, transacciones y persistencia
-    se definen en Arquitectura.
+    <b>Tiempo:</b>
+
+    El Caso de Uso obtiene
+    un único instante "ahora"
+    y reutiliza ese mismo valor
+    durante toda la operación.
+
+    Prevalidación
+    !=
+    garantía de confirmación.
+
+    Concurrencia, locking,
+    transacciones y persistencia
+    pertenecen a Arquitectura.
 end note
+
 
 note right of PENDIENTE
-  <b>PENDIENTE — Reglas principales</b>
+    <b>PENDIENTE — Reglas principales</b>
 
-  • PENDIENTE describe el estado persistido y NO implica
-    por sí solo vigencia temporal.
+    PENDIENTE describe
+    el estado persistido.
 
-  • Emisión válida:
-    PROPIETARIO ACTIVO del mismo Negocio.
+    NO implica por sí solo
+    vigencia temporal.
 
-  • Rol propuesto:
-    ENCARGADO o TRABAJADOR.
+    Puede existir:
 
-  • Destinatario:
-    sin membresía ACTIVA previa.
+    estado = PENDIENTE
+    +
+    estaVigente(ahora) = false.
 
-  • Unicidad:
-    sin otra invitación PENDIENTE
-    y vigente equivalente.
+    <b>Emisión válida:</b>
 
-  • Reenvío:
-    opera sobre la misma invitación vigente
-    y no altera fechaExpiracion.
+    Emisor:
+    - UsuarioNegocio ACTIVO;
+    - Rol PROPIETARIO;
+    - mismo Negocio.
 
-  • Cambio de rol:
-    cancelar la existente y emitir una nueva.
+    rolPropuesto pertenece a:
+
+    { ENCARGADO, TRABAJADOR }
+
+    Destinatario:
+    sin membresía ACTIVA
+    en ese Negocio.
+
+    <b>Unicidad:</b>
+
+    Para:
+
+    mismo Negocio
+    +
+    Email funcionalmente equivalente
+
+    puede existir como máximo
+    una invitación PENDIENTE
+    y vigente.
+
+    Una PENDIENTE vencida
+    no bloquea permanentemente
+    una nueva emisión.
+
+    <b>Reenvío:</b>
+
+    - reutiliza la misma InvitacionNegocio;
+    - NO cambia estado;
+    - NO cambia rolPropuesto;
+    - NO extiende fechaExpiracion.
+
+    La estrategia técnica
+    del token/enlace permanece abierta.
+
+    <b>Cambio de rol propuesto:</b>
+
+    cancelar invitación existente
+    +
+    emitir una nueva.
 end note
 
-note bottom of ACEPTADA
-  <b>ACEPTADA — Caso de Uso</b>
 
-  • Requiere invitación PENDIENTE, vigente
-    e identidad de Email coincidente.
+' =============================================================================
+' NOTAS DE ESTADOS TERMINALES
+' =============================================================================
 
-  • Antes de confirmar se revalida que el Usuario
-    no posea membresía ACTIVA en el mismo Negocio.
+note "<b>ACEPTADA — Estado terminal / resultado atómico</b>\n\nRequiere:\n- estado PENDIENTE;\n- estaVigente(ahora) = true;\n- Usuario autenticado;\n- Email funcionalmente coincidente;\n- sin membresía ACTIVA al confirmar.\n\nConfirmación conjunta:\n1. InvitacionNegocio PENDIENTE -> ACEPTADA\n2. Negocio.incorporarOReactivarMiembro(\n   usuario, rolPropuesto, membresiaHistorica)\n\nSi membresiaHistorica = null:\n-> crear exactamente una UsuarioNegocio ACTIVA.\n\nSi membresiaHistorica != null\ny estado = INACTIVO:\n-> reutilizar la MISMA entidad;\n-> reactivarla;\n-> aplicar rolPropuesto.\n\nSi ya existe membresía ACTIVA:\n-> RECHAZAR;\n-> no aceptar;\n-> no duplicar;\n-> no cambiar rol silenciosamente.\n\nResultado válido:\nACEPTADA + membresía creada/reactivada\nO ningún cambio confirmado.\n\nInvitacionNegocio NO crea directamente UsuarioNegocio." as NAceptada
 
-  • El Caso de Uso confirma atómicamente:
-      1. InvitacionNegocio -> ACEPTADA
-      2. Crear o reactivar UsuarioNegocio
-         con rolPropuesto.
 
-  • InvitacionNegocio no crea directamente
-    la membresía.
-end note
+note "<b>RECHAZADA — Estado terminal</b>\n\nRepresenta una decisión explícita del destinatario.\n\nRequiere:\n- estado PENDIENTE;\n- invitación vigente;\n- Usuario autenticado;\n- Email funcionalmente coincidente.\n\nUna invitación vencida NO puede rechazarse.\n\nNo crea, reactiva ni modifica membresías." as NRechazada
 
-note bottom of RECHAZADA
-  <b>RECHAZADA</b>
 
-  • Decisión explícita del destinatario.
-  • Requiere invitación vigente
-    e identidad de Email coincidente.
-  • No modifica membresías.
-end note
+note "<b>CANCELADA — Estado terminal</b>\n\nRevocación administrativa.\n\nAutorización contextual:\n- UsuarioNegocio ACTIVO;\n- Rol PROPIETARIO;\n- mismo Negocio.\n\ncancelar() localmente exige:\nestado = PENDIENTE.\n\nNO exige vigencia temporal.\n\nPENDIENTE + no vigente\npuede pasar a CANCELADA\nsi EXPIRADA todavía no fue materializada.\n\nCancelar vs. expirar:\nsolo una transición puede confirmarse." as NCancelada
 
-note bottom of CANCELADA
-  <b>CANCELADA</b>
 
-  • Revocación por PROPIETARIO ACTIVO
-    del mismo Negocio.
+note "<b>EXPIRADA + reglas globales</b>\n\nEXPIRADA materializa la pérdida de vigencia:\nPENDIENTE + ahora >= fechaExpiracion.\n\nUna EXPIRADA:\n- no puede aceptarse;\n- no puede rechazarse;\n- no vuelve a PENDIENTE.\n\nLa estrategia técnica de materialización\npermanece abierta:\n- evaluación al acceder;\n- evaluación al emitir otra;\n- job / scheduler;\n- mecanismo equivalente.\n\nSolo PENDIENTE posee transiciones salientes.\n\nEstados terminales:\nACEPTADA, RECHAZADA, CANCELADA, EXPIRADA.\n\nNo existen transiciones entre estados terminales.\n\nReenviar, compartir enlace, Email o WhatsApp\nNO son transiciones de dominio.\n\nEstado terminal != eliminación física." as NExpiradaGlobal
 
-  • No exige vigencia temporal.
-end note
 
-note bottom of EXPIRADA
-  <b>EXPIRADA</b>
+' =============================================================================
+' LAYOUT INFERIOR COMPACTO
+' =============================================================================
 
-  • Fin de la ventana temporal de vigencia.
-  • No puede aceptarse ni rechazarse.
+ACEPTADA -[hidden]down-> NAceptada
+RECHAZADA -[hidden]down-> NRechazada
+CANCELADA -[hidden]down-> NCancelada
+EXPIRADA -[hidden]down-> NExpiradaGlobal
 
-  • La forma técnica de materializar la expiración
-    queda abierta a Arquitectura
-    (lazy evaluation / job / mecanismo equivalente).
-end note
+NAceptada -[hidden]right-> NRechazada
+NAceptada -[hidden]down-> NCancelada
+NRechazada -[hidden]down-> NExpiradaGlobal
+NCancelada -[hidden]right-> NExpiradaGlobal
+
 
 @enduml

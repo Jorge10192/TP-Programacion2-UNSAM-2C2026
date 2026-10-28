@@ -616,22 +616,41 @@ if puedeDesactivar():
 
 ## 12.6. Incorporar o reactivar
 
+La operación conceptual queda sincronizada con la secuencia de aceptación:
+
 ```text
-incorporarOReactivarMiembro(usuario, rolInicial)
+incorporarOReactivarMiembro(
+    usuario : Usuario,
+    rolInicial : Rol,
+    membresiaHistorica : UsuarioNegocio [0..1]
+) : UsuarioNegocio
+```
+
+Separación de responsabilidades:
+
+```text
+Application
+→ consulta la membresía histórica mediante persistencia
+→ entrega usuario + rolInicial + membresiaHistorica opcional
+
+Negocio
+→ NO consulta repositories
+→ protege las invariantes de incorporación/reactivación
 ```
 
 Caso A:
 
 ```text
-sin membresía
-→ crear ACTIVA
+membresiaHistorica = null
+→ crear exactamente una UsuarioNegocio ACTIVA
+→ rol = rolInicial
 ```
 
 Caso B:
 
 ```text
-membresía INACTIVA
-→ reutilizar
+membresiaHistorica.estado = INACTIVO
+→ reutilizar la MISMA membresía histórica
 → ACTIVA
 → rol = rolInicial
 ```
@@ -639,20 +658,23 @@ membresía INACTIVA
 Caso C:
 
 ```text
-membresía ACTIVA
+membresiaHistorica.estado = ACTIVO
 → rechazar
 → no duplicar
 → no cambiar rol silenciosamente
 ```
 
-Rol inicial permitido:
+Si se proporciona `membresiaHistorica`, `Negocio` debe revalidar que corresponda al mismo `Usuario` y al mismo `Negocio`.
+
+El rol inicial permitido usa una whitelist cerrada:
 
 ```text
-ENCARGADO
-TRABAJADOR
+{ ENCARGADO, TRABAJADOR }
 ```
 
-Promoción:
+No implementar únicamente `rolInicial != PROPIETARIO`, porque una futura ampliación del enum podría habilitar roles no previstos.
+
+La promoción continúa siendo explícita:
 
 ```text
 cambiarRolMiembro(miembro, PROPIETARIO)

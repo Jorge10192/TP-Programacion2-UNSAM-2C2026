@@ -1,6 +1,6 @@
 @startuml 02-editar-articulo
 
-title Bloque 1 — Fundación: M02 Catálogo\n<size:11>Secuencia — Editar Artículo de Catálogo — versión oficial congelada</size>
+title Bloque 1 — Fundación: M02 Catálogo\n<size:11>Secuencia — Editar Artículo de Catálogo — versión sincronizada — candidata a congelación tras auditoría del Bloque 1</size>
 
 ' =============================================================================
 ' CONFIGURACIÓN VISUAL Y PALETA INSTITUCIONAL
@@ -238,7 +238,7 @@ end
 
 alt [propuesta modifica imágenes]
 
-    break [cantidad < 0 o cantidad > 3]
+    break [cantidad > 3]
 
         UseCase --> Usuario : <<error>> el artículo admite entre 0 y 3 imágenes
 
@@ -301,7 +301,7 @@ group Frontera de consistencia lógica — todo-o-nada
     note over Articulo
         <b>Invariantes Locales del Dominio:</b>
         - Coherencia interna de CapacidadesArticulo.
-        - Regla Vendible: si esVendible = true -> precioBase >= 0.
+        - Regla Vendible: si esVendible = true -> precioBase != null y precioBase >= 0.
         - Regla Imágenes: 0..3 referencias y exactamente 1 principal (si N > 0).
         - Conservación de Operabilidad: si estado == ACTIVO -> conserva >= 1 uso operativo.
     end note
@@ -355,6 +355,7 @@ group Frontera de consistencia lógica — todo-o-nada
         - nombre duplicado de forma concurrente;
         - SKU duplicado de forma concurrente;
         - modificación concurrente del mismo artículo;
+        - edición concurrente con desactivación/reactivación;
         - cambio concurrente relevante en el estado de la Categoria asignada.
 
         Si existe conflicto: la operación completa falla y ninguna modificación queda confirmada.

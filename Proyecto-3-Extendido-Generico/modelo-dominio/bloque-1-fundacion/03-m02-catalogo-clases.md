@@ -54,14 +54,14 @@ El documento explica:
 
 Este archivo constituye la **guía semántica del Diagrama 3**.
 
-Durante la resincronización actual debe leerse especialmente junto con:
+Esta versión sincronizada debe leerse especialmente junto con:
 
 ```text
 modulos/M02-Catalogo.md
 secuencias/02-editar-articulo.puml
 ```
 
-y, una vez actualizado, junto con:
+y junto con:
 
 ```text
 06-m02-estados-articulo.md
@@ -917,9 +917,9 @@ INACTIVOS
 
 ```
 
-`puedeEliminarseFisicamente()` puede existir como consulta conceptual para UX o diagnóstico.
+La elegibilidad para eliminación física es una consulta contextual coordinada por el Caso de Uso.
 
-No debe interpretarse como autorización definitiva.
+No se modela `puedeEliminarseFisicamente()` como responsabilidad autosuficiente de `Categoria`, porque la entidad aislada no conoce todas las asociaciones o dependencias externas.
 
 La operación de eliminación real debe volver a garantizar las condiciones al confirmar.
 
@@ -2491,44 +2491,47 @@ La operación no debe utilizarse para borrar un artículo únicamente porque “
 
 ---
 
-# 49. `puedeEliminarseFisicamente()`
+# 49. Elegibilidad para Eliminación Física
 
-Representa, como máximo, una consulta conceptual de apoyo.
+La posibilidad de hard delete es una decisión contextual del Caso de Uso.
 
-Puede utilizarse para:
+No debe modelarse:
 
 ```text
-UX
-diagnóstico
-orientación
+Categoria.puedeEliminarseFisicamente()
+ArticuloCatalogo.puedeEliminarseFisicamente()
 ```
 
-No significa:
+como una respuesta autosuficiente de la entidad.
+
+La evaluación puede necesitar:
 
 ```text
-la entidad aislada conoce toda la respuesta
+estado actual
+actor autorizado
+historia
+referencias
+dependencias de módulos consumidores
+condiciones concurrentes
 ```
 
-porque la posibilidad real de eliminación puede depender de módulos consumidores.
+Una preconsulta puede orientar UX o diagnóstico, pero no constituye garantía definitiva.
 
-Tampoco significa:
-
-```text
-si devuelve True ahora
-→ eliminar después sin revalidar
-```
-
-La operación final debe volver a garantizar:
+Para ArticuloCatalogo, la confirmación final exige en el MVP:
 
 ```text
-artículo INACTIVO
-PROPIETARIO autorizado
+PROPIETARIO
++
+INACTIVO
++
 sin historia relevante
++
 sin referencias
++
 sin dependencias
 ```
 
-al confirmar.
+La operación final debe volver a garantizar las condiciones al confirmar.
 
 ---
 
@@ -2656,7 +2659,7 @@ No sustituyen las defensas finales de persistencia.
 Una consulta previa puede orientar la UX:
 
 ```text
-puedeEliminarseFisicamente()
+elegibilidadPreliminarParaEliminar()
 nombreDisponible()
 skuDisponible()
 Categoria válida para nueva asociación
