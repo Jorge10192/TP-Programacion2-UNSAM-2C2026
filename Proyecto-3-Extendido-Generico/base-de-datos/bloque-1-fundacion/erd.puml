@@ -1,0 +1,419 @@
+@startuml erd_bloque_1_fundacion
+
+title Proyecto-3-Extendido-Generico\nERD — Bloque 1 Fundación (M01 Organización + M02 Catálogo)
+
+hide circle
+hide methods
+
+left to right direction
+
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 3
+skinparam ArrowColor #303030
+skinparam ArrowThickness 1.3
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam entity {
+    BackgroundColor #FFFFFF
+    BorderColor #303030
+    FontColor #202020
+}
+
+skinparam package {
+    BackgroundColor transparent
+    BorderColor #555555
+    FontColor #202020
+}
+
+skinparam note {
+    BackgroundColor #FFFBEA
+    BorderColor #777777
+    FontColor #202020
+}
+
+
+' ============================================================
+' AUDITORÍA
+' ============================================================
+
+package "Auditoría" {
+
+    entity "auditoria_cambio" as auditoria_cambio {
+        * id : UUID <<PK>> NOT NULL
+        --
+        negocio_id : UUID <<FK>> NOT NULL
+        actor_usuario_id : UUID <<FK>> NOT NULL
+        entidad_tipo : TEXT NOT NULL
+        entidad_id : UUID NOT NULL
+        accion : TEXT NOT NULL
+        cambios : JSONB NOT NULL
+        ocurrido_en : TIMESTAMPTZ NOT NULL
+    }
+}
+
+
+' ============================================================
+' M01 — ORGANIZACIÓN
+' ============================================================
+
+package "M01 — Organización" {
+
+    entity "usuario" as usuario {
+        * id : UUID <<PK>> NOT NULL
+        --
+        nombre : TEXT NOT NULL
+        email : TEXT NOT NULL
+        email_normalizado : TEXT <<UQ>> NOT NULL
+        password_hash : TEXT NOT NULL
+        fecha_registro : TIMESTAMPTZ NOT NULL
+        updated_at : TIMESTAMPTZ NOT NULL
+    }
+
+    entity "usuario_negocio" as usuario_negocio {
+        * id : UUID <<PK>> NOT NULL
+        --
+        usuario_id : UUID <<FK>> NOT NULL
+        negocio_id : UUID <<FK>> NOT NULL
+        rol : VARCHAR NOT NULL
+        estado : VARCHAR NOT NULL
+        fecha_incorporacion : TIMESTAMPTZ NOT NULL
+        version : BIGINT NOT NULL
+        updated_at : TIMESTAMPTZ NOT NULL
+    }
+
+    entity "invitacion_negocio" as invitacion_negocio {
+        * id : UUID <<PK>> NOT NULL
+        --
+        negocio_id : UUID <<FK>> NOT NULL
+        email_destino : TEXT NOT NULL
+        email_destino_normalizado : TEXT NOT NULL
+        rol_propuesto : VARCHAR NOT NULL
+        emisor_usuario_negocio_id : UUID <<FK>> NOT NULL
+        token_hash : TEXT <<UQ>> NOT NULL
+        estado : VARCHAR NOT NULL
+        fecha_emision : TIMESTAMPTZ NOT NULL
+        fecha_expiracion : TIMESTAMPTZ NOT NULL
+        version : BIGINT NOT NULL
+        updated_at : TIMESTAMPTZ NOT NULL
+    }
+
+    entity "negocio" as negocio {
+        * id : UUID <<PK>> NOT NULL
+        --
+        nombre : TEXT NOT NULL
+        rubro : TEXT NULL
+        moneda_base : VARCHAR(3) NOT NULL
+        version : BIGINT NOT NULL
+        created_at : TIMESTAMPTZ NOT NULL
+        updated_at : TIMESTAMPTZ NOT NULL
+    }
+
+    entity "negocio_modalidad" as negocio_modalidad {
+        * negocio_id : UUID <<PK,FK>> NOT NULL
+        * modalidad : VARCHAR <<PK>> NOT NULL
+    }
+}
+
+
+' ============================================================
+' M02 — CATÁLOGO
+' ============================================================
+
+package "M02 — Catálogo" {
+
+    entity "categoria" as categoria {
+        * id : UUID <<PK>> NOT NULL
+        --
+        negocio_id : UUID <<FK>> NOT NULL
+        nombre : TEXT NOT NULL
+        nombre_normalizado : TEXT NOT NULL
+        estado : VARCHAR NOT NULL
+        version : BIGINT NOT NULL
+        created_at : TIMESTAMPTZ NOT NULL
+        updated_at : TIMESTAMPTZ NOT NULL
+    }
+
+    entity "articulo_catalogo" as articulo_catalogo {
+        * id : UUID <<PK>> NOT NULL
+        --
+        negocio_id : UUID <<FK>> NOT NULL
+        categoria_id : UUID <<FK>> NULL
+
+        nombre : TEXT NOT NULL
+        nombre_normalizado : TEXT NOT NULL
+        descripcion : TEXT NULL
+
+        tipo : VARCHAR NOT NULL
+        unidad_medida : VARCHAR NOT NULL
+
+        sku : TEXT NULL
+        sku_normalizado : TEXT NULL
+
+        precio_base : NUMERIC(19,4) NULL
+        costo_referencia : NUMERIC(19,4) NULL
+
+        estado : VARCHAR NOT NULL
+
+        --
+        es_comprable : BOOLEAN NOT NULL
+        es_vendible : BOOLEAN NOT NULL
+        controla_stock : BOOLEAN NOT NULL
+        puede_usarse_en_produccion : BOOLEAN NOT NULL
+        controla_vencimiento : BOOLEAN NOT NULL
+        permite_descuento : BOOLEAN NOT NULL
+
+        --
+        version : BIGINT NOT NULL
+        created_at : TIMESTAMPTZ NOT NULL
+        updated_at : TIMESTAMPTZ NOT NULL
+    }
+
+    entity "articulo_imagen" as articulo_imagen {
+        * id : UUID <<PK>> NOT NULL
+        --
+        negocio_id : UUID <<FK>> NOT NULL
+        articulo_id : UUID <<FK>> NOT NULL
+        referencia_storage : TEXT NOT NULL
+        posicion : SMALLINT NOT NULL
+        es_principal : BOOLEAN NOT NULL
+        created_at : TIMESTAMPTZ NOT NULL
+    }
+}
+
+
+' ============================================================
+' RELACIONES M01
+' ============================================================
+
+usuario "1" -down- "0..*" usuario_negocio
+
+negocio "1" -down- "0..*" usuario_negocio
+
+usuario_negocio "1" -down- "0..*" invitacion_negocio : emisor
+
+negocio "1" -down- "0..*" invitacion_negocio
+
+negocio "1" -down- "0..*" negocio_modalidad
+
+
+' ============================================================
+' M01 -> M02
+' ============================================================
+
+negocio "1" -right- "0..*" categoria
+
+negocio "1" -right- "0..*" articulo_catalogo
+
+
+' ============================================================
+' RELACIONES M02
+' ============================================================
+
+categoria "0..1" -down- "0..*" articulo_catalogo : categoria
+
+articulo_catalogo "1" -down- "0..3" articulo_imagen
+
+
+' ============================================================
+' AUDITORÍA
+' ============================================================
+
+usuario "1" -left- "0..*" auditoria_cambio : actor
+
+negocio "1" -left- "0..*" auditoria_cambio
+
+
+' ============================================================
+' NOTAS M01
+' ============================================================
+
+note bottom of usuario_negocio
+  UNIQUE:
+  (usuario_id, negocio_id)
+
+  Alternate key:
+  (id, negocio_id)
+
+  rol:
+  PROPIETARIO
+  ENCARGADO
+  TRABAJADOR
+
+  estado:
+  ACTIVO
+  INACTIVO
+end note
+
+
+note bottom of invitacion_negocio
+  UNIQUE:
+  token_hash
+
+  UNIQUE parcial:
+  (negocio_id,
+   email_destino_normalizado)
+  WHERE estado = 'PENDIENTE'
+
+  FK tenant-safe:
+  (emisor_usuario_negocio_id,
+   negocio_id)
+  ->
+  usuario_negocio(
+    id,
+    negocio_id
+  )
+end note
+
+
+note bottom of negocio_modalidad
+  PK:
+  (negocio_id, modalidad)
+
+  modalidad:
+  REVENTA
+  PRODUCCION
+  SERVICIOS
+
+  Invariante funcional:
+  al menos 1 modalidad.
+end note
+
+
+' ============================================================
+' NOTAS M02
+' ============================================================
+
+note right of categoria
+  UNIQUE:
+  (negocio_id,
+   nombre_normalizado)
+
+  Alternate key:
+  (id, negocio_id)
+
+  estado:
+  ACTIVA
+  INACTIVA
+end note
+
+
+note right of articulo_catalogo
+  UNIQUE:
+  (negocio_id,
+   nombre_normalizado)
+
+  UNIQUE parcial:
+  (negocio_id,
+   sku_normalizado)
+  WHERE sku_normalizado
+  IS NOT NULL
+
+  Alternate key:
+  (id, negocio_id)
+
+  FK Categoria:
+  (categoria_id,
+   negocio_id)
+  ->
+  categoria(
+    id,
+    negocio_id
+  )
+
+  MATCH SIMPLE
+end note
+
+
+note bottom of articulo_catalogo
+  CapacidadesArticulo
+  embebido.
+
+  SERVICIO:
+  sin stock
+  sin vencimiento
+  sin producción
+
+  vencimiento:
+  BIEN + stock
+
+  producción:
+  BIEN + stock
+
+  descuento:
+  requiere venta
+
+  ACTIVO:
+  requiere al menos
+  un uso operativo
+
+  vendible:
+  precio_base >= 0
+end note
+
+
+note right of articulo_imagen
+  FK tenant-safe:
+  (articulo_id,
+   negocio_id)
+  ->
+  articulo_catalogo(
+    id,
+    negocio_id
+  )
+
+  UNIQUE:
+  (articulo_id, posicion)
+
+  DEFERRABLE
+  INITIALLY DEFERRED
+
+  posicion:
+  1..3
+
+  UNIQUE parcial:
+  (articulo_id)
+  WHERE es_principal = TRUE
+
+  Cambios de imágenes
+  incrementan version
+  del artículo.
+end note
+
+
+' ============================================================
+' AUDITORÍA
+' ============================================================
+
+note left of auditoria_cambio
+  entidad_id:
+  sin FK polimórfica
+
+  cambios:
+  {
+    campo: {
+      antes: ...,
+      despues: ...
+    }
+  }
+
+  Usuario: RESTRICT
+  Negocio: RESTRICT
+end note
+
+
+' ============================================================
+' LEYENDA
+' ============================================================
+
+legend bottom
+  |= Marca |= Significado |
+  | <PK> | Primary Key |
+  | <FK> | Foreign Key |
+  | <UQ> | Unique unicolumna |
+  | NULL | Opcional |
+  | NOT NULL | Obligatorio |
+endlegend
+
+@enduml
