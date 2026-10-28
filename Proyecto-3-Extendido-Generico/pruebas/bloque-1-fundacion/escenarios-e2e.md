@@ -106,6 +106,33 @@ Pueden sustituirse únicamente fronteras externas que no forman parte del objeti
 
 No se reemplazan repositories por mocks en E2E.
 
+### 3.1. Invitaciones y desacoplamiento de canales externos
+
+El flujo E2E de invitaciones no depende de inspeccionar:
+
+~~~text
+cola de tareas
+mailer
+WhatsApp
+Celery / Taskiq
+servicio de correo
+~~~
+
+La emisión devuelve mediante `InvitacionEmitidaResponse` una referencia compartible utilizable por el test.
+
+Por lo tanto:
+
+~~~text
+POST /invitaciones
+→ response HTTP con enlace_compartible
+→ extraer token/referencia
+→ continuar recorrido E2E
+~~~
+
+Esto mantiene la prueba determinista y centrada en el contrato HTTP.
+
+Si en el futuro el producto agrega email u otro canal asíncrono, esos adaptadores tendrán pruebas propias; no se convierten en requisito para validar el flujo funcional de incorporación del Bloque 1.
+
 ---
 
 ## 4. Base de datos
@@ -506,10 +533,14 @@ token/link público
 
 ### Paso 2 — Navegar Location administrativa
 
+La ruta individual está congelada explícitamente en `endpoints.md`:
+
 ~~~http
 GET /api/v1/negocios/{negocio_a_id}/invitaciones/{invitacion_id}
 Authorization: Bearer token_a
 ~~~
+
+No se sustituye por una búsqueda en el listado: esta URI es el recurso administrativo navegable al que apunta la cabecera `Location` devuelta al emitir la invitación.
 
 ### Assert
 
@@ -1493,13 +1524,59 @@ B = PROPIETARIO ACTIVO
 
 La operación ahora sí es válida porque queda un propietario.
 
+---
+
+### Paso 6 — Revalidar permisos de A sin emitir un JWT nuevo
+
+Usuario A conserva el mismo `token_a` obtenido antes de su degradación.
+
+Sin volver a iniciar sesión, A intenta una acción exclusiva de PROPIETARIO:
+
+~~~http
+POST /api/v1/negocios/{negocio_id}/invitaciones
+Authorization: Bearer token_a
+~~~
+
+Body válido conceptualmente:
+
+~~~json
+{
+  "email_destino": "usuario.c@example.com",
+  "rol_propuesto": "TRABAJADOR"
+}
+~~~
+
+### Assert
+
+~~~text
+403 Forbidden
+code = PERMISO_DENEGADO
+~~~
+
+No se crea la invitación.
+
+Esto demuestra que:
+
+~~~text
+JWT
+→ identifica Usuario A
+
+rol vigente
+→ se vuelve a resolver desde UsuarioNegocio persistida
+   para cada request tenant-scoped
+~~~
+
+El JWT anterior no conserva privilegios de PROPIETARIO después de que el rol haya cambiado en la base.
+
 ### Invariantes protegidas
 
 - último propietario;
 - promoción explícita;
 - autorización por rol;
 - versionado;
-- no existe promoción accidental vía PATCH genérico.
+- no existe promoción accidental vía PATCH genérico;
+- el rol no se toma como autoridad estática desde el JWT;
+- `TenantContext` revalida la membresía/rol persistido en cada request.
 
 ### Trazabilidad
 
@@ -1508,6 +1585,7 @@ DOM-ORG-020..024
 APP-ORG-023..027
 DB-ORG-014
 CON-005
+API-012
 API-017..019
 ~~~
 
@@ -1965,13 +2043,32 @@ La C1 histórica INACTIVA no bloquea por sí sola la reactivación.
 
 ### Paso 4 — Intentar reasignar A a C2 después de desactivar C2
 
+Enviar un PATCH con la `version` vigente de A y:
+
+~~~json
+{
+  "categoria_id": "<c2>"
+}
+~~~
+
+donde C2 pertenece al mismo Negocio pero está INACTIVA.
+
 ### Assert
 
 ~~~text
-rechazo de nueva asociación
+400 Bad Request
+code = CATEGORIA_INACTIVA
 ~~~
 
-No queda persistido el cambio.
+Este caso se distingue deliberadamente de:
+
+~~~text
+Categoria inexistente
+Categoria de otro tenant
+→ 404
+~~~
+
+No queda persistido el cambio y la `categoria_id` anterior de A permanece intacta.
 
 ### Invariantes protegidas
 
@@ -2224,13 +2321,14 @@ Los escenarios P1 deben estar verdes antes de la entrega/release del Bloque 1.
 19. los 404 cross-tenant no permiten enumeración útil;
 20. el último propietario no puede eliminarse funcionalmente;
 21. una segunda propiedad permite degradar a otro propietario;
-22. una version obsoleta produce 409 sin lost update;
-23. PATCH distingue omitido de null;
-24. todos los errores controlados respetan ErrorResponse;
-25. ningún response expone hashes o secretos;
-26. los escenarios son independientes entre sí;
-27. la base real se crea mediante migraciones Alembic;
-28. CI puede ejecutar la suite automáticamente.
+22. el JWT anterior de un Usuario degradado no conserva permisos de PROPIETARIO y el rol se revalida desde persistencia;
+23. una version obsoleta produce 409 sin lost update;
+24. PATCH distingue omitido de null;
+25. todos los errores controlados respetan ErrorResponse;
+26. ningún response expone hashes o secretos;
+27. los escenarios son independientes entre sí;
+28. la base real se crea mediante migraciones Alembic;
+29. CI puede ejecutar la suite automáticamente.
 
 ---
 
