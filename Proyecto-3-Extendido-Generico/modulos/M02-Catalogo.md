@@ -1,8 +1,7 @@
 # 02 — Módulo de Catálogo
 ## Versión funcional actualizada — sincronizada con `secuencias/02-editar-articulo.puml`
 
-> **Estado documental:** este Markdown incorpora las decisiones funcionales más recientes de M02.
-> Los artefactos `03-m02-catalogo-clases.*` y `06-m02-estados-articulo.*` deben resincronizarse con este documento y con la secuencia de edición antes de volver a declararse congelados.
+> **Estado documental:** M02 funcionalmente sincronizado con Diagrama 3, Diagrama 6 y la secuencia de edición. Pendiente únicamente de auditoría transversal del Bloque 1 antes de congelación definitiva.
 
 ---
 
