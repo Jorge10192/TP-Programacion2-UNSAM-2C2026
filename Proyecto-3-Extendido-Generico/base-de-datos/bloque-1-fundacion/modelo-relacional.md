@@ -1535,7 +1535,7 @@ CHECK (jsonb_typeof(cambios) = 'object')
 
 `actor_usuario_id` permanece `NOT NULL` y `ON DELETE RESTRICT`.
 
-Esta decisión es intencional: Bloque 1 no define hard delete de Usuario ni de Negocio. Si en el futuro se introduce eliminación/anominización de cuentas, deberá diseñarse una política específica de retención y anonimización antes de modificar estas FK.
+Esta decisión es intencional: Bloque 1 no define hard delete de Usuario ni de Negocio. Si en el futuro se introduce eliminación/anonimización de cuentas, deberá diseñarse una política específica de retención y anonimización antes de modificar estas FK.
 
 ---
 
