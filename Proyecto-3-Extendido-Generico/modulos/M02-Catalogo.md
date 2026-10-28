@@ -1,5 +1,8 @@
 # 02 — Módulo de Catálogo
-## Versión sincronizada con `06-m02-estados-articulo.md`
+## Versión funcional actualizada — sincronizada con `secuencias/02-editar-articulo.puml`
+
+> **Estado documental:** este Markdown incorpora las decisiones funcionales más recientes de M02.
+> Los artefactos `03-m02-catalogo-clases.*` y `06-m02-estados-articulo.*` deben resincronizarse con este documento y con la secuencia de edición antes de volver a declararse congelados.
 
 ---
 
@@ -120,22 +123,30 @@ El módulo incluye:
 - costo de referencia opcional;
 - SKU opcional;
 - descripción opcional;
-- imagen principal opcional;
+- hasta 3 imágenes por artículo, con exactamente una principal cuando existan imágenes;
 - capacidades operativas;
 - búsqueda y consulta;
 - creación;
-- edición controlada de artículos ACTIVOS;
+- edición administrativa controlada de artículos `ACTIVOS` e `INACTIVOS`;
 - desactivación;
-- reactivación simple;
-- reactivación con reconfiguración autorizada;
-- eliminación física cuando sea segura;
+- reactivación explícita como caso de uso separado de la edición;
+- eliminación física excepcional cuando sea segura;
 - conservación histórica;
 - validaciones entre capacidades;
-- permisos por Rol;
+- autorización contextual mediante permisos conceptuales de M02;
 - aislamiento entre Negocios;
-- protección conceptual frente a concurrencia.
+- protección conceptual frente a concurrencia;
+- auditoría conceptual de cambios relevantes.
 
----
+La edición de un artículo `INACTIVO` está permitida para corregir o preparar su configuración, pero **no lo reactiva automáticamente**.
+
+La reactivación evalúa la configuración vigente ya confirmada y, si es válida, realiza exclusivamente la transición:
+
+```text
+INACTIVO → ACTIVO
+```
+
+La edición y la reactivación no forman una única operación implícita.
 
 ## 1.4. Fuera del Alcance
 
@@ -225,80 +236,67 @@ la simplicidad pertenece a la experiencia
 
 # 3. Actores, Permisos y Autorización Contextual
 
+M01 define los roles generales:
+
+```text
+PROPIETARIO
+ENCARGADO
+TRABAJADOR
+```
+
+M02 no congela todavía una matriz exhaustiva `Rol → Permiso` para cada operación del catálogo.
+
+La regla funcional estable es:
+
+```text
+Usuario autenticado
++
+Negocio identificado
++
+UsuarioNegocio ACTIVO
++
+permiso conceptual requerido por la operación
++
+recurso perteneciente al mismo Negocio
+```
+
+La asignación concreta de permisos a `PROPIETARIO`, `ENCARGADO` y `TRABAJADOR` podrá refinarse posteriormente sin modificar las invariantes de las entidades.
+
+---
+
 ## 3.1. Propietario
 
-Posee administración completa de M02.
+Conceptualmente representa el rol con mayor capacidad administrativa dentro del Negocio.
 
-Puede:
+Puede esperarse que concentre las operaciones administrativas sensibles de M02.
 
-- consultar;
-- buscar;
-- crear artículos;
-- editar artículos ACTIVOS;
-- desactivar artículos;
-- reactivar artículos;
-- reactivar con reconfiguración;
-- eliminar artículos cuando las reglas lo permitan;
-- modificar precio base;
-- modificar costo de referencia;
-- modificar capacidades;
-- administrar Categorias;
-- asociar o modificar imagen;
-- modificar SKU;
-- modificar UnidadMedida cuando las reglas lo permitan.
+La eliminación física de un `ArticuloCatalogo` queda reservada al `PROPIETARIO` en el MVP y además exige que el artículo esté `INACTIVO` y no posea historia, referencias ni dependencias que deban conservarse.
+
+Fuera de esa regla explícita, este documento evita congelar una tabla completa de permisos por rol.
 
 ---
 
 ## 3.2. Encargado
 
-Para el MVP se adopta deliberadamente una política estricta.
+Conceptualmente posee capacidad operativa avanzada.
 
-Puede:
+M02 no congela todavía qué operaciones concretas de creación, edición, desactivación o reactivación se asignarán definitivamente a este rol.
 
-- consultar catálogo;
-- buscar artículos;
-- consultar categorías;
-- consultar información de artículos;
-- desactivar artículos;
-- reactivar artículos **sin modificar configuración**.
-
-No puede:
-
-- crear artículos;
-- editar artículos;
-- eliminar artículos;
-- modificar precio base;
-- modificar costo de referencia;
-- modificar capacidades;
-- modificar SKU;
-- modificar UnidadMedida;
-- modificar Categoria asociada;
-- crear Categorias;
-- editar Categorias;
-- activar/desactivar/reactivar Categorias;
-- eliminar Categorias.
-
-Si un artículo INACTIVO requiere reconfiguración para volver a ACTIVO:
+La autorización se expresa mediante permisos conceptuales del caso de uso y no mediante comparaciones rígidas del tipo:
 
 ```text
-ENCARGADO
-→ no puede aplicar esos cambios
-→ reactivación rechazada
-→ requiere intervención de PROPIETARIO
+rol == ENCARGADO
 ```
 
 ---
 
 ## 3.3. Trabajador
 
-Puede:
+Conceptualmente posee acceso operativo mínimo según las necesidades del negocio.
 
-- consultar catálogo;
-- buscar artículos;
-- consultar Categorias;
-- visualizar información necesaria para operar.
+Puede consultar la información necesaria para trabajar, sujeto al contexto autorizado.
 
-No puede modificar M02.
+La posibilidad de ejecutar mutaciones específicas de M02 no se define aquí mediante una matriz rígida.
 
 ---
 
@@ -315,36 +313,34 @@ Negocio identificado
 +
 UsuarioNegocio ACTIVO
 +
-Rol
-+
-permiso concreto de M02
+permiso conceptual concreto de M02
 +
 recurso perteneciente al mismo Negocio
 ```
 
-No debe autorizarse únicamente mediante:
+No debe confiarse como mecanismo de autorización en:
 
 ```text
-rol == PROPIETARIO
+rol enviado por frontend
+negocioId arbitrario enviado por cliente
+botones ocultos en UI
 ```
 
-sin comprobar:
+El contexto de Negocio debe ser confiable y las consultas deben realizarse preferentemente con alcance de tenant, por ejemplo:
 
 ```text
-membresía ACTIVA
-+
-tenant correcto
-+
-permiso concreto
+buscarPorIdEnNegocio(...)
 ```
 
 No se modelará RBAC dinámico durante el MVP.
+
+La abstracción de autorización utilizada en diagramas de secuencia es conceptual y **no obliga** a implementar una clase concreta con ese nombre.
 
 ---
 
 ## 3.5. Terminología `activar` / `reactivar`
 
-En UX o textos de permisos puede aparecer:
+En UX puede aparecer:
 
 ```text
 activar
@@ -372,7 +368,7 @@ reactivar()
 
 para representar la misma transición.
 
----
+Editar un artículo `INACTIVO` no constituye reactivación y no modifica su estado.
 
 # 4. Modelo Conceptual
 
@@ -383,7 +379,8 @@ Negocio
   │
   └── 0..* ArticuloCatalogo
                 │
-                └── 1 CapacidadesArticulo
+                ├── 1 CapacidadesArticulo
+                └── 0..3 referencias de imagen
 ```
 
 Reglas:
@@ -391,9 +388,12 @@ Reglas:
 - cada `ArticuloCatalogo` pertenece a exactamente un Negocio;
 - cada `Categoria` pertenece a exactamente un Negocio;
 - `UnidadMedida` pertenece a un catálogo normalizado global;
-- no pueden mezclarse recursos de Negocios distintos.
+- un artículo puede tener entre 0 y 3 imágenes;
+- si existen imágenes, exactamente una se identifica como principal;
+- no pueden mezclarse recursos de Negocios distintos;
+- la representación física de las imágenes no se congela en M02.
 
----
+`PropuestaEdicionDTO` y `propuestaEdicionPreparada` pertenecen al flujo de aplicación de edición y **no son entidades persistentes del modelo conceptual**.
 
 # 5. ArticuloCatalogo
 
@@ -427,7 +427,8 @@ Categoria [0..1]
 UnidadMedida
 
 SKU [0..1]
-Imagen principal [0..1]
+Imágenes [0..3]
+  └── exactamente una principal si N > 0
 
 Precio base [0..1]
 Costo de referencia [0..1]
@@ -437,7 +438,45 @@ CapacidadesArticulo
 EstadoArticulo
 ```
 
+Identidad y `TipoArticulo` no forman parte de una edición normal.
+
 ---
+
+## 5.3. Nombre y Unicidad Funcional
+
+El nombre:
+
+```text
+NO es identidad técnica
+```
+
+pero debe ser funcionalmente único dentro de un mismo Negocio.
+
+La unicidad considera:
+
+```text
+ACTIVO
++
+INACTIVO
+```
+
+Por lo tanto, un artículo `INACTIVO` continúa reservando su nombre.
+
+Si se desea utilizar ese mismo nombre, debe reutilizarse o renombrarse el artículo existente, o eliminarse físicamente únicamente cuando las reglas de eliminación segura lo permitan.
+
+La equivalencia funcional del nombre debe ser compartida por todo el catálogo.
+
+No se congela todavía el algoritmo concreto de normalización:
+
+```text
+trim
+case folding
+Unicode
+acentos
+espacios internos
+```
+
+La persistencia deberá poder proteger esta unicidad frente a concurrencia.
 
 # 6. TipoArticulo
 
@@ -548,6 +587,10 @@ es_comprable
 ≠ Compra
 ```
 
+La existencia de estos flags en el dominio **no implica** que la interfaz de usuario deba exponerlos directamente como controles técnicos.
+
+La UI puede presentar preguntas o conceptos comerciales comprensibles y Application/Domain traducirlos a una configuración coherente.
+
 ---
 
 ## 8.1. CapacidadesArticulo es un Value Object inmutable
@@ -559,10 +602,11 @@ NO posee identidad propia
 NO usa setters parciales
 NO muta flags existentes
 NO aplica auto-fixes silenciosos
-NO interpreta la intención del Caso de Uso
+NO interpreta por sí solo la intención del Caso de Uso
+NO consulta repositories
 ```
 
-Flujo conceptual:
+Flujo conceptual cuando una edición realmente modifica capacidades:
 
 ```text
 Caso de Uso interpreta intención
@@ -580,7 +624,7 @@ Una configuración inválida se rechaza.
 
 El VO no debe transformarla silenciosamente en otra distinta.
 
----
+Si una edición no modifica ninguna configuración que afecte capacidades, se conservan las `CapacidadesArticulo` actuales; no deben reconstruirse innecesariamente.
 
 # 9. Catálogo por Capacidades
 
@@ -925,37 +969,59 @@ u otra unidad normalizada apropiada.
 
 ---
 
-# 14. Estabilidad de UnidadMedida
+# 14. Evolución de UnidadMedida
 
-Puede cambiarse mientras no se invalide el significado de cantidades históricas relevantes.
+`UnidadMedida` puede modificarse para la configuración vigente y las operaciones futuras.
+
+La regla histórica es:
+
+```text
+cambiar UnidadMedida actual
+≠
+reescribir cantidades/unidades históricas
+```
 
 Ejemplo:
 
 ```text
 Harina
-Unidad = KG
+Unidad actual anterior = KG
 Compra histórica = 5 KG
+
+Posteriormente:
+Unidad actual = G
 ```
 
-No permitir:
+La compra histórica continúa siendo:
+
+```text
+5 KG
+```
+
+No debe recalcularse retroactivamente como si siempre hubiese utilizado la nueva unidad.
+
+Algunos cambios pueden requerir validaciones adicionales cuando existan dependencias operativas en módulos como Inventario, Compras o Producción.
+
+Especialmente, cambios entre dimensiones incompatibles:
 
 ```text
 KG → UNIDAD
+L → HORA
 ```
 
-mediante una edición simple si altera el significado histórico.
+no deben aplicarse silenciosamente cuando el estado operativo actual haga que el cambio sea incoherente.
 
-La historia cuantitativa es una guardia contextual.
+M02 no congela todavía:
 
-M02 no requiere:
+- biblioteca de conversiones;
+- reglas completas de compatibilidad dimensional;
+- migraciones de stock;
+- conversiones históricas automáticas;
+- contratos concretos con módulos futuros.
 
-```text
-tiene_historia_operativa
-```
+La existencia de historia, por sí sola, **no obliga a bloquear para siempre** el cambio de unidad.
 
-como atributo persistente obligatorio.
-
----
+Cada operación histórica deberá preservar su propia unidad y cantidad originales.
 
 # 15. Cantidades Fraccionarias
 
@@ -991,17 +1057,37 @@ precio_base != null
 precio_base >= 0
 ```
 
+M02 rechaza precios negativos.
+
 El valor:
 
 ```text
 0
 ```
 
-es válido.
+no viola por sí solo la invariante local de M02.
 
-No usar precio negativo.
+Sin embargo, la **semántica comercial definitiva** de vender normalmente un artículo con precio base cero se resolverá al diseñar M05 Ventas y el mecanismo de promociones/bonificaciones.
 
----
+Por lo tanto:
+
+```text
+precio_base = 0
+```
+
+no debe utilizarse anticipadamente como sustituto técnico de:
+
+- promociones;
+- descuentos del 100%;
+- 2x1 / 2x3;
+- bonificaciones;
+- adicionales gratuitos.
+
+Cambiar `precio_base`:
+
+- afecta la referencia vigente hacia futuro;
+- no modifica ventas históricas;
+- no modifica ni destruye promociones existentes.
 
 # 17. Historia del Precio
 
@@ -1207,17 +1293,71 @@ Los módulos consumidores preservan el código histórico cuando lo necesiten.
 
 ---
 
-# 22. Imagen
+# 22. Imágenes del Artículo
 
-MVP:
+Para el MVP un `ArticuloCatalogo` admite:
 
 ```text
-0..1 imagen principal
+0..3 imágenes
 ```
 
-Opcional.
+Las imágenes son opcionales.
 
----
+Si:
+
+```text
+N = 0
+```
+
+no existe imagen principal.
+
+Si:
+
+```text
+N > 0
+```
+
+debe existir:
+
+```text
+exactamente 1 imagen principal
+```
+
+La imagen principal puede utilizarse en vistas compactas, por ejemplo:
+
+- listados;
+- selector de artículos;
+- carrito;
+- resumen de una venta.
+
+Las imágenes secundarias permiten mostrar información adicional del artículo al Usuario o cliente.
+
+La regla:
+
+```text
+0..3
++
+exactamente una principal si existen imágenes
+```
+
+es una invariante funcional de M02 y no debe quedar protegida solamente por la interfaz.
+
+No se congela todavía:
+
+- S3;
+- Cloudinary;
+- filesystem;
+- CDN;
+- URL;
+- blobs;
+- formato físico de almacenamiento;
+- estrategia de thumbnails.
+
+La carga o eliminación física de archivos pertenece a Arquitectura.
+
+Una edición no debe ejecutar efectos externos irreversibles inseguros antes de que el cambio lógico pueda confirmarse correctamente.
+
+Una futura implementación podrá introducir un Value Object como colección de imágenes si resulta útil, pero M02 no obliga todavía a una clase concreta.
 
 # 23. Variantes
 
@@ -1273,7 +1413,19 @@ precio válido si vendible
 guardias aplicables
 ```
 
-La edición normal solo se permite en ACTIVO.
+Puede editarse administrativamente.
+
+Una edición válida sobre un artículo `ACTIVO`:
+
+```text
+ACTIVO → ACTIVO
+```
+
+no constituye una transición de `EstadoArticulo`; simplemente conserva el estado.
+
+Si la configuración propuesta dejaría de cumplir las invariantes necesarias para continuar `ACTIVO`, la edición se rechaza.
+
+No debe desactivarse automáticamente.
 
 ---
 
@@ -1287,35 +1439,44 @@ Continúa disponible para:
 - reportes;
 - auditoría;
 - consultas;
+- edición administrativa;
 - reactivación.
 
 Puede conservar cero usos operativos.
 
-### Regla MVP — Edición Bloqueada
+### Regla MVP — Edición Administrativa Permitida
 
-Mientras permanezca INACTIVO:
-
-```text
-NO admite edición individual
-```
-
-de:
+Mientras permanezca `INACTIVO` pueden corregirse o prepararse, según las reglas correspondientes:
 
 - nombre;
 - descripción;
 - SKU;
 - precio;
-- costo;
-- imagen;
+- costo de referencia;
+- imágenes;
 - Categoria;
 - UnidadMedida;
-- CapacidadesArticulo.
+- configuración/capacidades permitidas.
 
-No deben existir comandos normales que modifiquen esos datos dejando al artículo INACTIVO.
+La edición:
 
-Para modificar su configuración debe utilizarse el flujo de reactivación con permisos suficientes.
+```text
+INACTIVO
+→ editar
+→ INACTIVO
+```
 
----
+NO reactiva automáticamente el artículo.
+
+Primero debe confirmarse exitosamente la edición completa.
+
+Luego, en una operación separada, puede solicitarse:
+
+```text
+reactivarArticulo
+```
+
+La reactivación vuelve a validar que la configuración vigente permita pasar a `ACTIVO`.
 
 # 25. Desactivación
 
@@ -1325,22 +1486,19 @@ Transición:
 ACTIVO → INACTIVO
 ```
 
-Autorizados:
+Requiere:
 
 ```text
-PROPIETARIO
-ENCARGADO
-```
-
-con:
-
-```text
+Usuario autenticado
++
 UsuarioNegocio ACTIVO
 +
 mismo Negocio
 +
-permiso concreto
+permiso conceptual para desactivar
 ```
+
+La matriz exacta `Rol → Permiso` no se congela todavía.
 
 Desactivar conserva:
 
@@ -1352,7 +1510,7 @@ Desactivar conserva:
 - SKU;
 - precio;
 - costo;
-- imagen;
+- imágenes;
 - Categoria;
 - CapacidadesArticulo;
 - referencias;
@@ -1361,21 +1519,22 @@ Desactivar conserva:
 NO:
 
 - libera SKU;
+- libera nombre;
 - pone capacidades en false;
 - borra precio;
 - modifica stock;
 - borra lotes;
 - borra movimientos;
-- consulta stock para decidir.
+- consulta stock desde la entidad para decidir.
 
 Regla:
 
 ```text
 stock > 0
-NO impide desactivar
+NO impide por sí solo desactivar
 ```
 
----
+Desactivar no impide posteriores ediciones administrativas del artículo `INACTIVO`.
 
 # 26. Reactivación
 
@@ -1393,102 +1552,69 @@ la misma entidad
 
 No crea una copia.
 
----
-
-## 26.1. Reactivación Simple
-
-Utiliza la configuración almacenada.
-
-Puede realizarla:
-
-```text
-PROPIETARIO
-ENCARGADO
-```
-
-si la configuración actual ya cumple todas las invariantes vigentes.
+La reactivación es un **Caso de Uso explícito y separado de la edición**.
 
 ---
 
-## 26.2. Reactivación con Reconfiguración
+## 26.1. Preparación previa
 
-Puede ser necesaria cuando la configuración almacenada no permite volver válidamente a ACTIVO.
-
-Solo:
-
-```text
-PROPIETARIO
-```
-
-puede aplicar cambios de configuración durante la reactivación.
-
-Conceptualmente:
+Si un artículo `INACTIVO` necesita correcciones antes de volver a utilizarse:
 
 ```text
 INACTIVO
-+
-datosDeReactivacion
-+
-validación local/contextual
-+
-cambio a ACTIVO
-```
-
-debe confirmar:
-
-```text
-TODO
-```
-
-o:
-
-```text
-NADA.
-```
-
-No deben persistirse cambios parciales si la reactivación falla.
-
----
-
-## 26.3. No es Edición Libre de INACTIVO
-
-```text
-reactivar(payload)
-≠
-editarArticuloInactivo()
-```
-
-El payload existe exclusivamente para construir una configuración válida que permita terminar la operación en:
-
-```text
+        ↓
+EditarArticulo
+        ↓
+confirmar cambios
+        ↓
+INACTIVO
+        ↓
+ReactivarArticulo
+        ↓
 ACTIVO
 ```
 
----
+Editar y reactivar no se fusionan implícitamente.
 
-## 26.4. ENCARGADO y Reconfiguración Necesaria
-
-Si un ENCARGADO intenta reactivar y la configuración actual no es válida:
-
-```text
-RECHAZAR
-```
-
-La causa debe poder distinguir semánticamente:
-
-```text
-requiere reconfiguración
-+
-ENCARGADO no posee permiso de edición
-+
-requiere PROPIETARIO
-```
-
-No se congela mensaje exacto, clase de excepción o código HTTP.
+Una edición exitosa nunca cambia por sí sola el estado.
 
 ---
 
-## 26.5. Revalidación
+## 26.2. Reactivación
+
+Requiere:
+
+```text
+ArticuloCatalogo.estado = INACTIVO
++
+Usuario autenticado
++
+UsuarioNegocio ACTIVO
++
+mismo Negocio
++
+permiso conceptual de reactivación
+```
+
+La matriz exacta `Rol → Permiso` permanece abierta.
+
+La reactivación utiliza la configuración **ya confirmada** del artículo.
+
+No recibe un payload libre para modificar simultáneamente nombre, precio, SKU, Categoria, imágenes, unidad o capacidades.
+
+Si la configuración vigente no permite un `ACTIVO` válido:
+
+```text
+RECHAZAR reactivación
+```
+
+El artículo permanece `INACTIVO`.
+
+El Usuario deberá corregir primero la configuración mediante `EditarArticulo` y luego volver a solicitar la reactivación.
+
+---
+
+## 26.3. Revalidación
 
 Antes de confirmar:
 
@@ -1496,7 +1622,7 @@ Antes de confirmar:
 INACTIVO → ACTIVO
 ```
 
-revalidar:
+revalidar como mínimo:
 
 ```text
 Tipo + Capacidades
@@ -1516,9 +1642,34 @@ Categoria cuando corresponda
 guardias estructurales aplicables
 ```
 
-Una Categoria históricamente asociada INACTIVA no bloquea por sí sola la reactivación.
+Una `Categoria` históricamente asociada que luego quedó `INACTIVA` no bloquea por sí sola la reactivación, salvo que la operación intente asignar/reasignar una nueva Categoria inactiva.
 
 ---
+
+## 26.4. Separación de responsabilidades
+
+No implementar:
+
+```text
+reactivar(payloadDeEdicion)
+```
+
+como bypass de `EditarArticulo`.
+
+La regla es:
+
+```text
+editar
+≠
+reactivar
+```
+
+Esto mantiene:
+
+- intención explícita;
+- auditoría clara;
+- validaciones comprensibles;
+- ausencia de cambios ocultos de estado.
 
 # 27. Eliminación Física
 
@@ -1530,7 +1681,21 @@ NO crea ELIMINADO
 NO es transición de la máquina de estados
 ```
 
-Solo puede confirmarse si:
+Es una operación administrativa excepcional.
+
+Para el MVP solo puede solicitarla un:
+
+```text
+PROPIETARIO
+```
+
+y únicamente cuando el artículo se encuentra:
+
+```text
+INACTIVO
+```
+
+Aun cumpliendo esas condiciones, solo puede confirmarse si:
 
 ```text
 sin historia relevante
@@ -1548,21 +1713,24 @@ Si existen dependencias:
 NO eliminar
 ```
 
-Si además el artículo sigue ACTIVO y se desea retirarlo:
+Si el artículo continúa `ACTIVO` y se desea retirarlo:
 
 ```text
 desactivar
 ```
+
+primero.
 
 La ausencia de dependencias debe revalidarse al confirmar.
 
 Si el borrado se confirma:
 
 ```text
-SKU actual queda disponible.
+SKU actual queda disponible
+nombre actual deja de estar reservado
 ```
 
----
+No asumir que estar `INACTIVO` es suficiente para permitir hard delete.
 
 # 28. Experiencia de Creación
 
@@ -1577,16 +1745,39 @@ Nombre
        ↓
 ¿Cómo lo utilizás?
        ↓
-Precio
+Precio / datos comerciales necesarios
+       ↓
+Categoria / SKU / imágenes opcionales
        ↓
 Guardar
 ```
 
 Evitar formularios técnicos extensos.
 
----
+La creación puede ofrecer hasta 3 imágenes, marcando exactamente una como principal cuando se cargue al menos una.
+
+La interfaz no debe obligar al Usuario a comprender directamente todos los flags internos de `CapacidadesArticulo`.
+
+`TipoArticulo` queda fijado al crear y es inmutable posteriormente.
+
+La creación debe proteger también la unicidad funcional de nombre y SKU dentro del Negocio.
 
 # 29. Configuración Inteligente de Interfaz
+
+La interfaz debe expresar conceptos comerciales comprensibles y evitar exponer innecesariamente detalles internos.
+
+Por ejemplo, puede preguntar:
+
+```text
+¿Se vende?
+¿Se compra a proveedores?
+¿Querés controlar existencias?
+¿Se usa para producir otros artículos?
+¿Tiene vencimiento?
+¿Puede participar de descuentos?
+```
+
+sin obligar a que la UI refleje literalmente los nombres internos del dominio.
 
 Si:
 
@@ -1594,12 +1785,12 @@ Si:
 tipo = SERVICIO
 ```
 
-no ofrecer normalmente:
+no ofrecer normalmente opciones incompatibles con el modelo:
 
 ```text
-Controlar stock
-Controlar vencimiento
-Usar en producción
+controlar stock
+controlar vencimiento
+usar en producción
 ```
 
 Si:
@@ -1608,45 +1799,51 @@ Si:
 es_vendible = False
 ```
 
-no ofrecer `permite_descuento = True`.
+no permitir una configuración final con:
+
+```text
+permite_descuento = True
+```
 
 UX previene errores.
 
-Dominio garantiza invariantes.
+Domain garantiza invariantes.
 
----
+Las capacidades técnicas pueden derivarse de decisiones comerciales; el operador no debe necesitar conocer la implementación interna.
 
 # 30. Requisitos Funcionales
 
 | ID | Título | Actor principal | Criterio principal |
 | --- | --- | --- | --- |
-| RF-CAT-001 | Consultar catálogo | Miembro | Solo recursos del Negocio autorizado. |
-| RF-CAT-002 | Buscar y filtrar | Miembro | Búsqueda limitada al Negocio. |
-| RF-CAT-003 | Consultar artículo | Miembro | Visualización de datos pertinentes. |
-| RF-CAT-004 | Crear Categoria | Propietario | ACTIVA, mismo Negocio, nombre no equivalente. |
-| RF-CAT-005 | Editar Categoria | Propietario | Preserva identidad y unicidad. |
-| RF-CAT-006 | Desactivar/reactivar Categoria | Propietario | No altera artículos asociados. |
-| RF-CAT-007 | Eliminar Categoria | Propietario | Solo sin asociaciones/dependencias. |
-| RF-CAT-008 | Consultar unidades | Miembro | Lista normalizada. |
-| RF-CAT-009 | Crear artículo | Propietario | Crea ACTIVO con configuración válida. |
-| RF-CAT-010 | Editar artículo ACTIVO | Propietario | Configuración final válida; historia intacta. |
-| RF-CAT-011 | Desactivar artículo | Propietario / Encargado | ACTIVO→INACTIVO conservando configuración. |
-| RF-CAT-012 | Reactivar artículo | Propietario / Encargado | Reutiliza misma identidad y revalida. |
-| RF-CAT-013 | Reactivar con reconfiguración | Propietario | Cambios + ACTIVO se confirman atómicamente. |
-| RF-CAT-014 | Eliminar artículo no utilizado | Propietario | Solo sin historia/referencias/dependencias. |
-| RF-CAT-015 | Administrar precio base | Propietario | Solo ACTIVO o dentro de reactivación autorizada. |
-| RF-CAT-016 | Administrar costo | Propietario | No reescribe historia. |
-| RF-CAT-017 | Administrar capacidades | Propietario | VO completo válido, sin auto-fix. |
-| RF-CAT-018 | Asociar imagen | Propietario | Imagen opcional. |
-| RF-CAT-019 | Validar pertenencia | Sistema | Aislamiento por Negocio. |
-| RF-CAT-020 | Administrar SKU | Propietario | `""→null`; único por Negocio ACTIVO+INACTIVO. |
+| RF-CAT-001 | Consultar catálogo | Miembro autorizado | Solo recursos del Negocio autorizado. |
+| RF-CAT-002 | Buscar y filtrar | Miembro autorizado | Búsqueda limitada al Negocio. |
+| RF-CAT-003 | Consultar artículo | Miembro autorizado | Visualización de datos pertinentes. |
+| RF-CAT-004 | Crear Categoria | Miembro con permiso correspondiente | ACTIVA, mismo Negocio, nombre no equivalente. |
+| RF-CAT-005 | Editar Categoria | Miembro con permiso correspondiente | Preserva identidad y unicidad. |
+| RF-CAT-006 | Desactivar/reactivar Categoria | Miembro con permiso correspondiente | No altera artículos asociados. |
+| RF-CAT-007 | Eliminar Categoria | Miembro con permiso correspondiente | Solo sin asociaciones/dependencias. |
+| RF-CAT-008 | Consultar unidades | Miembro autorizado | Lista normalizada. |
+| RF-CAT-009 | Crear artículo | Miembro con permiso de creación | Crea ACTIVO con configuración válida y nombre/SKU disponibles. |
+| RF-CAT-010 | Editar artículo | Miembro con permiso `EDITAR_CATALOGO` | Puede editar ACTIVO o INACTIVO; estado no cambia; todo-o-nada. |
+| RF-CAT-011 | Desactivar artículo | Miembro con permiso de desactivación | ACTIVO→INACTIVO conservando configuración e historia. |
+| RF-CAT-012 | Reactivar artículo | Miembro con permiso de reactivación | INACTIVO→ACTIVO solo si la configuración vigente es válida. |
+| RF-CAT-013 | Separar edición y reactivación | Sistema | Editar INACTIVO no activa; reactivar no incorpora un payload libre de edición. |
+| RF-CAT-014 | Eliminar artículo no utilizado | Propietario | Solo INACTIVO y sin historia/referencias/dependencias. |
+| RF-CAT-015 | Administrar precio base | Miembro con permiso de edición | Aplica hacia futuro; no reescribe historia ni promociones existentes. |
+| RF-CAT-016 | Administrar costo | Miembro con permiso de edición | No reescribe historia. |
+| RF-CAT-017 | Administrar capacidades | Miembro con permiso de edición | Configuración final válida; VO sin auto-fix. |
+| RF-CAT-018 | Administrar imágenes | Miembro con permiso de edición | 0..3; si existen, exactamente una principal. |
+| RF-CAT-019 | Validar pertenencia | Sistema | Aislamiento estricto por Negocio. |
+| RF-CAT-020 | Administrar SKU | Miembro con permiso de edición | `""→null`; único por Negocio ACTIVO+INACTIVO. |
 | RF-CAT-021 | Preservar Tipo | Sistema | TipoArticulo inmutable. |
-| RF-CAT-022 | Validar UnidadMedida | Sistema | Preserva significado histórico. |
+| RF-CAT-022 | Administrar UnidadMedida | Miembro con permiso de edición | Cambio aplica hacia futuro; historia conserva unidad/cantidad originales. |
 | RF-CAT-023 | Confirmar guardias contextuales | Sistema | Preconsulta no reemplaza confirmación. |
-| RF-CAT-024 | Autorizar mutaciones | Sistema | Usuario+Negocio+Membresía ACTIVA+Rol+permiso. |
-| RF-CAT-025 | Bloquear edición de INACTIVO | Sistema | Solo reactivación puede incorporar cambios autorizados. |
-
----
+| RF-CAT-024 | Autorizar mutaciones | Sistema | Usuario+Negocio+Membresía ACTIVA+permiso conceptual. |
+| RF-CAT-025 | Editar artículo INACTIVO | Miembro con permiso `EDITAR_CATALOGO` | Puede corregirse/configurarse sin cambiar su estado. |
+| RF-CAT-026 | Proteger nombre funcional | Sistema | Nombre único por Negocio considerando ACTIVO+INACTIVO. |
+| RF-CAT-027 | Aplicar edición atómica | Sistema | La propuesta completa se valida antes de mutar; fallo => nada confirmado. |
+| RF-CAT-028 | Detectar concurrencia | Sistema | No permite lost update ni duplicidades concurrentes de nombre/SKU. |
+| RF-CAT-029 | Preservar auditoría de edición | Sistema | Debe poder atribuir quién, cuándo, qué artículo y qué cambió. |
 
 # 31. Reglas de Negocio
 
@@ -1657,146 +1854,220 @@ Todo artículo pertenece a exactamente un Negocio.
 Si existe Categoria asociada, pertenece al mismo Negocio.
 
 ## RN-CAT-003 — Tipo Obligatorio
-Todo artículo posee BIEN o SERVICIO.
+Todo artículo posee exactamente un `TipoArticulo`: BIEN o SERVICIO.
 
 ## RN-CAT-004 — SERVICIO sin Inventario
-SERVICIO implica stock=False, vencimiento=False y producción=False.
+SERVICIO implica `controlaStock = false`, `controlaVencimiento = false` y `puedeUsarseEnProduccion = false`.
 
 ## RN-CAT-005 — Bypass de Inventario
 Si no controla stock, M02 no genera hechos de inventario.
 
 ## RN-CAT-006 — Vencimiento Requiere Stock
-Vencimiento implica BIEN + stock.
+`controlaVencimiento = true` implica BIEN + `controlaStock = true`.
 
 ## RN-CAT-007 — Producción Requiere BIEN con Stock
-Producción implica BIEN + stock.
+`puedeUsarseEnProduccion = true` implica BIEN + `controlaStock = true`.
 
 ## RN-CAT-008 — Descuento Requiere Venta
-Descuento=True implica vendible=True.
+`permiteDescuento = true` implica `esVendible = true`.
 
 Una combinación descuento=True + vendible=False se rechaza.
 
 ## RN-CAT-009 — Uso Operativo Mínimo
-ACTIVO exige comprable OR vendible OR producción.
+ACTIVO exige `esComprable OR esVendible OR puedeUsarseEnProduccion`.
 
-INACTIVO puede tener los tres en False.
+INACTIVO puede conservar los tres en False.
 
 ## RN-CAT-010 — Unidad Obligatoria para BIEN
-Todo BIEN posee UnidadMedida válida.
+Todo BIEN posee `UnidadMedida` válida.
 
 ## RN-CAT-011 — Unidad de SERVICIO
-Todo SERVICIO posee UnidadMedida; valor inicial UNIDAD salvo otra válida.
+Todo SERVICIO posee `UnidadMedida`; valor inicial recomendado `UNIDAD` salvo otra válida.
 
 ## RN-CAT-012 — Precio Base Válido
-Si vendible=True: precio_base existe y >=0.
+Si `esVendible = true`: `precioBase` existe y `precioBase >= 0`.
+
+M02 no define todavía la semántica comercial definitiva de una venta normal con precio base cero.
 
 ## RN-CAT-013 — Costo de Referencia
-Opcional; si existe, >=0.
+Es opcional; si existe, debe ser `>= 0`.
 
 ## RN-CAT-014 — Precio no Reescribe Historia
-Cambiar precio actual no modifica operaciones previas.
+Cambiar precio actual no modifica operaciones previas ni promociones existentes.
 
 ## RN-CAT-015 — Costo no Reescribe Historia
 Cambiar costo actual no modifica operaciones previas.
 
 ## RN-CAT-016 — SKU Opcional y Único
-SKU es opcional y único por Negocio entre ACTIVOS e INACTIVOS.
+SKU es opcional y único por Negocio entre artículos ACTIVOS e INACTIVOS.
 
 Desactivar no libera SKU.
 
 ## RN-CAT-017 — Nombre no es Identidad
-El nombre no es clave técnica.
+El nombre no es clave técnica ni identidad del artículo.
 
 ## RN-CAT-018 — Categoria Opcional
-ArticuloCatalogo puede existir sin Categoria.
+`ArticuloCatalogo` puede existir sin Categoria.
 
 ## RN-CAT-019 — Categoria INACTIVA
-No desactiva artículos; conserva asociaciones; no admite nuevas asociaciones/reasignaciones.
+No desactiva artículos; conserva asociaciones existentes; no admite nuevas asociaciones ni reasignaciones.
 
 ## RN-CAT-020 — Conservación Histórica
 Modificar M02 no reescribe operaciones anteriores.
 
 ## RN-CAT-021 — Eliminación Segura
-Hard delete solo sin historia, referencias ni dependencias; revalidar al confirmar.
+Hard delete es excepcional, solo para artículo INACTIVO, solicitado por PROPIETARIO y sin historia, referencias ni dependencias; revalidar al confirmar.
 
 ## RN-CAT-022 — Reactivación
-INACTIVO→ACTIVO reutiliza la misma entidad y revalida invariantes.
+`INACTIVO → ACTIVO` reutiliza la misma entidad y revalida invariantes.
 
 ## RN-CAT-023 — Artículo INACTIVO
-No participa normalmente en nuevas operaciones; sigue visible para historia/consulta/reactivación.
+No participa normalmente en nuevas operaciones; sigue disponible para historia, consulta, edición administrativa y reactivación.
 
 ## RN-CAT-024 — Variantes Independientes
 MVP representa variantes como artículos diferentes.
 
-## RN-CAT-025 — Imagen Principal
-Máximo una imagen principal en MVP.
+## RN-CAT-025 — Imágenes del Artículo
+Un artículo admite 0..3 imágenes. Si existen imágenes, exactamente una debe ser principal.
 
 ## RN-CAT-026 — Cantidades Fraccionarias
-El dominio admite fracciones.
+El dominio admite cantidades fraccionarias.
 
 ## RN-CAT-027 — Moneda del Negocio
-Los importes usan monedaBase de Negocio.
+Los importes usan `monedaBase` de Negocio.
 
-## RN-CAT-028 — Permisos Estrictos
-PROPIETARIO administra M02.
-ENCARGADO consulta, desactiva y reactiva sin modificar configuración.
-TRABAJADOR consulta.
+## RN-CAT-028 — Autorización por Permiso Conceptual
+Toda mutación exige contexto autorizado y permiso conceptual específico.
+
+La matriz completa `Rol → Permiso` no queda congelada en M02, excepto las restricciones explícitas definidas para operaciones sensibles como hard delete.
 
 ## RN-CAT-029 — Sin Listas de Precios
-Un único precio_base actual.
+MVP utiliza un único `precioBase` actual por artículo.
 
 ## RN-CAT-030 — Trazabilidad
-Cambios relevantes deben poder asociarse a Usuario y momento.
+Cambios relevantes deben poder asociarse a Usuario, artículo, cambios confirmados y momento.
 
 ## RN-CAT-031 — Tipo Inmutable
 BIEN/SERVICIO no cambia después de crear.
 
-## RN-CAT-032 — Estabilidad de UnidadMedida
-No cambiar UnidadMedida si altera significado histórico.
+## RN-CAT-032 — Evolución de UnidadMedida
+Cambiar la unidad vigente aplica hacia futuro.
+
+Las operaciones históricas conservan la unidad y cantidad originales.
+
+Las dependencias operativas que puedan impedir un cambio se definirán con los módulos consumidores.
 
 ## RN-CAT-033 — Deshabilitar Venta
-El Caso de Uso debe construir un nuevo VO coherente con vendible=False y descuento=False. Se conserva precio.
+El Caso de Uso debe construir una nueva configuración coherente con `esVendible=false` y `permiteDescuento=false`. Se conserva `precioBase`.
 
 ## RN-CAT-034 — Nombre Único de Categoria
-Unicidad normalizada por Negocio, incluyendo ACTIVA/INACTIVA.
+Unicidad funcional por Negocio, incluyendo ACTIVA/INACTIVA.
 
 ## RN-CAT-035 — Modificación de SKU
 A→B, A→null, null→B y A→A siguen la política definida en §21.
 
 ## RN-CAT-036 — Capacidades Comerciales/Estructurales
-Cambios estructurales requieren evaluar dependencias reales.
+Cambios estructurales pueden requerir evaluar dependencias reales en módulos consumidores.
 
 ## RN-CAT-037 — Capacidades son Elegibilidades
 No son stock, ventas, compras, lotes ni recetas.
 
 ## RN-CAT-038 — Guardias Contextuales
-Preconsulta no garantiza confirmación; mutación debe proteger invariantes al confirmar.
+Preconsulta no garantiza confirmación; la operación debe proteger invariantes relevantes al confirmar.
 
 ## RN-CAT-039 — Estado Actual vs Historia
-M02 representa configuración actual; consumidores preservan historia.
+M02 representa configuración vigente; módulos consumidores preservan historia.
 
 ## RN-CAT-040 — Autorización Contextual
-Toda mutación valida Usuario+Negocio+UsuarioNegocio ACTIVO+Rol+permiso.
+Toda mutación valida Usuario autenticado + Negocio + UsuarioNegocio ACTIVO + permiso + tenant.
 
-## RN-CAT-041 — Edición Solo en ACTIVO
-En MVP, edición individual de ArticuloCatalogo solo se permite en estado ACTIVO.
+## RN-CAT-041 — Edición Permitida en ACTIVO e INACTIVO
+`ArticuloCatalogo` puede editarse administrativamente en estado ACTIVO o INACTIVO.
 
-## RN-CAT-042 — Reactivación Atómica con Reconfiguración
-Si un INACTIVO necesita cambios para volver a ACTIVO, un PROPIETARIO puede aplicar una configuración candidata dentro de la misma operación de reactivación. Cambios y estado confirman juntos o no confirma nada.
+La edición no cambia automáticamente `EstadoArticulo`.
+
+## RN-CAT-042 — Edición y Reactivación Separadas
+Editar un INACTIVO primero confirma su nueva configuración y lo deja INACTIVO.
+
+La reactivación es una operación posterior e independiente.
 
 ## RN-CAT-043 — CapacidadesArticulo Inmutable sin Auto-Fix
 El VO acepta o rechaza una configuración completa. No muta flags ni corrige combinaciones inválidas silenciosamente.
 
 ## RN-CAT-044 — Ausencia Canónica de SKU
-La ausencia se representa como null. Input `""` se normaliza a null antes de validar/persistir.
+La ausencia se representa como null. Input `""` o solo espacios se normaliza a null antes de validar/persistir.
 
-## RN-CAT-045 — Reactivación del ENCARGADO
-ENCARGADO solo puede reactivar sin modificar configuración. Si se requiere reconfiguración, la operación se rechaza y requiere PROPIETARIO.
+## RN-CAT-045 — Reactivación sin Payload Libre de Edición
+`ReactivarArticulo` utiliza la configuración vigente ya confirmada.
+
+Si no permite un ACTIVO válido, la reactivación se rechaza y el artículo debe editarse previamente mediante `EditarArticulo`.
 
 ## RN-CAT-046 — Activar y Reactivar
-Para un artículo histórico INACTIVO, “activar” en UX mapea a la misma transición semántica INACTIVO→ACTIVO; no existe un ciclo de vida distinto.
+Para un artículo histórico INACTIVO, “activar” en UX mapea a la misma transición semántica `INACTIVO→ACTIVO`; no existe un ciclo distinto.
 
----
+## RN-CAT-047 — Nombre Funcionalmente Único de Artículo
+El nombre de `ArticuloCatalogo` debe ser funcionalmente único dentro del Negocio, considerando ACTIVOS e INACTIVOS.
+
+Un INACTIVO continúa reservando su nombre.
+
+La estrategia exacta de normalización permanece abierta.
+
+## RN-CAT-048 — Edición Parcial de Entrada, Atómica al Confirmar
+La entrada puede expresar solo los campos que cambian y debe distinguir campo omitido de `null` explícito.
+
+La edición completa se confirma todo-o-nada.
+
+## RN-CAT-049 — Validar Antes de Mutar
+`ArticuloCatalogo` debe validar la propuesta completa antes de consolidar cualquier mutación observable.
+
+No modelar “mutar y luego revertir manualmente”.
+
+## RN-CAT-050 — Edición Encapsulada
+La edición compuesta debe realizarse mediante comportamiento de dominio coherente, conceptualmente:
+
+```text
+ArticuloCatalogo.aplicarEdicion(propuestaEdicionPreparada)
+```
+
+No utilizar una secuencia pública de setters indiscriminados para implementar el caso de uso.
+
+## RN-CAT-051 — DTO de Aplicación no Cruza al Dominio
+`PropuestaEdicionDTO` pertenece a Application/API.
+
+Domain recibe una estructura preparada e independiente del transporte.
+
+## RN-CAT-052 — Unicidad y Concurrencia
+Los prechecks de nombre y SKU mejoran UX pero no sustituyen la defensa final de persistencia.
+
+Debe impedirse la confirmación concurrente de duplicidades y lost updates.
+
+## RN-CAT-053 — Categoria y Concurrencia
+Si una Categoria utilizada por una edición deja de ser válida concurrentemente, la edición no debe confirmarse silenciosamente.
+
+## RN-CAT-054 — Efectos Externos de Imágenes
+El lifecycle físico de archivos no debe generar efectos irreversibles inseguros antes de que la edición lógica pueda confirmarse.
+
+## RN-CAT-055 — Promociones Independientes del Precio Base
+Cambiar `precioBase` no modifica ni elimina promociones existentes.
+
+El cálculo del precio efectivo pertenece a M05/Promociones.
+
+## RN-CAT-056 — Estado Inalterado por Edición
+Editar ACTIVO lo mantiene ACTIVO si la configuración resultante es válida.
+
+Editar INACTIVO lo mantiene INACTIVO.
+
+## RN-CAT-057 — Auditoría Conceptual de Edición
+Una edición confirmada debe permitir reconstruir, como mínimo:
+
+```text
+quién
+cuándo
+qué artículo
+qué cambios se confirmaron
+```
+
+sin imponer todavía una tecnología concreta de auditoría.
 
 # 32. Casos de Uso
 
@@ -1826,7 +2097,7 @@ Siempre dentro del Negocio autorizado.
 
 ## CU-CAT-03 — Gestionar Categorias
 
-Actor: PROPIETARIO.
+Actor: Miembro con permiso administrativo correspondiente.
 
 Incluye:
 
@@ -1842,97 +2113,190 @@ No modificar artículos automáticamente al cambiar estado de Categoria.
 
 ## CU-CAT-04 — Crear Artículo
 
-Actor: PROPIETARIO.
+Actor: Miembro con permiso de creación de catálogo.
 
 Flujo:
 
-1. seleccionar Nuevo;
+1. seleccionar `Nuevo`;
 2. elegir BIEN/SERVICIO;
-3. nombre;
-4. Categoria opcional ACTIVA del mismo Negocio;
-5. UnidadMedida;
-6. definir usos;
-7. precio si vendible;
-8. costo/SKU/descripción/imagen opcionales;
-9. normalizar SKU vacío a null;
-10. construir `CapacidadesArticulo` completo;
-11. rechazar VO inválido;
-12. validar guardias contextuales;
-13. confirmar;
-14. crear `ACTIVO`.
+3. ingresar nombre;
+4. validar unicidad funcional del nombre dentro del Negocio;
+5. seleccionar Categoria opcional ACTIVA del mismo Negocio;
+6. seleccionar UnidadMedida;
+7. expresar usos/configuración comercial;
+8. ingresar precio si vendible;
+9. ingresar costo/SKU/descripción opcionales;
+10. opcionalmente cargar 0..3 imágenes y definir exactamente una principal si existen;
+11. normalizar SKU vacío a null;
+12. construir `CapacidadesArticulo` completo cuando corresponda;
+13. rechazar configuración local inválida;
+14. validar guardias contextuales;
+15. confirmar;
+16. crear `ACTIVO`.
+
+`TipoArticulo` queda inmutable después de crear.
 
 ---
 
-## CU-CAT-05 — Editar Artículo ACTIVO
+## CU-CAT-05 — Editar Artículo
 
-Actor: PROPIETARIO.
-
-Precondiciones:
+Actor: Miembro con permiso conceptual:
 
 ```text
-Usuario autenticado
-Negocio identificado
-UsuarioNegocio ACTIVO
-ArticuloCatalogo ACTIVO
-permiso concreto
-mismo Negocio
+EDITAR_CATALOGO
 ```
 
-Si el artículo está INACTIVO:
+Puede aplicarse sobre:
 
 ```text
-RECHAZAR edición directa
-→ orientar a reactivación
+ACTIVO
+o
+INACTIVO
 ```
 
-Puede modificarse:
+La edición nunca cambia implícitamente el estado.
+
+### Entrada parcial
+
+Application recibe una propuesta parcial que diferencia:
+
+```text
+campo omitido
+→ conservar valor actual
+
+campo = null
+→ quitar/desasociar cuando el campo lo permite
+```
+
+Ejemplos:
+
+```text
+Categoria omitida → conservar
+Categoria = null  → quitar
+
+SKU omitido → conservar
+SKU = null   → quitar
+```
+
+### Campos editables
+
+Puede modificarse, sujeto a sus invariantes:
 
 - nombre;
 - descripción;
 - Categoria;
 - SKU;
-- imagen;
-- precio;
-- costo;
-- capacidades;
-- UnidadMedida cuando sea válida.
+- imágenes;
+- precio base;
+- costo de referencia;
+- capacidades/configuración permitida;
+- UnidadMedida.
 
 No puede modificarse:
 
 ```text
+identidad
 TipoArticulo
 ```
 
-Cambio de capacidades:
+### Preparación en Application
+
+Application:
+
+1. obtiene Usuario y Negocio desde contexto confiable;
+2. autoriza mediante permiso conceptual;
+3. carga el artículo con tenant scoping;
+4. normaliza entrada;
+5. resuelve Categoria si cambia;
+6. pre-valida unicidad funcional de nombre;
+7. pre-valida SKU;
+8. pre-valida imágenes y valores comerciales;
+9. construye `propuestaEdicionPreparada`.
+
+`PropuestaEdicionDTO` no ingresa directamente al dominio.
+
+### Aplicación en Domain
+
+Conceptualmente:
 
 ```text
-Caso de Uso construye VO completo
-→ VO valida
-→ acepta/rechaza
+ArticuloCatalogo.aplicarEdicion(propuestaEdicionPreparada)
 ```
 
-No auto-fix.
-
-Si se deshabilita venta:
+debe:
 
 ```text
-propuesta explícita:
-es_vendible=False
-permite_descuento=False
+validar toda la propuesta
+        ↓
+si falla
+→ rechazar SIN mutación observable
+        ↓
+si pasa
+→ aplicar todos los cambios coherentemente
 ```
+
+No implementar el caso de uso como una cadena de setters públicos independientes.
+
+### Atomicidad
+
+La entrada puede ser parcial.
+
+La confirmación no:
+
+```text
+TODO
+o
+NADA
+```
+
+Si cualquier validación, unicidad, persistencia o conflicto concurrente falla:
+
+```text
+ninguna modificación queda confirmada
+```
+
+### Estado
+
+Si estaba:
+
+```text
+ACTIVO
+```
+
+permanece `ACTIVO` únicamente si la configuración resultante cumple sus invariantes.
+
+Si estaba:
+
+```text
+INACTIVO
+```
+
+permanece `INACTIVO`.
+
+La reactivación es otro Caso de Uso.
+
+### Historia
+
+La edición cambia configuración vigente hacia futuro.
+
+No reescribe:
+
+- ventas;
+- compras;
+- recetas;
+- producciones;
+- movimientos;
+- precios históricos;
+- costos históricos;
+- cantidades/unidades históricas.
 
 ---
 
 ## CU-CAT-06 — Desactivar / Reactivar Artículo
 
-Actor:
-
-```text
-PROPIETARIO
-ENCARGADO
-```
-
 ### Desactivar
+
+Actor: Miembro con permiso conceptual de desactivación.
 
 Requiere artículo ACTIVO.
 
@@ -1942,47 +2306,39 @@ Confirma:
 ACTIVO → INACTIVO
 ```
 
-sin modificar configuración ni M04.
+sin modificar configuración ni hechos de otros módulos.
 
-### Reactivar Simple
+### Reactivar
+
+Actor: Miembro con permiso conceptual de reactivación.
 
 Requiere artículo INACTIVO.
 
-PROPIETARIO o ENCARGADO.
+Utiliza la configuración vigente ya confirmada.
 
-Si configuración actual satisface invariantes:
+Si satisface invariantes:
 
 ```text
 INACTIVO → ACTIVO
 ```
 
-### Reactivar con Reconfiguración
-
-Solo PROPIETARIO.
-
-Construye configuración candidata y confirma:
-
-```text
-cambios
-+
-INACTIVO → ACTIVO
-```
-
-como unidad funcional.
-
-Si falla:
-
-```text
-INACTIVO permanece
-+
-sin cambios parciales.
-```
-
-Si ENCARGADO requiere reconfiguración:
+Si no las satisface:
 
 ```text
 RECHAZAR
-→ requiere PROPIETARIO.
+```
+
+y permanece `INACTIVO`.
+
+No aceptar un payload libre de edición dentro de la reactivación.
+
+Si necesita cambios:
+
+```text
+EditarArticulo
+→ confirmar
+→ sigue INACTIVO
+→ ReactivarArticulo
 ```
 
 ---
@@ -1991,51 +2347,64 @@ RECHAZAR
 
 Actor: PROPIETARIO.
 
+Precondición:
+
+```text
+ArticuloCatalogo INACTIVO
+```
+
+Flujo:
+
 1. preconsulta opcional para UX;
 2. revalidar historia/referencias/dependencias al confirmar;
 3. eliminar solo si ninguna debe conservarse;
-4. liberar SKU al confirmar.
+4. liberar SKU al confirmar;
+5. liberar el nombre para una futura creación al confirmar.
 
-Hard delete no es EstadoArticulo.
+Hard delete no es `EstadoArticulo`.
 
----
+Estar INACTIVO no basta por sí solo para permitir la eliminación.
 
 # 33. Historias de Usuario
 
 ## HU-CAT-001 — Crear BIEN
-Como Propietario, quiero crear un bien con pocos datos para incorporarlo rápidamente.
+Como miembro autorizado, quiero crear un bien con pocos datos para incorporarlo rápidamente.
 
 ## HU-CAT-002 — Crear SERVICIO
-Como Propietario, quiero registrar prestaciones sin opciones de inventario incompatibles.
+Como miembro autorizado, quiero registrar prestaciones sin opciones de inventario incompatibles.
 
 ## HU-CAT-003 — Combinar Usos
-Como Propietario, quiero definir si compro, vendo o utilizo en producción.
+Como miembro autorizado, quiero definir cómo utiliza el Negocio un artículo sin tener que comprender flags técnicos internos.
 
 ## HU-CAT-004 — Organizar con Categorias
-Como Propietario, quiero organizar el catálogo sin duplicar Categorias.
+Como miembro autorizado, quiero organizar el catálogo sin duplicar Categorias.
 
 ## HU-CAT-005 — Crear Rápidamente
-Como pequeño comerciante, quiero evitar formularios extensos.
+Como pequeño comerciante, quiero evitar formularios técnicos extensos.
 
 ## HU-CAT-006 — Cambiar Precio sin Alterar Historia
-Como Propietario, quiero cambiar el precio actual sin modificar ventas anteriores.
+Como miembro autorizado, quiero cambiar el precio actual sin modificar ventas anteriores ni destruir promociones vigentes.
 
 ## HU-CAT-007 — Retirar sin Borrar Historia
-Como Propietario o Encargado, quiero desactivar artículos conservando información.
+Como miembro autorizado, quiero desactivar artículos conservando toda su información histórica.
 
 ## HU-CAT-008 — Buscar Rápidamente
 Como miembro, quiero localizar artículos con agilidad.
 
 ## HU-CAT-009 — Gestionar SKU
-Como Propietario, quiero administrar el SKU actual manteniendo su unicidad contextual.
+Como miembro autorizado, quiero administrar el SKU actual manteniendo su unicidad contextual.
 
 ## HU-CAT-010 — Reactivar de Forma Segura
-Como Propietario o Encargado, quiero reutilizar la misma identidad al reactivar.
+Como miembro autorizado, quiero reutilizar la misma identidad al reactivar un artículo.
 
-## HU-CAT-011 — Reconfigurar al Reactivar
-Como Propietario, quiero actualizar una configuración obsoleta dentro de la misma reactivación, sin dejar cambios parciales.
+## HU-CAT-011 — Preparar un INACTIVO antes de Reactivar
+Como miembro autorizado, quiero editar un artículo INACTIVO, confirmar las correcciones y reactivarlo luego mediante una acción separada.
 
----
+## HU-CAT-012 — Administrar Imágenes
+Como miembro autorizado, quiero cargar hasta tres imágenes y definir una principal para mostrar correctamente el artículo.
+
+## HU-CAT-013 — Evitar Sobrescrituras
+Como usuario que edita catálogo, quiero que una modificación concurrente incompatible produzca conflicto en lugar de sobrescribir silenciosamente cambios de otro usuario.
 
 # 34. Estados y Transiciones
 
@@ -2062,11 +2431,14 @@ ACTIVO
 INACTIVO
 ```
 
-Editar un ACTIVO:
+Editar un artículo:
 
 ```text
-NO es transición de EstadoArticulo
+ACTIVO   → editar → ACTIVO
+INACTIVO → editar → INACTIVO
 ```
+
+NO constituye transición de `EstadoArticulo`.
 
 Hard delete:
 
@@ -2074,13 +2446,20 @@ Hard delete:
 NO es estado
 ```
 
----
+Reactivar es siempre una operación explícita:
+
+```text
+INACTIVO → ACTIVO
+```
+
+y no una consecuencia implícita de editar.
 
 # 35. Excepciones y Errores Funcionales
 
 | Condición | Efecto esperado |
 | --- | --- |
 | Nombre faltante | Rechazar. |
+| Nombre funcionalmente duplicado en el mismo Negocio | Rechazar, incluyendo conflicto con INACTIVO. |
 | BIEN sin unidad | Rechazar. |
 | Vendible sin precio | Rechazar. |
 | Precio negativo | Rechazar. |
@@ -2090,51 +2469,72 @@ NO es estado
 | Vencimiento sin stock | Rechazar. |
 | Descuento sin venta | Rechazar VO; no auto-corregir. |
 | Edición deja ACTIVO con 0 usos | Rechazar; no desactivar automáticamente. |
-| SKU `""` | Normalizar a null. |
+| SKU `""` o solo espacios | Normalizar a null. |
 | SKU duplicado ACTIVO/INACTIVO | Rechazar. |
 | Categoria INACTIVA para nueva asociación | Rechazar. |
 | Categoria de otro Negocio | Rechazar. |
+| Categoria válida en precheck pero invalidada concurrentemente antes de confirmar | Rechazar/conflicto; no confirmar asociación inválida. |
 | Cambiar BIEN↔SERVICIO | Rechazar. |
-| Cambiar unidad con historia incompatible | Rechazar. |
-| Editar artículo INACTIVO | Rechazar; orientar a reactivación. |
+| Más de 3 imágenes | Rechazar. |
+| Existen imágenes pero no hay exactamente una principal | Rechazar. |
+| Edición válida de artículo INACTIVO | Aceptar cambios y mantener INACTIVO. |
 | Reactivar ACTIVO | Rechazar no-op silencioso. |
 | Desactivar INACTIVO | Rechazar no-op silencioso. |
-| ENCARGADO intenta payload de edición | Rechazar. |
-| ENCARGADO necesita reconfiguración | Rechazar y requerir PROPIETARIO. |
-| Reactivación con configuración inválida | Mantener INACTIVO, sin cambios parciales. |
-| Eliminar con referencias | Rechazar. |
+| Reactivar INACTIVO con configuración actual inválida | Rechazar; mantener INACTIVO; editar previamente. |
+| Reactivación intenta incluir payload libre de edición | Rechazar/separar responsabilidades. |
+| Eliminación física sobre artículo ACTIVO | Rechazar; primero desactivar. |
+| Eliminación física solicitada por actor no permitido | Rechazar. |
+| Eliminar con historia/referencias/dependencias | Rechazar. |
+| Dos usuarios editan la misma versión lógica y uno confirma primero | El segundo no debe sobrescribir silenciosamente; devolver conflicto funcional/técnico apropiado. |
+| Nombre/SKU queda duplicado por concurrencia | Rechazar una de las confirmaciones. |
 | Guardia cambia entre preconsulta/confirmación | Rechazar/reintentar sin estado inválido. |
 | Nueva operación usa artículo desactivado concurrentemente | Revalidar y rechazar según módulo consumidor. |
+| Falla almacenamiento externo de imagen o persistencia | Evitar quedar con referencias/archivos en estado incoherente mediante estrategia arquitectónica segura. |
 
-Mensajes exactos pertenecen a UX/API.
-
----
+Mensajes exactos, códigos HTTP y clases de excepción pertenecen a UX/API/Arquitectura.
 
 # 36. Interacción con Otros Módulos
 
 ## M01
 Provee Usuario, Negocio, UsuarioNegocio y Rol para autorización contextual.
 
+M02 consume el contexto autorizado, pero no congela por sí solo la matriz completa `Rol → Permiso`.
+
 ## M03
-Utilizará `es_comprable`.
+Utilizará `esComprable`.
+
+Compras históricas deberán preservar cantidades, unidades y costos necesarios para reconstruir la operación original.
 
 ## M04
-Utilizará `controla_stock` y `controla_vencimiento`.
+Utilizará `controlaStock` y `controlaVencimiento`.
 
 M02 no consulta inventario desde la entidad para desactivar.
 
-## M05
-Utilizará `es_vendible` y precio_base como referencia actual.
+Cambios estructurales futuros de capacidades o UnidadMedida podrán requerir guardias coordinadas con M04 cuando ese módulo sea diseñado.
 
-Preserva precio histórico en Venta.
+## M05
+Utilizará `esVendible` y `precioBase` como referencia comercial vigente.
+
+M05 deberá preservar el precio realmente aplicado en cada operación.
+
+Cambiar `precioBase` en M02:
+
+```text
+NO modifica promociones existentes
+NO recalcula ventas históricas
+```
+
+La semántica comercial definitiva de precio cero, promociones, bonificaciones, 2x1/2x3 y descuentos efectivos pertenece a M05/Promociones.
 
 ## M07
-Utilizará `puede_usarse_en_produccion`.
+Utilizará `puedeUsarseEnProduccion`.
 
 Recetas no pertenecen a M02.
 
+Cambios de configuración actual no reescriben recetas ni producciones históricas.
+
 ## M08
-Puede analizar por Articulo, Categoria y Tipo, respetando historia de módulos fuente.
+Puede analizar por Articulo, Categoria y Tipo, respetando la historia proveniente de los módulos fuente.
 
 ---
 
@@ -2142,15 +2542,21 @@ Puede analizar por Articulo, Categoria y Tipo, respetando historia de módulos f
 
 | RF | RN principales | CU |
 | --- | --- | --- |
-| RF-CAT-009 Crear | RN 003-013, 016, 018, 031, 034, 040, 043, 044 | CU-CAT-04 |
-| RF-CAT-010 Editar ACTIVO | RN 008, 012-016, 019, 031-041, 043-044 | CU-CAT-05 |
-| RF-CAT-011 Desactivar | RN 023, 028, 040-041 | CU-CAT-06 |
-| RF-CAT-012 Reactivar | RN 019, 022, 038, 040, 045-046 | CU-CAT-06 |
-| RF-CAT-013 Reactivar con reconfig | RN 022, 038, 040, 042-045 | CU-CAT-06 |
-| RF-CAT-014 Eliminar | RN 020-021, 038, 040 | CU-CAT-07 |
-| RF-CAT-017 Capacidades | RN 004-009, 033, 036-038, 043 | CU-CAT-04/05/06 |
-| RF-CAT-020 SKU | RN 016, 035, 038, 040, 044 | CU-CAT-04/05/06/07 |
-| RF-CAT-025 Bloquear edición INACTIVO | RN 023, 028, 041-045 | CU-CAT-05/06 |
+| RF-CAT-009 Crear artículo | RN 003-013, 016-019, 025, 028, 031, 034, 040, 043-044, 047, 052 | CU-CAT-04 |
+| RF-CAT-010 Editar artículo | RN 008-020, 025, 028, 030-033, 036-041, 043-044, 047-057 | CU-CAT-05 |
+| RF-CAT-011 Desactivar | RN 023, 028, 040, 056 | CU-CAT-06 |
+| RF-CAT-012 Reactivar | RN 009, 019, 022-023, 038, 040, 042, 045-046, 056 | CU-CAT-06 |
+| RF-CAT-013 Separar edición/reactivación | RN 041-042, 045-046, 056 | CU-CAT-05/06 |
+| RF-CAT-014 Eliminar | RN 016-017, 021, 038, 040, 047, 052 | CU-CAT-07 |
+| RF-CAT-017 Capacidades | RN 004-009, 033, 036-038, 043, 050-051 | CU-CAT-04/05 |
+| RF-CAT-018 Imágenes | RN 025, 048-050, 054 | CU-CAT-04/05 |
+| RF-CAT-020 SKU | RN 016, 035, 038, 040, 044, 048, 052 | CU-CAT-04/05/07 |
+| RF-CAT-022 UnidadMedida | RN 010-011, 032, 039 | CU-CAT-04/05 |
+| RF-CAT-025 Editar INACTIVO | RN 023, 041-042, 048-050, 056 | CU-CAT-05 |
+| RF-CAT-026 Nombre único | RN 017, 047, 052 | CU-CAT-04/05/07 |
+| RF-CAT-027 Edición atómica | RN 048-051, 056-057 | CU-CAT-05 |
+| RF-CAT-028 Concurrencia | RN 038, 052-053 | CU-CAT-04/05/06/07 |
+| RF-CAT-029 Auditoría | RN 030, 057 | CU-CAT-05 |
 
 ---
 
@@ -2158,53 +2564,70 @@ Puede analizar por Articulo, Categoria y Tipo, respetando historia de módulos f
 
 M02 se considera funcionalmente correcto cuando, como mínimo:
 
-1. cada Negocio tiene catálogo aislado;
-2. toda mutación valida membresía ACTIVA + permiso + tenant;
+1. cada Negocio posee un catálogo aislado;
+2. toda mutación valida contexto autenticado, membresía ACTIVA, permiso conceptual y tenant;
 3. BIEN/SERVICIO son los únicos Tipos;
-4. TipoArticulo es inmutable;
-5. SERVICIO no controla stock/vencimiento/producción;
-6. ACTIVO exige >=1 uso operativo;
-7. INACTIVO puede tener 0 usos;
-8. CapacidadesArticulo es VO inmutable;
+4. `TipoArticulo` es inmutable;
+5. SERVICIO no controla stock, vencimiento ni producción;
+6. ACTIVO exige al menos un uso operativo;
+7. INACTIVO puede conservar cero usos;
+8. `CapacidadesArticulo` es VO inmutable;
 9. VO inválido se rechaza y no se auto-corrige;
-10. habilitar venta exige precio >=0;
-11. precio 0 es válido;
-12. deshabilitar venta conserva precio;
-13. el Caso de Uso construye descuento=False al deshabilitar venta;
-14. costo opcional, si existe >=0;
+10. si es vendible existe `precioBase >= 0`;
+11. M02 no interpreta automáticamente `precioBase = 0` como promoción o gratuidad comercial;
+12. deshabilitar venta conserva precio y construye configuración coherente;
+13. cambiar precio no modifica promociones existentes;
+14. costo opcional, si existe, es `>= 0`;
 15. SKU es opcional;
-16. `SKU ""` se normaliza a null;
+16. `SKU ""` o solo espacios se normaliza a null;
 17. SKU es único por Negocio entre ACTIVOS e INACTIVOS;
 18. desactivar no libera SKU;
-19. Categoria es opcional;
-20. Categoria INACTIVA conserva asociaciones;
-21. Categoria INACTIVA no desactiva artículos;
-22. nuevas asociaciones requieren Categoria ACTIVA;
-23. Categoria histórica INACTIVA no bloquea reactivación;
-24. cantidades fraccionarias están soportadas;
-25. UnidadMedida no cambia si altera historia;
-26. PROPIETARIO edita ACTIVO;
-27. ENCARGADO no edita;
-28. TRABAJADOR consulta;
-29. INACTIVO no admite edición individual;
-30. desactivar conserva toda configuración;
-31. stock >0 no bloquea desactivación;
-32. M02 no modifica stock/lotes al desactivar;
-33. reactivación reutiliza la misma identidad;
-34. reactivación simple puede hacerla PROPIETARIO/ENCARGADO;
-35. reactivación con reconfiguración solo PROPIETARIO;
-36. reactivación con reconfiguración es todo-o-nada;
-37. ENCARGADO no usa payload como bypass;
-38. reactivación inválida mantiene INACTIVO;
-39. editar ACTIVO no constituye transición de EstadoArticulo;
-40. hard delete no es estado;
-41. hard delete revalida referencias;
-42. preconsulta UX no es garantía final;
-43. selección previa no garantiza elegibilidad al confirmar;
-44. concurrencia no permite duplicar SKU;
-45. M02 representa configuración actual;
-46. módulos consumidores preservan historia;
-47. dominio no consulta repositories directamente para guardias contextuales.
+19. nombre de artículo es funcionalmente único por Negocio entre ACTIVOS e INACTIVOS;
+20. un INACTIVO continúa reservando su nombre;
+21. Categoria es opcional;
+22. Categoria INACTIVA conserva asociaciones existentes;
+23. Categoria INACTIVA no desactiva artículos;
+24. nuevas asociaciones requieren Categoria ACTIVA y del mismo Negocio;
+25. concurrencia no permite confirmar una asociación a Categoria que dejó de ser válida;
+26. cantidades fraccionarias están soportadas;
+27. cambiar UnidadMedida aplica hacia futuro;
+28. historia conserva unidad y cantidad originales;
+29. la existencia de historia no obliga por sí sola a bloquear para siempre todo cambio de unidad;
+30. un artículo admite 0..3 imágenes;
+31. si existen imágenes, exactamente una es principal;
+32. las invariantes de imágenes se protegen también en Domain;
+33. storage físico de imágenes no se congela en M02;
+34. la edición puede aplicarse a ACTIVO o INACTIVO;
+35. editar INACTIVO lo mantiene INACTIVO;
+36. editar ACTIVO lo mantiene ACTIVO solo si la configuración resultante sigue siendo válida;
+37. edición no constituye transición de `EstadoArticulo`;
+38. reactivación es una operación separada;
+39. reactivación no acepta un payload libre de edición;
+40. reactivación reutiliza la misma identidad;
+41. si la configuración vigente no permite ACTIVO, la reactivación se rechaza;
+42. desactivar conserva configuración e historia;
+43. stock >0 no bloquea por sí solo la desactivación;
+44. M02 no modifica stock/lotes al desactivar;
+45. hard delete no es estado;
+46. hard delete requiere artículo INACTIVO;
+47. hard delete está reservado a PROPIETARIO en el MVP;
+48. hard delete revalida historia, referencias y dependencias;
+49. `PropuestaEdicionDTO` no ingresa directamente al Domain;
+50. Application construye `propuestaEdicionPreparada`;
+51. entrada parcial distingue campo omitido de null explícito;
+52. la entidad valida toda la propuesta antes de consolidar mutaciones observables;
+53. la edición se confirma todo-o-nada;
+54. no se implementa el caso de uso mediante setters públicos indiscriminados;
+55. prechecks de nombre/SKU no sustituyen defensas finales de persistencia;
+56. una modificación concurrente no puede producir lost update silencioso;
+57. `registrarCambio()` no implica commit independiente;
+58. la selección previa no garantiza elegibilidad al confirmar;
+59. M02 representa configuración actual;
+60. módulos consumidores preservan historia;
+61. el dominio no consulta repositories directamente para guardias contextuales;
+62. una edición confirmada conserva contexto suficiente para auditoría;
+63. la matriz exacta de permisos por Rol permanece abierta salvo reglas explícitas;
+64. capacidades técnicas no deben exponerse obligatoriamente como flags crudos al operador.
 
 ---
 
@@ -2224,35 +2647,54 @@ Categoria INACTIVA conserva asociaciones
 
 UnidadMedida normalizada
 Cantidades fraccionarias
+Unidad vigente puede evolucionar hacia futuro
+Historia conserva unidad/cantidad originales
 
 Crear artículo ACTIVO
-Editar solo ACTIVO
+Editar ACTIVO
+Editar INACTIVO sin activarlo
 Consultar
 Buscar
 
 Desactivar
-Reactivar simple
-Reactivar con reconfiguración para PROPIETARIO
-
-INACTIVO sin edición individual
+Reactivar explícitamente
+Edición y reactivación separadas
 
 Precio base
 Costo referencia
+Precio actual no reescribe historia
+Cambiar precio no modifica promociones
 
 SKU opcional
-"" → null
+"" / espacios → null
 SKU único ACTIVO + INACTIVO
+
+Nombre funcionalmente único ACTIVO + INACTIVO
+
+Imágenes 0..3
+Exactamente una principal si existen
 
 CapacidadesArticulo VO inmutable
 Sin auto-fixes
-Actualización completa
+UI no obligada a exponer flags técnicos crudos
 
-Eliminación física segura fuera de EstadoArticulo
+Edición parcial en entrada
+Campo omitido != null explícito
+Propuesta preparada para Domain
+Validar antes de mutar
+Confirmación todo-o-nada
+
+Eliminación física excepcional
+Solo PROPIETARIO
+Solo INACTIVO
+Solo sin historia/referencias/dependencias
 
 Aislamiento por Negocio
-Permisos estrictos
+Autorización por permiso conceptual
 Conservación histórica
 Guardias contextuales al confirmar
+Protección frente a concurrencia/lost update
+Auditoría conceptual
 ```
 
 ---
@@ -2260,20 +2702,23 @@ Guardias contextuales al confirmar
 # 40. Fuera del MVP
 
 - variantes estructuradas;
-- múltiples imágenes;
+- más de 3 imágenes por artículo / galerías extensas;
 - código de barras;
 - importación masiva;
-- catálogo público;
-- e-commerce;
+- catálogo público completo;
+- e-commerce completo;
 - múltiples listas de precios;
-- historial avanzado de precios;
+- historial avanzado de precios dentro de M02;
 - jerarquía de Categorias;
 - unidades personalizadas;
 - atributos dinámicos;
 - combos;
 - conversión histórica automática;
 - historial/alias permanente de SKU;
-- edición libre de artículos INACTIVOS.
+- RBAC dinámico;
+- matriz final exhaustiva `Rol → Permiso` de todos los módulos;
+- estrategia definitiva de promociones y gratuidad comercial;
+- biblioteca completa de conversión de unidades.
 
 ---
 
@@ -2285,16 +2730,19 @@ UX debe:
 - ocultar opciones incompatibles;
 - evitar formularios extensos;
 - priorizar celular;
-- permitir ausencia de imagen/SKU/Categoria;
-- mostrar claramente EstadoArticulo;
-- ocultar INACTIVOS en selectores normales;
+- permitir ausencia de imágenes/SKU/Categoria;
+- permitir cargar hasta 3 imágenes;
+- permitir elegir claramente una imagen principal;
+- mostrar claramente `EstadoArticulo`;
+- ocultar INACTIVOS en selectores normales de nuevas operaciones;
 - permitir filtros administrativos por INACTIVO;
-- al reactivar, mostrar datos relevantes para revisión;
-- si ENCARGADO necesita reconfiguración, informar que requiere PROPIETARIO.
+- permitir editar un INACTIVO sin reactivarlo;
+- al solicitar reactivación, explicar qué configuración impide activarlo si falla;
+- distinguir guardar cambios de la acción explícita `Reactivar`;
+- evitar mostrar capacidades internas como flags técnicos cuando pueda expresarse la intención comercial;
+- informar conflictos de edición concurrente en lugar de sobrescribir silenciosamente.
 
 UX no reemplaza validación backend.
-
----
 
 # 42. Consideraciones para Diseño Técnico
 
@@ -2305,75 +2753,137 @@ No se congela:
 - tablas;
 - enums SQL;
 - índices;
-- almacenamiento de imágenes;
+- representación física de imágenes;
+- S3 / CDN / filesystem / proveedor multimedia;
 - endpoints;
-- DTOs;
+- DTOs concretos;
 - Pydantic;
 - SQLAlchemy;
 - IDs;
-- Repository;
+- Repository concreto;
 - Unit of Work;
 - Service Layer concreto;
 - locking;
 - isolation;
 - optimistic/pessimistic concurrency;
-- auditoría;
+- auditoría concreta;
 - Domain Events;
 - case sensitivity de SKU;
-- trim/Unicode/regex de SKU.
+- trim/Unicode/regex de SKU;
+- algoritmo exacto de equivalencia funcional de nombre;
+- mecanismo exacto de control de versión;
+- estrategia de limpieza de archivos de imagen.
 
 Debe garantizarse:
 
 ```text
 dinero decimal exacto
 cantidades fraccionarias
+tenant scoping
 unicidad contextual bajo concurrencia
 mutaciones atómicas/consistentes
 no estados parciales
+no lost update silencioso
+historia no reescrita
 ```
+
+Para edición parcial debe existir alguna representación capaz de distinguir:
+
+```text
+campo omitido
+!=
+campo enviado como null
+```
+
+La forma técnica concreta permanece abierta.
+
+`PropuestaEdicionDTO` pertenece a Application/API.
+
+`propuestaEdicionPreparada` representa la intención de edición ya interpretada y con referencias resueltas, pero:
+
+- no tiene identidad propia;
+- no requiere persistencia;
+- no debe confundirse con una entidad;
+- no debe acoplar Domain a HTTP/Pydantic.
+
+La persistencia debe actuar como defensa final frente a:
+
+- nombre duplicado;
+- SKU duplicado;
+- modificación concurrente del mismo artículo;
+- invalidación concurrente de una Categoria necesaria para la edición.
+
+El lifecycle técnico de archivos de imagen debe diseñarse evitando efectos externos irreversibles antes de una confirmación segura.
 
 ---
 
 # 43. Decisiones Deliberadamente Postergadas
 
-Quedan para módulos posteriores:
+Quedan para módulos posteriores o Arquitectura:
 
 ```text
-qué dependencias exactas bloquean quitar controla_stock
-qué dependencias exactas bloquean quitar producción
+qué dependencias exactas bloquean quitar controlaStock
+qué dependencias exactas bloquean quitar uso en producción
+qué dependencias actuales restringen ciertos cambios de UnidadMedida
 qué operaciones excepcionales pueden usar stock de un artículo INACTIVO
 cómo se resuelven ajustes/regularizaciones
+cómo se calcula el precio efectivo de Venta
+cómo funcionan promociones, 2x1, 2x3, bonificaciones y gratuidad
+qué significa comercialmente precioBase = 0 en M05
+cómo se almacenan y versionan físicamente las imágenes
+qué estrategia concreta evita lost updates
+qué permisos concretos se asignan finalmente a ENCARGADO/TRABAJADOR
 ```
 
-M02 solo congela:
+M02 sí congela:
 
 ```text
 qué capacidades existen
-qué combinaciones son válidas
-qué cambios requieren contexto externo
+qué combinaciones locales son válidas
+TipoArticulo inmutable
+edición ACTIVO/INACTIVO sin cambio implícito de estado
+reactivación explícita separada
+nombre y SKU con unicidad contextual
+imágenes 0..3 con una principal si existen
+historia no reescrita
+entrada parcial + confirmación atómica
 ```
+
+No introducir anticipadamente contratos con M03/M04/M05/M07 que todavía no hayan sido diseñados.
 
 ---
 
 # 44. Consistencia Transversal
 
-Política M02:
+La política transversal de M02 es:
+
+```text
+Rol contextual proviene de M01
++
+cada operación exige permiso conceptual
++
+tenant scoping obligatorio
+```
+
+La matriz exacta:
+
+```text
+Rol → Permiso M02
+```
+
+permanece abierta en esta etapa, salvo decisiones expresamente fijadas.
+
+Regla explícita de hard delete:
 
 ```text
 PROPIETARIO
-→ administración completa
-→ reconfiguración al reactivar
-
-ENCARGADO
-→ consulta
-→ desactivar
-→ reactivar sin cambios
-
-TRABAJADOR
-→ consulta
++
+ArticuloCatalogo INACTIVO
++
+sin historia/referencias/dependencias
 ```
 
-Configuración editable incluye:
+Configuración administrativamente editable incluye, según reglas aplicables:
 
 ```text
 nombre
@@ -2384,16 +2894,32 @@ SKU
 UnidadMedida
 Capacidades
 Categoria
-imagen
+imágenes
 ```
 
-solo en ACTIVO, salvo cambios incluidos atómicamente en reactivación autorizada por PROPIETARIO.
+Puede editarse tanto en:
+
+```text
+ACTIVO
+INACTIVO
+```
+
+pero:
+
+```text
+editar
+NO cambia EstadoArticulo
+```
+
+La reactivación permanece separada.
+
+La edición de catálogo afecta configuración futura y nunca debe utilizarse para reconstruir hechos históricos.
 
 ---
 
 # 45. Criterio Rector
 
-> **Un catálogo genérico por capacidades, protegido por reglas estrictas de consistencia y presentado mediante una experiencia sencilla para pequeños negocios.**
+> **Un catálogo genérico por capacidades, protegido por reglas estrictas de consistencia, historia y concurrencia, y presentado mediante una experiencia sencilla para pequeños negocios.**
 
 La flexibilidad nunca debe sacrificar:
 
@@ -2402,7 +2928,9 @@ La flexibilidad nunca debe sacrificar:
 - consistencia;
 - autorización;
 - significado cuantitativo;
-- unicidad contextual.
+- unicidad contextual;
+- atomicidad;
+- trazabilidad.
 
 ---
 
@@ -2410,18 +2938,20 @@ La flexibilidad nunca debe sacrificar:
 
 ## 46.1. Orden de Lectura
 
+Durante esta sincronización utilizar:
+
 ```text
 M02-Catalogo.md
 ↓
+secuencias/02-editar-articulo.puml
+↓
 01-modelo-dominio-bloque-1.md
 ↓
-03-m02-catalogo-clases.md
+03-m02-catalogo-clases.md / .puml
+   [deben sincronizarse]
 ↓
-03-m02-catalogo-clases.puml
-↓
-06-m02-estados-articulo.md
-↓
-06-m02-estados-articulo.puml
+06-m02-estados-articulo.md / .puml
+   [deben sincronizarse]
 ↓
 ADRs
 ↓
@@ -2432,6 +2962,8 @@ API
 Código
 ```
 
+Una vez resincronizados clases y estados, todos los artefactos del Bloque 1 deben volver a revisarse transversalmente antes de implementación.
+
 ---
 
 ## 46.2. Reglas Mínimas para IA
@@ -2440,28 +2972,44 @@ Una IA NO debe:
 
 - convertir UML directamente en ORM;
 - introducir jerarquías Producto/Insumo/Servicio;
-- meter stock/lotes/recetas en ArticuloCatalogo;
-- modificar TipoArticulo;
-- mutar CapacidadesArticulo;
+- meter stock/lotes/recetas en `ArticuloCatalogo`;
+- modificar `TipoArticulo`;
+- mutar parcialmente `CapacidadesArticulo`;
 - auto-corregir VO inválidos;
-- editar INACTIVO directamente;
-- usar reactivación para bypass de permisos;
+- rechazar una edición solo porque el artículo está INACTIVO;
+- activar automáticamente un INACTIVO después de editarlo;
+- fusionar edición y reactivación;
 - permitir SKU duplicado porque uno está INACTIVO;
+- permitir nombre duplicado porque uno está INACTIVO;
 - persistir `SKU=""`;
-- usar SKU como identidad;
+- usar SKU o nombre como identidad;
 - reconstruir historia usando valores actuales;
-- confiar en frontend/prechecks;
+- recalcular operaciones históricas por cambiar precio/unidad/capacidades;
+- modificar promociones porque cambió `precioBase`;
+- confiar únicamente en frontend/prechecks;
 - consultar repositories desde la entidad;
+- pasar un DTO HTTP directamente al dominio;
+- implementar edición mediante una cadena de setters públicos;
+- mutar primero y “hacer rollback manual” en la entidad después;
+- sobrescribir silenciosamente una edición concurrente;
+- exponer obligatoriamente capacidades internas como checkboxes técnicos;
+- borrar archivos externos de imagen de forma irreversible antes de una confirmación segura;
 - inventar infraestructura prematura.
 
-Una IA debe:
+Una IA debe implementar conceptualmente:
 
 ```text
-construir configuración candidata completa
-→ validar localmente
-→ obtener contexto externo desde Caso de Uso
-→ garantizar guardias al confirmar
-→ aplicar mutación o rechazar sin cambios parciales
+intención parcial
+→ Application distingue omitido/null
+→ normaliza entrada
+→ resuelve referencias
+→ pre-valida contexto/unicidades
+→ construye propuestaEdicionPreparada
+→ Domain valida TODA la propuesta
+→ si falla: no mutar
+→ si pasa: aplicar coherentemente
+→ persistencia protege concurrencia/unicidades
+→ confirmar todo-o-nada
 ```
 
 ---
@@ -2474,9 +3022,11 @@ Locales:
 Tipo + Capacidades
 precio
 costo
-uso operativo mínimo
+uso operativo mínimo si ACTIVO
 Tipo inmutable
 coherencia VO
+imágenes 0..3
+exactamente una principal si existen
 ```
 
 Contextuales:
@@ -2484,10 +3034,13 @@ Contextuales:
 ```text
 autorización
 tenant
+nombre único
 SKU único
-Categoria
-historia cuantitativa
+Categoria del mismo Negocio
+Categoria ACTIVA para nueva asociación
+cambio concurrente relevante de Categoria
 dependencias estructurales
+compatibilidad operativa de cambios de unidad
 referencias para hard delete
 ```
 
@@ -2495,9 +3048,9 @@ La entidad no consulta repositories para resolver las contextuales.
 
 ---
 
-## 46.4. TOCTOU
+## 46.4. TOCTOU y Lost Update
 
-Ejemplo:
+Ejemplo de elegibilidad:
 
 ```text
 T0 artículo ACTIVO
@@ -2516,63 +3069,123 @@ elegibilidad garantizada al confirmar
 
 El módulo consumidor debe revalidar.
 
+Ejemplo de edición:
+
+```text
+T0 Usuario A abre artículo versión lógica X
+T1 Usuario B abre artículo versión lógica X
+T2 Usuario A confirma cambios
+T3 Usuario B confirma sobre estado obsoleto
+```
+
+Regla:
+
+```text
+T3 NO puede sobrescribir silenciosamente T2
+```
+
+El mecanismo concreto:
+
+```text
+version
+timestamp
+lock
+aislamiento
+otro
+```
+
+permanece abierto.
+
 ---
 
-# 47. Estado al Cerrar la Especificación Funcional M02
+# 47. Estado Actual de la Especificación Funcional M02
 
-Con esta sincronización:
+Con esta actualización:
 
 ```text
 BLOQUE 1 — FUNDACIÓN
 
 M01 Organización
-✅ ESPECIFICACIÓN FUNCIONAL CONGELADA
+🟡 CONTENIDO FUNCIONAL ACTUALIZADO
+   pendiente de revisión transversal final del Bloque 1
 
 M02 Catálogo
-✅ ESPECIFICACIÓN FUNCIONAL CONGELADA
-✅ SINCRONIZADA CON 06-m02-estados-articulo.md
+🟡 MARKDOWN FUNCIONAL ACTUALIZADO
+✅ SINCRONIZADO CON LAS DECISIONES DE CLIENTE MÁS RECIENTES
+✅ ALINEADO CON secuencias/02-editar-articulo.puml
+⚠️ REQUIERE RESINCRONIZAR CLASES Y ESTADOS
 ```
 
-Artefactos M02:
+Estado de artefactos M02:
 
 ```text
 M02-Catalogo.md
-✅ SINCRONIZADO CON CICLO DE VIDA
+✅ ACTUALIZADO — fuente funcional vigente para la resincronización
+
+secuencias/02-editar-articulo.puml
+✅ SECUENCIA ACTUAL VÁLIDA
+
+secuencias/02-editar-articulo.png
+✅ REPRESENTACIÓN ACTUAL
+
+03-m02-catalogo-clases.md
+⚠️ DESACTUALIZADO EN REGLAS DE EDICIÓN/PERMISOS/IMÁGENES
+
+03-m02-catalogo-clases.puml
+⚠️ DESACTUALIZADO EN REGLAS DE EDICIÓN/PERMISOS/IMÁGENES
 
 06-m02-estados-articulo.md
-✅ SEMÁNTICA CERRADA
+⚠️ DESACTUALIZADO: todavía bloquea edición de INACTIVO
+   y conserva reactivación con reconfiguración
 
 06-m02-estados-articulo.puml
-✅ CONGELADO
+⚠️ DESACTUALIZADO: debe reflejar que editar ACTIVO/INACTIVO
+   no es transición de estado y que reactivar es separado
 
 06-m02-estados-articulo.png
-✅ CONGELADO
+⚠️ REGENERAR después de actualizar el .puml
 ```
 
-Pendiente inmediatamente después:
+Cambios obligatorios a propagar:
 
 ```text
-03-m02-catalogo-clases.md
+1. editar ACTIVO e INACTIVO;
+2. editar INACTIVO NO reactiva;
+3. reactivación separada, sin payload libre de edición;
+4. autorización mediante permiso conceptual, sin matriz rígida por Rol;
+5. imágenes 0..3, exactamente una principal si existen;
+6. nombre de artículo único por Negocio entre ACTIVO+INACTIVO;
+7. operación compuesta aplicarEdicion(...);
+8. validar antes de mutar;
+9. DTO de Application no cruza al Domain;
+10. entrada parcial, confirmación todo-o-nada;
+11. unidad nueva aplica hacia futuro sin reescribir historia;
+12. precio nuevo no modifica promociones ni historia;
+13. concurrencia protege nombre, SKU, artículo y Categoria relevante;
+14. hard delete: PROPIETARIO + INACTIVO + sin dependencias;
+15. auditoría conceptual de edición.
+```
+
+No volver a declarar `03-m02-catalogo-clases.*` ni `06-m02-estados-articulo.*` como “congelados” hasta completar esa sincronización y una revisión transversal final.
+
+El siguiente artefacto recomendado para actualizar es:
+
+```text
 03-m02-catalogo-clases.puml
 ```
 
-Deben incorporar las mismas precisiones:
+seguido por:
 
 ```text
-edición solo en ACTIVO
-reactivación simple vs. con reconfiguración
-ENCARGADO sin payload de edición
-CapacidadesArticulo inmutable sin auto-fix
-SKU "" → null
-activar/reactivar como misma transición semántica
+03-m02-catalogo-clases.md
+06-m02-estados-articulo.puml
+06-m02-estados-articulo.md
 ```
 
-Después de sincronizar Diagrama 3, continuar con:
+Después:
 
 ```text
-secuencias/
-├── 01-aceptar-invitacion.puml
-└── 02-editar-articulo.puml
+revisión transversal completa del Bloque 1
 ```
 
-No comenzar M03 antes de completar el incremento técnico correspondiente al Bloque 1.
+y recién entonces evaluar el avance a M03.
