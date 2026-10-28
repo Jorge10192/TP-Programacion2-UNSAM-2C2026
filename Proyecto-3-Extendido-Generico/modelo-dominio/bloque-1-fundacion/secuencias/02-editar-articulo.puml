@@ -1,0 +1,434 @@
+@startuml 02-editar-articulo
+
+title Bloque 1 — Fundación: M02 Catálogo\n<size:11>Secuencia — Editar Artículo de Catálogo — versión oficial congelada</size>
+
+' =============================================================================
+' CONFIGURACIÓN VISUAL Y PALETA INSTITUCIONAL
+' =============================================================================
+
+skinparam shadowing false
+skinparam BoxPadding 12
+hide footbox
+
+skinparam sequence {
+    ArrowColor #2D3748
+    LifeLineBorderColor #2D3748
+    LifeLineBackgroundColor #F7FAFC
+
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF3FA
+    ParticipantFontColor #1A202C
+
+    ActorBorderColor #2B6CB0
+    ActorBackgroundColor #EBF3FA
+    ActorFontColor #1A202C
+
+    GroupBorderColor #4A5568
+    GroupHeaderFontColor #1A202C
+
+    MessageAlign center
+}
+
+skinparam participant {
+    BackgroundColor<<application>> #EBF3FA
+    BorderColor<<application>> #2B6CB0
+
+    BackgroundColor<<service>> #F3E8FA
+    BorderColor<<service>> #805AD5
+
+    BackgroundColor<<repository>> #FAFAFA
+    BorderColor<<repository>> #718096
+
+    BackgroundColor<<entity>> #FFF5F5
+    BorderColor<<entity>> #E53E3E
+}
+
+skinparam note {
+    BackgroundColor #FFFDE7
+    BorderColor #E6C200
+    FontColor #1A202C
+}
+
+
+' =============================================================================
+' PARTICIPANTES Y PUERTOS DE PERSISTENCIA
+' =============================================================================
+
+actor "Usuario Autenticado" as Usuario
+
+box "Application" #F7FAFC
+    participant "EditarArticuloUseCase" as UseCase <<application>>
+    participant "AutorizacionCatalogo\n<<abstracción conceptual>>" as Auth <<service>>
+end box
+
+box "Puertos de Persistencia — abstracciones conceptuales" #FAFAFA
+    participant "ArticuloCatalogoRepository" as ArticuloRepo <<repository>>
+    participant "CategoriaRepository" as CategoriaRepo <<repository>>
+end box
+
+box "Domain — M02" #FFFDFD
+    participant "articulo : ArticuloCatalogo" as Articulo <<entity>>
+    participant "categoria : Categoria" as Categoria <<entity>>
+end box
+
+
+' =============================================================================
+' 1. ENTRADA Y PROPUESTA DE APLICACIÓN
+' =============================================================================
+
+Usuario -> UseCase : ejecutar(articuloId, propuestaEdicionDTO)
+activate UseCase
+
+note over Usuario, UseCase
+    <b>PropuestaEdicionDTO (Capa de Aplicación)</b>
+
+    Representa la intención parcial enviada por el cliente.
+    Diferencia explícitamente:
+    - campo NO enviado (mantener valor actual)
+    - campo enviado como null (quitar valor / desasociar)
+
+    Identidad y TipoArticulo NO forman parte de la propuesta.
+end note
+
+
+' =============================================================================
+' 2. CONTEXTO AUTENTICADO Y AUTORIZACIÓN
+' =============================================================================
+
+UseCase -> Auth : puedeEditarCatalogo(usuarioActual, negocioActual.identidad)
+activate Auth
+Auth --> UseCase : autorizado : Boolean
+deactivate Auth
+
+
+break [autorizado == false]
+
+    UseCase --> Usuario : <<error>> operación no autorizada
+
+    note over UseCase
+        <b>Terminación de Escenario</b>
+        Requiere permiso conceptual para editar catálogo.
+        No se congelan clases concretas ni matrices rígidas de roles.
+    end note
+
+end
+
+
+' =============================================================================
+' 3. CARGA DEL ARTÍCULO (TENANT SCOPING)
+' =============================================================================
+
+UseCase -> ArticuloRepo : buscarPorIdEnNegocio(\narticuloId,\nnegocioActual.identidad)
+activate ArticuloRepo
+ArticuloRepo --> UseCase : articulo | no encontrado
+deactivate ArticuloRepo
+
+
+break [artículo no encontrado]
+
+    UseCase --> Usuario : <<error>> artículo inexistente o no accesible en el Negocio
+
+    note over UseCase
+        La consulta queda estrictamente acotada al Negocio actual.
+        Evita manipular entidades de otros tenants.
+    end note
+
+end
+
+
+' =============================================================================
+' 4. NORMALIZACIÓN Y RESOLUCIÓN DE REFERENCIAS
+' =============================================================================
+
+UseCase -> UseCase : normalizar entrada y resolver referencias
+
+note over UseCase
+    <b>Normalización funcional</b>
+    - SKU en blanco ("" o espacios) se convierte a null.
+    - Nombre utiliza la equivalencia funcional compartida del catálogo.
+    - La estrategia técnica concreta de normalización permanece abierta.
+end note
+
+
+' -----------------------------------------------------------------------------
+' 4.1 RESOLUCIÓN DE CATEGORÍA
+' -----------------------------------------------------------------------------
+
+alt [propuesta NO modifica categoría]
+
+    UseCase -> UseCase : categoriaResultado := articulo.categoria
+
+else [propuesta solicita quitar categoría (categoria = null)]
+
+    UseCase -> UseCase : categoriaResultado := null
+
+else [propuesta asigna o cambia categoría]
+
+    UseCase -> CategoriaRepo : buscarPorIdEnNegocio(\nnuevaCategoriaId,\nnegocioActual.identidad)
+    activate CategoriaRepo
+    CategoriaRepo --> UseCase : categoria | no encontrada
+    deactivate CategoriaRepo
+
+    break [categoría no encontrada]
+
+        UseCase --> Usuario : <<error>> categoría inválida
+
+    end
+
+    UseCase -> Categoria : estaActiva()
+    activate Categoria
+    Categoria --> UseCase : activa : Boolean
+    deactivate Categoria
+
+    break [activa == false]
+
+        UseCase --> Usuario : <<error>> categoría INACTIVA no asignable
+
+    end
+
+    UseCase -> UseCase : categoriaResultado := categoria
+
+end
+
+
+' -----------------------------------------------------------------------------
+' 4.2 UNICIDAD DE NOMBRE Y SKU (TENANT WIDE)
+' -----------------------------------------------------------------------------
+
+alt [nombre cambia]
+
+    UseCase -> ArticuloRepo : existeNombreEquivalenteEnNegocio(\nnuevoNombre,\nnegocioActual.identidad,\nexcluirId = articulo.identidad)
+    activate ArticuloRepo
+    ArticuloRepo --> UseCase : existe : Boolean
+    deactivate ArticuloRepo
+
+    break [existe == true]
+
+        UseCase --> Usuario : <<error>> nombre ya utilizado en el catálogo
+
+        note over UseCase
+            Revalida contra artículos ACTIVOS e INACTIVOS.
+            Un artículo INACTIVO continúa reservando su nombre.
+        end note
+
+    end
+
+end
+
+
+alt [SKU no es null y cambia]
+
+    UseCase -> ArticuloRepo : existeSkuEnNegocio(\nnuevoSku,\nnegocioActual.identidad,\nexcluirId = articulo.identidad)
+    activate ArticuloRepo
+    ArticuloRepo --> UseCase : existe : Boolean
+    deactivate ArticuloRepo
+
+    break [existe == true]
+
+        UseCase --> Usuario : <<error>> SKU ya utilizado en el catálogo
+
+    end
+
+end
+
+
+' -----------------------------------------------------------------------------
+' 4.3 PREVALIDACIONES COMERCIALES
+' -----------------------------------------------------------------------------
+
+alt [propuesta modifica imágenes]
+
+    break [cantidad < 0 o cantidad > 3]
+
+        UseCase --> Usuario : <<error>> el artículo admite entre 0 y 3 imágenes
+
+    end
+
+    break [hay imágenes y no existe exactamente una principal]
+
+        UseCase --> Usuario : <<error>> debe definirse exactamente una imagen principal
+
+    end
+
+end
+
+
+alt [propuesta modifica precioBase]
+
+    break [nuevoPrecioBase < 0]
+
+        UseCase --> Usuario : <<error>> el precio base no puede ser negativo
+
+    end
+
+end
+
+
+' =============================================================================
+' 5. CONSTRUCCIÓN DE LA PROPUESTA DE DOMINIO
+' =============================================================================
+
+UseCase -> UseCase : construir propuestaEdicionPreparada(\nvalores actuales + cambios solicitados + referencias resueltas)
+
+note over UseCase
+    <b>Estructura de Dominio Preparada</b>
+    Application NO pasa el DTO de API al dominio.
+    Construye propuestaEdicionPreparada con valores normalizados
+    y referencias de entidad ya resueltas.
+end note
+
+
+' =============================================================================
+' 6. FRONTERA DE CONSISTENCIA ATÓMICA
+' =============================================================================
+
+group Frontera de consistencia lógica — todo-o-nada
+
+    note over UseCase, ArticuloRepo
+        <b>Límite de Consistencia Lógica</b>
+        Toda la propuesta se aplica y persiste de forma atómica.
+        Si alguna validación local o de persistencia falla, no se confirma ningún cambio.
+    end note
+
+    ' -------------------------------------------------------------------------
+    ' 6.1 VALIDACIÓN Y APLICACIÓN EN EL DOMINIO
+    ' -------------------------------------------------------------------------
+
+    UseCase -> Articulo : aplicarEdicion(propuestaEdicionPreparada)
+    activate Articulo
+
+    Articulo -> Articulo : validarPropuesta(propuestaEdicionPreparada)
+    note over Articulo
+        <b>Invariantes Locales del Dominio:</b>
+        - Coherencia interna de CapacidadesArticulo.
+        - Regla Vendible: si esVendible = true -> precioBase >= 0.
+        - Regla Imágenes: 0..3 referencias y exactamente 1 principal (si N > 0).
+        - Conservación de Operabilidad: si estado == ACTIVO -> conserva >= 1 uso operativo.
+    end note
+
+
+    break [propuesta viola invariante local de dominio]
+
+        Articulo --> UseCase : <<error>> propuesta de edición incoherente
+        deactivate Articulo
+
+        UseCase --> Usuario : <<error>> propuesta de edición rechazada por el dominio
+
+        note over UseCase
+            La entidad interrumpe el proceso SIN mutar su estado observable en memoria.
+            El escenario nominal finaliza inmediatamente.
+        end note
+
+    end
+
+
+    Articulo -> Articulo : aplicarCambios(propuestaEdicionPreparada)
+    Articulo --> UseCase : edición aplicada en memoria
+    deactivate Articulo
+
+
+    ' -------------------------------------------------------------------------
+    ' 6.2 TRATAMIENTO DE ESTADO (ACTIVO / INACTIVO)
+    ' -------------------------------------------------------------------------
+
+    note over UseCase, Articulo
+        <b>Autonomía de Estado</b>
+        Editar un artículo INACTIVO NO lo activa automáticamente.
+        El atributo estado permanece inalterado.
+        La reactivación requiere la ejecución explícita del Caso de Uso reactivarArticulo.
+    end note
+
+
+    ' -------------------------------------------------------------------------
+    ' 6.3 PERSISTENCIA Y DEFENSAS DE CONCURRENCIA
+    ' -------------------------------------------------------------------------
+
+    UseCase -> ArticuloRepo : registrarCambio(articulo)
+    activate ArticuloRepo
+    ArticuloRepo --> UseCase
+    deactivate ArticuloRepo
+
+    note over UseCase, ArticuloRepo
+        <b>Defensa de Concurrencia / TOCTOU</b>
+        Las lecturas previas no garantizan exclusión.
+        La capa de persistencia debe prevenir/detectar conflictos por:
+        - nombre duplicado de forma concurrente;
+        - SKU duplicado de forma concurrente;
+        - modificación concurrente del mismo artículo;
+        - cambio concurrente relevante en el estado de la Categoria asignada.
+
+        Si existe conflicto: la operación completa falla y ninguna modificación queda confirmada.
+    end note
+
+
+    ' -------------------------------------------------------------------------
+    ' 6.4 CONFIRMACIÓN ATÓMICA Y AUDITORÍA
+    ' -------------------------------------------------------------------------
+
+    alt [confirmación exitosa (mecanismo técnico de persistencia)]
+
+        UseCase --> Usuario : edición confirmada
+
+        note over UseCase
+            <b>Postcondición de Éxito</b>
+            - Los cambios aprobados aplican para operaciones futuras.
+            - El estado del artículo (ACTIVO/INACTIVO) no cambia.
+            - TipoArticulo e Identidad permanecen inalterados.
+            - Las operaciones e historiales transaccionales pasados permanecen inalterados.
+
+            <b>Requisito de Auditoría:</b>
+            La confirmación debe preservar contexto suficiente (usuarioActual + articulo.identidad + cambios + instante de confirmación).
+        end note
+
+    else [fallo de persistencia / conflicto de concurrencia]
+
+        UseCase --> Usuario : <<error>> edición no confirmada
+
+        note over UseCase
+            Si la confirmación falla, ninguna modificación queda confirmada.
+            El mecanismo técnico de atomicidad pertenece a Arquitectura/Persistencia.
+        end note
+
+    end
+
+end
+
+deactivate UseCase
+
+
+' =============================================================================
+' 7. CONTRATO ANTI-BUGS
+' =============================================================================
+
+note over Usuario, Categoria
+    <b>Contrato anti-bugs para implementación asistida por IA</b>
+
+1. Usuario proviene del contexto autenticado y requiere permiso conceptual de edición de catálogo.
+2. Toda consulta queda acotada al Negocio actual (tenant scoping).
+3. Identidad y TipoArticulo (BIEN/SERVICIO) son ESTRICTAMENTE INMUTABLES.
+4. Editar define la configuración futura; JAMÁS recalcular ni alterar ventas, compras, recetas o movimientos pasados.
+5. PropuestaEdicionDTO no ingresa al dominio; Application construye propuestaEdicionPreparada.
+6. La entrada puede ser parcial, pero la confirmación es ATÓMICA (todo-o-nada).
+7. Campo omitido (mantener) ≠ campo enviado como null (quitar/desasociar).
+8. Nombre es único en el Negocio; los artículos INACTIVOS también reservan su nombre.
+9. SKU es opcional; texto en blanco ("") se normaliza canónicamente a null. Si no es null, es único en el Negocio.
+10. Categoría es opcional. Si se asigna una nueva categoría, debe estar ACTIVA y pertenecer al mismo Negocio.
+11. Cambios concurrentes sobre el estado de la Categoria asignada deben ser detectados en la persistencia.
+12. Soporta entre 0 y 3 imágenes. Si existen imágenes, exactamente una debe identificarse como principal (validado en Domain).
+13. El borrado/carga física de archivos de imagen no debe ejecutar efectos irreversibles inseguros antes de confirmar.
+14. PrecioBase no puede ser negativo. Cambiar precio base NO altera promociones existentes ni historiales.
+15. La nueva unidad de medida aplica a futuro; la historia conserva la unidad y cantidad registradas originalmente.
+16. Capacidades técnicas no se exponen obligatoriamente como checkboxes al operador.
+17. No usar setters públicos individuales; aplicar la edición encapsulada tras validar propuestaEdicionPreparada.
+18. La entidad valida toda la propuesta ANTES de consolidar mutaciones observables en memoria.
+19. Editar un artículo INACTIVO está permitido pero NO lo activa automáticamente.
+20. Editar un artículo ACTIVO exige conservar al menos un uso operativo (esVendible, esComprable o puedeUsarseEnProduccion).
+21. registrarCambio() no implica commit independiente por repositorio.
+22. Persistencia debe detectar conflictos por modificaciones concurrentes (TOCTOU).
+23. Ningún camino de error puede confluir con éxito. Break representa la terminación incondicional del escenario.
+24. Requisitos de auditoría (quién, cuándo, qué artículo, qué cambió) se preservan en el instante de confirmación.
+25. Inactivación, reactivación, eliminación física, recetas y promociones pertenecen a casos de uso/módulos separados.
+26. ORM, HTTP, excepciones concretas, UnitOfWork, storage de imágenes y aislamiento permanecen abiertos para Arquitectura.
+end note
+
+@enduml
