@@ -117,7 +117,7 @@ note right of INACTIVO
     - Permite corregir/completar datos progresivamente.
     - Edición de INACTIVO -> permanece INACTIVO.
     - NO reactiva automáticamente.
-    - Valida invariantes intrínsecas (tipo, capacidades, precio si vendible).
+    - Valida todas las invariantes intrínsecas aplicables (tipo, capacidades, precio/costo, imágenes, etc.).
     - NO necesita satisfacer >= 1 uso operativo mientras permanezca INACTIVO.
     - Nombre y SKU continúan reservados en el Negocio.
     - Categoria asociada INACTIVA no bloquea reactivación si se conserva.
@@ -128,7 +128,7 @@ end note
 ' BLOQUES DE SOPORTE DEL DOMINIO (GRID BALANCEADO EN 2 COLUMNAS)
 ' =============================================================================
 
-note "<b>EditarArticulo y PropuestaEdicionPreparada:</b>\n- Editar NO es transición de EstadoArticulo (sin self-loops).\n- Opera sobre ACTIVO e INACTIVO aplicando las guardias correspondientes al estado objetivo.\n- PropuestaEdicionPreparada es parameter object conceptual aceptado por Domain.\n- NO es DTO HTTP / Pydantic model / request de API.\n- NO genera dependencia Domain -> Application.\n- Sin identidad ni ciclo de vida propio; no se persiste por sí mismo.\n- Ejecución todo-o-nada: validar todo -> aplicar todo O rechazar todo.\n- Prohibida la cadena pública de setters parciales." as NEdicion
+note "<b>EditarArticulo y PropuestaEdicionPreparada:</b>\n- Editar NO es transición de EstadoArticulo (sin self-loops).\n- Opera sobre ACTIVO e INACTIVO aplicando las guardias correspondientes al estado actual y a la configuración resultante.\n- PropuestaEdicionPreparada es parameter object conceptual aceptado por Domain.\n- NO es DTO HTTP / Pydantic model / request de API.\n- NO genera dependencia Domain -> Application.\n- Sin identidad ni ciclo de vida propio; no se persiste por sí mismo.\n- Ejecución todo-o-nada: validar todo -> aplicar todo O rechazar todo.\n- Prohibida la cadena pública de setters parciales." as NEdicion
 
 note "<b>Multi-tenant, Identificadores y Categoria:</b>\n- Nombre funcional único por Negocio (ACTIVO + INACTIVO reservan).\n- SKU opcional, único por Negocio (ausencia canónica = null; espacios -> null).\n- Desactivar NO libera nombre ni SKU.\n- Categoria opcional; nueva asociación/reasignación exige Categoria ACTIVA del mismo Negocio.\n- Categoria que pasa a INACTIVA conserva asociación sin desactivar el artículo.\n- Imágenes 0..3 (si N > 0, exactamente 1 principal)." as NCatalogo
 
@@ -138,7 +138,7 @@ note "<b>Precio, Unidad e Historia:</b>\n- esVendible = true -> precioBase != nu
 
 note "<b>Guardias, Concurrencia y TOCTOU:</b>\n- Domain valida guardias locales; Caso de Uso valida guardias contextuales.\n- Matriz Rol -> Permiso abierta (salvo hard delete = PROPIETARIO).\n- Prevalidaciones UX NO garantizan exclusión.\n- Persistencia previene lost update, duplicados concurrentes de nombre/SKU, carreras de edición/desactivación, edición/reactivación, reactivaciones concurrentes, cambios de Categoria y hard delete vs nueva referencia.\n- TOCTOU: Selección previa de artículo no garantiza elegibilidad al confirmar; consumidor revalida." as NGuardias
 
-note "<b>Operaciones Inválidas, Hard Delete y Auditoría:</b>\n- Operaciones inválidas se rechazan explícitamente (sin no-op silenciosos).\n- Hard Delete NO es EstadoArticulo ni transición; es operación administrativa excepcional.\n- Hard Delete exige: PROPIETARIO + INACTIVO + sin historia/referencias/dependencias.\n- Hard Delete confirmed libera nombre y SKU.\n- Auditoría conceptual: aplica a toda modificación relevante (quién, cuándo, qué recurso y qué cambio fue confirmado)." as NInvalidasDeleteAuditoria
+note "<b>Operaciones Inválidas, Hard Delete y Auditoría:</b>\n- Operaciones inválidas se rechazan explícitamente (sin no-op silenciosos).\n- Hard Delete NO es EstadoArticulo ni transición; es operación administrativa excepcional.\n- Hard Delete exige: PROPIETARIO + INACTIVO + sin historia/referencias/dependencias.\n- Hard Delete confirmado libera nombre y SKU.\n- Auditoría conceptual: aplica a toda modificación relevante (quién, cuándo, qué recurso y qué cambio fue confirmado)." as NInvalidasDeleteAuditoria
 
 
 ' =============================================================================
