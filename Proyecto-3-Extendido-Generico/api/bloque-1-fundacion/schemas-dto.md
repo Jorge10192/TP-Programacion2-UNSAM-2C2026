@@ -62,7 +62,7 @@ campo inesperado
 
 No se ignoran typos ni propiedades que el contrato no reconoce.
 
-## 3. Base para responses
+## 3. Base para responses y Value Objects HTTP
 
 Los DTOs de salida pueden usar:
 
@@ -71,7 +71,17 @@ class ResponseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 ~~~
 
-`from_attributes=True` permite construir responses desde objetos de lectura o DTOs de Application.
+Para shapes embebidos que se reutilizan en entrada y salida, como `CapacidadesArticuloSchema`, se utiliza una base separada:
+
+~~~python
+class ValueSchema(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        from_attributes=True,
+    )
+~~~
+
+`from_attributes=True` permite construir responses desde objetos de lectura, DTOs de Application o Value Objects de Domain.
 
 No autoriza este atajo:
 
@@ -208,15 +218,20 @@ JSON:
 Tipo conceptual:
 
 ~~~python
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Annotated
-from pydantic import BeforeValidator, Field, PlainSerializer
+from pydantic import BeforeValidator, Field, PlainSerializer, WithJsonSchema
 
 def parse_decimal_http(value):
     if isinstance(value, Decimal):
         return value
+
     if isinstance(value, str):
-        return Decimal(value)
+        try:
+            return Decimal(value)
+        except InvalidOperation as exc:
+            raise ValueError("El importe debe ser un decimal válido.") from exc
+
     raise ValueError("El importe debe enviarse como string decimal.")
 
 Money = Annotated[
@@ -227,8 +242,16 @@ Money = Annotated[
         max_digits=19,
         decimal_places=4,
     ),
+    WithJsonSchema(
+        {
+            "type": "string",
+            "pattern": r"^\d+(?:\.\d{1,4})?$",
+            "example": "2500.0000",
+        },
+        mode="validation",
+    ),
     PlainSerializer(
-        lambda value: format(value, "f"),
+        lambda value: format(value, ".4f"),
         return_type=str,
         when_used="json",
     ),
@@ -257,14 +280,14 @@ Se serializan como strings estables en mayúsculas.
 
 No crear duplicados `RolApi / RolDb / RolDomain` sin necesidad.
 
-Para subconjuntos de entrada se restringe el schema. Ejemplo:
+Para subconjuntos de entrada/salida se definen aliases de transporte que no inventan un rol nuevo:
 
-~~~text
-rol_propuesto
-→ ENCARGADO | TRABAJADOR
+~~~python
+RolInvitacion = Literal["ENCARGADO", "TRABAJADOR"]
+RolNoPropietario = Literal["ENCARGADO", "TRABAJADOR"]
 ~~~
 
-aunque `Rol` también incluya `PROPIETARIO`.
+Así OpenAPI no anuncia `PROPIETARIO` como valor válido donde el contrato lo prohíbe.
 
 ---
 
@@ -380,10 +403,10 @@ T = TypeVar("T")
 
 class PageResponse(ResponseModel, Generic[T]):
     items: list[T]
-    total: int
-    page: int
-    page_size: int
-    pages: int
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1, le=100)
+    pages: int = Field(ge=0)
 ~~~
 
 Constraints:
@@ -459,10 +482,12 @@ No aplicar trim automático al password.
 ## 20. AccessTokenResponse
 
 ~~~python
+from pydantic import PositiveInt
+
 class AccessTokenResponse(ResponseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
-    expires_in: int
+    expires_in: PositiveInt
 ~~~
 
 Regla:
@@ -501,7 +526,10 @@ password_hash
 class CrearNegocioRequest(StrictRequestModel):
     nombre: NonBlankStr
     rubro: str | None = None
-    modalidades: list[ModalidadOperativa]
+    modalidades: list[ModalidadOperativa] = Field(
+        min_length=1,
+        max_length=3,
+    )
 ~~~
 
 Reglas:
@@ -511,6 +539,8 @@ Reglas:
 sin duplicados
 rubro blank → null
 ~~~
+
+La unicidad de modalidades debe validarse explícitamente; no convertir a `set` porque el contrato JSON sigue siendo una lista.
 
 No recibe:
 
@@ -526,7 +556,10 @@ usuario_propietario_id
 
 ~~~python
 class ActualizarModalidadesRequest(StrictRequestModel):
-    modalidades: list[ModalidadOperativa]
+    modalidades: list[ModalidadOperativa] = Field(
+        min_length=1,
+        max_length=3,
+    )
     version: Version
 ~~~
 
@@ -536,6 +569,8 @@ Reglas:
 1..3
 sin duplicados
 ~~~
+
+La unicidad debe validarse explícitamente sobre la lista.
 
 Representa reemplazo completo.
 
@@ -626,7 +661,7 @@ MiembroPageResponse
 
 ~~~python
 class CambiarRolMiembroRequest(StrictRequestModel):
-    nuevo_rol: Literal["ENCARGADO", "TRABAJADOR"]
+    nuevo_rol: RolNoPropietario
     version: Version
 ~~~
 
@@ -680,7 +715,7 @@ No crea un estado global `COMPLETO / INCOMPLETO`.
 ~~~python
 class CrearInvitacionRequest(StrictRequestModel):
     email_destino: NonBlankStr
-    rol_propuesto: Literal["ENCARGADO", "TRABAJADOR"]
+    rol_propuesto: RolInvitacion
 ~~~
 
 No recibe:
@@ -705,7 +740,7 @@ Vista administrativa del Negocio:
 class InvitacionNegocioResponse(ResponseModel):
     id: UUID4
     email_destino: str
-    rol_propuesto: Rol
+    rol_propuesto: RolInvitacion
     estado: EstadoInvitacion
     fecha_emision: UtcDatetime
     fecha_expiracion: UtcDatetime
@@ -752,7 +787,7 @@ No se fuerza `HttpUrl` porque una evolución futura puede utilizar deep links.
 ~~~python
 class InvitacionPublicaResponse(ResponseModel):
     negocio_nombre: str
-    rol_propuesto: Rol
+    rol_propuesto: RolInvitacion
     email_destino_ofuscado: str
     disponible: bool
 ~~~
@@ -776,7 +811,7 @@ Vista autenticada del destinatario:
 class InvitacionUsuarioResponse(ResponseModel):
     id: UUID4
     negocio: NegocioResumenResponse
-    rol_propuesto: Rol
+    rol_propuesto: RolInvitacion
     estado: EstadoInvitacion
     fecha_emision: UtcDatetime
     fecha_expiracion: UtcDatetime
@@ -903,7 +938,7 @@ CategoriaPageResponse
 Es el shape del Value Object embebido y puede reutilizarse como estructura de entrada/salida porque no posee identidad ni campos generados.
 
 ~~~python
-class CapacidadesArticuloSchema(StrictRequestModel):
+class CapacidadesArticuloSchema(ValueSchema):
     es_comprable: bool
     es_vendible: bool
     controla_stock: bool
