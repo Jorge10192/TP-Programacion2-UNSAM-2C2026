@@ -334,6 +334,27 @@ La misma política de normalización usada por Domain/Application deberá produc
 
 No se distribuirán expresiones SQL ad hoc de normalización por distintos repositories.
 
+### Poblado de columnas normalizadas
+
+Las columnas `*_normalizado` no se calculan mediante expresiones SQL independientes ni mediante una segunda regla de Infrastructure.
+
+El flujo será:
+
+~~~text
+entrada
+→ Value Object / normalizador compartido
+→ valor funcional + valor normalizado
+→ mapper/repository
+→ modelo SQLAlchemy
+→ PostgreSQL
+~~~
+
+El mapper/repository deberá asignar explícitamente ambos valores antes de emitir `INSERT` o `UPDATE`.
+
+Los eventos ORM `before_insert` / `before_update` podrán utilizarse como validación defensiva o para reutilizar el mismo normalizador, pero **no serán la única fuente oculta de normalización**. La semántica debe seguir perteneciendo al concepto de dominio correspondiente.
+
+Un test de integración deberá comprobar que el valor visible y su clave normalizada permanecen coherentes.
+
 Si la política de normalización cambia en el futuro, deberá existir una migración que recalcule las claves normalizadas antes de cambiar constraints.
 
 ---
@@ -358,15 +379,18 @@ Representa la identidad global.
 
 ### Constraints
 
-~~~text
-PK usuario(id)
+~~~sql
+PRIMARY KEY (id)
 
-UNIQUE usuario(email_normalizado)
+UNIQUE (email_normalizado)
 
-CHECK nombre no vacío
-CHECK email no vacío
-CHECK email_normalizado no vacío
+CHECK (btrim(nombre) <> '')
+CHECK (btrim(email) <> '')
+CHECK (btrim(email_normalizado) <> '')
+CHECK (btrim(password_hash) <> '')
 ~~~
+
+No se permite persistir strings vacíos o compuestos únicamente por espacios como sustituto de un valor obligatorio.
 
 ### Password hash
 
@@ -417,9 +441,12 @@ Representa el tenant.
 
 ~~~sql
 CHECK (btrim(nombre) <> '')
+CHECK (rubro IS NULL OR btrim(rubro) <> '')
 CHECK (moneda_base IN ('ARS'))
 CHECK (version >= 1)
 ~~~
+
+Si rubro no tiene contenido funcional, Application lo normaliza a `NULL`.
 
 No existe unicidad global de nombre de Negocio.
 
@@ -463,6 +490,12 @@ PK (negocio_id, modalidad)
 REVENTA
 PRODUCCION
 SERVICIOS
+~~~
+
+### Constraint
+
+~~~sql
+CHECK (modalidad IN ('REVENTA', 'PRODUCCION', 'SERVICIOS'))
 ~~~
 
 ### Foreign key
@@ -667,6 +700,10 @@ EXPIRADA
 ### Constraints
 
 ~~~sql
+CHECK (btrim(email_destino) <> '')
+CHECK (btrim(email_destino_normalizado) <> '')
+CHECK (btrim(token_hash) <> '')
+
 CHECK (
   rol_propuesto IN ('ENCARGADO', 'TRABAJADOR')
 )
@@ -830,16 +867,13 @@ Representa una Categoria del catálogo.
 
 ### Constraints
 
-~~~text
+~~~sql
 UNIQUE (negocio_id, nombre_normalizado)
 
-CHECK estado IN:
-ACTIVA
-INACTIVA
-
-CHECK nombre no vacío
-CHECK nombre_normalizado no vacío
-CHECK version >= 1
+CHECK (estado IN ('ACTIVA', 'INACTIVA'))
+CHECK (btrim(nombre) <> '')
+CHECK (btrim(nombre_normalizado) <> '')
+CHECK (version >= 1)
 ~~~
 
 ### Foreign key
@@ -971,6 +1005,25 @@ En Domain se reconstruirá CapacidadesArticulo desde estas columnas.
 ---
 
 ## 27. Constraints básicas de ArticuloCatalogo
+
+### Textos
+
+~~~sql
+CHECK (btrim(nombre) <> '')
+CHECK (btrim(nombre_normalizado) <> '')
+CHECK (descripcion IS NULL OR btrim(descripcion) <> '')
+
+CHECK (sku IS NULL OR btrim(sku) <> '')
+CHECK (sku_normalizado IS NULL OR btrim(sku_normalizado) <> '')
+
+CHECK (
+  (sku IS NULL) = (sku_normalizado IS NULL)
+)
+~~~
+
+Application normaliza descripción vacía y SKU vacío/solo espacios a `NULL` antes de persistir.
+
+Estas restricciones actúan como defensa final ante scripts, migraciones o bugs que intenten introducir una segunda representación de ausencia.
 
 ### Tipo
 
@@ -1151,14 +1204,13 @@ sku ausente
 → sku_normalizado = NULL
 ~~~
 
-No se almacena string vacío como ausencia.
+No se almacena string vacío ni whitespace-only como ausencia.
 
-Se agrega:
+Las restricciones de texto de la Sección 27 garantizan que:
 
-~~~sql
-CHECK (
-  (sku IS NULL) = (sku_normalizado IS NULL)
-)
+~~~text
+SKU ausente -> ambos NULL
+SKU presente -> ambos no vacíos
 ~~~
 
 Para unicidad se utilizará un índice parcial:
@@ -1208,7 +1260,28 @@ Articulo A / Negocio A
 → Categoria B / Negocio B
 ~~~
 
-Cuando categoria_id = NULL, la relación opcional no se valida.
+Cuando `categoria_id = NULL`, la relación opcional no se valida.
+
+### MATCH SIMPLE obligatorio
+
+La FK compuesta utilizará el comportamiento PostgreSQL `MATCH SIMPLE` (default):
+
+~~~sql
+FOREIGN KEY (categoria_id, negocio_id)
+REFERENCES categoria (id, negocio_id)
+MATCH SIMPLE
+~~~
+
+Esto permite:
+
+~~~text
+categoria_id = NULL
+negocio_id   = valor NOT NULL
+~~~
+
+sin exigir una Categoria.
+
+No debe utilizarse `MATCH FULL` en esta relación, porque exigiría que ambas columnas fueran simultáneamente NULL o no NULL y entraría en conflicto con `negocio_id NOT NULL`.
 
 ---
 
@@ -1297,9 +1370,14 @@ UNIQUE (id, negocio_id)
 CHECK (posicion BETWEEN 1 AND 3)
 
 UNIQUE (articulo_id, posicion)
+DEFERRABLE INITIALLY DEFERRED
 ~~~
 
 Esta combinación limita físicamente la colección a un máximo de tres slots.
+
+El carácter diferible evita violaciones transitorias al intercambiar posiciones dentro de una misma transacción, por ejemplo `1 ↔ 2`. La unicidad se exige al finalizar la transacción.
+
+Si el ORM o una futura migración no utiliza esta constraint diferible, el Repository deberá efectuar el reordenamiento mediante una estrategia explícita en dos pasos con posiciones temporales seguras. No se deberá confiar en el orden accidental de los `UPDATE` emitidos por SQLAlchemy.
 
 ---
 
@@ -1343,6 +1421,36 @@ La base sí impide:
 - dos principales;
 - imágenes de otro tenant.
 
+### Cambio de imagen principal
+
+El índice parcial de principal no puede declararse diferible. Al cambiar la principal dentro de una transacción se deberá evitar depender del orden de flush del ORM.
+
+Estrategia segura:
+
+~~~text
+principal anterior -> false
+flush / UPDATE
+nueva principal    -> true
+~~~
+
+todo dentro de la misma transacción.
+
+### Concurrencia de la colección
+
+`articulo_imagen` no posee su propio `version`.
+
+Cualquier operación que:
+
+- agregue una imagen;
+- elimine una imagen;
+- cambie la principal;
+- reordene posiciones;
+- reemplace una referencia;
+
+deberá incrementar también `articulo_catalogo.version` mediante el mismo caso de uso/transacción.
+
+De esta forma dos ediciones concurrentes sobre la colección de imágenes compiten sobre la versión del Aggregate/entidad padre y no pueden sobrescribirse silenciosamente.
+
 ---
 
 ## 38. referencia_storage
@@ -1360,6 +1468,12 @@ URL pública
 ~~~
 
 Debe identificar el objeto para el adaptador de storage.
+
+Se agrega:
+
+~~~sql
+CHECK (btrim(referencia_storage) <> '')
+~~~
 
 No se almacenará el archivo binario dentro de ArticuloCatalogo.
 
@@ -1411,11 +1525,25 @@ No se agrega FK polimórfica desde entidad_id.
 
 auditoria_cambio no es una relación de dominio; es un registro histórico técnico.
 
+### Constraints de contenido
+
+~~~sql
+CHECK (btrim(entidad_tipo) <> '')
+CHECK (btrim(accion) <> '')
+CHECK (jsonb_typeof(cambios) = 'object')
+~~~
+
+`actor_usuario_id` permanece `NOT NULL` y `ON DELETE RESTRICT`.
+
+Esta decisión es intencional: Bloque 1 no define hard delete de Usuario ni de Negocio. Si en el futuro se introduce eliminación/anominización de cuentas, deberá diseñarse una política específica de retención y anonimización antes de modificar estas FK.
+
 ---
 
 ## 40. Semántica de auditoria_cambio
 
-Ejemplo conceptual:
+### Esquema canónico de cambios
+
+`cambios` utilizará un objeto JSONB donde cada clave representa un campo lógico modificado y cada valor contiene `antes` y `despues`:
 
 ~~~json
 {
@@ -1430,6 +1558,10 @@ Ejemplo conceptual:
 }
 ~~~
 
+Los valores `antes` y `despues` pueden ser escalares, `null`, objetos o arrays serializables cuando el campo lógico lo requiera.
+
+Un DTO/estructura de Infrastructure será responsable de construir este formato de manera consistente. No se permitirá que cada Repository invente un shape JSON diferente.
+
 El JSON no deberá almacenar:
 
 - passwords;
@@ -1441,11 +1573,11 @@ El JSON no deberá almacenar:
 
 ### Hard delete
 
-Las filas de auditoría no bloquean por sí solas un hard delete funcional.
+Las filas de auditoría no bloquean por sí solas el hard delete **del recurso auditado** porque `entidad_id` no posee FK polimórfica.
 
-Pueden sobrevivir a la eliminación del recurso porque entidad_id no posee FK polimórfica.
+Por ejemplo, una auditoría de ArticuloCatalogo puede sobrevivir a un hard delete válido de ese artículo.
 
-Esto permite auditar también una eliminación administrativa confirmada.
+En cambio, las FK hacia `actor_usuario_id` y `negocio_id` sí utilizan `ON DELETE RESTRICT` deliberadamente. Usuario y Negocio no poseen hard delete funcional en Bloque 1 y su identidad se conserva mientras exista historia de auditoría.
 
 ---
 
@@ -1467,6 +1599,8 @@ Política inicial:
 | articulo_imagen → articulo_catalogo | CASCADE |
 | negocio_modalidad → negocio | CASCADE |
 | auditoria_cambio → usuario/negocio | RESTRICT |
+
+En particular, `auditoria_cambio` bloquea el hard delete del actor Usuario y del Negocio mientras exista historia. Esto no contradice que `entidad_id` sea polimórfico y no bloquee el hard delete del recurso auditado.
 
 ### Principio
 
@@ -1540,7 +1674,15 @@ rows_updated = 0
 
 Application interpreta conflicto concurrente en lugar de sobrescribir silenciosamente.
 
-SQLAlchemy podrá utilizar su soporte de version_id_col.
+SQLAlchemy podrá utilizar su soporte de `version_id_col`.
+
+### Colecciones hijas
+
+El versionado del padre también forma parte del contrato de concurrencia.
+
+Modificar únicamente filas de `articulo_imagen` **no incrementa automáticamente** `articulo_catalogo.version`.
+
+Por ello el Repository/Caso de Uso deberá tocar explícitamente la entidad padre e incrementar su versión cuando cambie la colección de imágenes. El mapper no debe permitir que una edición de imágenes eluda el optimistic locking del artículo.
 
 ---
 
@@ -1715,6 +1857,7 @@ INDEX (negocio_id, categoria_id, estado)
 
 ~~~text
 UNIQUE (articulo_id, posicion)
+DEFERRABLE INITIALLY DEFERRED
 
 UNIQUE PARTIAL:
 (articulo_id)
@@ -1759,6 +1902,24 @@ ArticuloCatalogoModel
 ~~~
 
 Infrastructure realizará el mapping.
+
+### Normalizados en el mapper
+
+Los mappers/repositories son responsables de persistir junto al valor visible la clave normalizada ya obtenida mediante la misma semántica de Domain.
+
+Ejemplo:
+
+~~~text
+Email.value
+Email.normalized
+        ↓
+UsuarioModel.email
+UsuarioModel.email_normalizado
+~~~
+
+No se reimplementará `lower(trim(...))` dentro de SQLAlchemy.
+
+Los eventos ORM pueden actuar como assert/safety net para detectar inconsistencias, pero no deben ocultar una segunda regla de negocio.
 
 ---
 
@@ -1841,12 +2002,14 @@ crear/reactivar membresía
 Una transacción:
 
 ~~~text
-articulo
+articulo (incluye incremento de version)
 +
 referencias de imágenes
 +
 auditoria_cambio
 ~~~
+
+Si solo cambian imágenes, el artículo padre igualmente debe participar en el UPDATE/versionado.
 
 Los efectos externos de storage no son una transacción SQL y necesitan coordinación segura.
 
@@ -1981,6 +2144,7 @@ ALTER TABLE articulo_catalogo
 ADD CONSTRAINT fk_articulo_categoria_mismo_negocio
 FOREIGN KEY (categoria_id, negocio_id)
 REFERENCES categoria (id, negocio_id)
+MATCH SIMPLE
 ON DELETE RESTRICT;
 ~~~
 
@@ -2068,7 +2232,8 @@ CHECK (posicion BETWEEN 1 AND 3);
 
 ALTER TABLE articulo_imagen
 ADD CONSTRAINT uq_articulo_imagen_posicion
-UNIQUE (articulo_id, posicion);
+UNIQUE (articulo_id, posicion)
+DEFERRABLE INITIALLY DEFERRED;
 
 CREATE UNIQUE INDEX uq_articulo_imagen_principal
 ON articulo_imagen (articulo_id)
@@ -2192,7 +2357,15 @@ No se agregan tablas de ventas ni historial de precio artificial dentro de M02.
 29. READ COMMITTED es el aislamiento inicial.
 30. Hard delete usa RESTRICT para historia funcional y CASCADE solo para hijos estructurales.
 31. La auditoría mínima se registra en auditoria_cambio.
-32. Domain entities permanecen separadas de SQLAlchemy models.
+32. Usuario y Negocio no poseen hard delete en Bloque 1; las FK de auditoría hacia ambos permanecen RESTRICT.
+33. Todo texto funcional obligatorio rechaza vacío/whitespace; los opcionales usan NULL como ausencia cuando corresponda.
+34. La FK opcional Articulo-Categoria usa MATCH SIMPLE y no MATCH FULL.
+35. Cambiar articulo_imagen incrementa articulo_catalogo.version.
+36. UNIQUE(articulo_id, posicion) es DEFERRABLE INITIALLY DEFERRED para soportar reordenamientos atómicos.
+37. El cambio de imagen principal se realiza en dos pasos ordenados dentro de la misma transacción.
+38. Las columnas normalizadas se asignan explícitamente desde mapper/repository usando la semántica compartida de Domain.
+39. auditoria_cambio.cambios utiliza el esquema canónico campo -> {antes, despues}.
+40. Domain entities permanecen separadas de SQLAlchemy models.
 
 ---
 
@@ -2246,7 +2419,16 @@ El modelo relacional es válido si permite demostrar mediante tests de integraci
 20. una consulta tenant-scoped no devuelve recursos de otro Negocio;
 21. hard delete de Categoria falla si existen artículos asociados;
 22. futuras FK transaccionales pueden bloquear hard delete de Articulo;
-23. cambios auditables pueden asociarse con actor, recurso, instante y detalle.
+23. cambios auditables pueden asociarse con actor, recurso, instante y detalle;
+24. strings vacíos/whitespace no pueden persistirse como nombres, emails, SKU presente, rubro/descripcion presentes o referencias de storage;
+25. Articulo sin Categoria funciona correctamente mediante MATCH SIMPLE;
+26. MATCH FULL no se utiliza en la FK compuesta opcional de Categoria;
+27. reordenar imágenes dentro de una transacción no falla por una colisión temporal de posiciones;
+28. cambiar la imagen principal respeta el índice único sin depender del orden accidental de flush;
+29. modificar la colección de imágenes incrementa la version del Articulo padre;
+30. mappers persisten claves normalizadas coherentes con los valores funcionales;
+31. auditoria_cambio.cambios mantiene el esquema canónico definido;
+32. la historia de auditoría impide hard delete accidental de Usuario/Negocio mientras esa funcionalidad siga fuera de alcance.
 
 ---
 
