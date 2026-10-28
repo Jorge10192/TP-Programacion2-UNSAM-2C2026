@@ -687,7 +687,7 @@ corresponde exclusivamente a la creación inicial consistente del Negocio.
 No debe implementarse convirtiendo:
 
 ```text
-incorporarOReactivarMiembro(usuario, rolInicial)
+incorporarOReactivarMiembro(usuario, rolInicial, membresiaHistorica)
 ```
 
 en una operación general que admita:
@@ -1337,7 +1337,7 @@ desactivarMiembro(miembro)
 
 cambiarRolMiembro(miembro, nuevoRol)
 
-incorporarOReactivarMiembro(usuario, rolInicial)
+incorporarOReactivarMiembro(usuario, rolInicial, membresiaHistorica)
 ```
 
 Estas operaciones deben preservar:
@@ -1432,7 +1432,7 @@ rolInicial explícito ENCARGADO/TRABAJADOR
 Debe converger conceptualmente en:
 
 ```text
-Negocio.incorporarOReactivarMiembro(usuario, rolInicial)
+Negocio.incorporarOReactivarMiembro(usuario, rolInicial, membresiaHistorica)
 ```
 
 en lugar de implementar una segunda versión de las reglas de reincorporación.
@@ -1701,7 +1701,7 @@ rolInicial explícito.
 Incorrecto:
 
 ```text
-incorporarOReactivarMiembro(usuario, PROPIETARIO)
+incorporarOReactivarMiembro(usuario, PROPIETARIO, membresiaHistorica)
 ```
 
 para una incorporación/reactivación normal.
@@ -2222,7 +2222,7 @@ NO deben alterar la semántica ACTIVO/INACTIVO.
 El dominio admite conceptualmente la operación:
 
 ```text
-incorporarOReactivarMiembro(usuario, rolInicial)
+incorporarOReactivarMiembro(usuario, rolInicial, membresiaHistorica)
 ```
 
 con:
