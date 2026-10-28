@@ -349,7 +349,8 @@ note bottom of articulo_catalogo
   un uso operativo
 
   vendible:
-  precio_base >= 0
+  precio_base IS NOT NULL
+  AND precio_base >= 0
 end note
 
 
