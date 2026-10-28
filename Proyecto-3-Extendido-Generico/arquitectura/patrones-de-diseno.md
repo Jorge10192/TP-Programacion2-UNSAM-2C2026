@@ -1,8 +1,8 @@
 # Patrones de Diseño
 
-> **Estado:** lineamientos de diseño para la implementación del proyecto.  
+> **Estado:** versión de referencia para implementación y defensa académica.  
 > **Alcance inicial:** Bloque 1 — Fundación.  
-> **Objetivo:** documentar qué patrones y principios se aplicarán, por qué se aplicarán y, especialmente, cuáles no se introducirán sin una necesidad concreta.
+> **Objetivo:** establecer qué patrones, técnicas y principios se utilizan, qué problema resuelven y bajo qué condiciones se incorporarán.
 
 ---
 
@@ -10,79 +10,87 @@
 
 Este documento define el criterio de uso de patrones de diseño en `Proyecto-3-Extendido-Generico`.
 
-La consigna académica exige aplicar al menos un patrón de diseño con sentido y poder justificar:
+La consigna académica exige aplicar al menos un patrón de diseño con utilidad real y justificar:
 
 - dónde se utiliza;
 - qué problema resuelve;
 - por qué esa solución es adecuada;
-- qué alternativas se descartaron.
+- qué alternativa más simple o más acoplada se evita.
 
-El proyecto no utilizará patrones como decoración arquitectónica.
+La regla general del proyecto será:
 
-La regla general será:
+> **Primero se identifica un problema de diseño; después se selecciona un patrón que lo resuelva.**
 
-> **Primero se identifica un problema de diseño; luego se selecciona un patrón que lo resuelva.**
-
-No se crearán clases, interfaces o jerarquías únicamente para poder mencionar un patrón en la defensa.
+No se introducirán clases, interfaces, jerarquías o abstracciones únicamente para poder mencionar un patrón durante la presentación.
 
 ---
 
 ## 2. Principios antes que patrones
 
-Los patrones se apoyarán sobre principios de diseño ya adoptados:
+Los patrones se aplicarán sobre principios de diseño ya adoptados:
 
 - encapsulamiento;
 - responsabilidad única;
 - Open/Closed;
-- inversión de dependencias;
+- Dependency Inversion;
 - composición sobre herencia cuando corresponda;
 - separación entre reglas de negocio y detalles técnicos;
-- programar contra contratos cuando exista variabilidad real;
-- aislar aquello que cambia.
+- aislamiento de aquello que cambia;
+- dependencias explícitas;
+- testabilidad.
 
-Los patrones no sustituyen estos principios.
+Los principios no son patrones y los patrones no sustituyen un buen modelo de dominio.
 
-Un patrón bien aplicado debe mejorar al menos alguna de estas propiedades:
+Una abstracción debe aportar al menos una mejora concreta en:
 
 - claridad;
 - mantenibilidad;
 - extensibilidad;
 - testabilidad;
 - desacoplamiento;
-- reutilización;
-- capacidad de evolución.
+- capacidad de sustitución;
+- evolución del sistema.
 
 ---
 
-## 3. Clasificación utilizada
+## 3. Clasificación conceptual
 
-Se distinguirán explícitamente tres categorías para evitar confusiones en documentación y defensa.
+Para evitar errores durante la implementación y la defensa, se distinguen cuatro categorías.
 
 ### 3.1 Patrones GoF
 
-Patrones clásicos de diseño orientado a objetos, clasificados en:
+Patrones clásicos de diseño orientado a objetos.
 
-```text
-Creacionales
-Estructurales
-De comportamiento
-```
-
-Ejemplos relevantes para el proyecto:
+#### Creacionales
 
 ```text
 Factory Method
-Decorator
-Observer
-Strategy
-Adapter
+Abstract Factory
 ```
 
-### 3.2 Patrones arquitectónicos / de aplicación
+#### Estructurales
 
-No pertenecen necesariamente al catálogo GoF, pero resuelven problemas estructurales de software.
+```text
+Adapter
+Decorator
+Facade
+```
 
-Ejemplos:
+#### De comportamiento
+
+```text
+Strategy
+Observer
+State
+Template Method
+Command
+```
+
+> **Nota:** “Factory” por sí solo es un término amplio. Cuando se afirme que se utiliza un patrón GoF deberá indicarse concretamente `Factory Method` o `Abstract Factory`. Una `Simple Factory` puede ser una técnica válida, pero no forma parte de los 23 patrones GoF.
+
+### 3.2 Patrones arquitectónicos / de persistencia
+
+No pertenecen necesariamente al catálogo GoF.
 
 ```text
 Repository
@@ -91,49 +99,67 @@ Unit of Work
 Dependency Injection
 ```
 
-### 3.3 Principios de diseño
+### 3.3 Patrones tácticos de DDD
+
+Conceptos utilizados para modelar el dominio.
+
+```text
+Entity
+Value Object
+Domain Service
+Repository
+```
+
+`Repository` puede discutirse tanto desde DDD como desde persistencia/arquitectura según el contexto. En este proyecto se documentará principalmente como frontera entre Application y persistencia.
+
+### 3.4 Principios de diseño
 
 No son patrones.
 
-Ejemplos:
-
 ```text
 SOLID
-Open/Closed
-Dependency Inversion
-Single Responsibility
+Single Responsibility Principle
+Open/Closed Principle
+Dependency Inversion Principle
+composición sobre herencia
+encapsulamiento
 ```
 
-La documentación y la presentación deberán distinguir estas categorías correctamente.
+La documentación final deberá mantener estas categorías diferenciadas.
 
 ---
 
-## 4. Patrón principal previsto: Adapter
+## 4. Patrón principal futuro para integraciones: Adapter
 
 ### 4.1 Problema
 
-El sistema deberá integrar proveedores externos, especialmente pagos.
+El sistema deberá integrar proveedores externos.
 
-Ejemplos futuros:
+El caso más evidente será pagos:
 
 ```text
 Mercado Pago
-otro proveedor de pagos
-almacenamiento de archivos
-notificaciones
+otra pasarela futura
 ```
 
-El dominio y los casos de uso no deberían depender directamente de:
+También podrían existir integraciones para:
+
+- almacenamiento de archivos;
+- notificaciones;
+- canales externos;
+- servicios de terceros.
+
+Domain y Application no deberían depender directamente de:
 
 - SDKs;
-- endpoints externos;
-- formatos de respuesta de terceros;
-- excepciones propias del proveedor;
-- detalles de autenticación de una API externa.
+- endpoints HTTP de terceros;
+- DTOs externos;
+- códigos de error del proveedor;
+- mecanismos particulares de autenticación externa.
 
 ### 4.2 Solución
 
-Se utilizará Adapter cuando exista una integración concreta.
+Cuando exista la integración real se utilizará Adapter.
 
 Conceptualmente:
 
@@ -145,21 +171,20 @@ PasarelaPago
 MercadoPagoAdapter
 ```
 
-Application trabajará contra una abstracción interna.
+Application conoce un contrato interno.
 
-Infrastructure contendrá la implementación específica del proveedor.
+Infrastructure adapta el proveedor externo a ese contrato.
 
 ### 4.3 Beneficios
 
 - desacopla proveedor y negocio;
-- permite sustituir proveedor;
+- permite sustituir implementaciones;
 - facilita testing;
-- evita propagar DTOs externos;
-- encapsula traducción de errores;
-- permite mocks/fakes;
+- encapsula traducción de datos;
+- encapsula errores externos;
 - reduce impacto ante cambios de API.
 
-### 4.4 Ejemplo de testing
+### 4.4 Testing
 
 ```text
 PasarelaPago
@@ -167,25 +192,27 @@ PasarelaPago
 FakePasarelaPago
 ```
 
-El caso de uso podrá probarse sin realizar pagos reales.
+permite probar casos de uso sin red ni dinero real.
 
-### 4.5 Regla importante
+### 4.5 Decisión temporal
 
-No se creará `PasarelaPago` durante Bloque 1 únicamente como preparación futura.
+No se creará todavía `PasarelaPago` durante el Bloque 1.
 
-El contrato se incorporará cuando aparezca el primer caso de uso que necesite pagos.
+El contrato se incorporará cuando exista el primer caso de uso real de pagos.
 
 ---
 
 ## 5. Repository
 
-### 5.1 Categoría
+### 5.1 Clasificación
 
-Repository se documentará como patrón de persistencia/arquitectura, no como patrón GoF.
+Repository no es un patrón GoF.
+
+Se utilizará como patrón de persistencia y como frontera arquitectónica entre Application e Infrastructure.
 
 ### 5.2 Problema
 
-Application necesita recuperar y persistir entidades sin quedar acoplada a:
+Application necesita recuperar y persistir objetos sin quedar acoplada a:
 
 ```text
 SQLAlchemy
@@ -196,9 +223,7 @@ queries SQL
 
 ### 5.3 Solución
 
-Application utilizará contratos orientados a las necesidades reales de los casos de uso.
-
-Ejemplo:
+Application dependerá de contratos orientados a los casos de uso.
 
 ```text
 Application
@@ -208,11 +233,9 @@ ArticuloCatalogoRepository
 SqlAlchemyArticuloCatalogoRepository
 ```
 
-### 5.4 Criterio de diseño
+### 5.4 Contratos con intención
 
-Los repositorios no serán CRUD genéricos por defecto.
-
-Evitar:
+Se evitará un repositorio genérico inflado:
 
 ```text
 GenericRepository<T>
@@ -224,9 +247,9 @@ GenericRepository<T>
 └── filter()
 ```
 
-si esa abstracción no expresa el lenguaje del sistema.
+cuando no exprese necesidades reales.
 
-Preferir operaciones con intención:
+Se preferirán operaciones como:
 
 ```text
 buscar_por_id_en_negocio(...)
@@ -235,233 +258,152 @@ existe_nombre_equivalente_en_negocio(...)
 existe_sku_equivalente_en_negocio(...)
 ```
 
-### 5.5 Beneficios
+### 5.5 Multi-tenancy
 
-- persistencia reemplazable;
-- casos de uso testeables mediante fakes;
-- queries centralizadas;
+Cuando el contexto tenant sea obligatorio, la propia operación deberá expresarlo.
+
+Preferir:
+
+```text
+buscar_por_id_en_negocio(articulo_id, negocio_id)
+```
+
+sobre:
+
+```text
+buscar_por_id(articulo_id)
+```
+
+seguido de autorización tardía.
+
+### 5.6 Beneficios
+
 - menor acoplamiento;
-- aislamiento multi-tenant más fácil de reforzar.
+- casos de uso testeables con fakes;
+- consultas centralizadas;
+- scoping multi-tenant explícito;
+- persistencia reemplazable.
 
 ---
 
-## 6. Strategy
+## 6. Ports mediante typing.Protocol
 
-### 6.1 Cuándo aplicar
-
-Strategy será considerada cuando aparezcan algoritmos intercambiables que implementen la misma responsabilidad.
-
-Ejemplos posibles en módulos futuros:
-
-- política de selección de lotes;
-- política de promociones;
-- cálculo de costos;
-- reglas de asignación;
-- estrategia de conciliación;
-- estrategia de pago si existe variabilidad real.
-
-### 6.2 Cuándo no aplicar
-
-No se creará una Strategy para reemplazar un simple `if` que:
-
-- tiene pocas variantes;
-- no cambia;
-- es una invariante del dominio;
-- resulta más clara directamente en la entidad.
-
-Ejemplo:
-
-```text
-SERVICIO no controla stock
-```
-
-es una regla de dominio, no una Strategy.
-
-### 6.3 Señal de incorporación
-
-Strategy aparece cuando:
-
-```text
-misma responsabilidad
-+
-múltiples algoritmos sustituibles
-+
-variación esperable
-```
-
----
-
-## 7. Factory Method / Factory
-
-### 7.1 Problema que puede resolver
-
-La creación de algunos objetos puede requerir decidir una implementación concreta sin exponer esa decisión al consumidor.
-
-Ejemplos futuros:
-
-```text
-crear adaptador de pago según proveedor configurado
-crear estrategia según política seleccionada
-crear integración según canal
-```
-
-### 7.2 Regla
-
-No se utilizará una Factory para cada constructor.
-
-Un constructor simple:
+Para los ports consumidos por Application se utilizará preferentemente:
 
 ```python
-Email(...)
+typing.Protocol
 ```
 
-no necesita Factory.
+### 6.1 Motivo
 
-### 7.3 Uso probable
+Python permite subtipado estructural.
 
-Si el sistema soporta en el futuro múltiples pasarelas:
-
-```text
-PaymentProviderFactory
-    ├── MercadoPagoAdapter
-    └── OtroProveedorAdapter
-```
-
-podría ser justificable.
-
-La necesidad se evaluará cuando exista más de una implementación real o una construcción suficientemente compleja.
-
----
-
-## 8. Observer
-
-### 8.1 Problema que puede resolver
-
-Un evento puede necesitar disparar múltiples reacciones independientes.
-
-Ejemplo futuro:
-
-```text
-PagoConfirmado
-├── actualizar estado del pedido
-├── registrar movimiento de caja
-├── emitir notificación
-└── registrar auditoría
-```
-
-Observer puede desacoplar el emisor de los receptores.
-
-### 8.2 Riesgo
-
-Observer puede introducir:
-
-- flujo implícito;
-- debugging difícil;
-- orden de ejecución poco claro;
-- efectos secundarios escondidos.
-
-Por eso no se adoptará preventivamente.
-
-### 8.3 Bloque 1
-
-No existe por ahora una necesidad suficientemente fuerte para introducir Observer en M01/M02.
-
-Los flujos críticos deberán permanecer explícitos.
-
----
-
-## 9. Decorator
-
-### 9.1 Problema que resuelve
-
-Decorator permite agregar comportamiento adicional a un objeto sin modificar su clase base y sin crear una explosión de subclases.
-
-### 9.2 Posibles aplicaciones futuras
-
-Podría evaluarse para responsabilidades realmente componibles, por ejemplo:
-
-```text
-ServicioBase
-    ↓
-LoggingDecorator
-    ↓
-RetryDecorator
-    ↓
-MetricsDecorator
-```
-
-en integraciones técnicas.
-
-### 9.3 No aplicarlo al catálogo solo por similitud conceptual
-
-El modelo:
-
-```text
-ArticuloCatalogo
-+
-CapacidadesArticulo
-```
-
-utiliza composición, pero no significa que sea una implementación del patrón Decorator.
-
-Las capacidades representan configuración de negocio.
-
-No envuelven dinámicamente un objeto para añadir comportamiento siguiendo la interfaz del componente decorado.
-
-Por lo tanto, en la defensa no se deberá llamar "Decorator" a `CapacidadesArticulo`.
-
----
-
-## 10. Dependency Injection
-
-### 10.1 Categoría
-
-Se trata como técnica/patrón arquitectónico de composición de dependencias.
-
-### 10.2 Aplicación
-
-Los casos de uso recibirán sus colaboradores desde afuera.
+Una clase concreta puede satisfacer un `Protocol` por su forma y comportamiento sin heredar explícitamente de él.
 
 Ejemplo conceptual:
 
 ```python
+from typing import Protocol
+
+class ArticuloRepository(Protocol):
+    def buscar_por_id_en_negocio(self, articulo_id, negocio_id):
+        ...
+```
+
+Una implementación de Infrastructure:
+
+```python
+class SqlAlchemyArticuloRepository:
+    ...
+```
+
+puede satisfacer ese contrato sin heredar de `ArticuloRepository`.
+
+Lo mismo ocurre con un fake de tests.
+
+### 6.2 Beneficios
+
+- menor acoplamiento por herencia;
+- contratos explícitos;
+- buen soporte de type checkers;
+- fakes simples;
+- estilo idiomático de Python.
+
+### 6.3 runtime_checkable
+
+No se utilizará `@runtime_checkable` por defecto.
+
+Los `Protocol` se utilizarán principalmente para chequeo estático.
+
+Solo se habilitarán comprobaciones con `isinstance()` si aparece una necesidad concreta.
+
+---
+
+## 7. Dependency Injection
+
+### 7.1 Application: inyección Python normal
+
+Los casos de uso recibirán sus colaboradores mediante constructor.
+
+Ejemplo:
+
+```python
 class EditarArticuloUseCase:
-    def __init__(self, articulos, categorias):
+    def __init__(
+        self,
+        articulos: ArticuloRepository,
+        categorias: CategoriaRepository,
+    ) -> None:
         self._articulos = articulos
         self._categorias = categorias
 ```
 
-El caso de uso no construye:
+El caso de uso no construye directamente implementaciones concretas.
+
+Incorrecto:
 
 ```python
-SqlAlchemyArticuloCatalogoRepository(...)
+class EditarArticuloUseCase:
+    def __init__(self):
+        self._articulos = SqlAlchemyArticuloRepository(...)
 ```
 
-por sí mismo.
+### 7.2 API: FastAPI Depends
 
-### 10.3 Composition Root
+`fastapi.Depends()` se utilizará únicamente en la frontera HTTP para resolver dependencias.
 
-La composición concreta se realizará cerca de la frontera:
+Conceptualmente:
 
 ```text
-FastAPI dependencies
-+
+FastAPI router
+      ↓ Depends()
+Composition Root
+      ↓
+EditarArticuloUseCase
+      ↓
+ports
+```
+
+Application no importa FastAPI ni conoce `Depends()`.
+
+### 7.3 Composition Root
+
+La construcción de dependencias concretas se concentrará cerca de:
+
+```text
+api/dependencies/
 main.py
 ```
 
-No se incorporará inicialmente un container de DI externo.
+No se utilizará inicialmente un container de DI externo.
 
 ---
 
-## 11. Unit of Work
+## 8. Unit of Work
 
-### 11.1 Estado
+### 8.1 Problema
 
-Patrón candidato, **no congelado**.
-
-### 11.2 Problema
-
-Algunos casos de uso modifican múltiples objetos dentro de una única unidad atómica.
+Algunos casos de uso necesitan persistir múltiples cambios como una única operación atómica.
 
 Ejemplo:
 
@@ -471,50 +413,204 @@ AceptarInvitacion
 └── crear/reactivar UsuarioNegocio
 ```
 
-### 11.3 Alternativas
-
-Se evaluarán:
+El resultado correcto es:
 
 ```text
-A. Session SQLAlchemy coordinada desde Application/Infrastructure
-B. UnitOfWork explícito
+todo confirmado
+o
+nada confirmado
 ```
 
-La decisión se tomará cuando se diseñen transacciones reales.
+### 8.2 SQLAlchemy Session
 
-No se agregará una abstracción Unit of Work únicamente por seguir una plantilla de Clean Architecture.
+SQLAlchemy `Session` ya implementa comportamiento asociado al patrón Unit of Work:
+
+- mantiene cambios pendientes;
+- realiza `flush`;
+- participa en una transacción;
+- permite `commit`;
+- permite `rollback`.
+
+Por lo tanto, no se creará automáticamente:
+
+```text
+CustomUnitOfWork
+```
+
+solo por seguir una plantilla arquitectónica.
+
+### 8.3 Límite arquitectónico
+
+Aunque `Session` provea ese comportamiento, continúa siendo una dependencia de Infrastructure.
+
+Application no deberá importar:
+
+```python
+from sqlalchemy.orm import Session
+```
+
+El límite transaccional podrá resolverse mediante:
+
+```text
+A. coordinación de Session desde Infrastructure / Composition Root
+
+o, si aporta valor,
+
+B. un port UnitOfWork consumido por Application
+```
+
+La elección se tomará cuando implementemos los primeros casos de uso transaccionales.
+
+### 8.4 Regla
+
+La abstracción explícita de Unit of Work solo se agregará si:
+
+- reduce acoplamiento;
+- hace visible un límite transaccional importante;
+- simplifica tests;
+- evita repetir coordinación transaccional.
 
 ---
 
-## 12. Domain Services
+## 9. Strategy
 
-Domain Service no será utilizado como contenedor genérico de lógica.
-
-Solo se introducirá cuando exista una operación de dominio que:
-
-- no pertenezca naturalmente a una entidad;
-- involucre varios conceptos de dominio;
-- siga siendo independiente de infraestructura.
-
-Evitar:
+Strategy se considerará cuando exista:
 
 ```text
-NegocioService
-CatalogoService
-UsuarioService
+misma responsabilidad
++
+múltiples algoritmos intercambiables
++
+variación esperable
 ```
 
-como clases que acumulen operaciones sin cohesión.
+Ejemplos futuros:
 
-Primero se intentará colocar el comportamiento en las entidades correspondientes.
+- selección de lotes;
+- política de promociones;
+- cálculo de costos;
+- estrategias de conciliación;
+- políticas de asignación.
+
+No se utilizará Strategy para disfrazar una invariante sencilla.
+
+Ejemplo:
+
+```text
+SERVICIO no controla stock
+```
+
+es una regla de dominio, no una Strategy.
 
 ---
 
-## 13. Value Object
+## 10. Factory Method / Abstract Factory
 
-Aunque Value Object suele considerarse patrón/modelo táctico de DDD más que GoF, es relevante en el diseño.
+Se evaluarán cuando la creación de objetos o familias de objetos tenga variabilidad real.
 
-Ejemplo actual:
+Ejemplos futuros:
+
+- seleccionar una pasarela según configuración;
+- construir integraciones por proveedor;
+- crear estrategias relacionadas.
+
+No se utilizará Factory para reemplazar constructores simples.
+
+```python
+Email(...)
+```
+
+no necesita una Factory.
+
+Si solo se utiliza una función o clase auxiliar de construcción, se documentará como `Simple Factory` y no como patrón GoF.
+
+---
+
+## 11. Observer
+
+Observer podrá ser útil si un evento debe notificar múltiples consumidores independientes.
+
+Ejemplo futuro:
+
+```text
+PagoConfirmado
+├── actualizar pedido
+├── registrar movimiento de caja
+├── notificar
+└── auditar
+```
+
+### Riesgos
+
+- flujo implícito;
+- efectos secundarios ocultos;
+- orden de ejecución difícil de visualizar;
+- debugging más complejo.
+
+### Bloque 1
+
+No existe actualmente una necesidad suficiente para introducir Observer.
+
+Los flujos de M01/M02 permanecerán explícitos.
+
+---
+
+## 12. Decorator
+
+Decorator permite agregar responsabilidades dinámicamente manteniendo la misma interfaz del componente decorado.
+
+Podría tener sentido en infraestructura técnica:
+
+```text
+ServicioExterno
+    ↓
+RetryDecorator
+    ↓
+LoggingDecorator
+```
+
+si la necesidad aparece.
+
+### CapacidadesArticulo NO es Decorator
+
+```text
+ArticuloCatalogo
++
+CapacidadesArticulo
+```
+
+utiliza composición.
+
+`CapacidadesArticulo` es un Value Object de configuración y no un wrapper dinámico que implemente la misma interfaz del objeto decorado.
+
+Durante la defensa no se deberá clasificar este diseño como Decorator.
+
+---
+
+## 13. Entity y Value Object
+
+Son conceptos tácticos de DDD, no patrones GoF.
+
+### Entity
+
+Posee identidad estable a lo largo de su ciclo de vida.
+
+Ejemplos:
+
+```text
+Usuario
+Negocio
+UsuarioNegocio
+InvitacionNegocio
+Categoria
+ArticuloCatalogo
+```
+
+### Value Object
+
+Se define por su valor y no por identidad propia.
+
+Ejemplos:
 
 ```text
 Email
@@ -524,25 +620,41 @@ CapacidadesArticulo
 Características buscadas:
 
 - igualdad por valor;
-- ausencia de identidad propia;
-- invariantes protegidas;
-- preferencia por inmutabilidad cuando corresponda.
-
-Ejemplo:
-
-```text
-Email(" Test@Example.com ")
-```
-
-debe permitir centralizar las reglas de normalización/equivalencia definidas para el dominio.
+- invariantes propias;
+- ausencia de identidad;
+- preferencia por inmutabilidad cuando resulte natural.
 
 ---
 
-## 14. Composición sobre herencia
+## 14. Domain Service
 
-El sistema favorecerá composición cuando las características puedan combinarse de forma independiente.
+Domain Service es un patrón táctico de DDD.
 
-Ejemplo correcto:
+Solo se introducirá cuando exista comportamiento de dominio que:
+
+- no pertenezca naturalmente a una entidad o Value Object;
+- involucre varios conceptos del dominio;
+- siga siendo independiente de infraestructura.
+
+No se utilizará como contenedor genérico.
+
+Evitar:
+
+```text
+NegocioService
+CatalogoService
+UsuarioService
+```
+
+si solo concentran métodos sin una responsabilidad coherente.
+
+---
+
+## 15. Composición sobre herencia
+
+La composición será preferida cuando las características puedan combinarse independientemente.
+
+Ejemplo actual:
 
 ```text
 ArticuloCatalogo
@@ -556,7 +668,7 @@ ArticuloCatalogo
         └── permiteDescuento
 ```
 
-Evita una jerarquía del tipo:
+Esto evita una jerarquía combinatoria:
 
 ```text
 Articulo
@@ -568,69 +680,99 @@ Articulo
 └── ...
 ```
 
-Esto reduce explosión combinatoria y rigidez.
+Composición sobre herencia es un principio de diseño, no una aplicación automática de Decorator.
 
 ---
 
-## 15. Template Method
+## 16. State
 
-No se prevé utilizar Template Method inicialmente.
+El dominio contiene estados:
 
-La herencia de algoritmos base no aparece como necesidad clara en Bloque 1.
+```text
+InvitacionNegocio
+UsuarioNegocio
+ArticuloCatalogo
+```
 
-Si más adelante surge un proceso con:
+Esto no implica utilizar el patrón GoF State.
 
-- secuencia estable;
+Actualmente:
+
+- hay pocos estados;
+- las transiciones son claras;
+- las reglas son manejables dentro de las entidades.
+
+Por eso se utilizarán enums y métodos de dominio.
+
+Crear:
+
+```text
+PendingInvitationState
+AcceptedInvitationState
+RejectedInvitationState
+...
+```
+
+agregaría complejidad sin beneficio suficiente.
+
+State podrá reevaluarse si el comportamiento específico por estado crece significativamente.
+
+---
+
+## 17. Template Method
+
+No se prevé su uso en Bloque 1.
+
+Solo se evaluará si aparece:
+
+- una secuencia estable;
 - pasos variables;
-- polimorfismo por herencia realmente útil;
+- una relación por herencia que aporte valor real.
 
-se podrá evaluar.
-
-No se adoptará antes de ese punto.
+No se introducirá preventivamente.
 
 ---
 
-## 16. Command
+## 18. Command
 
-Los DTOs de Application podrán llamarse `*Command` cuando representen una intención de modificación.
-
-Ejemplo:
+Application puede utilizar nombres como:
 
 ```text
 EditarArticuloCommand
+CrearNegocioCommand
 ```
 
-Esto no implica necesariamente implementar el patrón GoF Command.
+para DTOs que expresen intención.
 
-Para afirmar que se aplica Command deberían existir elementos como:
+Eso no significa implementar automáticamente el patrón GoF Command.
 
-- encapsulación explícita de una petición como objeto ejecutable;
+Para afirmar que existe Command deberían aparecer necesidades como:
+
+- una petición encapsulada como objeto ejecutable;
 - invocadores desacoplados;
 - colas;
+- almacenamiento/reintento;
 - undo/redo;
-- almacenamiento/reintento de comandos;
 
-u otra razón real.
+u otra motivación concreta.
 
-La nomenclatura `Command` por sí sola no demuestra el patrón.
-
----
-
-## 17. Facade
-
-FastAPI routers no serán denominados Facade automáticamente.
-
-Una fachada existe si proporciona una interfaz simplificada sobre un subsistema complejo.
-
-Si aparece una integración o subsistema con múltiples componentes y una interfaz interna deliberadamente simplificada, Facade podrá evaluarse.
-
-No existe necesidad actual.
+El nombre `Command` por sí solo no demuestra el patrón.
 
 ---
 
-## 18. Singleton
+## 19. Facade
 
-No se utilizará Singleton como patrón de acceso global para:
+Un router FastAPI no es automáticamente una Facade.
+
+Facade solo se utilizará si existe un subsistema complejo al que deliberadamente se ofrece una interfaz simplificada.
+
+No hay una necesidad actual en Bloque 1.
+
+---
+
+## 20. Singleton
+
+No se utilizará Singleton como acceso global para:
 
 ```text
 Session
@@ -646,33 +788,31 @@ El estado global dificulta:
 - concurrencia;
 - configuración por entorno.
 
-La vida de los objetos se resolverá mediante composición y dependencias explícitas.
+Se utilizarán dependencias explícitas y ciclos de vida controlados.
 
 ---
 
-## 19. Service Locator
+## 21. Service Locator
 
 No se utilizará un Service Locator global.
 
-Ejemplo a evitar:
+Evitar:
 
 ```python
 Services.get("articulo_repository")
 ```
 
-desde cualquier parte del sistema.
+Oculta dependencias y dificulta testing y análisis estático.
 
-Oculta dependencias y dificulta tests.
-
-Se preferirá inyección explícita.
+La inyección será explícita.
 
 ---
 
-## 20. Active Record
+## 22. Active Record
 
-No se utilizará Active Record como modelo del dominio.
+Las entidades de dominio no utilizarán Active Record.
 
-Ejemplo a evitar:
+Evitar:
 
 ```python
 articulo.save()
@@ -680,100 +820,35 @@ articulo.delete()
 ArticuloCatalogo.query(...)
 ```
 
-si esas operaciones mezclan entidad de dominio y persistencia.
+cuando estas operaciones mezclen dominio y persistencia.
 
-La persistencia será responsabilidad de repositorios/Infrastructure.
-
----
-
-## 21. Patrón State
-
-M01 y M02 contienen estados:
-
-```text
-InvitacionNegocio
-UsuarioNegocio
-ArticuloCatalogo
-```
-
-Sin embargo, no se implementará automáticamente el patrón GoF State.
-
-Actualmente los estados tienen:
-
-- pocos valores;
-- transiciones claras;
-- reglas manejables dentro de las entidades.
-
-Usar clases como:
-
-```text
-PendingInvitationState
-AcceptedInvitationState
-RejectedInvitationState
-...
-```
-
-agregaría complejidad sin beneficio suficiente.
-
-Los enums y métodos de dominio son preferibles por ahora.
-
-Si el comportamiento por estado crece sustancialmente, podrá reevaluarse.
+La persistencia se realizará mediante Repository/Infrastructure.
 
 ---
 
-## 22. Pattern matching y enums no son patrones
+## 23. Errores e integraciones
 
-El uso de:
+Los Adapter deberán traducir errores específicos del proveedor a errores internos significativos.
 
-```python
-match estado:
-    ...
-```
-
-o enums no significa automáticamente aplicar Strategy o State.
-
-La documentación deberá justificar patrones por estructura y responsabilidad, no por sintaxis superficial.
-
----
-
-## 23. Patrones en Bloque 1
-
-Para la primera implementación, los patrones/técnicas con aplicación más probable son:
-
-### Aplicación efectiva
+Ejemplo futuro:
 
 ```text
-Repository
-Dependency Injection
-Value Object
-composición
+MercadoPagoTimeout
+        ↓
+MercadoPagoAdapter
+        ↓
+PagoTemporalmenteNoDisponible
 ```
 
-### Posibles según implementación
+Application no debe quedar acoplada a excepciones privadas de un SDK externo.
 
-```text
-Unit of Work
-```
-
-### Diferidos a módulos futuros
-
-```text
-Adapter
-Strategy
-Factory
-Observer
-Decorator
-```
-
-Esto es deliberado.
-
-Bloque 1 no debe llenarse de patrones cuya necesidad pertenece a pagos, inventario u otras extensiones.
+Repository aplicará el mismo criterio cuando resulte necesario para no filtrar detalles irrelevantes de SQLAlchemy.
 
 ---
 
 ## 24. Patrones y tests
 
-Los patrones elegidos deberán mejorar el testing.
+Una abstracción debe facilitar tests cuando ese sea uno de sus objetivos.
 
 Ejemplo:
 
@@ -785,9 +860,7 @@ InvitacionRepository
 FakeInvitacionRepository
 ```
 
-permite probar Application sin PostgreSQL.
-
-Otro ejemplo futuro:
+y, en un bloque posterior:
 
 ```text
 ProcesarPagoUseCase
@@ -797,119 +870,49 @@ PasarelaPago
 FakePasarelaPago
 ```
 
-permite probar pagos sin red ni dinero real.
-
-Si una abstracción no mejora claridad, testabilidad o capacidad de sustitución, se deberá cuestionar su necesidad.
+Los fakes deberán satisfacer los mismos `Protocol` de Application sin necesitar herencia explícita.
 
 ---
 
-## 25. Patrones y multi-tenancy
+## 25. Evitar abstracciones prematuras
 
-Repository debe colaborar con el aislamiento multi-tenant.
+Regla:
 
-Preferir:
-
-```text
-buscar_por_id_en_negocio(articulo_id, negocio_id)
-```
-
-sobre:
-
-```text
-buscar_por_id(articulo_id)
-```
-
-cuando el contexto de negocio es obligatorio.
-
-El patrón no debe ocultar las reglas de seguridad.
-
----
-
-## 26. Patrones y errores
-
-Los adaptadores externos deberán traducir errores del proveedor a errores internos significativos.
-
-Ejemplo futuro:
-
-```text
-MercadoPagoTimeout
-        ↓ Adapter
-PagoTemporalmenteNoDisponible
-```
-
-Application no debería quedar acoplada a excepciones propias del SDK.
-
-Del mismo modo, Repository deberá evitar propagar detalles irrelevantes de SQLAlchemy cuando exista una traducción interna más adecuada.
-
----
-
-## 27. Evitar abstracciones prematuras
-
-Se aplicará la regla:
-
-```text
-No crear una abstracción
-hasta tener una variación o dependencia real
-que necesite ser aislada.
-```
+> **No crear una abstracción hasta que exista una dependencia, variación o responsabilidad real que necesite ser aislada.**
 
 Ejemplos:
 
-- no Factory para una única clase trivial;
-- no Strategy para una sola implementación;
+- no Factory para una construcción trivial;
+- no Strategy para una única variante;
 - no Observer sin múltiples consumidores;
-- no Adapter sin integración externa;
-- no UnitOfWork abstracto si la sesión simple resuelve el problema correctamente.
+- no Adapter sin proveedor externo;
+- no State para tres estados simples;
+- no Custom UnitOfWork si `Session` y una coordinación sencilla resuelven correctamente el límite transaccional.
 
-Esto no significa esperar a tener código inmantenible.
+Esto no significa postergar diseño hasta tener código inmantenible.
 
 Significa diseñar con evidencia.
 
 ---
 
-## 28. Evitar sobreuso de interfaces
+## 26. Open/Closed sin dogmatismo
 
-Python utiliza duck typing y Protocols.
+Open/Closed no significa que el código existente nunca pueda modificarse.
 
-No es necesario crear una ABC para toda clase.
-
-Cuando se necesite un contrato, se evaluará:
-
-```text
-typing.Protocol
-ABC
-interfaz implícita
-```
-
-según el caso.
-
-Para ports de Application, `Protocol` es un candidato fuerte porque:
-
-- expresa tipado estructural;
-- facilita fakes;
-- reduce herencia accidental.
-
-La elección se congelará al escribir los primeros contratos reales.
-
----
-
-## 29. Regla de extensibilidad
-
-Un buen uso de Open/Closed no significa que nunca pueda modificarse código existente.
-
-Significa evitar que cada nueva variante obligue a editar continuamente código estable y probado.
+El objetivo es evitar que cada nueva variante requiera modificar continuamente componentes estables.
 
 Se permitirá refactorizar cuando:
 
 - mejore el modelo;
 - reduzca complejidad;
-- corrija una abstracción incorrecta.
+- corrija una abstracción incorrecta;
+- elimine deuda técnica.
 
-No se mantendrán abstracciones malas únicamente por "cerrar" clases a cambios.
+No se conservará una mala abstracción únicamente para evitar modificarla.
 
 ---
 
-## 30. Ejemplo de mala aplicación de patrones
+## 27. Ejemplo de patronitis
 
 Diseño a evitar:
 
@@ -925,87 +928,123 @@ ArticuloObserver
 ArticuloRepository
 ```
 
-sin que cada elemento resuelva un problema real.
+sin un problema concreto detrás de cada elemento.
 
-Esto produce:
+Esto aumenta:
 
-- más archivos;
-- mayor dificultad de navegación;
-- más puntos de falla;
-- mayor carga cognitiva;
-- menor claridad para el equipo y para IA.
+- cantidad de clases;
+- navegación;
+- puntos de fallo;
+- carga cognitiva;
+- dificultad para el equipo;
+- dificultad para implementación asistida por IA.
 
 La cantidad de patrones no es una métrica de calidad.
 
 ---
 
-## 31. Criterios para incorporar un patrón
+## 28. Patrones previstos por etapa
+
+### Bloque 1 — aplicación efectiva esperada
+
+```text
+Repository
+Dependency Injection
+Entity
+Value Object
+composición
+typing.Protocol para ports
+```
+
+### Bloque 1 — posible según necesidad real
+
+```text
+Unit of Work explícito
+Domain Service
+```
+
+### Bloques posteriores
+
+```text
+Adapter
+Strategy
+Factory Method / Abstract Factory
+Observer
+Decorator
+```
+
+solo cuando exista el problema correspondiente.
+
+---
+
+## 29. Criterios para introducir un patrón
 
 Antes de incorporar un patrón se responderá:
 
 1. ¿Qué problema concreto existe?
-2. ¿Qué parte del sistema cambia?
+2. ¿Qué responsabilidad está variando?
 3. ¿Qué parte debe permanecer estable?
-4. ¿El patrón reduce acoplamiento o complejidad?
-5. ¿Facilita tests?
-6. ¿Existe una solución más simple?
-7. ¿El costo conceptual se justifica?
-8. ¿Podemos explicar su utilidad en la defensa?
+4. ¿Existe más de una implementación o algoritmo real?
+5. ¿Reduce acoplamiento o complejidad?
+6. ¿Facilita testing?
+7. ¿Existe una solución más simple?
+8. ¿El costo conceptual se justifica?
+9. ¿Podemos defender por qué está ahí?
 
 Si no existe una respuesta clara, el patrón probablemente sea prematuro.
 
 ---
 
-## 32. Documentación en código
+## 30. Documentación en código
 
-No se agregarán comentarios como:
+No se agregarán comentarios del tipo:
 
 ```python
 # Strategy Pattern
 ```
 
-solo para etiquetar una clase.
+solo para etiquetar código.
 
-El diseño debe ser reconocible por:
+El diseño debe poder reconocerse por:
 
 - nombres;
 - contratos;
 - estructura;
 - responsabilidades.
 
-La documentación técnica explicará el patrón cuando sea relevante.
+La documentación explicará el patrón donde aporte contexto.
 
 ---
 
-## 33. Patrones previstos para la presentación académica
+## 31. Presentación académica
 
-La presentación final deberá utilizar únicamente patrones que efectivamente estén implementados.
+La presentación final mencionará únicamente patrones realmente implementados.
 
-Ejemplo de defensa futura:
+### Ejemplo: Repository
 
-### Repository
+**Dónde:** persistencia de M01/M02.
 
-**Dónde:** acceso a persistencia de M01/M02.
+**Problema:** evitar que Application dependa de SQLAlchemy/PostgreSQL.
 
-**Problema:** desacoplar Application de SQLAlchemy/PostgreSQL.
+**Solución:** ports `Protocol` + implementaciones SQLAlchemy.
 
-**Resultado:** casos de uso testeables mediante fakes y consultas tenant-scoped centralizadas.
+**Beneficio:** fakes en tests y consultas tenant-scoped centralizadas.
 
-### Adapter
+### Ejemplo futuro: Adapter
 
-Solo se presentará si existe realmente la integración de pagos.
+Solo se presentará si existe la integración de pagos.
 
 **Dónde:** módulo de pagos.
 
-**Problema:** desacoplar casos de uso del SDK/API de Mercado Pago.
+**Problema:** desacoplar casos de uso del proveedor externo.
 
-**Resultado:** proveedor intercambiable y tests con fake.
+**Solución:** port interno + `MercadoPagoAdapter`.
 
-No se incluirán patrones únicamente porque fueron considerados en este documento.
+**Beneficio:** sustitución del proveedor y tests sin acceso externo.
 
 ---
 
-## 34. Relación con la arquitectura general
+## 32. Relación con otros documentos
 
 Este documento complementa:
 
@@ -1014,62 +1053,84 @@ arquitectura-general.md
 estructura-backend.md
 ```
 
-La arquitectura general define las capas.
+- `arquitectura-general.md` define capas y dirección de dependencias.
+- `estructura-backend.md` define la ubicación física.
+- este documento define cuándo y por qué introducir patrones y abstracciones.
 
-La estructura backend define la ubicación física.
+Las reglas de seguridad y aislamiento tenant se detallarán en:
 
-Este documento define el criterio para introducir abstracciones y patrones dentro de esas capas.
+```text
+multitenant-y-seguridad.md
+```
 
 ---
 
-## 35. Decisiones diferidas
+## 33. Decisiones congeladas
 
-Se mantienen abiertas:
+Para la implementación actual quedan definidas:
 
-- Unit of Work explícito;
-- Strategy concreta para módulos futuros;
-- Factory concreta;
+1. Domain no depende de frameworks.
+2. Los casos de uso reciben dependencias por constructor.
+3. FastAPI `Depends()` se utiliza solo en la frontera API/composition root.
+4. Los ports de Application se expresarán preferentemente con `typing.Protocol`.
+5. Repository será específico a necesidades reales y no un CRUD genérico obligatorio.
+6. SQLAlchemy `Session` aporta comportamiento Unit of Work, por lo que no se creará un UoW propio sin una necesidad demostrable.
+7. `CapacidadesArticulo` no es Decorator.
+8. Los enums de estado no implican el patrón State.
+9. Value Object y Domain Service se clasificarán como patrones tácticos de DDD.
+10. Los patrones futuros no se implementarán antes de que aparezca el problema real.
+
+---
+
+## 34. Decisiones diferidas
+
+Permanecen abiertas:
+
+- necesidad de un Unit of Work explícito;
+- Domain Services concretos;
+- Adapter concreto de pagos;
+- Strategy concretas;
+- Factory Method / Abstract Factory concretos;
 - Observer/eventos;
-- Decorators técnicos;
-- implementación exacta de ports con Protocol/ABC;
-- patrón final de integración de pagos.
+- Decorators técnicos.
 
-Estas decisiones se tomarán cuando aparezca el problema que las justifique.
+Se decidirán cuando aparezca la necesidad funcional o técnica correspondiente.
 
 ---
 
-## 36. Criterio de aceptación
+## 35. Criterio de aceptación
 
-El uso de patrones será considerado correcto si:
+El uso de un patrón será considerado correcto si:
 
 1. resuelve un problema identificable;
-2. reduce acoplamiento o complejidad;
-3. no duplica responsabilidades del dominio;
-4. mejora o preserva testabilidad;
-5. puede justificarse sin frases genéricas;
+2. tiene una responsabilidad clara;
+3. reduce acoplamiento o complejidad;
+4. no duplica reglas del dominio;
+5. mejora o preserva testabilidad;
 6. no fuerza herencia innecesaria;
 7. no agrega capas vacías;
-8. puede explicarse claramente durante la defensa.
+8. puede justificarse claramente en la defensa;
+9. su eliminación empeoraría de forma tangible el diseño.
 
 ---
 
-## 37. Próximo documento
+## 36. Próximo documento
 
-El siguiente documento recomendado es:
+El siguiente documento de arquitectura es:
 
 ```text
 arquitectura/multitenant-y-seguridad.md
 ```
 
-Allí se definirán con mayor precisión:
+Allí se definirán:
 
 - autenticación;
 - autorización;
-- pertenencia a Negocio;
+- hashing de contraseñas;
+- tokens;
+- pertenencia a `Negocio`;
 - tenant scoping;
 - protección contra IDOR;
-- roles;
-- tokens;
-- contraseñas;
+- roles y membresías;
 - aislamiento entre negocios;
-- criterios de seguridad para endpoints y repositorios.
+- criterios de seguridad para API y repositorios.
