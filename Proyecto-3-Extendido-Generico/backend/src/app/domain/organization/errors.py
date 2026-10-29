@@ -28,3 +28,30 @@ class VersionInvalidaError(DomainError):
 
 class MonedaInvalidaError(DomainError):
     """Raised when a business uses a currency not supported by the MVP."""
+
+class MembresiaError(DomainError):
+    """Base exception for membership-specific domain-rule violations."""
+
+
+class MembresiaInvalidaError(MembresiaError):
+    """Raised when a membership is built with an invalid role or state."""
+
+
+class MembresiaYaActivaError(MembresiaError):
+    """Raised when attempting to reactivate an already active membership."""
+
+
+class MembresiaYaInactivaError(MembresiaError):
+    """Raised when attempting to deactivate an already inactive membership."""
+
+
+class MembresiaInactivaError(MembresiaError):
+    """Raised when an operation requires an active membership."""
+
+
+class RolReactivacionInvalidoError(MembresiaError):
+    """Raised when reactivation attempts to assign a role outside its whitelist."""
+
+
+class RolSinCambiosError(MembresiaError):
+    """Raised when a role change would be a silent no-op."""
