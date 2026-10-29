@@ -1,5 +1,12 @@
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKeyConstraint
-from sqlalchemy import Index, Text, UniqueConstraint, Uuid
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKeyConstraint,
+    Index,
+    Text,
+    Uuid,
+)
 
 from app.infrastructure.persistence.models import (
     Base,
@@ -32,8 +39,16 @@ def index_names(model: type[Base]) -> set[str]:
     return {index.name for index in model.__table__.indexes if index.name is not None}
 
 
-def test_m01_registers_exactly_its_five_tables_so_far() -> None:
-    assert set(Base.metadata.tables) == M01_TABLES
+def check_sql(model: type[Base]) -> dict[str, str]:
+    return {
+        constraint.name: str(constraint.sqltext)
+        for constraint in model.__table__.constraints
+        if isinstance(constraint, CheckConstraint) and constraint.name is not None
+    }
+
+
+def test_m01_tables_are_registered_in_shared_metadata() -> None:
+    assert M01_TABLES <= set(Base.metadata.tables)
 
 
 def test_models_use_frozen_singular_table_names() -> None:
@@ -165,6 +180,7 @@ def test_invitacion_business_fk_is_restrict_not_cascade() -> None:
 
 def test_invitacion_restricts_role_states_period_and_version() -> None:
     names = constraint_names(InvitacionNegocioModel)
+    checks = check_sql(InvitacionNegocioModel)
 
     assert {
         "ck_invitacion_negocio_invitacion_email_destino_no_vacio",
@@ -176,6 +192,15 @@ def test_invitacion_restricts_role_states_period_and_version() -> None:
         "ck_invitacion_negocio_invitacion_version_positiva",
         "uq_invitacion_negocio_token_hash",
     } <= names
+    assert checks["ck_invitacion_negocio_invitacion_rol_propuesto_valido"] == (
+        "rol_propuesto IN ('ENCARGADO', 'TRABAJADOR')"
+    )
+    assert checks["ck_invitacion_negocio_invitacion_estado_valido"] == (
+        "estado IN ('PENDIENTE', 'ACEPTADA', 'RECHAZADA', 'CANCELADA', 'EXPIRADA')"
+    )
+    assert checks["ck_invitacion_negocio_invitacion_periodo_valido"] == (
+        "fecha_expiracion > fecha_emision"
+    )
     assert isinstance(InvitacionNegocioModel.__table__.c.version.type, BigInteger)
     assert InvitacionNegocioModel.__mapper__.version_id_col is (
         InvitacionNegocioModel.__table__.c.version
