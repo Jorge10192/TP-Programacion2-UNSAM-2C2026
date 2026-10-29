@@ -56,3 +56,35 @@ class RolReactivacionInvalidoError(MembresiaError):
 
 class RolSinCambiosError(MembresiaError):
     """Raised when a role change would be a silent no-op."""
+
+
+class InvitacionError(DomainError):
+    """Base exception for invitation-specific domain-rule violations."""
+
+
+class InvitacionInvalidaError(InvitacionError):
+    """Raised when an invitation is built with invalid structural data."""
+
+
+class RolInvitacionInvalidoError(InvitacionError):
+    """Raised when an invitation proposes a role outside its allowed whitelist."""
+
+
+class PeriodoInvitacionInvalidoError(InvitacionError):
+    """Raised when expiration is not strictly later than emission."""
+
+
+class InvitacionEstadoTerminalError(InvitacionError):
+    """Raised when attempting a transition from a terminal invitation state."""
+
+
+class InvitacionNoVigenteError(InvitacionError):
+    """Raised when accepting or rejecting an invitation outside its validity window."""
+
+
+class InvitacionEmailIncorrectoError(InvitacionError):
+    """Raised when an action is attempted by an email other than the recipient."""
+
+
+class InvitacionAunVigenteError(InvitacionError):
+    """Raised when attempting to materialize expiration before it is due."""
