@@ -216,7 +216,7 @@ class ArticuloCatalogo:
             return None
         if not isinstance(value, Decimal):
             raise PrecioInvalidoError(
-                f"{field_name} debe ser Decimal o None; no se acepta float."
+                f"{field_name} debe ser Decimal o None."
             )
         if not value.is_finite() or value < Decimal("0"):
             raise PrecioInvalidoError(

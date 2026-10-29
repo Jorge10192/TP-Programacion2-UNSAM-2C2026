@@ -350,11 +350,3 @@ def test_identidad_y_tenant_no_tienen_setters_publicos() -> None:
     with pytest.raises(AttributeError):
         articulo.negocio_id = uuid4()  # type: ignore[misc]
 
-
-def test_3c_no_expone_mutaciones_de_edicion_estado_o_imagenes() -> None:
-    articulo = crear_articulo()
-
-    assert not hasattr(articulo, "aplicar_edicion")
-    assert not hasattr(articulo, "desactivar")
-    assert not hasattr(articulo, "reactivar")
-    assert not hasattr(articulo, "reemplazar_imagenes")
