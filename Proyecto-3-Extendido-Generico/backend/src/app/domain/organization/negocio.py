@@ -9,7 +9,12 @@ from app.domain.organization._validation import (
     require_uuid4,
     require_version,
 )
-from app.domain.organization.enums import EstadoMembresia, ModalidadOperativa, Moneda, Rol
+from app.domain.organization.enums import (
+    EstadoMembresia,
+    ModalidadOperativa,
+    Moneda,
+    Rol,
+)
 from app.domain.organization.errors import (
     CoordinacionNegocioError,
     IdentificadorNuevaMembresiaRequeridoError,

@@ -4,7 +4,12 @@ from uuid import uuid4
 import pytest
 
 from app.domain.organization.email import Email
-from app.domain.organization.enums import EstadoMembresia, ModalidadOperativa, Moneda, Rol
+from app.domain.organization.enums import (
+    EstadoMembresia,
+    ModalidadOperativa,
+    Moneda,
+    Rol,
+)
 from app.domain.organization.errors import (
     IdentificadorNuevaMembresiaRequeridoError,
     MembresiaInactivaError,
