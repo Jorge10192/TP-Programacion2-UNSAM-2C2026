@@ -61,6 +61,26 @@ def test_flujo_postgresql_ci(monkeypatch, password_hash):
             assert len(client.get("/stock/movimientos").json()) == 1
             assert client.post(f"/compras/{purchase}/anular", json={"motivo": "Prueba PostgreSQL"}).status_code == 200
             assert client.get("/stock").json()[0]["cantidad"] == "0"
+            presentacion = create("/presentaciones-insumos", {"insumo_id": insumo, "nombre": "Paquete",
+                                  "unidad_compra_id": unit})
+            draft = create("/compras", {"referencia": "borrador-postgres-001"})
+            assert client.put(f"/compras/{draft}", json={"proveedor_id": supplier, "fecha_compra": "2026-10-24"}).status_code == 200
+            item = {"insumo_id": insumo, "presentacion_id": presentacion, "cantidad": "2", "precio_total": "25.50"}
+            result = client.post(f"/compras/{draft}/items", json=item)
+            assert result.status_code == 201, result.text
+            item["cantidad"] = "3"
+            item_id = result.json()["items"][0]["id"]
+            assert client.put(f"/compras/{draft}/items/{item_id}", json=item).status_code == 200
+            for _ in range(2):
+                assert client.post(f"/compras/{draft}/confirmar").status_code == 200
+            assert client.get("/stock").json()[0]["cantidad"] == "3"
+            assert client.put(f"/compras/{draft}/items/{item_id}", json=item).status_code == 409
+            history = client.get(f"/compras/{draft}/historial").json()
+            assert [row["tipo"] for row in history] == ["CREACION", "EDICION", "EDICION", "EDICION", "CONFIRMACION"]
+            create("/imagenes-insumos", {"insumo_id": insumo, "archivo": "harina.png", "principal": True})
+            assert client.get("/imagenes-insumos").json()[0]["principal"] is True
+            assert client.post(f"/compras/{draft}/anular", json={"motivo": "Prueba de integración"}).status_code == 200
+            assert client.get("/stock").json()[0]["cantidad"] == "0"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
