@@ -21,7 +21,6 @@ from app.infrastructure.persistence.models import (
     CategoriaModel,
 )
 
-
 BLOQUE1_TABLES = {
     "usuario",
     "negocio",
