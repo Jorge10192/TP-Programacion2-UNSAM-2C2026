@@ -45,6 +45,7 @@ def crear_articulo(**overrides: object) -> ArticuloCatalogo:
         "version": 3,
         "created_at": AHORA,
         "updated_at": AHORA,
+        "imagenes": (),
     }
     data.update(overrides)
     return ArticuloCatalogo(**data)  # type: ignore[arg-type]
@@ -152,8 +153,21 @@ def test_articulo_imagen_rechaza_principal_que_no_es_booleano() -> None:
         )
 
 
-def test_articulo_nace_sin_imagenes_por_default() -> None:
-    articulo = crear_articulo()
+def test_factory_nace_sin_imagenes_por_default() -> None:
+    articulo = ArticuloCatalogo.crear(
+        id=uuid4(),
+        negocio_id=uuid4(),
+        categoria_id=None,
+        nombre="Snack",
+        descripcion=None,
+        tipo=TipoArticulo.BIEN,
+        unidad_medida=UnidadMedida.UNIDAD,
+        sku=None,
+        precio_base=Decimal("1500.0000"),
+        costo_referencia=None,
+        capacidades=capacidades(),
+        creado_en=AHORA,
+    )
 
     assert articulo.imagenes == ()
 

@@ -65,7 +65,7 @@ class ArticuloCatalogo:
         version: int,
         created_at: datetime,
         updated_at: datetime,
-        imagenes: Sequence[ArticuloImagen] = (),
+        imagenes: Sequence[ArticuloImagen],
     ) -> None:
         articulo_id = require_uuid4(id, field_name="id")
         tenant_id = require_uuid4(negocio_id, field_name="negocio_id")

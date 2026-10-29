@@ -7,7 +7,10 @@ from app.domain.common.validation import require_uuid4
 
 @dataclass(frozen=True, slots=True, eq=False)
 class ArticuloImagen:
-    """Immutable structural child entity belonging to one catalog article."""
+    """Immutable structural child entity belonging to one catalog article.
+
+    Technical persistence timestamps are intentionally kept outside Domain.
+    """
 
     id: UUID
     negocio_id: UUID
