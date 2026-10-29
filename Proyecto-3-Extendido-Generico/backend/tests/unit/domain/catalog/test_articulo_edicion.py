@@ -91,6 +91,7 @@ def propuesta_desde(
         "precio_base": articulo.precio_base,
         "costo_referencia": articulo.costo_referencia,
         "capacidades": articulo.capacidades,
+        "imagenes": articulo.imagenes,
     }
     data.update(overrides)
     return PropuestaEdicionPreparada(**data)  # type: ignore[arg-type]

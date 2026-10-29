@@ -4,6 +4,7 @@ from uuid import UUID
 
 from app.domain.catalog.capacidades import CapacidadesArticulo
 from app.domain.catalog.enums import UnidadMedida
+from app.domain.catalog.imagen import ArticuloImagen
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,3 +19,4 @@ class PropuestaEdicionPreparada:
     precio_base: Decimal | None
     costo_referencia: Decimal | None
     capacidades: CapacidadesArticulo
+    imagenes: tuple[ArticuloImagen, ...]

@@ -47,3 +47,7 @@ class ArticuloYaActivoError(ArticuloError):
 
 class ArticuloYaInactivoError(ArticuloError):
     """Raised when attempting to deactivate an already inactive article."""
+
+
+class ImagenesInvalidasError(ArticuloError):
+    """Raised when an article image or image collection violates its invariants."""

@@ -21,14 +21,17 @@ from app.domain.catalog.errors import (
     CategoriaInvalidaError,
     CategoriaYaActivaError,
     CategoriaYaInactivaError,
+    ImagenesInvalidasError,
     PrecioInvalidoError,
 )
+from app.domain.catalog.imagen import ArticuloImagen
 from app.domain.catalog.propuesta import PropuestaEdicionPreparada
 
 __all__ = [
     "ArticuloActivoSinUsoError",
     "ArticuloCatalogo",
     "ArticuloError",
+    "ArticuloImagen",
     "ArticuloInvalidoError",
     "ArticuloYaActivoError",
     "ArticuloYaInactivoError",
@@ -42,6 +45,7 @@ __all__ = [
     "CategoriaYaInactivaError",
     "EstadoArticulo",
     "EstadoCategoria",
+    "ImagenesInvalidasError",
     "PrecioInvalidoError",
     "PropuestaEdicionPreparada",
     "TipoArticulo",

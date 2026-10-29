@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import Self
@@ -11,8 +12,10 @@ from app.domain.catalog.errors import (
     ArticuloYaActivoError,
     ArticuloYaInactivoError,
     CapacidadesInvalidasError,
+    ImagenesInvalidasError,
     PrecioInvalidoError,
 )
+from app.domain.catalog.imagen import ArticuloImagen
 from app.domain.catalog.propuesta import PropuestaEdicionPreparada
 from app.domain.common.validation import (
     normalize_required_text,
@@ -33,6 +36,7 @@ class ArticuloCatalogo:
         "_descripcion",
         "_estado",
         "_id",
+        "_imagenes",
         "_negocio_id",
         "_nombre",
         "_precio_base",
@@ -61,6 +65,7 @@ class ArticuloCatalogo:
         version: int,
         created_at: datetime,
         updated_at: datetime,
+        imagenes: Sequence[ArticuloImagen] = (),
     ) -> None:
         articulo_id = require_uuid4(id, field_name="id")
         tenant_id = require_uuid4(negocio_id, field_name="negocio_id")
@@ -89,6 +94,11 @@ class ArticuloCatalogo:
         version_validada = require_version(version)
         created_at_utc = normalize_utc_datetime(created_at, field_name="created_at")
         updated_at_utc = normalize_utc_datetime(updated_at, field_name="updated_at")
+        imagenes_validadas = self._validar_imagenes_candidatas(
+            imagenes,
+            articulo_id=articulo_id,
+            negocio_id=tenant_id,
+        )
 
         self._validar_configuracion(
             tipo=tipo_validado,
@@ -98,6 +108,7 @@ class ArticuloCatalogo:
         )
 
         self._id = articulo_id
+        self._imagenes = imagenes_validadas
         self._negocio_id = tenant_id
         self._categoria_id = categoria
         self._nombre = nombre_validado
@@ -129,6 +140,7 @@ class ArticuloCatalogo:
         costo_referencia: Decimal | None,
         capacidades: CapacidadesArticulo,
         creado_en: datetime,
+        imagenes: Sequence[ArticuloImagen] = (),
     ) -> Self:
         """Create a new active article with version one."""
         return cls(
@@ -147,6 +159,7 @@ class ArticuloCatalogo:
             version=1,
             created_at=creado_en,
             updated_at=creado_en,
+            imagenes=imagenes,
         )
 
     @staticmethod
@@ -228,6 +241,59 @@ class ArticuloCatalogo:
         return value
 
     @staticmethod
+    def _validar_imagenes_candidatas(
+        imagenes: Sequence[ArticuloImagen],
+        *,
+        articulo_id: UUID,
+        negocio_id: UUID,
+    ) -> tuple[ArticuloImagen, ...]:
+        if (
+            isinstance(imagenes, (str, bytes))
+            or not isinstance(imagenes, Sequence)
+        ):
+            raise ImagenesInvalidasError(
+                "imagenes debe ser una secuencia de ArticuloImagen."
+            )
+
+        candidatas = tuple(imagenes)
+
+        if len(candidatas) > 3:
+            raise ImagenesInvalidasError(
+                "Un artículo admite como máximo tres imágenes."
+            )
+
+        posiciones: set[int] = set()
+        principales = 0
+
+        for imagen in candidatas:
+            if not isinstance(imagen, ArticuloImagen):
+                raise ImagenesInvalidasError(
+                    "Todas las imágenes deben ser ArticuloImagen."
+                )
+            if imagen.articulo_id != articulo_id:
+                raise ImagenesInvalidasError(
+                    "La imagen no pertenece al artículo."
+                )
+            if imagen.negocio_id != negocio_id:
+                raise ImagenesInvalidasError(
+                    "La imagen no pertenece al Negocio del artículo."
+                )
+            if imagen.posicion in posiciones:
+                raise ImagenesInvalidasError(
+                    "Las posiciones de imágenes deben ser únicas."
+                )
+
+            posiciones.add(imagen.posicion)
+            principales += int(imagen.es_principal)
+
+        if candidatas and principales != 1:
+            raise ImagenesInvalidasError(
+                "Si existen imágenes debe haber exactamente una principal."
+            )
+
+        return candidatas
+
+    @staticmethod
     def _validar_configuracion(
         *,
         tipo: TipoArticulo,
@@ -288,6 +354,11 @@ class ArticuloCatalogo:
             field_name="costo_referencia",
         )
         capacidades = self._require_capacidades(propuesta.capacidades)
+        imagenes = self._validar_imagenes_candidatas(
+            propuesta.imagenes,
+            articulo_id=self._id,
+            negocio_id=self._negocio_id,
+        )
         ahora = normalize_utc_datetime(
             actualizado_en,
             field_name="actualizado_en",
@@ -308,6 +379,27 @@ class ArticuloCatalogo:
         self._precio_base = precio_base
         self._costo_referencia = costo_referencia
         self._capacidades = capacidades
+        self._imagenes = imagenes
+        self._updated_at = ahora
+
+    def reemplazar_imagenes(
+        self,
+        nuevas_imagenes: Sequence[ArticuloImagen],
+        *,
+        actualizado_en: datetime,
+    ) -> None:
+        """Replace the complete image collection atomically."""
+        candidatas = self._validar_imagenes_candidatas(
+            nuevas_imagenes,
+            articulo_id=self._id,
+            negocio_id=self._negocio_id,
+        )
+        ahora = normalize_utc_datetime(
+            actualizado_en,
+            field_name="actualizado_en",
+        )
+
+        self._imagenes = candidatas
         self._updated_at = ahora
 
     def desactivar(self, *, actualizado_en: datetime) -> None:
@@ -345,6 +437,10 @@ class ArticuloCatalogo:
     def esta_activo(self) -> bool:
         """Return whether the article participates in new compatible operations."""
         return self._estado is EstadoArticulo.ACTIVO
+
+    @property
+    def imagenes(self) -> tuple[ArticuloImagen, ...]:
+        return self._imagenes
 
     @property
     def id(self) -> UUID:
