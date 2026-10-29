@@ -17,7 +17,6 @@ from app.infrastructure.persistence.models import (
     UsuarioNegocioModel,
 )
 
-
 M01_TABLES = {
     "usuario",
     "negocio",
@@ -172,10 +171,14 @@ def test_invitacion_has_tenant_safe_composite_issuer_fk() -> None:
 
 
 def test_invitacion_business_fk_is_restrict_not_cascade() -> None:
-    negocio_fk = next(iter(InvitacionNegocioModel.__table__.c.negocio_id.foreign_keys))
+    negocio_fks = [
+        foreign_key
+        for foreign_key in InvitacionNegocioModel.__table__.c.negocio_id.foreign_keys
+        if foreign_key.target_fullname == "negocio.id"
+    ]
 
-    assert negocio_fk.target_fullname == "negocio.id"
-    assert negocio_fk.ondelete == "RESTRICT"
+    assert len(negocio_fks) == 1
+    assert negocio_fks[0].ondelete == "RESTRICT"
 
 
 def test_invitacion_restricts_role_states_period_and_version() -> None:
