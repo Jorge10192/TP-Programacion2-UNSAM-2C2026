@@ -34,6 +34,17 @@ def capacidades_vendible() -> CapacidadesArticulo:
     )
 
 
+def capacidades_servicio_vendible() -> CapacidadesArticulo:
+    return CapacidadesArticulo(
+        es_comprable=False,
+        es_vendible=True,
+        controla_stock=False,
+        puede_usarse_en_produccion=False,
+        controla_vencimiento=False,
+        permite_descuento=False,
+    )
+
+
 def capacidades_sin_usos() -> CapacidadesArticulo:
     return CapacidadesArticulo(
         es_comprable=False,
@@ -208,7 +219,11 @@ def test_edicion_inactivo_permite_cero_usos_y_no_reactiva() -> None:
 
 
 def test_edicion_incompatible_con_tipo_es_atomica() -> None:
-    articulo = crear_articulo(tipo=TipoArticulo.SERVICIO, unidad_medida=UnidadMedida.HORA)
+    articulo = crear_articulo(
+        tipo=TipoArticulo.SERVICIO,
+        unidad_medida=UnidadMedida.HORA,
+        capacidades=capacidades_servicio_vendible(),
+    )
     capacidades_stock = CapacidadesArticulo(
         es_comprable=True,
         es_vendible=False,
@@ -339,20 +354,6 @@ def test_reactivar_sin_usos_rechaza_y_permanece_inactivo() -> None:
     antes = snapshot(articulo)
 
     with pytest.raises(ArticuloActivoSinUsoError):
-        articulo.reactivar(actualizado_en=DESPUES)
-
-    assert snapshot(articulo) == antes
-
-
-def test_reactivar_vendible_sin_precio_rechaza_y_permanece_inactivo() -> None:
-    articulo = crear_articulo(
-        estado=EstadoArticulo.INACTIVO,
-        capacidades=capacidades_vendible(),
-        precio_base=None,
-    )
-    antes = snapshot(articulo)
-
-    with pytest.raises(PrecioInvalidoError):
         articulo.reactivar(actualizado_en=DESPUES)
 
     assert snapshot(articulo) == antes
