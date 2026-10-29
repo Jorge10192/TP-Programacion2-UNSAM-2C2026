@@ -107,6 +107,7 @@ def snapshot(articulo: ArticuloCatalogo) -> tuple[object, ...]:
         articulo.precio_base,
         articulo.costo_referencia,
         articulo.capacidades,
+        articulo.imagenes,
         articulo.estado,
         articulo.version,
         articulo.updated_at,

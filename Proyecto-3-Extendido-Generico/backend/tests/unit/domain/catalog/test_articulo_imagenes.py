@@ -45,7 +45,6 @@ def crear_articulo(**overrides: object) -> ArticuloCatalogo:
         "version": 3,
         "created_at": AHORA,
         "updated_at": AHORA,
-        "imagenes": (),
     }
     data.update(overrides)
     return ArticuloCatalogo(**data)  # type: ignore[arg-type]
