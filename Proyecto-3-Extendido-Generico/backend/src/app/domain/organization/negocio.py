@@ -1,4 +1,4 @@
-from collections.abc import Set
+from collections.abc import Iterable, Set
 from datetime import datetime
 from uuid import UUID
 
@@ -9,8 +9,21 @@ from app.domain.organization._validation import (
     require_uuid4,
     require_version,
 )
-from app.domain.organization.enums import ModalidadOperativa, Moneda
-from app.domain.organization.errors import ModalidadesInvalidasError, MonedaInvalidaError
+from app.domain.organization.enums import EstadoMembresia, ModalidadOperativa, Moneda, Rol
+from app.domain.organization.errors import (
+    CoordinacionNegocioError,
+    IdentificadorNuevaMembresiaRequeridoError,
+    MembresiaInvalidaError,
+    MembresiaNoPerteneceNegocioError,
+    MembresiaNoPerteneceUsuarioError,
+    MembresiaYaActivaError,
+    ModalidadesInvalidasError,
+    MonedaInvalidaError,
+    RolIncorporacionInvalidoError,
+    UltimoPropietarioError,
+)
+from app.domain.organization.membresia import UsuarioNegocio
+from app.domain.organization.usuario import Usuario
 
 
 class Negocio:
@@ -26,6 +39,8 @@ class Negocio:
         "_updated_at",
         "_version",
     )
+
+    _ROLES_INCORPORACION = frozenset({Rol.ENCARGADO, Rol.TRABAJADOR})
 
     def __init__(
         self,
@@ -71,6 +86,153 @@ class Negocio:
     def configurar_modalidades(self, nuevas: Set[ModalidadOperativa]) -> None:
         """Replace the complete modality set after validating the resulting configuration."""
         self._modalidades = self._normalize_modalidades(nuevas)
+
+    def tiene_propietario_activo(
+        self,
+        membresias_contexto: Iterable[UsuarioNegocio],
+    ) -> bool:
+        """Return whether the supplied business context contains an active owner."""
+        return any(
+            membresia.negocio_id == self._id
+            and membresia.esta_activa()
+            and membresia.es_propietario()
+            for membresia in membresias_contexto
+        )
+
+    def incorporar_o_reactivar_miembro(
+        self,
+        *,
+        usuario: Usuario,
+        rol_inicial: Rol,
+        membresia_historica: UsuarioNegocio | None,
+        nueva_membresia_id: UUID | None,
+        actualizado_en: datetime,
+    ) -> UsuarioNegocio:
+        """Create or reactivate the single historical membership for a user."""
+        if not isinstance(usuario, Usuario):
+            raise CoordinacionNegocioError("usuario debe ser una entidad Usuario válida.")
+
+        rol = self._require_rol_incorporacion(rol_inicial)
+        ahora = normalize_utc_datetime(actualizado_en, field_name="actualizado_en")
+
+        if membresia_historica is not None:
+            self._require_membresia_del_negocio(membresia_historica)
+            if membresia_historica.usuario_id != usuario.id:
+                raise MembresiaNoPerteneceUsuarioError(
+                    "La membresía histórica no pertenece al Usuario indicado."
+                )
+            if membresia_historica.esta_activa():
+                raise MembresiaYaActivaError("La membresía histórica ya está activa.")
+
+            membresia_historica._reactivar(
+                nuevo_rol=rol,
+                actualizado_en=ahora,
+            )
+            return membresia_historica
+
+        if nueva_membresia_id is None:
+            raise IdentificadorNuevaMembresiaRequeridoError(
+                "Se requiere un UUID para crear una nueva membresía."
+            )
+
+        return UsuarioNegocio(
+            id=nueva_membresia_id,
+            usuario_id=usuario.id,
+            negocio_id=self._id,
+            rol=rol,
+            estado=EstadoMembresia.ACTIVO,
+            fecha_incorporacion=ahora,
+            version=1,
+            updated_at=ahora,
+        )
+
+    def desactivar_miembro(
+        self,
+        miembro: UsuarioNegocio,
+        *,
+        membresias_contexto: Iterable[UsuarioNegocio],
+        actualizado_en: datetime,
+    ) -> None:
+        """Deactivate a member while preserving the active-owner invariant."""
+        self._require_membresia_del_negocio(miembro)
+        ahora = normalize_utc_datetime(actualizado_en, field_name="actualizado_en")
+
+        if (
+            miembro.esta_activa()
+            and miembro.es_propietario()
+            and not self._existe_otro_propietario_activo(
+                objetivo=miembro,
+                membresias_contexto=membresias_contexto,
+            )
+        ):
+            raise UltimoPropietarioError(
+                "No se puede desactivar al último propietario activo."
+            )
+
+        miembro._desactivar(actualizado_en=ahora)
+
+    def cambiar_rol_miembro(
+        self,
+        miembro: UsuarioNegocio,
+        nuevo_rol: Rol,
+        *,
+        membresias_contexto: Iterable[UsuarioNegocio],
+        actualizado_en: datetime,
+    ) -> None:
+        """Change an active member's role while preserving the owner invariant."""
+        self._require_membresia_del_negocio(miembro)
+        if not isinstance(nuevo_rol, Rol):
+            raise MembresiaInvalidaError("nuevo_rol debe ser un valor válido de Rol.")
+
+        ahora = normalize_utc_datetime(actualizado_en, field_name="actualizado_en")
+
+        if (
+            miembro.esta_activa()
+            and miembro.es_propietario()
+            and nuevo_rol is not Rol.PROPIETARIO
+            and not self._existe_otro_propietario_activo(
+                objetivo=miembro,
+                membresias_contexto=membresias_contexto,
+            )
+        ):
+            raise UltimoPropietarioError(
+                "No se puede degradar al último propietario activo."
+            )
+
+        miembro._cambiar_rol(nuevo_rol=nuevo_rol, actualizado_en=ahora)
+
+    @classmethod
+    def _require_rol_incorporacion(cls, rol: Rol) -> Rol:
+        if not isinstance(rol, Rol) or rol not in cls._ROLES_INCORPORACION:
+            raise RolIncorporacionInvalidoError(
+                "La incorporación solo admite ENCARGADO o TRABAJADOR."
+            )
+        return rol
+
+    def _require_membresia_del_negocio(self, membresia: UsuarioNegocio) -> None:
+        if not isinstance(membresia, UsuarioNegocio):
+            raise CoordinacionNegocioError(
+                "La operación requiere una entidad UsuarioNegocio válida."
+            )
+        if membresia.negocio_id != self._id:
+            raise MembresiaNoPerteneceNegocioError(
+                "La membresía no pertenece a este Negocio."
+            )
+
+    def _existe_otro_propietario_activo(
+        self,
+        *,
+        objetivo: UsuarioNegocio,
+        membresias_contexto: Iterable[UsuarioNegocio],
+    ) -> bool:
+        return any(
+            isinstance(membresia, UsuarioNegocio)
+            and membresia.id != objetivo.id
+            and membresia.negocio_id == self._id
+            and membresia.esta_activa()
+            and membresia.es_propietario()
+            for membresia in membresias_contexto
+        )
 
     @property
     def id(self) -> UUID:

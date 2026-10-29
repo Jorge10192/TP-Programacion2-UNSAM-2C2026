@@ -88,3 +88,27 @@ class InvitacionEmailIncorrectoError(InvitacionError):
 
 class InvitacionAunVigenteError(InvitacionError):
     """Raised when attempting to materialize expiration before it is due."""
+
+
+class CoordinacionNegocioError(DomainError):
+    """Base exception for membership coordination rules owned by Negocio."""
+
+
+class UltimoPropietarioError(CoordinacionNegocioError):
+    """Raised when an operation would leave a business without an active owner."""
+
+
+class MembresiaNoPerteneceNegocioError(CoordinacionNegocioError):
+    """Raised when a membership belongs to a different business."""
+
+
+class MembresiaNoPerteneceUsuarioError(CoordinacionNegocioError):
+    """Raised when a historical membership belongs to a different user."""
+
+
+class RolIncorporacionInvalidoError(CoordinacionNegocioError):
+    """Raised when normal incorporation attempts to assign a forbidden role."""
+
+
+class IdentificadorNuevaMembresiaRequeridoError(CoordinacionNegocioError):
+    """Raised when creating a membership without an application-supplied UUID."""
