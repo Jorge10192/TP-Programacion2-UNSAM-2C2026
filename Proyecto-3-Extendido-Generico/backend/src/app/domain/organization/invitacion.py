@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Self
 from uuid import UUID
 
 from app.domain.organization._validation import (
@@ -87,7 +88,7 @@ class InvitacionNegocio:
         emisor_usuario_negocio_id: UUID,
         fecha_emision: datetime,
         fecha_expiracion: datetime,
-    ) -> "InvitacionNegocio":
+    ) -> Self:
         """Create a newly issued invitation in its only valid initial state."""
         return cls(
             id=id,
