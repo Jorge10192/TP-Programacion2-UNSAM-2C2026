@@ -1,9 +1,9 @@
 from app.domain.common.exceptions import (
-    DomainError,
-    FechaInvalidaError,
-    IdentificadorInvalidoError,
-    NombreInvalidoError,
-    VersionInvalidaError,
+    DomainError as DomainError,
+    FechaInvalidaError as FechaInvalidaError,
+    IdentificadorInvalidoError as IdentificadorInvalidoError,
+    NombreInvalidoError as NombreInvalidoError,
+    VersionInvalidaError as VersionInvalidaError,
 )
 
 
