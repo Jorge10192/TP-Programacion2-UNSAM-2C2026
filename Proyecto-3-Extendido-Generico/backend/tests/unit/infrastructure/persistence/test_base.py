@@ -9,4 +9,4 @@ def test_base_uses_deterministic_postgresql_naming_convention() -> None:
 
 
 def test_4a_base_starts_without_functional_tables() -> None:
-    assert Base.metadata.tables == {}
+    assert not Base.metadata.tables
