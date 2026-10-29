@@ -34,7 +34,7 @@ def test_database_url() -> str:
 
 
 @pytest.fixture(scope="session")
-def test_engine(test_database_url: str) -> Generator[Engine, None, None]:
+def test_engine(test_database_url: str) -> Generator[Engine]:
     """Provide one synchronous Engine for the PostgreSQL integration suite."""
     database_engine = build_engine(test_database_url)
 
@@ -45,7 +45,7 @@ def test_engine(test_database_url: str) -> Generator[Engine, None, None]:
 
 
 @pytest.fixture
-def db_session(test_engine: Engine) -> Generator[Session, None, None]:
+def db_session(test_engine: Engine) -> Generator[Session]:
     """Run each integration test inside an outer transaction rolled back at the end."""
     connection = test_engine.connect()
     outer_transaction = connection.begin()
