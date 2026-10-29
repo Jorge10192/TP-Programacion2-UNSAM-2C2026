@@ -23,3 +23,19 @@ class CategoriaYaActivaError(CategoriaError):
 
 class CategoriaYaInactivaError(CategoriaError):
     """Raised when attempting to deactivate an already inactive category."""
+
+
+class ArticuloError(CatalogoError):
+    """Base exception for catalog-article domain-rule violations."""
+
+
+class ArticuloInvalidoError(ArticuloError):
+    """Raised when an article is built with invalid structural data."""
+
+
+class PrecioInvalidoError(ArticuloError):
+    """Raised when a monetary article value violates the Decimal contract."""
+
+
+class ArticuloActivoSinUsoError(ArticuloError):
+    """Raised when an active article has no operational use configured."""
