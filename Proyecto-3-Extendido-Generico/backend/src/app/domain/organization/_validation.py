@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.domain.organization.errors import (
@@ -42,7 +42,7 @@ def normalize_utc_datetime(value: datetime, *, field_name: str) -> datetime:
     """Require a timezone-aware instant and normalize it to UTC."""
     if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
         raise FechaInvalidaError(f"{field_name} debe incluir zona horaria.")
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)
 
 
 def require_version(value: int) -> int:

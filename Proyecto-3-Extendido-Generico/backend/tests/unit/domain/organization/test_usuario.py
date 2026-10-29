@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -12,7 +12,7 @@ from app.domain.organization.errors import (
 from app.domain.organization.usuario import Usuario
 
 
-AHORA = datetime(2026, 10, 29, 12, 0, tzinfo=timezone.utc)
+AHORA = datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
 
 
 def crear_usuario(**overrides: object) -> Usuario:

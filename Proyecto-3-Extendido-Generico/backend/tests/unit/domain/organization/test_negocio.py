@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 import pytest
@@ -14,7 +14,7 @@ from app.domain.organization.errors import (
 from app.domain.organization.negocio import Negocio
 
 
-AHORA = datetime(2026, 10, 29, 12, 0, tzinfo=timezone.utc)
+AHORA = datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
 
 
 def crear_negocio(**overrides: object) -> Negocio:
@@ -127,7 +127,7 @@ def test_negocio_normaliza_timestamp_con_offset_a_utc() -> None:
 
     negocio = crear_negocio(created_at=created_at)
 
-    assert negocio.created_at == datetime(2026, 10, 29, 12, 0, tzinfo=timezone.utc)
+    assert negocio.created_at == datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
 
 
 def test_negocio_no_permite_reemplazar_id_publicamente() -> None:
