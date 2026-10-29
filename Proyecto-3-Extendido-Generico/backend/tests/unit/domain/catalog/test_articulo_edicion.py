@@ -199,6 +199,46 @@ def test_edicion_activo_sin_usos_es_atomica_y_no_desactiva() -> None:
     assert articulo.estado is EstadoArticulo.ACTIVO
 
 
+def test_deshabilitar_venta_coherentemente_conserva_precio() -> None:
+    articulo = crear_articulo()
+    capacidades_sin_venta = CapacidadesArticulo(
+        es_comprable=True,
+        es_vendible=False,
+        controla_stock=True,
+        puede_usarse_en_produccion=False,
+        controla_vencimiento=False,
+        permite_descuento=False,
+    )
+    propuesta = propuesta_desde(
+        articulo,
+        capacidades=capacidades_sin_venta,
+    )
+
+    articulo.aplicar_edicion(propuesta, actualizado_en=DESPUES)
+
+    assert articulo.capacidades.es_vendible is False
+    assert articulo.capacidades.permite_descuento is False
+    assert articulo.precio_base == Decimal("1500.0000")
+    assert articulo.estado is EstadoArticulo.ACTIVO
+
+
+def test_deshabilitar_venta_no_auto_corrige_descuento_incoherente() -> None:
+    articulo = crear_articulo()
+    antes = snapshot(articulo)
+
+    with pytest.raises(CapacidadesInvalidasError):
+        CapacidadesArticulo(
+            es_comprable=True,
+            es_vendible=False,
+            controla_stock=True,
+            puede_usarse_en_produccion=False,
+            controla_vencimiento=False,
+            permite_descuento=True,
+        )
+
+    assert snapshot(articulo) == antes
+
+
 def test_edicion_inactivo_permite_cero_usos_y_no_reactiva() -> None:
     articulo = crear_articulo(estado=EstadoArticulo.INACTIVO)
     propuesta = propuesta_desde(
