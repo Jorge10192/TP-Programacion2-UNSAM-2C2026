@@ -1,5 +1,4 @@
-class DomainError(Exception):
-    """Base exception for expected domain-rule violations."""
+from app.domain.common.exceptions import DomainError
 
 
 class EmailInvalidoError(DomainError):

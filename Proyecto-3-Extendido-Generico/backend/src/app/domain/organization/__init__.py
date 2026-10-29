@@ -1,5 +1,6 @@
 """Organization domain primitives and entities."""
 
+from app.domain.common.exceptions import DomainError
 from app.domain.organization.email import Email
 from app.domain.organization.enums import (
     EstadoInvitacion,
@@ -10,7 +11,6 @@ from app.domain.organization.enums import (
 )
 from app.domain.organization.errors import (
     CoordinacionNegocioError,
-    DomainError,
     EmailInvalidoError,
     FechaInvalidaError,
     IdentificadorInvalidoError,
