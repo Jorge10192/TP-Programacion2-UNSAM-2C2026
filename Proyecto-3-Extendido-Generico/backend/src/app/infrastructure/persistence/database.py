@@ -47,7 +47,7 @@ engine = build_engine(settings.database_url, echo=settings.sql_echo)
 SessionFactory = build_session_factory(engine)
 
 
-def get_db_session() -> Generator[Session, None, None]:
+def get_db_session() -> Generator[Session]:
     """Yield one synchronous Session; callers own commit/rollback semantics."""
     with SessionFactory() as session:
         yield session
