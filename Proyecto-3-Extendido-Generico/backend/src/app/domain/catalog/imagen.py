@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from datetime import datetime
 from uuid import UUID
 
 from app.domain.catalog.errors import ImagenesInvalidasError
-from app.domain.common.validation import normalize_utc_datetime, require_uuid4
+from app.domain.common.validation import require_uuid4
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -16,7 +15,6 @@ class ArticuloImagen:
     referencia_storage: str
     posicion: int
     es_principal: bool
-    created_at: datetime
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", require_uuid4(self.id, field_name="id"))
@@ -49,8 +47,3 @@ class ArticuloImagen:
         if not isinstance(self.es_principal, bool):
             raise ImagenesInvalidasError("es_principal debe ser booleano.")
 
-        object.__setattr__(
-            self,
-            "created_at",
-            normalize_utc_datetime(self.created_at, field_name="created_at"),
-        )

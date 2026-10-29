@@ -1,5 +1,5 @@
 from dataclasses import FrozenInstanceError
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -59,7 +59,6 @@ def crear_imagen(
     id: UUID | None = None,
     articulo_id: UUID | None = None,
     negocio_id: UUID | None = None,
-    created_at: datetime = AHORA,
 ) -> ArticuloImagen:
     return ArticuloImagen(
         id=id or uuid4(),
@@ -68,7 +67,6 @@ def crear_imagen(
         referencia_storage=referencia_storage,
         posicion=posicion,
         es_principal=es_principal,
-        created_at=created_at,
     )
 
 
@@ -154,26 +152,6 @@ def test_articulo_imagen_rechaza_principal_que_no_es_booleano() -> None:
         )
 
 
-def test_articulo_imagen_normaliza_created_at_a_utc() -> None:
-    articulo = crear_articulo()
-    buenos_aires = timezone(timedelta(hours=-3))
-    instante = datetime(2026, 10, 29, 9, 0, tzinfo=buenos_aires)
-
-    imagen = crear_imagen(articulo, created_at=instante)
-
-    assert imagen.created_at == AHORA
-
-
-def test_articulo_imagen_rechaza_created_at_naive() -> None:
-    articulo = crear_articulo()
-
-    with pytest.raises(FechaInvalidaError):
-        crear_imagen(
-            articulo,
-            created_at=datetime(2026, 10, 29, 12, 0),
-        )
-
-
 def test_articulo_nace_sin_imagenes_por_default() -> None:
     articulo = crear_articulo()
 
@@ -190,7 +168,6 @@ def test_factory_puede_crear_articulo_con_imagen_valida() -> None:
         referencia_storage="catalogo/principal.webp",
         posicion=1,
         es_principal=True,
-        created_at=AHORA,
     )
 
     articulo = ArticuloCatalogo.crear(
