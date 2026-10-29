@@ -17,10 +17,12 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/proyecto3_dev"
     )
+    test_database_url: str | None = None
+    sql_echo: bool = False
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """Return the process-wide immutable settings instance."""
+    """Return the process-wide settings instance."""
 
     return Settings()
