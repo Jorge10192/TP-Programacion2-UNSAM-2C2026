@@ -1,10 +1,8 @@
-from app.domain.common.exceptions import (
-    DomainError as DomainError,
-    FechaInvalidaError as FechaInvalidaError,
-    IdentificadorInvalidoError as IdentificadorInvalidoError,
-    NombreInvalidoError as NombreInvalidoError,
-    VersionInvalidaError as VersionInvalidaError,
-)
+from app.domain.common.exceptions import DomainError as DomainError
+from app.domain.common.exceptions import FechaInvalidaError as FechaInvalidaError
+from app.domain.common.exceptions import IdentificadorInvalidoError as IdentificadorInvalidoError
+from app.domain.common.exceptions import NombreInvalidoError as NombreInvalidoError
+from app.domain.common.exceptions import VersionInvalidaError as VersionInvalidaError
 
 
 class EmailInvalidoError(DomainError):
