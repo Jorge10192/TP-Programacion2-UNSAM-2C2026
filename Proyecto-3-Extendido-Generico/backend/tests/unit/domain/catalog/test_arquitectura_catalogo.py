@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 FORBIDDEN_IMPORT_MARKERS = (
     "import fastapi",
     "from fastapi",
