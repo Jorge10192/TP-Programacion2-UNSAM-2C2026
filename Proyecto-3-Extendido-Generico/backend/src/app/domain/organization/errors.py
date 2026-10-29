@@ -29,6 +29,7 @@ class VersionInvalidaError(DomainError):
 class MonedaInvalidaError(DomainError):
     """Raised when a business uses a currency not supported by the MVP."""
 
+
 class MembresiaError(DomainError):
     """Base exception for membership-specific domain-rule violations."""
 
