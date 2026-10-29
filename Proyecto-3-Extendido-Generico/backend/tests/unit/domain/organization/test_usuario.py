@@ -11,7 +11,6 @@ from app.domain.organization.errors import (
 )
 from app.domain.organization.usuario import Usuario
 
-
 AHORA = datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
 
 
