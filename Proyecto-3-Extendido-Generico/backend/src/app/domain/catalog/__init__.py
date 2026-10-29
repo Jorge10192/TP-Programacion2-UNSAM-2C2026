@@ -3,6 +3,7 @@
 from app.domain.catalog.articulo import ArticuloCatalogo
 from app.domain.catalog.capacidades import CapacidadesArticulo
 from app.domain.catalog.categoria import Categoria
+from app.domain.catalog.propuesta import PropuestaEdicionPreparada
 from app.domain.catalog.enums import (
     EstadoArticulo,
     EstadoCategoria,
@@ -13,6 +14,8 @@ from app.domain.catalog.errors import (
     ArticuloActivoSinUsoError,
     ArticuloError,
     ArticuloInvalidoError,
+    ArticuloYaActivoError,
+    ArticuloYaInactivoError,
     CapacidadesInvalidasError,
     CatalogoError,
     CategoriaError,
@@ -27,6 +30,8 @@ __all__ = [
     "ArticuloCatalogo",
     "ArticuloError",
     "ArticuloInvalidoError",
+    "ArticuloYaActivoError",
+    "ArticuloYaInactivoError",
     "CapacidadesArticulo",
     "CapacidadesInvalidasError",
     "CatalogoError",
@@ -38,6 +43,7 @@ __all__ = [
     "EstadoArticulo",
     "EstadoCategoria",
     "PrecioInvalidoError",
+    "PropuestaEdicionPreparada",
     "TipoArticulo",
     "UnidadMedida",
 ]

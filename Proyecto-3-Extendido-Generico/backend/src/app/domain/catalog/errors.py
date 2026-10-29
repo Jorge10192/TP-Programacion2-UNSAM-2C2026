@@ -39,3 +39,11 @@ class PrecioInvalidoError(ArticuloError):
 
 class ArticuloActivoSinUsoError(ArticuloError):
     """Raised when an active article has no operational use configured."""
+
+
+class ArticuloYaActivoError(ArticuloError):
+    """Raised when attempting to reactivate an already active article."""
+
+
+class ArticuloYaInactivoError(ArticuloError):
+    """Raised when attempting to deactivate an already inactive article."""

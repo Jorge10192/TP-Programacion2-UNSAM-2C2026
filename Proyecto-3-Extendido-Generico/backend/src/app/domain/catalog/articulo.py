@@ -8,9 +8,12 @@ from app.domain.catalog.enums import EstadoArticulo, TipoArticulo, UnidadMedida
 from app.domain.catalog.errors import (
     ArticuloActivoSinUsoError,
     ArticuloInvalidoError,
+    ArticuloYaActivoError,
+    ArticuloYaInactivoError,
     CapacidadesInvalidasError,
     PrecioInvalidoError,
 )
+from app.domain.catalog.propuesta import PropuestaEdicionPreparada
 from app.domain.common.validation import (
     normalize_required_text,
     normalize_utc_datetime,
@@ -249,6 +252,95 @@ class ArticuloCatalogo:
             raise ArticuloActivoSinUsoError(
                 "Un artículo activo debe tener al menos un uso operativo."
             )
+
+    def aplicar_edicion(
+        self,
+        propuesta: PropuestaEdicionPreparada,
+        *,
+        actualizado_en: datetime,
+    ) -> None:
+        """Apply a complete prepared edit atomically after validating final state."""
+        if not isinstance(propuesta, PropuestaEdicionPreparada):
+            raise ArticuloInvalidoError(
+                "propuesta debe ser una PropuestaEdicionPreparada válida."
+            )
+
+        nombre = normalize_required_text(propuesta.nombre, field_name="nombre")
+        descripcion = self._require_optional_functional_text(
+            propuesta.descripcion,
+            field_name="descripcion",
+        )
+        categoria_id = self._require_optional_uuid4(
+            propuesta.categoria_id,
+            field_name="categoria_id",
+        )
+        sku = self._require_optional_functional_text(
+            propuesta.sku,
+            field_name="sku",
+        )
+        unidad_medida = self._require_unidad_medida(propuesta.unidad_medida)
+        precio_base = self._require_money(
+            propuesta.precio_base,
+            field_name="precio_base",
+        )
+        costo_referencia = self._require_money(
+            propuesta.costo_referencia,
+            field_name="costo_referencia",
+        )
+        capacidades = self._require_capacidades(propuesta.capacidades)
+        ahora = normalize_utc_datetime(
+            actualizado_en,
+            field_name="actualizado_en",
+        )
+
+        self._validar_configuracion(
+            tipo=self._tipo,
+            precio_base=precio_base,
+            capacidades=capacidades,
+            estado=self._estado,
+        )
+
+        self._nombre = nombre
+        self._descripcion = descripcion
+        self._categoria_id = categoria_id
+        self._sku = sku
+        self._unidad_medida = unidad_medida
+        self._precio_base = precio_base
+        self._costo_referencia = costo_referencia
+        self._capacidades = capacidades
+        self._updated_at = ahora
+
+    def desactivar(self, *, actualizado_en: datetime) -> None:
+        """Apply ACTIVO -> INACTIVO while preserving the current configuration."""
+        if self._estado is EstadoArticulo.INACTIVO:
+            raise ArticuloYaInactivoError("El artículo ya está inactivo.")
+
+        ahora = normalize_utc_datetime(
+            actualizado_en,
+            field_name="actualizado_en",
+        )
+        self._estado = EstadoArticulo.INACTIVO
+        self._updated_at = ahora
+
+    def reactivar(self, *, actualizado_en: datetime) -> None:
+        """Apply INACTIVO -> ACTIVO only if current configuration is active-valid."""
+        if self._estado is EstadoArticulo.ACTIVO:
+            raise ArticuloYaActivoError("El artículo ya está activo.")
+
+        ahora = normalize_utc_datetime(
+            actualizado_en,
+            field_name="actualizado_en",
+        )
+
+        self._validar_configuracion(
+            tipo=self._tipo,
+            precio_base=self._precio_base,
+            capacidades=self._capacidades,
+            estado=EstadoArticulo.ACTIVO,
+        )
+
+        self._estado = EstadoArticulo.ACTIVO
+        self._updated_at = ahora
 
     def esta_activo(self) -> bool:
         """Return whether the article participates in new compatible operations."""
