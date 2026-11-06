@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
-export type DemoProfile = { id: 'demo-user'; displayName: string; email: string }
+export type DemoProfile = { id: 'demo-user'; displayName: string; email: string; avatarInitials: string; contactPhone: string }
 export type DemoBusiness = {
   id: string
   name: string
@@ -27,6 +27,7 @@ export type DemoMembership = {
   userId: 'demo-user'
   role: 'TITULAR_ADMINISTRATIVO'
   status: 'ACTIVA'
+  jobTitle: string
 }
 export type DemoSnapshot = {
   version: 1
@@ -49,19 +50,19 @@ export const kindLabels: Record<BusinessKind, string> = {
 }
 
 function membership(id: string): DemoMembership {
-  return { businessId: id, userId: 'demo-user', role: 'TITULAR_ADMINISTRATIVO', status: 'ACTIVA' }
+  return { businessId: id, userId: 'demo-user', role: 'TITULAR_ADMINISTRATIVO', status: 'ACTIVA', jobTitle: '' }
 }
 
 function defaults(): DemoSnapshot {
   return {
     version: 1,
-    profile: { id: 'demo-user', displayName: 'Usuario DEMO', email: '' },
+    profile: { id: 'demo-user', displayName: 'Usuario DEMO', email: '', avatarInitials: '', contactPhone: '' },
     businessesById: Object.fromEntries(fixtures.map((item) => [item.id, item])),
     membershipsByBusinessId: Object.fromEntries(fixtures.map((item) => [item.id, membership(item.id)])),
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -107,6 +108,8 @@ function load(): DemoSnapshot {
         id: 'demo-user',
         displayName: data.profile.displayName.trim(),
         email: typeof data.profile.email === 'string' && data.profile.email.length <= 120 ? data.profile.email : '',
+        avatarInitials: typeof data.profile.avatarInitials === 'string' && /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{0,4}$/.test(data.profile.avatarInitials.trim()) ? data.profile.avatarInitials.trim().toUpperCase() : '',
+        contactPhone: typeof data.profile.contactPhone === 'string' && data.profile.contactPhone.length <= 30 && /^[+()\d\s.-]*$/.test(data.profile.contactPhone) ? data.profile.contactPhone.trim() : '',
       }
     }
     if (Array.isArray(data.createdBusinesses)) {
@@ -137,6 +140,15 @@ function load(): DemoSnapshot {
         state.businessesById[item.id] = { ...updated, initials: updated.name.slice(0, 1).toUpperCase() }
       }
     }
+    // Puesto laboral se asocia a la membresía por empresa, nunca al perfil global.
+    if (isRecord(data.memberJobs)) {
+      for (const [id, jobTitle] of Object.entries(data.memberJobs)) {
+        const existing = state.membershipsByBusinessId[id]
+        if (existing && typeof jobTitle === 'string' && jobTitle.length <= 80) {
+          state.membershipsByBusinessId[id] = { ...existing, jobTitle: jobTitle.trim() }
+        }
+      }
+    }
   } catch {
     // Datos corruptos o almacenamiento bloqueado: mostrar fixtures conocidos.
   }
@@ -153,6 +165,7 @@ function notify(next: DemoSnapshot) {
       profile: state.profile,
       createdBusinesses: Object.values(state.businessesById).filter((b) => b.source === 'created'),
       fixtureEdits: Object.fromEntries(fixtures.map((item) => [item.id, editableFields(state.businessesById[item.id])])),
+      memberJobs: Object.fromEntries(Object.entries(state.membershipsByBusinessId).map(([id, membership]) => [id, membership.jobTitle])),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
@@ -183,7 +196,7 @@ export function findDemoBusiness(snapshot: DemoSnapshot, id: string): DemoBusine
 }
 
 export type BusinessInput = { name: string; category: string; kind: BusinessKind; description: string }
-export type ProfileInput = { displayName: string; email: string }
+export type ProfileInput = { displayName: string; email: string; avatarInitials: string; contactPhone: string }
 function requiredText(value: string, label: string, min: number, max: number): string {
   const clean = value.trim()
   if (clean.length < min || clean.length > max) throw new Error(label + ' debe tener entre ' + min + ' y ' + max + ' caracteres.')
@@ -197,7 +210,15 @@ export const demoGateway = {
     if (email.length > 120 || (email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
       throw new Error('Ingresá un correo válido o dejá el campo vacío.')
     }
-    const profile: DemoProfile = { id: 'demo-user', displayName, email }
+    const avatarInitials = input.avatarInitials.trim().toUpperCase()
+    if (!/^[A-ZÁÉÍÓÚÜÑ]{0,4}$/.test(avatarInitials)) {
+      throw new Error('Las iniciales pueden contener hasta 4 letras, sin números ni símbolos.')
+    }
+    const contactPhone = input.contactPhone.trim()
+    if (contactPhone.length > 30 || !/^[+()\d\s.-]*$/.test(contactPhone)) {
+      throw new Error('El contacto debe usar números y signos telefónicos, con hasta 30 caracteres.')
+    }
+    const profile: DemoProfile = { id: 'demo-user', displayName, email, avatarInitials, contactPhone }
     notify({ ...state, profile })
     return profile
   },
@@ -223,6 +244,21 @@ export const demoGateway = {
       membershipsByBusinessId: { ...state.membershipsByBusinessId, [id]: membership(id) },
     })
     return business
+  },
+
+  async saveMemberJobTitle(businessId: string, jobTitle: string): Promise<DemoMembership> {
+    const current = state.membershipsByBusinessId[businessId]
+    if (!current || current.status !== 'ACTIVA' || !state.businessesById[businessId]) {
+      throw new Error('Membresía DEMO no disponible para esta empresa.')
+    }
+    const title = jobTitle.trim()
+    if (title.length > 80) throw new Error('La función laboral admite hasta 80 caracteres.')
+    const updated = { ...current, jobTitle: title }
+    notify({
+      ...state,
+      membershipsByBusinessId: { ...state.membershipsByBusinessId, [businessId]: updated },
+    })
+    return updated
   },
 
   /** Edita exclusivamente los campos comerciales de la empresa solicitada. */
