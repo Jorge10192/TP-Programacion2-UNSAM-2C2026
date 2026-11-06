@@ -11,6 +11,7 @@ Desde la **raíz del repositorio**:
 ~~~powershell
 cd plataforma-pyme/frontend
 npm.cmd install
+npm.cmd test
 npm.cmd run build
 npm.cmd run lint
 npm.cmd run dev
@@ -19,6 +20,8 @@ npm.cmd run dev
 Si **ya estás ubicado** dentro de plataforma-pyme/frontend, **no vuelvas a hacer cd**: ejecutá directamente git pull, npm.cmd run build, npm.cmd run lint y npm.cmd run dev.
 
 Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado Pago para esta DEMO. Detené Vite con Ctrl+C o q y Enter.
+
+Pruebas verificadas con Node 22.17 y 24.22. `npm.cmd test` ejecuta toda la suite; los comandos `test:*` permiten repetir un módulo e incluyen el soporte TypeScript requerido por Node 22.
 
 ## Qué funciona en la DEMO
 
