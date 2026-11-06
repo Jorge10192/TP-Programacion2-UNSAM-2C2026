@@ -27,7 +27,7 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 async function transact<T>(
-  key: string, mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>,
+  mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   const db = await openDatabase()
   return new Promise((resolve, reject) => {
@@ -47,7 +47,7 @@ async function transact<T>(
 }
 
 export async function readDemoImage(key: string): Promise<Blob | null> {
-  const record = await transact<PhotoRecord | undefined>(key, 'readonly', (store) => store.get(key))
+  const record = await transact<PhotoRecord | undefined>('readonly', (store) => store.get(key))
   return record?.blob instanceof Blob ? record.blob : null
 }
 
@@ -56,13 +56,13 @@ export async function writeDemoImage(key: string, blob: Blob): Promise<void> {
       (blob.type !== 'image/webp' && blob.type !== 'image/jpeg')) {
     throw new Error('La imagen optimizada supera el tamaño permitido.')
   }
-  await transact<IDBValidKey>(key, 'readwrite',
+  await transact<IDBValidKey>('readwrite',
     (store) => store.put({ key, blob, updatedAt: Date.now() } satisfies PhotoRecord))
   window.dispatchEvent(new CustomEvent(DEMO_IMAGE_CHANGED, { detail: key }))
 }
 
 export async function removeDemoImage(key: string): Promise<void> {
-  await transact<undefined>(key, 'readwrite', (store) => store.delete(key))
+  await transact<undefined>('readwrite', (store) => store.delete(key))
   window.dispatchEvent(new CustomEvent(DEMO_IMAGE_CHANGED, { detail: key }))
 }
 
