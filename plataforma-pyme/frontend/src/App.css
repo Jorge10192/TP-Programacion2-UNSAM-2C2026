@@ -300,6 +300,72 @@
   .form-actions .button { flex: 1; }
 }
 
+
+/* E1-B.1 — Datos de la Empresa: referencias Z001 y menú M1, sin scripts heredados. */
+.company-summary { display: flex; align-items: center; gap: 23px; background: #fff; padding: 27px; border: 1px solid var(--line); border-radius: 17px; box-shadow: var(--shadow); margin-bottom: 23px; }
+.company-emblem { width: 112px; height: 112px; border-radius: 16px; display: grid; place-items: center; flex: none; font-size: 40px; font-weight: 900; }
+.company-emblem.mint { background: #e5f6ef; color: #127c61; }
+.company-emblem.blue { background: #e6effe; color: #2761c7; }
+.company-emblem.violet { background: #eee8ff; color: #7451ce; }
+.company-emblem-small { width: 72px; height: 72px; font-size: 27px; border-radius: 12px; }
+.company-summary-copy { min-width: 0; }
+.company-summary-title { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.company-summary-title h2 { font-size: clamp(23px, 2.4vw, 29px); color: var(--ink); letter-spacing: -.7px; margin: 0; overflow-wrap: anywhere; }
+.company-summary-copy > p { color: #5e7089; font-size: 14px; margin: 9px 0 14px; line-height: 1.6; }
+.company-summary-category { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; color: #43618e; font-size: 12px; }
+.business-details-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(270px, .9fr); gap: 20px; align-items: start; }
+.business-details-aside { display: flex; flex-direction: column; gap: 17px; min-width: 0; }
+.business-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 18px; margin-bottom: 20px; border-bottom: 1px solid var(--line); }
+.business-section-heading > div { display: flex; align-items: center; gap: 11px; color: #2f65c9; }
+.business-section-heading h2 { color: var(--ink); font-size: 19px; letter-spacing: -.35px; margin: 0; }
+.business-section-heading > span { color: #899ab1; font-size: 12px; white-space: nowrap; }
+.brand-identity-row { display: flex; align-items: center; gap: 16px; padding: 18px; margin-bottom: 20px; background: #f8faff; border: 1px solid #e2eaf4; border-radius: 13px; }
+.brand-identity-row > div { flex: 1; min-width: 0; }
+.brand-identity-row strong { display: block; color: #243b5e; font-size: 14px; margin-bottom: 5px; }
+.brand-identity-row p { margin: 0; color: #71829a; font-size: 12px; line-height: 1.5; }
+.business-fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-top: 20px; }
+.business-field-card { min-width: 0; background: #fff; border: 1px solid #dfe7f2; border-radius: 12px; padding: 15px; transition: border-color .15s; }
+.business-field-card.field-editing { border-color: #8ab4f1; box-shadow: 0 0 0 2px #e2efff; }
+.business-field-wide { grid-column: 1 / -1; }
+.business-field-head { display: flex; align-items: center; gap: 11px; }
+.business-field-info { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 5px; }
+.business-field-label { color: #71829a; text-transform: uppercase; letter-spacing: .5px; font-size: 10px; font-weight: 800; }
+.business-field-info strong { display: block; color: var(--ink); font-size: 13px; font-weight: 800; overflow-wrap: anywhere; line-height: 1.5; }
+.business-field-info .field-empty { font-weight: 650; font-style: italic; color: #95a2b4; }
+.field-edit-button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: #f1f6ff; color: #416aab; padding: 8px; border-radius: 8px; font-size: 11px; font-weight: 800; flex: none; }
+.field-edit-button:hover { background: #e2eeff; color: #1b5fc7; }
+.business-edit-form { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+.business-edit-form input, .business-edit-form textarea { width: 100%; background: #fff; border: 1px solid #bfcfe4; border-radius: 9px; padding: 10px 12px; color: var(--ink); font: inherit; font-size: 13px; resize: vertical; }
+.business-edit-form input:focus, .business-edit-form textarea:focus { outline: 2px solid #96c0ff; outline-offset: 1px; }
+.business-char-count { align-self: flex-end; font-size: 10px; color: #8b98aa; }
+.business-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.business-edit-actions .button { min-height: 35px; }
+.business-aside-heading { display: flex; align-items: center; gap: 13px; margin-bottom: 15px; }
+.business-aside-heading h2 { margin: 0 0 5px; color: var(--ink); font-size: 16px; }
+.business-aside-heading p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.business-aside-description { font-size: 12px; line-height: 1.65; color: #71819a; margin: 14px 0 0; }
+.business-owner-facts { margin: 15px 0 0; display: flex; flex-direction: column; gap: 11px; }
+.business-owner-facts > div { display: flex; flex-direction: column; gap: 3px; }
+.business-owner-facts dt { font-size: 11px; color: #74849b; }
+.business-owner-facts dd { font-size: 12px; font-weight: 750; color: var(--ink); margin: 0; overflow-wrap: anywhere; }
+.business-contacts-preview { margin-top: 20px; }
+.business-contacts-preview p { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0; }
+.business-footer-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px; padding-top: 21px; }
+.business-footer-actions p { margin: 0; max-width: 560px; font-size: 12px; color: #7588a1; line-height: 1.5; }
+@media (max-width: 1040px) { .business-details-layout { grid-template-columns: 1fr; } .business-details-aside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 610px) {
+  .company-summary { flex-direction: column; align-items: flex-start; padding: 20px; gap: 15px; }
+  .company-emblem { width: 82px; height: 82px; font-size: 28px; }
+  .company-emblem-small { width: 62px; height: 62px; font-size: 22px; }
+  .business-fields-grid { grid-template-columns: 1fr; }
+  .business-field-wide { grid-column: auto; }
+  .brand-identity-row { flex-wrap: wrap; padding: 15px; }
+  .business-details-aside { display: flex; flex-direction: column; }
+  .business-section-heading { align-items: flex-start; }
+  .business-section-heading > span { white-space: normal; text-align: right; }
+  .business-edit-actions { flex-wrap: wrap; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .tool-card, .company-card { transition: none; }
 }
