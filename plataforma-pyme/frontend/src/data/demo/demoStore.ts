@@ -438,6 +438,48 @@ function inventoryLocationOfBusiness(businessId: string, locationId: string): De
   return location
 }
 
+function validSale(raw: unknown, snapshot: DemoSnapshot): raw is DemoSale {
+  if (!isRecord(raw) || typeof raw.id !== 'string' ||
+      !/^demo-sale-[a-f0-9-]{36}$/.test(raw.id) ||
+      typeof raw.requestId !== 'string' ||
+      !/^demo-sale-request-[a-f0-9-]{36}$/.test(raw.requestId) ||
+      typeof raw.businessId !== 'string' || !snapshot.businessesById[raw.businessId] ||
+      (raw.locationId !== null && (typeof raw.locationId !== 'string' ||
+        !snapshot.locationsById[raw.locationId] ||
+        snapshot.locationsById[raw.locationId].businessId !== raw.businessId)) ||
+      typeof raw.createdAt !== 'string' || !Number.isFinite(Date.parse(raw.createdAt)) ||
+      raw.status !== 'REGISTRADA_DEMO' ||
+      !Array.isArray(raw.lines) || raw.lines.length < 1 || raw.lines.length > 30 ||
+      typeof raw.subtotalCents !== 'number' || typeof raw.totalCents !== 'number' ||
+      typeof raw.discountCents !== 'number' ||
+      !Array.isArray(raw.payments) || typeof raw.notes !== 'string') return false
+  try {
+    normalizeSaleInput({
+      locationId: raw.locationId, notes: raw.notes, discountCents: raw.discountCents,
+      payments: raw.payments as SalePayment[], lines: raw.lines as SaleInput['lines'],
+    })
+    const seen = new Set<string>()
+    for (const line of raw.lines) {
+      if (!isRecord(line) || typeof line.id !== 'string' ||
+          !/^demo-sale-line-[a-f0-9-]{36}$/.test(line.id) ||
+          typeof line.catalogItemId !== 'string' || seen.has(line.catalogItemId)) return false
+      seen.add(line.catalogItemId)
+      const item = snapshot.catalogItemsById[line.catalogItemId]
+      if (!item || item.businessId !== raw.businessId || line.unit !== item.unit ||
+          line.kind !== (item.kind === 'SERVICIO' ? 'SERVICIO' : 'BIEN') ||
+          typeof line.name !== 'string' || !line.name.trim() || line.name.length > 90 ||
+          typeof line.sku !== 'string' || line.sku.length > 32 ||
+          typeof line.quantityMilli !== 'number' || typeof line.unitPriceCents !== 'number') return false
+      validSaleQuantity(line.quantityMilli, item.unit)
+      if (line.lineTotalCents !== lineTotalCents(line.quantityMilli, line.unitPriceCents)) return false
+      if (line.kind === 'BIEN' && raw.locationId === null) return false
+    }
+    const totals = saleAmounts(raw.lines, raw.discountCents)
+    validateSalePayments(raw.payments as SalePayment[], totals.totalCents)
+    return raw.subtotalCents === totals.subtotalCents && raw.totalCents === totals.totalCents
+  } catch { return false }
+}
+
 function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is InventoryOperation {
   if (!isRecord(raw) || typeof raw.id !== 'string' ||
       !/^demo-inventory-op-[a-f0-9-]{36}$/.test(raw.id) ||
@@ -803,6 +845,28 @@ function load(): DemoSnapshot {
         countByBusiness.set(purchase.businessId, (countByBusiness.get(purchase.businessId) ?? 0) + 1)
       }
     }
+    // Ventas DEMO opcionales. Primero se recuperan para que los conteos
+    // posteriores a una venta puedan reconstruir su saldo histórico real.
+    if (Array.isArray(data.sales)) {
+      const counts = new Map<string, number>()
+      const requests = new Set<string>()
+      for (const rawSale of data.sales.slice(0, 10000)) {
+        if (!validSale(rawSale, state) || state.salesById[rawSale.id] || requests.has(rawSale.requestId)) continue
+        if ((counts.get(rawSale.businessId) ?? 0) >= 500) continue
+        const sale: DemoSale = {
+          id: rawSale.id, requestId: rawSale.requestId, businessId: rawSale.businessId,
+          locationId: rawSale.locationId,
+          lines: rawSale.lines.map((line) => ({ ...line })),
+          subtotalCents: rawSale.subtotalCents, discountCents: rawSale.discountCents,
+          totalCents: rawSale.totalCents,
+          payments: rawSale.payments.map((payment) => ({ ...payment })),
+          notes: rawSale.notes, createdAt: rawSale.createdAt, status: 'REGISTRADA_DEMO',
+        }
+        state.salesById[sale.id] = sale
+        requests.add(sale.requestId)
+        counts.set(sale.businessId, (counts.get(sale.businessId) ?? 0) + 1)
+      }
+    }
     // Operaciones opcionales: se reconstruyen contra las recepciones y las
     // operaciones anteriores. Rechazar una operación inválida no borra compras.
     if (Array.isArray(data.inventoryOperations)) {
@@ -862,6 +926,7 @@ function notify(next: DemoSnapshot) {
       suppliers: Object.values(state.suppliersById),
       purchases: Object.values(state.purchasesById),
       inventoryOperations: Object.values(state.inventoryOperationsById),
+      sales: Object.values(state.salesById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
