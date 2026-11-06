@@ -42,13 +42,13 @@ export function CatalogDetailDialog({
     }
   }, [])
 
+  // React StrictMode vuelve a ejecutar el cleanup de efectos en desarrollo.
+  // Escuchar close confunde ese cierre programático con uno solicitado por el usuario.
+  // Por eso se usa cancel para Escape y botones/clic de backdrop para el resto.
   return <dialog
     ref={dialogRef}
     className="catalog-detail-modal"
     aria-labelledby="catalog-detail-heading"
-    // No escuchar onClose: el cleanup de React StrictMode ejecuta dialog.close()
-    // durante el montaje de desarrollo y dispara un close asincrónico.
-    // Ese evento NO debe propagarse como intención del usuario.
     onCancel={(event) => {
       event.preventDefault()
       onClose()
