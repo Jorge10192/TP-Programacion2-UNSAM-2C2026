@@ -88,7 +88,7 @@ function App() {
   else if (pathname === '/empresas/nueva') content = <CreateBusinessPage navigate={navigate} profile={snapshot.profile} />
   else if (hasBusinessPath && !business) content = <NotFound navigate={navigate} accessDenied />
   else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} />
-  else if (business && section === 'empresa') content = <BusinessDetailsPage key={business.id} business={business} profile={snapshot.profile} navigate={navigate} />
+  else if (business && section === 'empresa') content = <BusinessDetailsPage key={business.id} business={business} profile={snapshot.profile} jobTitle={snapshot.membershipsByBusinessId[business.id]?.jobTitle ?? ''} navigate={navigate} />
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
