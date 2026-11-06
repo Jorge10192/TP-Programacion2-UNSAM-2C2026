@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../app/Icon'
+import { DemoPhoto } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import type { DemoBusiness, DemoSupplier } from '../../data/demo/demoStore'
 import {
   supplierPaymentLabels, weekdays,
@@ -57,7 +59,8 @@ export function SupplierDetailDialog({
         <button type="button" className="icon-button" onClick={onClose} aria-label="Cerrar proveedor"><Icon name="close" size={20}/></button>
       </div>
       <header className="supplier-detail-header">
-        <span className="supplier-monogram">{supplier.name.slice(0, 1).toUpperCase()}</span>
+        <DemoPhoto imageKey={demoImageKey('supplier', business.id, supplier.id)} alt={'Foto de ' + supplier.name}
+          fallback={supplier.name.slice(0, 1).toUpperCase()} className="supplier-monogram"/>
         <div>
           <div className="supplier-title-row">
             <h2 id="supplier-detail-title">{supplier.name}</h2>
