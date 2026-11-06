@@ -8,6 +8,12 @@ import { useSyncExternalStore } from 'react'
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
 export type DemoProfile = { id: 'demo-user'; displayName: string; email: string; avatarInitials: string; contactPhone: string }
+export function profileInitials(profile: Pick<DemoProfile, 'displayName' | 'avatarInitials'>): string {
+  return profile.avatarInitials ||
+    profile.displayName.trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() ||
+    'UD'
+}
+
 export type DemoBusiness = {
   id: string
   name: string
