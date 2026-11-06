@@ -36,10 +36,4 @@ export function businessHref(businessId: string, segment: string) {
   return '/b/' + encodeURIComponent(businessId) + '/' + segment
 }
 
-export const demoBusinesses = [
-  { id: 'walos-demo', name: 'WALOS', category: 'Elaboración de productos', initials: 'W', accent: 'mint' },
-  { id: 'comercio-demo', name: 'Comercio Ejemplo', category: 'Reventa de productos', initials: 'C', accent: 'blue' },
-  { id: 'servicios-demo', name: 'Servicios Ejemplo', category: 'Prestación de servicios', initials: 'S', accent: 'violet' },
-] as const
-
-export type DemoBusiness = typeof demoBusinesses[number]
+export type { DemoBusiness } from '../data/demo/demoStore'
