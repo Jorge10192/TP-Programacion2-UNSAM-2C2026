@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { profileInitials } from '../../data/demo/demoStore'
+import { DemoPhoto } from '../../features/common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import { AppLink } from '../AppLink'
 import { Icon } from '../Icon'
 import { businessHref } from '../navigation'
@@ -105,7 +107,9 @@ export function Topbar({
         </select>
       </label>
       <span className="demo-chip">DEMO</span>
-      <AppLink navigate={navigate} to="/perfil" className="user-avatar" ariaLabel="Ir a mi perfil">{profileInitials(profile)}</AppLink>
+      <AppLink navigate={navigate} to="/perfil" className="user-avatar" ariaLabel="Ir a mi perfil">
+        <DemoPhoto imageKey={demoImageKey('profile')} alt="Foto de perfil" fallback={profileInitials(profile)} className="demo-photo-avatar"/>
+      </AppLink>
     </div>
   </header>
 }
