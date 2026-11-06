@@ -5,6 +5,8 @@ import type { DemoBusiness, DemoSupplier } from '../../data/demo/demoStore'
 import type { SupplierInput } from '../../data/demo/supplierPolicy'
 import { supplierPaymentLabels, weekdays } from '../../data/demo/supplierPolicy'
 import { SupplierForm } from './SupplierForm'
+import { DemoPhoto } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import { SupplierDetailDialog } from './SupplierDetailDialog'
 
 export function SuppliersPage({
@@ -142,7 +144,8 @@ export function SuppliersPage({
       </div>}
       <div className="supplier-list">
         {filtered.map((supplier) => <article key={supplier.id} className={'supplier-card' + (supplier.status === 'INACTIVO' ? ' supplier-card-inactive' : '')}>
-          <span className="supplier-card-avatar" aria-hidden="true">{supplier.name.slice(0, 1).toUpperCase()}</span>
+          <DemoPhoto imageKey={demoImageKey('supplier', business.id, supplier.id)} alt={'Foto de ' + supplier.name}
+            fallback={supplier.name.slice(0, 1).toUpperCase()} className="supplier-card-avatar"/>
           <div className="supplier-card-main">
             <div className="supplier-card-title"><h3>{supplier.name}</h3>
               <span className={'catalog-state '+(supplier.status === 'ACTIVO' ? 'is-active' : 'is-inactive')}>{supplier.status === 'ACTIVO' ? 'Activo' : 'Inactivo'}</span>
