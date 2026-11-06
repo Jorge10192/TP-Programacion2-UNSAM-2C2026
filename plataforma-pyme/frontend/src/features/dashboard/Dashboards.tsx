@@ -36,13 +36,13 @@ export function Welcome({ navigate, businesses }: { navigate: Navigate; business
 }
 
 const summaryCards = [
-  { label: 'Ventas del período', detail: 'Sin ventas registradas', icon: 'receipt' as const, accent: 'blue' },
+  { label: 'Ventas registradas', detail: 'Sin ventas registradas', icon: 'receipt' as const, accent: 'blue' },
   { label: 'Artículos y servicios', detail: 'Catálogo pendiente', icon: 'package' as const, accent: 'mint' },
   { label: 'Movimientos de stock', detail: 'Sin operaciones', icon: 'truck' as const, accent: 'violet' },
   { label: 'Jornada de caja', detail: 'Sin jornada activa', icon: 'wallet' as const, accent: 'orange' },
 ]
 
-export function BusinessDashboard({ business, navigate, catalogCount, movementCount }: { business: DemoBusiness; navigate: Navigate; catalogCount: number; movementCount: number }) {
+export function BusinessDashboard({ business, navigate, catalogCount, movementCount, saleCount }: { business: DemoBusiness; navigate: Navigate; catalogCount: number; movementCount: number; saleCount: number }) {
   const priority = ['catalogo', 'inventario', 'ventas', 'compras', 'proveedores', 'gastos', 'jornadas', 'ubicaciones', 'equipo']
   const quickActions = priority.map((id) => navigationItems.find((entry) => entry.id === id)).filter((item): item is NavigationItem => item !== undefined)
 
@@ -64,8 +64,8 @@ export function BusinessDashboard({ business, navigate, catalogCount, movementCo
       {summaryCards.map((item) => <div key={item.label} className="stat-card">
         <span className={'feature-icon ' + item.accent}><Icon name={item.icon} size={20}/></span>
         <span className="stat-label">{item.label}</span>
-        <strong className="stat-value">{item.label === 'Artículos y servicios' ? catalogCount : item.label === 'Movimientos de stock' ? movementCount : '—'}</strong>
-        <small>{item.label === 'Artículos y servicios' ? 'Fichas activas DEMO' : item.label === 'Movimientos de stock' ? 'Entradas, traslados y conteos DEMO' : item.detail}</small>
+        <strong className="stat-value">{item.label === 'Ventas registradas' ? saleCount : item.label === 'Artículos y servicios' ? catalogCount : item.label === 'Movimientos de stock' ? movementCount : '—'}</strong>
+        <small>{item.label === 'Ventas registradas' ? 'Total de ventas DEMO (histórico)' : item.label === 'Artículos y servicios' ? 'Fichas activas DEMO' : item.label === 'Movimientos de stock' ? 'Entradas, ventas, traslados y conteos DEMO' : item.detail}</small>
       </div>)}
     </div>
 
@@ -73,7 +73,7 @@ export function BusinessDashboard({ business, navigate, catalogCount, movementCo
     <div className="tool-grid">
       {quickActions.map((item, index) => <AppLink to={businessHref(business.id, item.segment)} navigate={navigate} key={item.id} className="tool-card">
         <span className={'feature-icon ' + ['blue', 'mint', 'violet', 'orange'][index % 4]}><Icon name={item.icon} size={24}/></span>
-        <span className="tool-copy"><strong>{item.label}</strong><small>{item.description}</small><span className={'tool-status' + (['ubicaciones', 'equipo', 'catalogo', 'proveedores', 'compras', 'inventario', 'movimientos'].includes(item.id) ? ' tool-available' : '')}>{['ubicaciones', 'equipo', 'catalogo', 'proveedores', 'compras', 'inventario', 'movimientos'].includes(item.id) ? 'Disponible DEMO' : 'Próximamente'}</span></span>
+        <span className="tool-copy"><strong>{item.label}</strong><small>{item.description}</small><span className={'tool-status' + (['ubicaciones', 'equipo', 'catalogo', 'proveedores', 'compras', 'inventario', 'movimientos', 'ventas'].includes(item.id) ? ' tool-available' : '')}>{['ubicaciones', 'equipo', 'catalogo', 'proveedores', 'compras', 'inventario', 'movimientos', 'ventas'].includes(item.id) ? 'Disponible DEMO' : 'Próximamente'}</span></span>
         <Icon name="arrow" size={17} className="tool-arrow"/>
       </AppLink>)}
     </div>
