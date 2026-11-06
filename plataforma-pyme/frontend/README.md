@@ -2,7 +2,7 @@
 
 Plataforma generalista de gestión para múltiples empresas y rubros, desarrollada dentro del TP de Programación 2. WALOS es sólo un negocio de ejemplo, **no** el producto ni su rubro obligatorio.
 
-**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) validado visualmente y con persistencia por el equipo; compilación/lint de ese corte no confirmadas. E1-B2 (avatar, contacto y función por empresa) validado funcionalmente por el equipo. E1-B3 de Ubicaciones publicado y **pendiente de compilación, lint y pruebas locales**. No hay autenticación, autorización real, backend, stock, ventas, caja ni pagos.
+**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) validado visualmente y con persistencia por el equipo; compilación/lint de ese corte no confirmadas. E1-B2 (avatar, contacto y función por empresa) validado funcionalmente por el equipo. E1-B3 de Ubicaciones validado funcionalmente en el navegador por el equipo. E1-B3.1 incorpora Google Maps por enlace y copia, **pendiente de build/lint/tests/QA de navegador**. No hay autenticación, autorización real, backend, stock, ventas, caja ni pagos.
 
 ## Ejecutar en VS Code
 
@@ -29,6 +29,7 @@ Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado
 - **Inicio empresarial:** resumen y accesos a módulos (operaciones aún pendientes).
 - **Datos de la empresa:** ficha comercial con edición inmediata por campo de nombre, rubro, eslogan, presentación y CUIT ficticio opcional. Conserva los cambios de cada empresa tras F5 si localStorage está disponible.
 - **Ubicaciones:** alta, edición, lista, principal, pausa y reactivación. Tipos local/feria/depósito/oficina/otro; venta y almacenamiento separados, sin ubicación obligatoria para servicios ni creación de stock/caja.
+- **Google Maps y compartir:** campo opcional para pegar enlace compartido de Maps, búsqueda por dirección y botón para copiar nombre/dirección/enlace. No es mapa integrado ni geocodificación automática.
 - **Menú de tres líneas:** drawer modal; bloquea el fondo y se cierra desde el fondo, Escape, X o al elegir una sección.
 - **Menú fijo opcional:** expandido, compacto u oculto en escritorio, con preferencia local.
 - **Volver:** contextual dentro de la misma empresa o a su Inicio.
@@ -73,7 +74,7 @@ src/
 
 ## Límites de seguridad y datos
 
-- La información se almacena en **localStorage del navegador** con una clave versionada. E1-B1, E1-B2 y Ubicaciones conservan la clave/formato previo de E1-A2 para no perder perfiles y empresas creadas; se guardan overrides de fixtures, funciones laborales y ubicaciones por businessId. Es DEMO y no se sincroniza con otros dispositivos.
+- La información se almacena en **localStorage del navegador** con una clave versionada. E1-B1, E1-B2, Ubicaciones y Google Maps conservan la clave/formato previo de E1-A2 para no perder perfiles y empresas creadas; se guardan overrides de fixtures, funciones laborales y ubicaciones (incluido mapa opcional) por businessId. Es DEMO y no se sincroniza con otros dispositivos.
 - No uses nombres, emails ni datos comerciales reales; cualquiera que tenga acceso al navegador puede leer o modificar estos datos.
 - La UI no constituye autenticación, control de permisos, aislamiento multitenant seguro, respaldo ni garantía de persistencia.
 - El fundador y titular administrativo inicial son campos distintos pero ambos apuntan a la identidad DEMO global en este incremento; transferencias e invitaciones siguen pendientes.
@@ -89,5 +90,6 @@ src/
 - ../docs/08_E1_B1_DATOS_EMPRESA.md — integración de Z001, edición contextual y pruebas
 - ../docs/09_E1_B2_PERFIL_GLOBAL_Y_FUNCION_EMPRESA.md — avatar global, contacto y función laboral por empresa
 - ../docs/10_E1_B3_UBICACIONES_DEMO.md — ubicaciones por empresa y pruebas
+- ../docs/11_E1_B3_1_GOOGLE_MAPS_Y_COMPARTIR.md — enlace de Maps y copia por ubicación; ejecutar también `npm.cmd run test:maps`
 
 Arquitectura E0-B y ADR-001/002/007 permanecen como **propuestas**, sujetas a validación del equipo. Su adopción DEMO no implica aprobación definitiva.
