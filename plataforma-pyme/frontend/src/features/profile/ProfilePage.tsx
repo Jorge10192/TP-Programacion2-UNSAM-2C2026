@@ -24,7 +24,7 @@ export function ProfilePage({ profile, companyCount }: { profile: DemoProfile; c
     setBusy(true)
     try {
       await demoGateway.saveProfile({ displayName: name, email })
-      setNotice('Perfil DEMO guardado en este navegador.')
+      setNotice('Perfil DEMO actualizado. Se conservará al recargar si el navegador permite almacenamiento local.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el perfil.')
     } finally {
