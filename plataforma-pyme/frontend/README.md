@@ -33,8 +33,9 @@ No se requieren PostgreSQL, FastAPI ni Mercado Pago para este incremento. Detene
 - **Panel de empresa**: tarjetas de resumen sin cifras inventadas, accesos a secciones comerciales y administrativas.
 - **Navegación lateral** y barra superior: todos los destinos de la matriz E0-A; secciones aún no implementadas muestran un aviso claro.
 - **Selector de empresa**: cambia entre fixtures de presentación, sin transportar datos de pantalla.
-- **Menú adaptable**: en escritorio puede expandirse, contraerse a íconos u ocultarse. Los controles están a la izquierda de la barra superior; la elección se recuerda localmente, incluso al cambiar de empresa.
-- **Móvil**: menú lateral desplegable que se cierra al elegir una sección, pulsar Escape o tocar el fondo; la preferencia de escritorio no se modifica.
+- **Botón de tres líneas**: en la esquina superior izquierda, abre un menú superpuesto en escritorio y móvil. Mientras está abierto, el contenido de fondo queda bloqueado. Se cierra con X, Escape, un clic fuera o al elegir una sección.
+- **Menú fijo opcional**: el botón adicional de panel permite fijar el menú en escritorio, expandido o compacto, o volver a ocultarlo. La preferencia se guarda localmente y no depende de la empresa activa; por defecto el menú empieza oculto.
+- **Volver contextual**: en pantallas internas aparece un botón Volver; regresa a la página anterior de la misma empresa cuando existe y, si no, al Inicio de esa empresa (o al Inicio personal).
 
 Rutas útiles:
 
@@ -73,6 +74,6 @@ src/
 - No hay persistencia DEMO, gateway, Zustand, React Router, tests E2E, backend ni QR de Mercado Pago. Su implementación y aceptación pertenecen a futuros tickets E1.
 - No utilizar esta interfaz para datos personales, comerciales ni financieros reales.
 
-Para revisar alcance y QA: ../docs/04_E1_A1_PRIMER_SHELL.md (shell inicial) y ../docs/05_E1_A1_MENU_ADAPTABLE.md (menú adaptable).
+Para revisar alcance y QA: ../docs/04_E1_A1_PRIMER_SHELL.md (shell inicial), ../docs/05_E1_A1_MENU_ADAPTABLE.md (menú adaptable anterior) y ../docs/06_E1_A1_DRAWER_Y_VOLVER.md (nueva navegación).
 
-**Estado de revisión actual:** los cambios del menú están publicados en GitHub pero aún deben ejecutar npm.cmd run build, npm.cmd run lint y las pruebas visuales MENU-01 a MENU-09.
+**Estado de revisión actual:** menú superpuesto y volver publicados en GitHub; ejecutar npm.cmd run build, npm.cmd run lint y las verificaciones de ../docs/06_E1_A1_DRAWER_Y_VOLVER.md antes de considerarlo validado.
