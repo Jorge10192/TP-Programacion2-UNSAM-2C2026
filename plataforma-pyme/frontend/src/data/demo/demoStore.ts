@@ -35,11 +35,33 @@ export type DemoMembership = {
   status: 'ACTIVA'
   jobTitle: string
 }
+export type LocationKind = 'LOCAL' | 'FERIA' | 'DEPOSITO' | 'OFICINA' | 'OTRO'
+export type DemoLocation = {
+  id: string
+  businessId: string
+  name: string
+  kind: LocationKind
+  address: string
+  canSell: boolean
+  canStore: boolean
+  isPrimary: boolean
+  status: 'ACTIVA' | 'PAUSADA'
+}
+export type LocationInput = Pick<DemoLocation, 'name' | 'kind' | 'address' | 'canSell' | 'canStore'>
+export const locationKindLabels: Record<LocationKind, string> = {
+  LOCAL: 'Local o sucursal',
+  FERIA: 'Feria o punto temporal',
+  DEPOSITO: 'Depósito',
+  OFICINA: 'Oficina o espacio de trabajo',
+  OTRO: 'Otro espacio',
+}
+
 export type DemoSnapshot = {
   version: 1
   profile: DemoProfile
   businessesById: Record<string, DemoBusiness>
   membershipsByBusinessId: Record<string, DemoMembership>
+  locationsById: Record<string, DemoLocation>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -65,10 +87,11 @@ function defaults(): DemoSnapshot {
     profile: { id: 'demo-user', displayName: 'Usuario DEMO', email: '', avatarInitials: '', contactPhone: '' },
     businessesById: Object.fromEntries(fixtures.map((item) => [item.id, item])),
     membershipsByBusinessId: Object.fromEntries(fixtures.map((item) => [item.id, membership(item.id)])),
+    locationsById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -99,6 +122,49 @@ function validCreated(value: unknown): value is DemoBusiness {
     && ['PRODUCTOS', 'SERVICIOS', 'MIXTO'].includes(String(value.kind))
     && value.source === 'created' && value.founderUserId === 'demo-user'
     && value.administrativeOwnerUserId === 'demo-user'
+}
+
+function validLocation(raw: unknown): raw is DemoLocation {
+  if (!isRecord(raw)) return false
+  return typeof raw.id === 'string' && /^demo-location-[a-f0-9-]{36}$/.test(raw.id)
+    && typeof raw.businessId === 'string'
+    && typeof raw.name === 'string' && raw.name.trim().length >= 2 && raw.name.length <= 80
+    && ['LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'OTRO'].includes(String(raw.kind))
+    && typeof raw.address === 'string' && raw.address.length <= 160
+    && typeof raw.canSell === 'boolean' && typeof raw.canStore === 'boolean'
+    && typeof raw.isPrimary === 'boolean'
+    && ['ACTIVA', 'PAUSADA'].includes(String(raw.status))
+}
+
+function normalizeLocationInput(input: LocationInput): LocationInput {
+  const name = requiredText(input.name, 'El nombre de la ubicación', 2, 80)
+  const address = input.address.trim()
+  if (address.length > 160) throw new Error('La referencia de ubicación admite hasta 160 caracteres.')
+  if (!['LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'OTRO'].includes(input.kind)) {
+    throw new Error('Tipo de ubicación inválido.')
+  }
+  if (typeof input.canSell !== 'boolean' || typeof input.canStore !== 'boolean') {
+    throw new Error('Las capacidades de venta y almacenamiento deben ser explícitas.')
+  }
+  return { name, kind: input.kind, address, canSell: input.canSell, canStore: input.canStore }
+}
+
+export function listDemoLocations(snapshot: DemoSnapshot, businessId: string): DemoLocation[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.locationsById)
+    .filter((location) => location.businessId === businessId)
+    .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name, 'es'))
+}
+
+function activeBusiness(businessId: string): void {
+  if (!findDemoBusiness(state, businessId)) throw new Error('La empresa DEMO no está disponible.')
+}
+
+function locationOfBusiness(businessId: string, locationId: string): DemoLocation {
+  activeBusiness(businessId)
+  const location = state.locationsById[locationId]
+  if (!location || location.businessId !== businessId) throw new Error('Ubicación no disponible para esta empresa.')
+  return location
 }
 
 function load(): DemoSnapshot {
@@ -155,6 +221,24 @@ function load(): DemoSnapshot {
         }
       }
     }
+    if (Array.isArray(data.locations)) {
+      const countByBusiness = new Map<string, number>()
+      const primaryByBusiness = new Set<string>()
+      for (const rawLocation of data.locations.slice(0, 2000)) {
+        if (!validLocation(rawLocation) || !state.businessesById[rawLocation.businessId]) continue
+        if ((countByBusiness.get(rawLocation.businessId) ?? 0) >= 100) continue
+        if (state.locationsById[rawLocation.id]) continue
+        const isPrimary = rawLocation.status === 'ACTIVA' && rawLocation.isPrimary && !primaryByBusiness.has(rawLocation.businessId)
+        if (isPrimary) primaryByBusiness.add(rawLocation.businessId)
+        state.locationsById[rawLocation.id] = {
+          id: rawLocation.id, businessId: rawLocation.businessId,
+          name: rawLocation.name.trim(), kind: rawLocation.kind, address: rawLocation.address.trim(),
+          canSell: rawLocation.canSell, canStore: rawLocation.canStore,
+          status: rawLocation.status, isPrimary,
+        }
+        countByBusiness.set(rawLocation.businessId, (countByBusiness.get(rawLocation.businessId) ?? 0) + 1)
+      }
+    }
   } catch {
     // Datos corruptos o almacenamiento bloqueado: mostrar fixtures conocidos.
   }
@@ -172,6 +256,7 @@ function notify(next: DemoSnapshot) {
       createdBusinesses: Object.values(state.businessesById).filter((b) => b.source === 'created'),
       fixtureEdits: Object.fromEntries(fixtures.map((item) => [item.id, editableFields(state.businessesById[item.id])])),
       memberJobs: Object.fromEntries(Object.entries(state.membershipsByBusinessId).map(([id, membership]) => [id, membership.jobTitle])),
+      locations: Object.values(state.locationsById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
@@ -210,6 +295,48 @@ function requiredText(value: string, label: string, min: number, max: number): s
 }
 
 export const demoGateway = {
+  async createLocation(businessId: string, input: LocationInput): Promise<DemoLocation> {
+    activeBusiness(businessId)
+    const current = Object.values(state.locationsById).filter((location) => location.businessId === businessId)
+    if (current.length >= 100) throw new Error('El prototipo admite hasta 100 ubicaciones por empresa.')
+    const fields = normalizeLocationInput(input)
+    const location: DemoLocation = {
+      ...fields, id: 'demo-location-' + crypto.randomUUID(), businessId,
+      status: 'ACTIVA', isPrimary: !current.some((item) => item.isPrimary && item.status === 'ACTIVA'),
+    }
+    notify({ ...state, locationsById: { ...state.locationsById, [location.id]: location } })
+    return location
+  },
+
+  async updateLocation(businessId: string, locationId: string, input: LocationInput): Promise<DemoLocation> {
+    const previous = locationOfBusiness(businessId, locationId)
+    const fields = normalizeLocationInput(input)
+    const updated: DemoLocation = { ...previous, ...fields }
+    notify({ ...state, locationsById: { ...state.locationsById, [locationId]: updated } })
+    return updated
+  },
+
+  async setPrimaryLocation(businessId: string, locationId: string): Promise<DemoLocation> {
+    const location = locationOfBusiness(businessId, locationId)
+    if (location.status !== 'ACTIVA') throw new Error('Sólo una ubicación activa puede ser principal.')
+    const locationsById = { ...state.locationsById }
+    for (const item of Object.values(state.locationsById)) {
+      if (item.businessId === businessId && item.isPrimary) locationsById[item.id] = { ...item, isPrimary: false }
+    }
+    locationsById[locationId] = { ...location, isPrimary: true }
+    notify({ ...state, locationsById })
+    return locationsById[locationId]
+  },
+
+  async setLocationStatus(businessId: string, locationId: string, status: DemoLocation['status']): Promise<DemoLocation> {
+    const previous = locationOfBusiness(businessId, locationId)
+    if (!['ACTIVA', 'PAUSADA'].includes(status)) throw new Error('Estado de ubicación inválido.')
+    if (previous.status === status) return previous
+    const updated: DemoLocation = { ...previous, status, isPrimary: status === 'PAUSADA' ? false : previous.isPrimary }
+    notify({ ...state, locationsById: { ...state.locationsById, [locationId]: updated } })
+    return updated
+  },
+
   async saveProfile(input: ProfileInput): Promise<DemoProfile> {
     const displayName = requiredText(input.displayName, 'El nombre visible', 2, 70)
     const email = input.email.trim()
