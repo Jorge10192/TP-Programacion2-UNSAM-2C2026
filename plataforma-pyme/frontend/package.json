@@ -14,7 +14,8 @@
     "test:suppliers": "node --test tests/supplier-policy.test.mjs",
     "test:purchases": "node --test tests/purchase-policy.test.mjs",
     "test:inventory": "node --test tests/inventory-policy.test.mjs",
-    "test:images": "node --test tests/image-policy.test.mjs"
+    "test:images": "node --test tests/image-policy.test.mjs",
+    "test:sales": "node --test tests/sale-policy.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
