@@ -1,10 +1,11 @@
 /**
  * Preferencia exclusivamente visual, compartida entre todas las empresas.
  * No constituye autenticación ni estado de negocio.
+ * El modo inicial del nuevo menú hamburguesa es oculto; el usuario puede fijarlo.
  */
 export type SidebarMode = 'expanded' | 'compact' | 'hidden'
 
-const STORAGE_KEY = 'asistente-pyme.sidebar-mode.v1'
+const STORAGE_KEY = 'asistente-pyme.sidebar-mode.v2'
 
 export function loadSidebarMode(): SidebarMode {
   try {
@@ -13,7 +14,7 @@ export function loadSidebarMode(): SidebarMode {
   } catch {
     // Navegación privada o storage deshabilitado: usar el valor predeterminado.
   }
-  return 'expanded'
+  return 'hidden'
 }
 
 export function saveSidebarMode(mode: SidebarMode): void {
