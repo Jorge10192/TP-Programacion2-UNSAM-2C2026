@@ -431,7 +431,7 @@ function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is I
     // Verificar cada operación contra el saldo histórico de su fecha. Las
     // recepciones posteriores NO deben invalidar conteos/traslados previos al recargar.
     const historicalMovements = listDemoInventoryMovements(snapshot, raw.businessId)
-      .filter((movement) => movement.createdAt <= raw.createdAt)
+      .filter((movement) => movement.createdAt <= (raw.createdAt as string))
     if (raw.kind === 'TRANSFER') {
       if (typeof raw.sourceLocationId !== 'string' || typeof raw.destinationLocationId !== 'string' ||
           raw.sourceLocationId === raw.destinationLocationId ||
