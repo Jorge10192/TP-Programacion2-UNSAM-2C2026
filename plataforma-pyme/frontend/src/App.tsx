@@ -15,6 +15,7 @@ import { CatalogPage } from './features/catalog/CatalogPage'
 import { SuppliersPage } from './features/suppliers/SuppliersPage'
 import { PurchasesPage } from './features/purchases/PurchasesPage'
 import { InventoryPage } from './features/inventory/InventoryPage'
+import { inventoryHistoryEntries } from './data/demo/inventoryPolicy'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
 import { ComingSoon, NotFound } from './features/common/Feedback'
@@ -93,7 +94,7 @@ function App() {
   else if (pathname === '/perfil') content = <ProfilePage profile={snapshot.profile} businesses={businesses} memberships={snapshot.membershipsByBusinessId} />
   else if (pathname === '/empresas/nueva') content = <CreateBusinessPage navigate={navigate} profile={snapshot.profile} />
   else if (hasBusinessPath && !business) content = <NotFound navigate={navigate} accessDenied />
-  else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} catalogCount={listDemoCatalog(snapshot, business.id).filter((item) => item.status === 'ACTIVO').length} movementCount={listDemoInventoryMovements(snapshot, business.id).length} />
+  else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} catalogCount={listDemoCatalog(snapshot, business.id).filter((item) => item.status === 'ACTIVO').length} movementCount={inventoryHistoryEntries(listDemoInventoryMovements(snapshot, business.id)).length} />
   else if (business && section === 'empresa') content = <BusinessDetailsPage key={business.id} business={business} profile={snapshot.profile} jobTitle={snapshot.membershipsByBusinessId[business.id]?.jobTitle ?? ''} navigate={navigate} />
   else if (business && section === 'ubicaciones') content = <LocationsPage key={business.id} business={business} locations={listDemoLocations(snapshot, business.id)} />
   else if (business && section === 'equipo') content = <TeamPage key={business.id} business={business} profile={snapshot.profile} owner={snapshot.membershipsByBusinessId[business.id]} members={listDemoTeamMembers(snapshot, business.id)} invitations={listDemoInvitations(snapshot, business.id)} />
