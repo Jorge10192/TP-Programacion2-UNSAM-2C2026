@@ -1,10 +1,10 @@
 import { AppLink } from '../../app/AppLink'
 import { Icon } from '../../app/Icon'
-import { businessHref, demoBusinesses, navigationItems } from '../../app/navigation'
+import { businessHref, navigationItems } from '../../app/navigation'
 import type { DemoBusiness, NavigationItem } from '../../app/navigation'
 import type { Navigate } from '../../app/types'
 
-export function Welcome({ navigate }: { navigate: Navigate }) {
+export function Welcome({ navigate, businesses }: { navigate: Navigate; businesses: DemoBusiness[] }) {
   return <>
     <div className="page-heading">
       <div><p className="eyebrow">ESPACIO PERSONAL</p><h1>Bienvenido a tu espacio de trabajo</h1><p>Seleccioná una empresa de demostración para recorrer la plataforma.</p></div>
@@ -15,20 +15,20 @@ export function Welcome({ navigate }: { navigate: Navigate }) {
       <span className="light-tag">Versión inicial</span>
     </section>
 
-    <div className="section-header"><div><h2>Mis empresas de ejemplo</h2><p>Datos ficticios para mostrar la navegación; no hay registros comerciales.</p></div></div>
+    <div className="section-header"><div><h2>Mis empresas</h2><p>Empresas de ejemplo y negocios creados en este navegador. No hay registros comerciales reales.</p></div></div>
     <div className="company-grid">
-      {demoBusinesses.map((business) => <button type="button" className="company-card" key={business.id} onClick={() => navigate(businessHref(business.id, 'inicio'))}>
+      {businesses.map((business) => <button type="button" className="company-card" key={business.id} onClick={() => navigate(businessHref(business.id, 'inicio'))}>
         <span className={'company-icon ' + business.accent}>{business.initials}</span>
-        <span className="company-copy"><strong>{business.name}</strong><small>{business.category}</small><span className="small-pill">Empresa DEMO</span></span>
+        <span className="company-copy"><strong>{business.name}</strong><small>{business.category}</small><span className="small-pill">{business.source === 'created' ? 'Creada en DEMO' : 'Empresa de ejemplo'}</span></span>
         <Icon name="arrow" size={19} className="company-arrow" />
       </button>)}
       <button type="button" className="company-card new-company" onClick={() => navigate('/empresas/nueva')}>
         <span className="company-icon add-company"><Icon name="plus" size={23} /></span>
-        <span className="company-copy"><strong>Crear una empresa</strong><small>Disponible en el próximo incremento E1-A2.</small><span className="small-pill amber-pill">Próximamente</span></span>
+        <span className="company-copy"><strong>Crear una empresa</strong><small>Agregá otro negocio a tu espacio DEMO.</small><span className="small-pill">Disponible</span></span>
         <Icon name="arrow" size={19} className="company-arrow" />
       </button>
     </div>
-    <div className="informational-note"><Icon name="shield" size={19}/><span>Este es un prototipo de interfaz. No hay autenticación ni autorización real; las empresas se muestran para probar el diseño.</span></div>
+    <div className="informational-note"><Icon name="shield" size={19}/><span>Este es un prototipo de interfaz: los negocios creados y el perfil se guardan solamente en tu navegador. No hay autenticación ni autorización real.</span></div>
   </>
 }
 
