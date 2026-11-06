@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { Icon } from '../../app/Icon'
 import type { DemoBusiness, DemoCatalogItem, DemoLocation } from '../../data/demo/demoStore'
-import type { InventoryMovement, InventoryMovementType } from '../../data/demo/inventoryPolicy'
-import { inventoryMovementLabels, stockBalances, stockKey } from '../../data/demo/inventoryPolicy'
+import type { InventoryMovement } from '../../data/demo/inventoryPolicy'
+import { inventoryHistoryEntries, inventoryMovementLabels, stockBalances, stockKey } from '../../data/demo/inventoryPolicy'
 import { quantityText } from '../../data/demo/purchasePolicy'
 import { InventoryActionForm } from './InventoryActionForm'
 
 type Tab = 'stock' | 'movements'
 type Row = { item: DemoCatalogItem; location: DemoLocation; milli: number }
-const movementsFilters: InventoryMovementType[] = [
-  'RECEPCION_COMPRA', 'TRASLADO_SALIDA', 'TRASLADO_ENTRADA', 'AJUSTE_CONTEO',
-]
+const movementsFilters = [
+  { value: 'RECEPCION_COMPRA', label: 'Recepciones de compras' },
+  { value: 'TRANSFER', label: 'Traslados entre ubicaciones' },
+  { value: 'AJUSTE_CONTEO', label: 'Ajustes por conteo' },
+] as const
 
 export function InventoryPage({
   business, catalog, locations, movements, initialTab,
@@ -38,6 +40,7 @@ export function InventoryPage({
     [...balances].filter(([, quantity]) => quantity > 0).map(([key]) => (JSON.parse(key) as string[])[1]),
   ).size
   const receipts = movements.filter((movement) => movement.type === 'RECEPCION_COMPRA').length
+  const history = inventoryHistoryEntries(movements)
 
   const rows: Row[] = []
   if (locationFilter || showEmpty) {
@@ -65,16 +68,23 @@ export function InventoryPage({
     (showEmpty || milli > 0 || locationFilter !== ''))
     .sort((a, b) => a.item.name.localeCompare(b.item.name, 'es') || a.location.name.localeCompare(b.location.name, 'es'))
   const shownRows = filteredRows.slice(0, 150)
-  const filteredMovements = movements.filter((movement) => {
-    if (locationFilter && movement.locationId !== locationFilter) return false
-    if (typeFilter && movement.type !== typeFilter) return false
-    const loc = locById.get(movement.locationId)
+  const filteredHistory = history.filter((entry) => {
+    const sourceLocationId = entry.kind === 'TRANSFER' ? entry.sourceLocationId : entry.movement.locationId
+    const destinationLocationId = entry.kind === 'TRANSFER' ? entry.destinationLocationId : null
+    if (locationFilter && sourceLocationId !== locationFilter && destinationLocationId !== locationFilter) return false
+    const isTransfer = entry.kind === 'TRANSFER' || entry.movement.type === 'TRASLADO_SALIDA' || entry.movement.type === 'TRASLADO_ENTRADA'
+    if (typeFilter && (typeFilter === 'TRANSFER'
+      ? !isTransfer
+      : entry.kind === 'TRANSFER' || entry.movement.type !== typeFilter)) return false
+    const movement = entry.kind === 'MOVEMENT' ? entry.movement : entry
     return !term || [
       movement.itemNameSnapshot, movement.reference, movement.reason,
-      loc?.name ?? '', itemById.get(movement.catalogItemId)?.sku ?? '',
+      locById.get(sourceLocationId)?.name ?? '',
+      destinationLocationId ? locById.get(destinationLocationId)?.name ?? '' : '',
+      itemById.get(movement.catalogItemId)?.sku ?? '',
     ].some((value) => value.toLocaleLowerCase('es-AR').includes(term))
   })
-  const shownMovements = filteredMovements.slice(0, 90)
+  const shownHistory = filteredHistory.slice(0, 90)
   const canMove = locations.filter((loc) => loc.status === 'ACTIVA' && loc.canStore).length >= 2
   const canCount = locations.some((loc) => loc.status === 'ACTIVA' && loc.canStore)
   const canAct = physical.some((item) => item.status === 'ACTIVO')
@@ -110,7 +120,7 @@ export function InventoryPage({
       <div><span className="feature-icon blue"><Icon name="package" size={20}/></span><small>Artículos con stock</small><strong>{stockedArticles}</strong></div>
       <div><span className="feature-icon mint"><Icon name="pin" size={20}/></span><small>Combinaciones artículo / ubicación con stock</small><strong>{positivePairs}</strong></div>
       <div><span className="feature-icon violet"><Icon name="receipt" size={20}/></span><small>Entradas por recepción</small><strong>{receipts}</strong></div>
-      <div><span className="feature-icon orange"><Icon name="clock" size={20}/></span><small>Movimientos registrados</small><strong>{movements.length}</strong></div>
+      <div><span className="feature-icon orange"><Icon name="clock" size={20}/></span><small>Operaciones de inventario</small><strong>{history.length}</strong></div>
     </section>
 
     <div className="informational-note inventory-note">
@@ -148,7 +158,7 @@ export function InventoryPage({
         {tab === 'movements' && <label className="form-field"><span>Tipo de movimiento</span>
           <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
             <option value="">Todos los movimientos</option>
-            {movementsFilters.map((type) => <option key={type} value={type}>{inventoryMovementLabels[type]}</option>)}
+            {movementsFilters.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
           </select>
         </label>}
       </div>
@@ -180,31 +190,46 @@ export function InventoryPage({
         </>}
       </> : <>
         <div className="inventory-table-heading">
-          <div><h2>Trazabilidad de movimientos</h2><p>{filteredMovements.length} movimientos · recepciones, entradas y salidas</p></div>
+          <div><h2>Trazabilidad de movimientos</h2><p>{filteredHistory.length} operaciones · los traslados agrupan origen y destino en una fila</p></div>
         </div>
-        {filteredMovements.length === 0 ? <div className="catalog-empty">
+        {filteredHistory.length === 0 ? <div className="catalog-empty">
           <span className="feature-icon blue"><Icon name="truck" size={25}/></span>
           <h3>Todavía no hay movimientos</h3><p>La confirmación de una compra con bienes físicos aparece aquí automáticamente.</p>
         </div> : <>
           <div className="inventory-movement-list">
-            {shownMovements.map((movement) => <article className="inventory-movement-row" key={movement.id}>
-              <span className={'inventory-movement-icon ' + (movement.deltaMilli >= 0 ? 'inbound' : 'outbound')}>
-                <Icon name={movement.type === 'RECEPCION_COMPRA' ? 'receipt' : movement.type === 'AJUSTE_CONTEO' ? 'boxes' : 'truck'} size={19}/>
-              </span>
-              <div className="inventory-movement-info">
-                <strong>{movement.itemNameSnapshot}</strong>
-                <span>{inventoryMovementLabels[movement.type]} · {locById.get(movement.locationId)?.name ?? 'Ubicación histórica'}</span>
-                <small>{movement.reason}{movement.reference ? ' · ' + movement.reference : ''}</small>
-              </div>
-              <div className="inventory-movement-aside">
-                <strong className={movement.deltaMilli >= 0 ? 'positive' : 'negative'}>
-                  {movement.deltaMilli > 0 ? '+' : '−'} {quantityText(Math.abs(movement.deltaMilli), movement.unit)}
-                </strong>
-                <small>{new Date(movement.createdAt).toLocaleString('es-AR')}</small>
-              </div>
-            </article>)}
+            {shownHistory.map((entry) => entry.kind === 'TRANSFER' ? (
+              <article className="inventory-movement-row" key={entry.id}>
+                <span className="inventory-movement-icon transfer"><Icon name="truck" size={19}/></span>
+                <div className="inventory-movement-info">
+                  <strong>{entry.itemNameSnapshot}</strong>
+                  <span><b>Traslado</b> · {locById.get(entry.sourceLocationId)?.name ?? 'Ubicación histórica'} → {locById.get(entry.destinationLocationId)?.name ?? 'Ubicación histórica'}</span>
+                  <small>{entry.reason}{entry.reference ? ' · ' + entry.reference : ''}</small>
+                </div>
+                <div className="inventory-movement-aside">
+                  <strong className="transfer-quantity">{quantityText(entry.quantityMilli, entry.unit)}</strong>
+                  <small>Trasladadas · {new Date(entry.createdAt).toLocaleString('es-AR')}</small>
+                </div>
+              </article>
+            ) : (
+              <article className="inventory-movement-row" key={entry.id}>
+                <span className={'inventory-movement-icon ' + (entry.movement.deltaMilli >= 0 ? 'inbound' : 'outbound')}>
+                  <Icon name={entry.movement.type === 'RECEPCION_COMPRA' ? 'receipt' : entry.movement.type === 'AJUSTE_CONTEO' ? 'boxes' : 'truck'} size={19}/>
+                </span>
+                <div className="inventory-movement-info">
+                  <strong>{entry.movement.itemNameSnapshot}</strong>
+                  <span>{inventoryMovementLabels[entry.movement.type]} · {locById.get(entry.movement.locationId)?.name ?? 'Ubicación histórica'}</span>
+                  <small>{entry.movement.reason}{entry.movement.reference ? ' · ' + entry.movement.reference : ''}</small>
+                </div>
+                <div className="inventory-movement-aside">
+                  <strong className={entry.movement.deltaMilli >= 0 ? 'positive' : 'negative'}>
+                    {entry.movement.deltaMilli > 0 ? '+' : '−'} {quantityText(Math.abs(entry.movement.deltaMilli), entry.movement.unit)}
+                  </strong>
+                  <small>{new Date(entry.createdAt).toLocaleString('es-AR')}</small>
+                </div>
+              </article>
+            ))}
           </div>
-          {filteredMovements.length > shownMovements.length && <p className="inventory-limit">Mostrando los {shownMovements.length} movimientos más recientes. Refiná la búsqueda para consultar otros.</p>}
+          {filteredHistory.length > shownHistory.length && <p className="inventory-limit">Mostrando las {shownHistory.length} operaciones más recientes. Refiná la búsqueda para consultar otras.</p>}
         </>}
       </>}
     </section>
