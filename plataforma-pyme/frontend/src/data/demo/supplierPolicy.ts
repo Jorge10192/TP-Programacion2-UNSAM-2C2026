@@ -49,7 +49,9 @@ function textValue(value: unknown, field: string, max: number, min = 0): string 
   if (typeof value !== 'string') throw new Error(field + ': formato inválido.')
   const text = value.trim().replace(/[\t ]+/g, ' ')
   if (text.length < min || text.length > max) throw new Error(field + ': debe tener entre ' + min + ' y ' + max + ' caracteres.')
-  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text)) throw new Error(field + ': contiene caracteres inválidos.')
+  if ([...text].some((char) => { const code = char.charCodeAt(0); return code <= 8 || code === 11 || code === 12 || (code >= 14 && code <= 31) || code === 127 })) {
+    throw new Error(field + ': contiene caracteres inválidos.')
+  }
   return text
 }
 
