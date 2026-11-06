@@ -5,6 +5,8 @@
  */
 import { useSyncExternalStore } from 'react'
 import { validateGoogleMapsLink } from './mapsLinks'
+import { canReplyToInvitation, displayInvitationStatus, invitationExpiresAt, normalizeInviteInput } from './teamPolicy'
+import type { InviteRole, InvitationStatus } from './teamPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -58,12 +60,34 @@ export const locationKindLabels: Record<LocationKind, string> = {
   OTRO: 'Otro espacio',
 }
 
+export type DemoInvitation = {
+  id: string
+  businessId: string
+  email: string
+  role: InviteRole
+  status: InvitationStatus
+  createdAt: string
+  expiresAt: string
+  memberId?: string
+}
+export type DemoTeamMember = {
+  id: string
+  businessId: string
+  email: string
+  role: InviteRole
+  status: 'ACTIVA'
+  joinedAt: string
+  sourceInvitationId: string
+}
+
 export type DemoSnapshot = {
   version: 1
   profile: DemoProfile
   businessesById: Record<string, DemoBusiness>
   membershipsByBusinessId: Record<string, DemoMembership>
   locationsById: Record<string, DemoLocation>
+  teamInvitationsById: Record<string, DemoInvitation>
+  teamMembersById: Record<string, DemoTeamMember>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -90,10 +114,12 @@ function defaults(): DemoSnapshot {
     businessesById: Object.fromEntries(fixtures.map((item) => [item.id, item])),
     membershipsByBusinessId: Object.fromEntries(fixtures.map((item) => [item.id, membership(item.id)])),
     locationsById: {},
+    teamInvitationsById: {},
+    teamMembersById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -179,6 +205,50 @@ function locationOfBusiness(businessId: string, locationId: string): DemoLocatio
   return location
 }
 
+function validInvitation(raw: unknown): raw is DemoInvitation {
+  if (!isRecord(raw)) return false
+  return typeof raw.id === 'string' && /^demo-invite-[0-9a-f-]{36}$/.test(raw.id)
+    && typeof raw.businessId === 'string'
+    && typeof raw.email === 'string' && raw.email.length <= 120
+    && typeof raw.role === 'string' && ['ENCARGADO', 'TRABAJADOR'].includes(raw.role)
+    && typeof raw.status === 'string' && ['PENDIENTE', 'ACEPTADA', 'RECHAZADA', 'CANCELADA'].includes(raw.status)
+    && typeof raw.createdAt === 'string' && Number.isFinite(Date.parse(raw.createdAt))
+    && typeof raw.expiresAt === 'string' && Number.isFinite(Date.parse(raw.expiresAt))
+    && (raw.memberId === undefined || (typeof raw.memberId === 'string' && /^demo-team-[0-9a-f-]{36}$/.test(raw.memberId)))
+}
+
+function validTeamMember(raw: unknown): raw is DemoTeamMember {
+  if (!isRecord(raw)) return false
+  return typeof raw.id === 'string' && /^demo-team-[0-9a-f-]{36}$/.test(raw.id)
+    && typeof raw.businessId === 'string'
+    && typeof raw.email === 'string' && raw.email.length <= 120
+    && typeof raw.role === 'string' && ['ENCARGADO', 'TRABAJADOR'].includes(raw.role)
+    && raw.status === 'ACTIVA'
+    && typeof raw.joinedAt === 'string' && Number.isFinite(Date.parse(raw.joinedAt))
+    && typeof raw.sourceInvitationId === 'string'
+}
+
+export function listDemoInvitations(snapshot: DemoSnapshot, businessId: string): DemoInvitation[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.teamInvitationsById)
+    .filter((invite) => invite.businessId === businessId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+export function listDemoTeamMembers(snapshot: DemoSnapshot, businessId: string): DemoTeamMember[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.teamMembersById)
+    .filter((member) => member.businessId === businessId && member.status === 'ACTIVA')
+    .sort((a, b) => a.email.localeCompare(b.email))
+}
+
+function invitationInBusiness(businessId: string, invitationId: string): DemoInvitation {
+  activeBusiness(businessId)
+  const found = state.teamInvitationsById[invitationId]
+  if (!found || found.businessId !== businessId) throw new Error('Invitación DEMO no disponible para esta empresa.')
+  return found
+}
+
 function load(): DemoSnapshot {
   const state = defaults()
   try {
@@ -252,6 +322,47 @@ function load(): DemoSnapshot {
         countByBusiness.set(rawLocation.businessId, (countByBusiness.get(rawLocation.businessId) ?? 0) + 1)
       }
     }
+    // Listas opcionales: compatibilidad con E1-A2, Datos Empresa, Perfil y Ubicaciones.
+    if (Array.isArray(data.teamInvitations)) {
+      const counts = new Map<string, number>()
+      for (const rawInvitation of data.teamInvitations.slice(0, 5000)) {
+        if (!validInvitation(rawInvitation) || !state.businessesById[rawInvitation.businessId]) continue
+        if ((counts.get(rawInvitation.businessId) ?? 0) >= 100) continue
+        const email = rawInvitation.email.trim().toLowerCase()
+        try {
+          normalizeInviteInput(email, rawInvitation.role)
+        } catch {
+          continue
+        }
+        if (state.teamInvitationsById[rawInvitation.id]) continue
+        state.teamInvitationsById[rawInvitation.id] = {
+          id: rawInvitation.id, businessId: rawInvitation.businessId, email,
+          role: rawInvitation.role, status: rawInvitation.status,
+          createdAt: rawInvitation.createdAt, expiresAt: rawInvitation.expiresAt,
+          memberId: rawInvitation.memberId,
+        }
+        counts.set(rawInvitation.businessId, (counts.get(rawInvitation.businessId) ?? 0) + 1)
+      }
+    }
+    if (Array.isArray(data.teamMembers)) {
+      const counts = new Map<string, number>()
+      for (const rawMember of data.teamMembers.slice(0, 5000)) {
+        if (!validTeamMember(rawMember) || !state.businessesById[rawMember.businessId]) continue
+        if ((counts.get(rawMember.businessId) ?? 0) >= 50) continue
+        if (state.teamMembersById[rawMember.id]) continue
+        const invitation = state.teamInvitationsById[rawMember.sourceInvitationId]
+        if (!invitation || invitation.businessId !== rawMember.businessId
+          || invitation.status !== 'ACEPTADA' || invitation.memberId !== rawMember.id) continue
+        if (invitation.email !== rawMember.email || invitation.role !== rawMember.role) continue
+        if (Object.values(state.teamMembersById).some((existing) => existing.businessId === rawMember.businessId && existing.email === rawMember.email)) continue
+        state.teamMembersById[rawMember.id] = {
+          id: rawMember.id, businessId: rawMember.businessId, email: rawMember.email,
+          role: rawMember.role, status: 'ACTIVA',
+          joinedAt: rawMember.joinedAt, sourceInvitationId: rawMember.sourceInvitationId,
+        }
+        counts.set(rawMember.businessId, (counts.get(rawMember.businessId) ?? 0) + 1)
+      }
+    }
   } catch {
     // Datos corruptos o almacenamiento bloqueado: mostrar fixtures conocidos.
   }
@@ -270,6 +381,8 @@ function notify(next: DemoSnapshot) {
       fixtureEdits: Object.fromEntries(fixtures.map((item) => [item.id, editableFields(state.businessesById[item.id])])),
       memberJobs: Object.fromEntries(Object.entries(state.membershipsByBusinessId).map(([id, membership]) => [id, membership.jobTitle])),
       locations: Object.values(state.locationsById),
+      teamInvitations: Object.values(state.teamInvitationsById),
+      teamMembers: Object.values(state.teamMembersById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
@@ -308,6 +421,69 @@ function requiredText(value: string, label: string, min: number, max: number): s
 }
 
 export const demoGateway = {
+  async createInvitation(businessId: string, emailInput: string, role: InviteRole): Promise<DemoInvitation> {
+    activeBusiness(businessId)
+    const { email } = normalizeInviteInput(emailInput, role)
+    if (state.profile.email && email === state.profile.email.trim().toLowerCase()) {
+      throw new Error('No podés invitar a tu mismo perfil DEMO.')
+    }
+    if (Object.values(state.teamMembersById).some((item) => item.businessId === businessId && item.email === email && item.status === 'ACTIVA')) {
+      throw new Error('Ya existe una membresía DEMO activa para ese correo dentro de esta empresa.')
+    }
+    const existing = Object.values(state.teamInvitationsById).filter((item) => item.businessId === businessId)
+    if (existing.length >= 100) throw new Error('La DEMO permite hasta 100 invitaciones históricas por empresa.')
+    if (existing.some((item) => item.email === email && displayInvitationStatus(item) === 'PENDIENTE')) {
+      throw new Error('Ya hay una invitación pendiente para ese correo en esta empresa.')
+    }
+    const createdAt = new Date().toISOString()
+    const invitation: DemoInvitation = {
+      id: 'demo-invite-' + crypto.randomUUID(), businessId, email, role, status: 'PENDIENTE',
+      createdAt, expiresAt: invitationExpiresAt(createdAt),
+    }
+    notify({ ...state, teamInvitationsById: { ...state.teamInvitationsById, [invitation.id]: invitation } })
+    return invitation
+  },
+
+  async cancelInvitation(businessId: string, invitationId: string): Promise<DemoInvitation> {
+    const current = invitationInBusiness(businessId, invitationId)
+    if (current.status === 'CANCELADA') return current
+    if (!canReplyToInvitation(current)) throw new Error('Sólo puede cancelarse una invitación pendiente y vigente.')
+    const updated: DemoInvitation = { ...current, status: 'CANCELADA' }
+    notify({ ...state, teamInvitationsById: { ...state.teamInvitationsById, [invitationId]: updated } })
+    return updated
+  },
+
+  async simulateInvitationResponse(businessId: string, invitationId: string, action: 'ACEPTAR' | 'RECHAZAR'): Promise<DemoInvitation> {
+    const invitation = invitationInBusiness(businessId, invitationId)
+    if (action !== 'ACEPTAR' && action !== 'RECHAZAR') throw new Error('Respuesta DEMO inválida.')
+    if (invitation.status === 'ACEPTADA' && action === 'ACEPTAR' && invitation.memberId && state.teamMembersById[invitation.memberId]) {
+      return invitation // doble click/reintento no duplica integrante
+    }
+    if (!canReplyToInvitation(invitation)) throw new Error('La invitación no está pendiente o ya venció.')
+    if (action === 'RECHAZAR') {
+      const rejected: DemoInvitation = { ...invitation, status: 'RECHAZADA' }
+      notify({ ...state, teamInvitationsById: { ...state.teamInvitationsById, [invitationId]: rejected } })
+      return rejected
+    }
+    if (Object.values(state.teamMembersById).some((item) => item.businessId === businessId && item.email === invitation.email)) {
+      throw new Error('Ese correo ya tiene un integrante DEMO en esta empresa.')
+    }
+    if (listDemoTeamMembers(state, businessId).length >= 50) throw new Error('La DEMO admite hasta 50 integrantes invitados por empresa.')
+    const member: DemoTeamMember = {
+      id: 'demo-team-' + crypto.randomUUID(), businessId, email: invitation.email,
+      role: invitation.role, status: 'ACTIVA', joinedAt: new Date().toISOString(),
+      sourceInvitationId: invitation.id,
+    }
+    const accepted: DemoInvitation = { ...invitation, status: 'ACEPTADA', memberId: member.id }
+    // Una única actualización local representa invitación ACEPTADA + nueva membresía.
+    notify({
+      ...state,
+      teamInvitationsById: { ...state.teamInvitationsById, [invitation.id]: accepted },
+      teamMembersById: { ...state.teamMembersById, [member.id]: member },
+    })
+    return accepted
+  },
+
   async createLocation(businessId: string, input: LocationInput): Promise<DemoLocation> {
     activeBusiness(businessId)
     const current = Object.values(state.locationsById).filter((location) => location.businessId === businessId)
