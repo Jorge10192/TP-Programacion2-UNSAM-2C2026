@@ -5,11 +5,12 @@ import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
 import { businessHref, navigationItems } from './app/navigation'
-import { findDemoBusiness, listDemoBusinesses, listDemoLocations, useDemoSnapshot } from './data/demo/demoStore'
+import { findDemoBusiness, listDemoBusinesses, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { CreateBusinessPage } from './features/businesses/BusinessPages'
 import { BusinessDetailsPage } from './features/businesses/BusinessDetailsPage'
 import { LocationsPage } from './features/locations/LocationsPage'
+import { TeamPage } from './features/team/TeamPage'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
 import { ComingSoon, NotFound } from './features/common/Feedback'
@@ -91,6 +92,7 @@ function App() {
   else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} />
   else if (business && section === 'empresa') content = <BusinessDetailsPage key={business.id} business={business} profile={snapshot.profile} jobTitle={snapshot.membershipsByBusinessId[business.id]?.jobTitle ?? ''} navigate={navigate} />
   else if (business && section === 'ubicaciones') content = <LocationsPage key={business.id} business={business} locations={listDemoLocations(snapshot, business.id)} />
+  else if (business && section === 'equipo') content = <TeamPage key={business.id} business={business} profile={snapshot.profile} owner={snapshot.membershipsByBusinessId[business.id]} members={listDemoTeamMembers(snapshot, business.id)} invitations={listDemoInvitations(snapshot, business.id)} />
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
