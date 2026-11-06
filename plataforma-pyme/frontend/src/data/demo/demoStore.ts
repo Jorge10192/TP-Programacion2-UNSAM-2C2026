@@ -11,6 +11,8 @@ import { catalogNameKey, normalizeCatalogInput } from './catalogPolicy'
 import type { CatalogInput } from './catalogPolicy'
 import { normalizeSupplierInput, supplierNameKey } from './supplierPolicy'
 import type { SupplierInput } from './supplierPolicy'
+import { lineTotalCents, normalizePurchaseInput, physicalPurchaseLines, sumLineTotals } from './purchasePolicy'
+import type { PurchaseInput, PurchaseLineSnapshot, PurchaseReceipt } from './purchasePolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -100,6 +102,26 @@ export type DemoSupplier = SupplierInput & {
   updatedAt: string
 }
 
+export type DemoPurchase = Omit<PurchaseInput, 'lines'> & {
+  id: string
+  requestId: string
+  businessId: string
+  supplierNameSnapshot: string
+  lines: PurchaseLineSnapshot[]
+  totalCents: number
+  createdAt: string
+  receipt: PurchaseReceipt | null
+}
+
+export type DemoReceiptMovement = PurchaseReceipt['movements'][number] & {
+  businessId: string
+  purchaseId: string
+  receiptId: string
+  locationId: string
+  createdAt: string
+  source: 'RECEPCION_COMPRA'
+}
+
 export type DemoSnapshot = {
   version: 1
   profile: DemoProfile
@@ -110,6 +132,7 @@ export type DemoSnapshot = {
   teamMembersById: Record<string, DemoTeamMember>
   catalogItemsById: Record<string, DemoCatalogItem>
   suppliersById: Record<string, DemoSupplier>
+  purchasesById: Record<string, DemoPurchase>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -140,10 +163,11 @@ function defaults(): DemoSnapshot {
     teamMembersById: {},
     catalogItemsById: {},
     suppliersById: {},
+    purchasesById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -303,6 +327,96 @@ function validSupplier(raw: unknown): raw is DemoSupplier {
     && (raw.status === 'ACTIVO' || raw.status === 'INACTIVO')
     && typeof raw.createdAt === 'string' && Number.isFinite(Date.parse(raw.createdAt))
     && typeof raw.updatedAt === 'string' && Number.isFinite(Date.parse(raw.updatedAt))
+}
+
+export function listDemoPurchases(snapshot: DemoSnapshot, businessId: string): DemoPurchase[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.purchasesById).filter((purchase) => purchase.businessId === businessId)
+    .sort((a, b) => b.purchasedOn.localeCompare(a.purchasedOn) || b.createdAt.localeCompare(a.createdAt))
+}
+
+/** Historial de entradas efectivo de compras: los eventos son la autoridad, no un contador paralelo. */
+export function listDemoReceiptMovements(snapshot: DemoSnapshot, businessId: string): DemoReceiptMovement[] {
+  return listDemoPurchases(snapshot, businessId).flatMap((purchase) => purchase.receipt
+    ? purchase.receipt.movements.map((movement) => ({
+      ...movement,
+      businessId,
+      purchaseId: purchase.id,
+      receiptId: purchase.receipt!.id,
+      locationId: purchase.receipt!.locationId,
+      createdAt: purchase.receipt!.createdAt,
+      source: 'RECEPCION_COMPRA' as const,
+    }))
+    : [])
+}
+
+export function receiptQuantityMilli(
+  snapshot: DemoSnapshot, businessId: string, catalogItemId: string, locationId: string,
+): number {
+  return listDemoReceiptMovements(snapshot, businessId)
+    .filter((movement) => movement.catalogItemId === catalogItemId && movement.locationId === locationId)
+    .reduce((qty, movement) => qty + movement.quantityMilli, 0)
+}
+
+function purchaseOfBusiness(businessId: string, purchaseId: string): DemoPurchase {
+  activeBusiness(businessId)
+  const purchase = state.purchasesById[purchaseId]
+  if (!purchase || purchase.businessId !== businessId) throw new Error('La compra no pertenece a esta empresa.')
+  return purchase
+}
+
+function validPurchase(raw: unknown, snapshot: DemoSnapshot): raw is DemoPurchase {
+  if (!isRecord(raw) || typeof raw.id !== 'string' ||
+      !/^demo-purchase-[a-f0-9-]{36}$/.test(raw.id) ||
+      typeof raw.requestId !== 'string' || !/^demo-request-[a-f0-9-]{36}$/.test(raw.requestId) ||
+      typeof raw.businessId !== 'string' || !snapshot.businessesById[raw.businessId] ||
+      typeof raw.supplierNameSnapshot !== 'string' || raw.supplierNameSnapshot.length > 90 ||
+      typeof raw.createdAt !== 'string' || !Number.isFinite(Date.parse(raw.createdAt)) ||
+      typeof raw.totalCents !== 'number' || !Number.isSafeInteger(raw.totalCents)) return false
+  try {
+    normalizePurchaseInput(raw as PurchaseInput)
+    if (!Array.isArray(raw.lines) || raw.lines.some((line) =>
+      !isRecord(line) || typeof line.id !== 'string' ||
+      !/^demo-purchase-line-[a-f0-9-]{36}$/.test(line.id) ||
+      typeof line.sku !== 'string' || line.sku.length > 32 ||
+      !['BIEN', 'SERVICIO', 'CONCEPTO'].includes(String(line.kind)) ||
+      typeof line.totalCents !== 'number' || !Number.isSafeInteger(line.totalCents) ||
+      line.totalCents !== lineTotalCents(line.quantityMilli as number, line.unitCostCents as number) ||
+      (line.kind === 'CONCEPTO' && (line.catalogItemId !== null || line.unit !== 'CONCEPTO')) ||
+      (line.kind !== 'CONCEPTO' && (
+        typeof line.catalogItemId !== 'string' || !snapshot.catalogItemsById[line.catalogItemId] ||
+        snapshot.catalogItemsById[line.catalogItemId].businessId !== raw.businessId ||
+        (line.kind === 'SERVICIO' && line.unit !== 'SERVICIO') ||
+        (line.kind === 'BIEN' && line.unit === 'SERVICIO')
+      ))
+    )) return false
+    const lines = raw.lines as PurchaseLineSnapshot[]
+    if (new Set(lines.map((line) => line.id)).size !== lines.length) return false
+    if (sumLineTotals(lines) !== raw.totalCents) return false
+    if (raw.receipt === null) return true
+    if (!isRecord(raw.receipt) || typeof raw.receipt.id !== 'string' ||
+      !/^demo-receipt-[a-f0-9-]{36}$/.test(raw.receipt.id) ||
+      typeof raw.receipt.locationId !== 'string' ||
+      !snapshot.locationsById[raw.receipt.locationId] ||
+      snapshot.locationsById[raw.receipt.locationId].businessId !== raw.businessId ||
+      typeof raw.receipt.createdAt !== 'string' ||
+      !Number.isFinite(Date.parse(raw.receipt.createdAt)) ||
+      !Array.isArray(raw.receipt.movements)) return false
+    const receivable = physicalPurchaseLines(lines)
+    if (receivable.length === 0 || raw.receipt.movements.length !== receivable.length) return false
+    const seen = new Set<string>()
+    for (const movement of raw.receipt.movements) {
+      if (!isRecord(movement) || typeof movement.id !== 'string' ||
+        !/^demo-stock-[a-f0-9-]{36}$/.test(movement.id) || seen.has(movement.purchaseLineId as string)) return false
+      seen.add(movement.purchaseLineId as string)
+      const line = receivable.find((candidate) => candidate.id === movement.purchaseLineId)
+      if (!line || movement.catalogItemId !== line.catalogItemId ||
+        movement.unit !== line.unit || movement.quantityMilli !== line.quantityMilli) return false
+    }
+    return seen.size === receivable.length
+  } catch {
+    return false
+  }
 }
 
 function catalogItemOfBusiness(businessId: string, itemId: string): DemoCatalogItem {
@@ -514,6 +628,30 @@ function load(): DemoSnapshot {
         }
       }
     }
+    // Compras opcionales: sólo se recuperan snapshots completos y recepciones consistentes.
+    if (Array.isArray(data.purchases)) {
+      const countByBusiness = new Map<string, number>()
+      const seenRequests = new Set<string>()
+      for (const rawPurchase of data.purchases.slice(0, 10000)) {
+        if (!validPurchase(rawPurchase, state)) continue
+        if (state.purchasesById[rawPurchase.id] || seenRequests.has(rawPurchase.requestId)) continue
+        if ((countByBusiness.get(rawPurchase.businessId) ?? 0) >= 500) continue
+        const purchase: DemoPurchase = {
+          id: rawPurchase.id, requestId: rawPurchase.requestId, businessId: rawPurchase.businessId,
+          purchasedOn: rawPurchase.purchasedOn, supplierId: rawPurchase.supplierId,
+          supplierNameSnapshot: rawPurchase.supplierNameSnapshot, reference: rawPurchase.reference,
+          notes: rawPurchase.notes, lines: rawPurchase.lines.map((line) => ({ ...line })),
+          totalCents: rawPurchase.totalCents, createdAt: rawPurchase.createdAt,
+          receipt: rawPurchase.receipt ? {
+            ...rawPurchase.receipt,
+            movements: rawPurchase.receipt.movements.map((movement) => ({ ...movement })),
+          } : null,
+        }
+        state.purchasesById[purchase.id] = purchase
+        seenRequests.add(purchase.requestId)
+        countByBusiness.set(purchase.businessId, (countByBusiness.get(purchase.businessId) ?? 0) + 1)
+      }
+    }
   } catch {
     // Datos corruptos o almacenamiento bloqueado: mostrar fixtures conocidos.
   }
@@ -536,6 +674,7 @@ function notify(next: DemoSnapshot) {
       teamMembers: Object.values(state.teamMembersById),
       catalogItems: Object.values(state.catalogItemsById),
       suppliers: Object.values(state.suppliersById),
+      purchases: Object.values(state.purchasesById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
@@ -574,6 +713,77 @@ function requiredText(value: string, label: string, min: number, max: number): s
 }
 
 export const demoGateway = {
+  async registerPurchase(businessId: string, input: PurchaseInput, requestId: string): Promise<DemoPurchase> {
+    activeBusiness(businessId)
+    if (!/^demo-request-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Identificador de solicitud inválido.')
+    const previous = Object.values(state.purchasesById).find((purchase) => purchase.requestId === requestId)
+    if (previous) {
+      if (previous.businessId !== businessId) throw new Error('La solicitud ya fue usada por otra empresa.')
+      return previous // reintento de un mismo submit, sin duplicar una compra
+    }
+    if (listDemoPurchases(state, businessId).length >= 500) {
+      throw new Error('La DEMO admite hasta 500 compras por empresa.')
+    }
+    const fields = normalizePurchaseInput(input)
+    const supplier = fields.supplierId ? supplierOfBusiness(businessId, fields.supplierId) : null
+    if (supplier && supplier.status !== 'ACTIVO') throw new Error('Seleccioná un proveedor activo o dejalo sin asignar.')
+    const lines: PurchaseLineSnapshot[] = fields.lines.map((line) => {
+      const item = line.catalogItemId ? catalogItemOfBusiness(businessId, line.catalogItemId) : null
+      if (item && (item.status !== 'ACTIVO' || line.unit !== item.unit)) {
+        throw new Error('Artículo inactivo o unidad modificada. Revisá los renglones de compra.')
+      }
+      const kind: PurchaseLineSnapshot['kind'] = !item ? 'CONCEPTO' : item.kind === 'SERVICIO' ? 'SERVICIO' : 'BIEN'
+      return {
+        ...line, description: item ? item.name : line.description, sku: item?.sku ?? '',
+        kind, id: 'demo-purchase-line-' + crypto.randomUUID(),
+        totalCents: lineTotalCents(line.quantityMilli, line.unitCostCents),
+      }
+    })
+    const now = new Date().toISOString()
+    const purchase: DemoPurchase = {
+      id: 'demo-purchase-' + crypto.randomUUID(),
+      requestId, businessId, supplierId: fields.supplierId,
+      supplierNameSnapshot: supplier?.name ?? '',
+      purchasedOn: fields.purchasedOn, reference: fields.reference,
+      notes: fields.notes, lines, totalCents: sumLineTotals(lines),
+      createdAt: now, receipt: null,
+    }
+    notify({ ...state, purchasesById: { ...state.purchasesById, [purchase.id]: purchase } })
+    return purchase
+  },
+
+  async receivePurchase(businessId: string, purchaseId: string, locationId: string): Promise<PurchaseReceipt> {
+    const purchase = purchaseOfBusiness(businessId, purchaseId)
+    // Recepción única por compra, reintento idéntico = misma recepción sin segundo evento.
+    if (purchase.receipt) return purchase.receipt
+    const location = locationOfBusiness(businessId, locationId)
+    if (location.status !== 'ACTIVA' || !location.canStore) {
+      throw new Error('Elegí una ubicación activa que permita almacenar.')
+    }
+    const physical = physicalPurchaseLines(purchase.lines)
+    if (!physical.length) throw new Error('Esta compra no contiene bienes del Catálogo que se puedan recibir.')
+    for (const line of physical) {
+      const item = catalogItemOfBusiness(businessId, line.catalogItemId!)
+      if (item.kind === 'SERVICIO' || item.unit !== line.unit) {
+        throw new Error('La unidad o tipo de un artículo cambió desde la compra. Revisalo antes de recibir.')
+      }
+    }
+    const receipt: PurchaseReceipt = {
+      id: 'demo-receipt-' + crypto.randomUUID(), locationId,
+      createdAt: new Date().toISOString(),
+      movements: physical.map((line) => ({
+        id: 'demo-stock-' + crypto.randomUUID(),
+        purchaseLineId: line.id,
+        catalogItemId: line.catalogItemId!,
+        unit: line.unit as PurchaseReceipt['movements'][number]['unit'],
+        quantityMilli: line.quantityMilli,
+      })),
+    }
+    const updated: DemoPurchase = { ...purchase, receipt }
+    notify({ ...state, purchasesById: { ...state.purchasesById, [purchase.id]: updated } })
+    return receipt
+  },
+
   async createSupplier(businessId: string, input: SupplierInput): Promise<DemoSupplier> {
     activeBusiness(businessId)
     if (listDemoSuppliers(state, businessId).length >= 200) {
