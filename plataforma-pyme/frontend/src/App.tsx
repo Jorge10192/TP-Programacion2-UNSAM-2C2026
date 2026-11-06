@@ -5,7 +5,7 @@ import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
 import { businessHref, navigationItems } from './app/navigation'
-import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoSales, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
+import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoSales, listDemoExpenses, listDemoCashSessions, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { CreateBusinessPage } from './features/businesses/BusinessPages'
 import { BusinessDetailsPage } from './features/businesses/BusinessDetailsPage'
@@ -16,6 +16,8 @@ import { SuppliersPage } from './features/suppliers/SuppliersPage'
 import { PurchasesPage } from './features/purchases/PurchasesPage'
 import { InventoryPage } from './features/inventory/InventoryPage'
 import { SalesPage } from './features/sales/SalesPage'
+import { ExpensesPage } from './features/cash/ExpensesPage'
+import { CashSessionsPage } from './features/cash/CashSessionsPage'
 import { inventoryHistoryEntries } from './data/demo/inventoryPolicy'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
@@ -107,6 +109,18 @@ function App() {
     locations={listDemoLocations(snapshot, business.id)}
     sales={listDemoSales(snapshot, business.id)}
     movements={listDemoInventoryMovements(snapshot, business.id)}
+  />
+  else if (business && section === 'gastos') content = <ExpensesPage
+    key={business.id} business={business} snapshot={snapshot}
+    locations={listDemoLocations(snapshot, business.id)}
+    expenses={listDemoExpenses(snapshot, business.id)}
+  />
+  else if (business && section === 'jornadas') content = <CashSessionsPage
+    key={business.id} business={business}
+    locations={listDemoLocations(snapshot, business.id)}
+    sessions={listDemoCashSessions(snapshot, business.id)}
+    sales={listDemoSales(snapshot, business.id)}
+    expenses={listDemoExpenses(snapshot, business.id)}
   />
   else if (business && section === 'compras') content = <PurchasesPage key={business.id} business={business} purchases={listDemoPurchases(snapshot, business.id)} catalog={listDemoCatalog(snapshot, business.id)} suppliers={listDemoSuppliers(snapshot, business.id)} locations={listDemoLocations(snapshot, business.id)} />
   else if (business && (section === 'inventario' || section === 'movimientos')) content = <InventoryPage
