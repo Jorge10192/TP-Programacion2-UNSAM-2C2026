@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { AppLink } from '../AppLink'
 import { Icon } from '../Icon'
 import { businessHref, navigationGroups, navigationItems } from '../navigation'
@@ -20,18 +22,41 @@ export function Sidebar({
   isOpen: boolean
   onClose: () => void
 }) {
-  const compact = mode === 'compact'
+  const compact = mode === 'compact' && !isOpen
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (isOpen) closeButtonRef.current?.focus()
+  }, [isOpen])
+
+  // El drawer modal nunca debe dejar que Tab llegue al contenido bloqueado.
+  function handleDrawerKeys(event: ReactKeyboardEvent<HTMLElement>) {
+    if (!isOpen || event.key !== 'Tab') return
+    const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+      .filter((element) => element.getClientRects().length > 0)
+    if (focusable.length === 0) return
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
 
   return (
     <>
-      {isOpen && <button type="button" className="mobile-scrim" aria-label="Cerrar menú" onClick={onClose} />}
-      <aside id="app-sidebar" className={'sidebar' + (isOpen ? ' sidebar-open' : '')} aria-label="Navegación principal">
+      {isOpen && <button type="button" tabIndex={-1} className="mobile-scrim" aria-label="Cerrar menú al tocar fuera" onClick={onClose} />}
+      <aside id="app-sidebar" className={'sidebar' + (isOpen ? ' sidebar-open' : '')} role={isOpen ? 'dialog' : undefined} aria-modal={isOpen ? true : undefined} aria-label={isOpen ? 'Menú principal' : 'Navegación principal'} onKeyDown={handleDrawerKeys}>
         <div className="sidebar-head">
           <AppLink navigate={navigate} to="/inicio" className="brand" ariaLabel="Ir al inicio personal" title={compact ? 'Asistente PyME · Inicio personal' : undefined}>
             <span className="brand-logo"><Icon name="building" size={25} /></span>
             <span className="brand-copy"><strong>Asistente PyME</strong><small>Gestión de negocios</small></span>
           </AppLink>
-          <button type="button" className="icon-button sidebar-close" aria-label="Cerrar menú" onClick={onClose}><Icon name="close" /></button>
+          <button type="button" ref={closeButtonRef} className="icon-button sidebar-close" aria-label="Cerrar menú" onClick={onClose}><Icon name="close" /></button>
         </div>
 
         <div className="sidebar-scroll">
