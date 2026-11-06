@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:maps": "node --test tests/maps-links.test.mjs"
+    "test:maps": "node --test tests/maps-links.test.mjs",
+    "test:team": "node --test tests/team-policy.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
