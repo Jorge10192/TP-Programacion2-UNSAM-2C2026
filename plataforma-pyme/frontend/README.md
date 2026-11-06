@@ -2,7 +2,7 @@
 
 Plataforma generalista de gestión para múltiples empresas y rubros, desarrollada dentro del TP de Programación 2. WALOS es sólo un negocio de ejemplo, **no** el producto ni su rubro obligatorio.
 
-**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) validado visualmente y con persistencia por el equipo; compilación/lint de ese corte no confirmadas. E1-B2 (avatar, contacto y función por empresa) publicado y **pendiente de build/lint y pruebas locales**. No hay autenticación, autorización real, backend, stock, ventas, caja ni pagos.
+**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) validado visualmente y con persistencia por el equipo; compilación/lint de ese corte no confirmadas. E1-B2 (avatar, contacto y función por empresa) validado funcionalmente por el equipo. E1-B3 de Ubicaciones publicado y **pendiente de compilación, lint y pruebas locales**. No hay autenticación, autorización real, backend, stock, ventas, caja ni pagos.
 
 ## Ejecutar en VS Code
 
@@ -28,6 +28,7 @@ Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado
 - **Selector superior:** todas las empresas de este entorno local, incluyendo las nuevas.
 - **Inicio empresarial:** resumen y accesos a módulos (operaciones aún pendientes).
 - **Datos de la empresa:** ficha comercial con edición inmediata por campo de nombre, rubro, eslogan, presentación y CUIT ficticio opcional. Conserva los cambios de cada empresa tras F5 si localStorage está disponible.
+- **Ubicaciones:** alta, edición, lista, principal, pausa y reactivación. Tipos local/feria/depósito/oficina/otro; venta y almacenamiento separados, sin ubicación obligatoria para servicios ni creación de stock/caja.
 - **Menú de tres líneas:** drawer modal; bloquea el fondo y se cierra desde el fondo, Escape, X o al elegir una sección.
 - **Menú fijo opcional:** expandido, compacto u oculto en escritorio, con preferencia local.
 - **Volver:** contextual dentro de la misma empresa o a su Inicio.
@@ -42,6 +43,7 @@ Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado
 - /b/comercio-demo/inicio
 - /b/servicios-demo/inicio
 - /b/walos-demo/empresa
+- /b/walos-demo/ubicaciones
 - /b/walos-demo/catalogo (placeholder)
 
 Para empresas creadas, el identificador está incorporado en /b/:businessId/inicio.
@@ -64,13 +66,14 @@ src/
 └── features/
     ├── dashboard/Dashboards.tsx
     ├── profile/ProfilePage.tsx
+    ├── locations/LocationsPage.tsx
     ├── businesses/BusinessPages.tsx
     └── common/Feedback.tsx
 ~~~
 
 ## Límites de seguridad y datos
 
-- La información se almacena en **localStorage del navegador** con una clave versionada. E1-B1 y E1-B2 conservan la clave/formato previo de E1-A2 para no perder perfiles y empresas creadas; las modificaciones de fixtures se guardan como overrides y las funciones laborales por businessId. Es DEMO y no se sincroniza con otros dispositivos.
+- La información se almacena en **localStorage del navegador** con una clave versionada. E1-B1, E1-B2 y Ubicaciones conservan la clave/formato previo de E1-A2 para no perder perfiles y empresas creadas; se guardan overrides de fixtures, funciones laborales y ubicaciones por businessId. Es DEMO y no se sincroniza con otros dispositivos.
 - No uses nombres, emails ni datos comerciales reales; cualquiera que tenga acceso al navegador puede leer o modificar estos datos.
 - La UI no constituye autenticación, control de permisos, aislamiento multitenant seguro, respaldo ni garantía de persistencia.
 - El fundador y titular administrativo inicial son campos distintos pero ambos apuntan a la identidad DEMO global en este incremento; transferencias e invitaciones siguen pendientes.
@@ -85,5 +88,6 @@ src/
 - ../docs/07_E1_A2_PERFIL_EMPRESAS_DEMO.md — perfil, creación y pruebas de aceptación
 - ../docs/08_E1_B1_DATOS_EMPRESA.md — integración de Z001, edición contextual y pruebas
 - ../docs/09_E1_B2_PERFIL_GLOBAL_Y_FUNCION_EMPRESA.md — avatar global, contacto y función laboral por empresa
+- ../docs/10_E1_B3_UBICACIONES_DEMO.md — ubicaciones por empresa y pruebas
 
 Arquitectura E0-B y ADR-001/002/007 permanecen como **propuestas**, sujetas a validación del equipo. Su adopción DEMO no implica aprobación definitiva.
