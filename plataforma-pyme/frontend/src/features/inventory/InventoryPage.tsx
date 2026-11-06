@@ -1,30 +1,33 @@
 import { useState } from 'react'
 import { Icon } from '../../app/Icon'
 import type { DemoBusiness, DemoCatalogItem, DemoLocation } from '../../data/demo/demoStore'
-import type { InventoryMovement } from '../../data/demo/inventoryPolicy'
+import type { InventoryMovement, InventoryOperation } from '../../data/demo/inventoryPolicy'
 import { inventoryHistoryEntries, inventoryMovementLabels, stockBalances, stockKey } from '../../data/demo/inventoryPolicy'
 import { quantityText } from '../../data/demo/purchasePolicy'
 import { InventoryActionForm } from './InventoryActionForm'
+import { InventoryBatchCount } from './InventoryBatchCount'
 
 type Tab = 'stock' | 'movements'
 type Row = { item: DemoCatalogItem; location: DemoLocation; milli: number }
 const movementsFilters = [
   { value: 'RECEPCION_COMPRA', label: 'Recepciones de compras' },
   { value: 'TRANSFER', label: 'Traslados entre ubicaciones' },
-  { value: 'AJUSTE_CONTEO', label: 'Ajustes por conteo' },
+  { value: 'AJUSTE_CONTEO', label: 'Ajustes por conteo individual' },
+  { value: 'BATCH_COUNT', label: 'Controles de stock por ubicación' },
 ] as const
 
 export function InventoryPage({
-  business, catalog, locations, movements, initialTab,
+  business, catalog, locations, movements, operations, initialTab,
 }: {
   business: DemoBusiness
   catalog: DemoCatalogItem[]
   locations: DemoLocation[]
   movements: InventoryMovement[]
+  operations: InventoryOperation[]
   initialTab: Tab
 }) {
   const [tab, setTab] = useState<Tab>(initialTab)
-  const [action, setAction] = useState<'TRANSFER' | 'COUNT' | null>(null)
+  const [action, setAction] = useState<'TRANSFER' | 'COUNT' | 'BATCH' | null>(null)
   const [formVersion, setFormVersion] = useState(0)
   const [query, setQuery] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
@@ -40,7 +43,7 @@ export function InventoryPage({
     [...balances].filter(([, quantity]) => quantity > 0).map(([key]) => (JSON.parse(key) as string[])[1]),
   ).size
   const receipts = movements.filter((movement) => movement.type === 'RECEPCION_COMPRA').length
-  const history = inventoryHistoryEntries(movements)
+  const history = inventoryHistoryEntries(movements, operations)
 
   const rows: Row[] = []
   if (locationFilter || showEmpty) {
@@ -69,27 +72,36 @@ export function InventoryPage({
     .sort((a, b) => a.item.name.localeCompare(b.item.name, 'es') || a.location.name.localeCompare(b.location.name, 'es'))
   const shownRows = filteredRows.slice(0, 150)
   const filteredHistory = history.filter((entry) => {
-    const sourceLocationId = entry.kind === 'TRANSFER' ? entry.sourceLocationId : entry.movement.locationId
-    const destinationLocationId = entry.kind === 'TRANSFER' ? entry.destinationLocationId : null
-    if (locationFilter && sourceLocationId !== locationFilter && destinationLocationId !== locationFilter) return false
-    const isTransfer = entry.kind === 'TRANSFER' || entry.movement.type === 'TRASLADO_SALIDA' || entry.movement.type === 'TRASLADO_ENTRADA'
-    if (typeFilter && (typeFilter === 'TRANSFER'
-      ? !isTransfer
-      : entry.kind === 'TRANSFER' || entry.movement.type !== typeFilter)) return false
-    const movement = entry.kind === 'MOVEMENT' ? entry.movement : entry
-    return !term || [
-      movement.itemNameSnapshot, movement.reference, movement.reason,
-      locById.get(sourceLocationId)?.name ?? '',
-      destinationLocationId ? locById.get(destinationLocationId)?.name ?? '' : '',
-      itemById.get(movement.catalogItemId)?.sku ?? '',
-    ].some((value) => value.toLocaleLowerCase('es-AR').includes(term))
+    const places = entry.kind === 'TRANSFER'
+      ? [entry.sourceLocationId, entry.destinationLocationId]
+      : [entry.kind === 'BATCH_COUNT' ? entry.locationId : entry.movement.locationId]
+    if (locationFilter && !places.includes(locationFilter)) return false
+    if (typeFilter) {
+      const isTransfer = entry.kind === 'TRANSFER' ||
+        (entry.kind === 'MOVEMENT' && (entry.movement.type === 'TRASLADO_SALIDA' || entry.movement.type === 'TRASLADO_ENTRADA'))
+      if (typeFilter === 'TRANSFER' && !isTransfer) return false
+      if (typeFilter === 'BATCH_COUNT' && entry.kind !== 'BATCH_COUNT') return false
+      if (typeFilter !== 'TRANSFER' && typeFilter !== 'BATCH_COUNT' &&
+          (entry.kind !== 'MOVEMENT' || entry.movement.type !== typeFilter)) return false
+    }
+    if (!term) return true
+    const searchable = entry.kind === 'BATCH_COUNT'
+      ? [entry.reason, ...entry.lines.flatMap((line) => [
+        line.itemNameSnapshot, itemById.get(line.catalogItemId)?.sku ?? '',
+      ])]
+      : entry.kind === 'TRANSFER'
+        ? [entry.itemNameSnapshot, entry.reference, entry.reason, itemById.get(entry.catalogItemId)?.sku ?? '']
+        : [entry.movement.itemNameSnapshot, entry.movement.reference,
+          entry.movement.reason, itemById.get(entry.movement.catalogItemId)?.sku ?? '']
+    return [...searchable, ...places.map((place) => locById.get(place)?.name ?? '')]
+      .some((value) => value.toLocaleLowerCase('es-AR').includes(term))
   })
   const shownHistory = filteredHistory.slice(0, 90)
   const canMove = locations.filter((loc) => loc.status === 'ACTIVA' && loc.canStore).length >= 2
   const canCount = locations.some((loc) => loc.status === 'ACTIVA' && loc.canStore)
   const canAct = physical.some((item) => item.status === 'ACTIVO')
 
-  function startAction(kind: 'TRANSFER' | 'COUNT') {
+  function startAction(kind: 'TRANSFER' | 'COUNT' | 'BATCH') {
     setAction(kind)
     setFormVersion((n) => n + 1)
     setNotice('')
@@ -111,8 +123,10 @@ export function InventoryPage({
       <div className="inventory-heading-actions">
         <button type="button" className="button button-secondary" disabled={!canAct || !canMove}
           onClick={() => startAction('TRANSFER')}><Icon name="truck" size={17}/> Trasladar</button>
+        <button type="button" className="button button-secondary" disabled={!canAct || !canCount}
+          onClick={() => startAction('COUNT')}><Icon name="plus" size={17}/> Ajuste rápido</button>
         <button type="button" className="button button-primary" disabled={!canAct || !canCount}
-          onClick={() => startAction('COUNT')}><Icon name="plus" size={17}/> Registrar conteo</button>
+          onClick={() => startAction('BATCH')}><Icon name="boxes" size={17}/> Control de stock</button>
       </div>
     </div>
 
@@ -131,7 +145,11 @@ export function InventoryPage({
     {!canAct && <div className="inventory-attention">Para operar, primero agregá un artículo físico activo (no un servicio) en Catálogo.</div>}
     {notice && <p className="form-message success inventory-notice" role="status">{notice}</p>}
 
-    {action && <InventoryActionForm
+    {action === 'BATCH' ? <InventoryBatchCount
+      key={business.id + '-batch-' + formVersion}
+      business={business} catalog={catalog} locations={locations} movements={movements}
+      onDone={completed} onCancel={() => setAction(null)}
+    /> : action && <InventoryActionForm
       key={business.id + '-' + action + '-' + formVersion}
       kind={action} business={business} catalog={catalog} locations={locations} movements={movements}
       onDone={completed} onCancel={() => setAction(null)}
@@ -190,7 +208,7 @@ export function InventoryPage({
         </>}
       </> : <>
         <div className="inventory-table-heading">
-          <div><h2>Trazabilidad de movimientos</h2><p>{filteredHistory.length} operaciones · los traslados agrupan origen y destino en una fila</p></div>
+          <div><h2>Trazabilidad de movimientos</h2><p>{filteredHistory.length} operaciones · los traslados y controles múltiples se agrupan por operación</p></div>
         </div>
         {filteredHistory.length === 0 ? <div className="catalog-empty">
           <span className="feature-icon blue"><Icon name="truck" size={25}/></span>
@@ -210,6 +228,32 @@ export function InventoryPage({
                   <small>Trasladadas · {new Date(entry.createdAt).toLocaleString('es-AR')}</small>
                 </div>
               </article>
+            ) : entry.kind === 'BATCH_COUNT' ? (
+              <details className="inventory-audit-history" key={entry.id}>
+                <summary className="inventory-movement-row">
+                  <span className="inventory-movement-icon transfer"><Icon name="boxes" size={19}/></span>
+                  <div className="inventory-movement-info">
+                    <strong>Control de stock · {locById.get(entry.locationId)?.name ?? 'Ubicación histórica'}</strong>
+                    <span>{entry.lines.length} artículos revisados · {entry.lines.filter((line) => line.deltaMilli !== 0).length} diferencias</span>
+                    <small>{entry.reason}</small>
+                  </div>
+                  <div className="inventory-movement-aside">
+                    <strong className="transfer-quantity">Una sesión</strong>
+                    <small>{new Date(entry.createdAt).toLocaleString('es-AR')} · Ver detalle ▾</small>
+                  </div>
+                </summary>
+                <div className="inventory-audit-history-lines">
+                  {entry.lines.map((line) => <div key={line.catalogItemId}>
+                    <strong>{line.itemNameSnapshot}</strong>
+                    <span>Sistema: {quantityText(line.expectedMilli, line.unit)}</span>
+                    <span>Contado: {quantityText(line.countedMilli, line.unit)}</span>
+                    <strong className={line.deltaMilli > 0 ? 'positive' : line.deltaMilli < 0 ? 'negative' : 'muted'}>
+                      {line.deltaMilli === 0 ? 'Sin diferencia' :
+                        (line.deltaMilli > 0 ? '+ ' : '− ') + quantityText(Math.abs(line.deltaMilli), line.unit)}
+                    </strong>
+                  </div>)}
+                </div>
+              </details>
             ) : (
               <article className="inventory-movement-row" key={entry.id}>
                 <span className={'inventory-movement-icon ' + (entry.movement.deltaMilli >= 0 ? 'inbound' : 'outbound')}>
