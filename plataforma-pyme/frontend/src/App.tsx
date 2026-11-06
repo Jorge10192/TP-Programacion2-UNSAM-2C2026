@@ -5,7 +5,7 @@ import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
 import { businessHref, navigationItems } from './app/navigation'
-import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
+import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoSales, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { CreateBusinessPage } from './features/businesses/BusinessPages'
 import { BusinessDetailsPage } from './features/businesses/BusinessDetailsPage'
@@ -15,6 +15,7 @@ import { CatalogPage } from './features/catalog/CatalogPage'
 import { SuppliersPage } from './features/suppliers/SuppliersPage'
 import { PurchasesPage } from './features/purchases/PurchasesPage'
 import { InventoryPage } from './features/inventory/InventoryPage'
+import { SalesPage } from './features/sales/SalesPage'
 import { inventoryHistoryEntries } from './data/demo/inventoryPolicy'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
@@ -100,6 +101,12 @@ function App() {
   else if (business && section === 'equipo') content = <TeamPage key={business.id} business={business} profile={snapshot.profile} owner={snapshot.membershipsByBusinessId[business.id]} members={listDemoTeamMembers(snapshot, business.id)} invitations={listDemoInvitations(snapshot, business.id)} />
   else if (business && section === 'catalogo') content = <CatalogPage key={business.id} business={business} items={listDemoCatalog(snapshot, business.id)} />
   else if (business && section === 'proveedores') content = <SuppliersPage key={business.id} business={business} suppliers={listDemoSuppliers(snapshot, business.id)} />
+  else if (business && section === 'ventas') content = <SalesPage
+    key={business.id} business={business}
+    items={listDemoCatalog(snapshot, business.id)}
+    locations={listDemoLocations(snapshot, business.id)}
+    sales={listDemoSales(snapshot, business.id)}
+  />
   else if (business && section === 'compras') content = <PurchasesPage key={business.id} business={business} purchases={listDemoPurchases(snapshot, business.id)} catalog={listDemoCatalog(snapshot, business.id)} suppliers={listDemoSuppliers(snapshot, business.id)} locations={listDemoLocations(snapshot, business.id)} />
   else if (business && (section === 'inventario' || section === 'movimientos')) content = <InventoryPage
     key={business.id + '-' + section}
