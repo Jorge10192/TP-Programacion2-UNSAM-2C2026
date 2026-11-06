@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, ReactNode } from 'react'
 import { Icon } from '../../app/Icon'
 import {
@@ -49,7 +49,7 @@ export function DemoPhoto({ imageKey, alt, fallback, className = '' }: {
 }
 
 export function DemoImagePicker({ imageKey, label }: { imageKey: string; label: string }) {
-  const inputId = useId()
+  const fileRef = useRef<HTMLInputElement>(null)
   const src = usePhoto(imageKey)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
@@ -94,11 +94,12 @@ export function DemoImagePicker({ imageKey, label }: { imageKey: string; label: 
     <div className="demo-image-picker-content">
       <strong>{label}</strong>
       <div className="demo-image-picker-buttons">
-        <label className={'button button-secondary demo-image-picker-label' + (busy ? ' is-busy' : '')} htmlFor={inputId}>
+        <button type="button" className="button button-secondary demo-image-picker-label" disabled={busy}
+          onClick={() => fileRef.current?.click()}>
           <Icon name="plus" size={16}/>{busy ? 'Procesando…' : 'Elegir imagen'}
-        </label>
-        <input id={inputId} disabled={busy} type="file" accept="image/jpeg,image/png,image/webp"
-          className="demo-image-picker-file" onChange={(event) => void upload(event)}/>
+        </button>
+        <input ref={fileRef} disabled={busy} type="file" accept="image/jpeg,image/png,image/webp"
+          className="demo-image-picker-file" tabIndex={-1} onChange={(event) => void upload(event)}/>
         {src && <button type="button" className="button button-secondary" disabled={busy} onClick={() => void remove()}>Quitar imagen</button>}
       </div>
       <small>JPG, PNG o WebP hasta 8 MB. Se reduce a 512 px y se guarda inmediatamente en este navegador (no se sube a Internet).</small>
