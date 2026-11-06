@@ -5,7 +5,7 @@ import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
 import { businessHref, navigationItems } from './app/navigation'
-import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
+import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { CreateBusinessPage } from './features/businesses/BusinessPages'
 import { BusinessDetailsPage } from './features/businesses/BusinessDetailsPage'
@@ -14,6 +14,7 @@ import { TeamPage } from './features/team/TeamPage'
 import { CatalogPage } from './features/catalog/CatalogPage'
 import { SuppliersPage } from './features/suppliers/SuppliersPage'
 import { PurchasesPage } from './features/purchases/PurchasesPage'
+import { InventoryPage } from './features/inventory/InventoryPage'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
 import { ComingSoon, NotFound } from './features/common/Feedback'
@@ -99,6 +100,13 @@ function App() {
   else if (business && section === 'catalogo') content = <CatalogPage key={business.id} business={business} items={listDemoCatalog(snapshot, business.id)} />
   else if (business && section === 'proveedores') content = <SuppliersPage key={business.id} business={business} suppliers={listDemoSuppliers(snapshot, business.id)} />
   else if (business && section === 'compras') content = <PurchasesPage key={business.id} business={business} purchases={listDemoPurchases(snapshot, business.id)} catalog={listDemoCatalog(snapshot, business.id)} suppliers={listDemoSuppliers(snapshot, business.id)} locations={listDemoLocations(snapshot, business.id)} />
+  else if (business && (section === 'inventario' || section === 'movimientos')) content = <InventoryPage
+    key={business.id + '-' + section}
+    business={business} catalog={listDemoCatalog(snapshot, business.id)}
+    locations={listDemoLocations(snapshot, business.id)}
+    movements={listDemoInventoryMovements(snapshot, business.id)}
+    initialTab={section === 'movimientos' ? 'movements' : 'stock'}
+  />
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
