@@ -5,7 +5,7 @@ import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
 import { businessHref, navigationItems } from './app/navigation'
-import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
+import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { CreateBusinessPage } from './features/businesses/BusinessPages'
 import { BusinessDetailsPage } from './features/businesses/BusinessDetailsPage'
@@ -94,7 +94,7 @@ function App() {
   else if (pathname === '/perfil') content = <ProfilePage profile={snapshot.profile} businesses={businesses} memberships={snapshot.membershipsByBusinessId} />
   else if (pathname === '/empresas/nueva') content = <CreateBusinessPage navigate={navigate} profile={snapshot.profile} />
   else if (hasBusinessPath && !business) content = <NotFound navigate={navigate} accessDenied />
-  else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} catalogCount={listDemoCatalog(snapshot, business.id).filter((item) => item.status === 'ACTIVO').length} movementCount={inventoryHistoryEntries(listDemoInventoryMovements(snapshot, business.id)).length} />
+  else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} catalogCount={listDemoCatalog(snapshot, business.id).filter((item) => item.status === 'ACTIVO').length} movementCount={inventoryHistoryEntries(listDemoInventoryMovements(snapshot, business.id), listDemoInventoryOperations(snapshot, business.id)).length} />
   else if (business && section === 'empresa') content = <BusinessDetailsPage key={business.id} business={business} profile={snapshot.profile} jobTitle={snapshot.membershipsByBusinessId[business.id]?.jobTitle ?? ''} navigate={navigate} />
   else if (business && section === 'ubicaciones') content = <LocationsPage key={business.id} business={business} locations={listDemoLocations(snapshot, business.id)} />
   else if (business && section === 'equipo') content = <TeamPage key={business.id} business={business} profile={snapshot.profile} owner={snapshot.membershipsByBusinessId[business.id]} members={listDemoTeamMembers(snapshot, business.id)} invitations={listDemoInvitations(snapshot, business.id)} />
@@ -106,6 +106,7 @@ function App() {
     business={business} catalog={listDemoCatalog(snapshot, business.id)}
     locations={listDemoLocations(snapshot, business.id)}
     movements={listDemoInventoryMovements(snapshot, business.id)}
+    operations={listDemoInventoryOperations(snapshot, business.id)}
     initialTab={section === 'movimientos' ? 'movements' : 'stock'}
   />
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
