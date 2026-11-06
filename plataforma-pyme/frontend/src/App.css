@@ -26,6 +26,7 @@
 .sidebar-version { display: block; font-size: 10px; color: #8da6c8; margin: 14px 8px 0; }
 .sidebar-close { display: none !important; }
 .mobile-scrim { display: none; }
+.drawer-context { display: none; }
 
 .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar { height: 76px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px, 3vw, 43px); gap: 16px; }
@@ -215,6 +216,26 @@
   box-shadow: 10px 0 42px rgba(5, 17, 37, .35);
 }
 .app-layout.menu-drawer-open .sidebar-head { padding: 21px 16px; gap: 8px; justify-content: space-between; }
+.app-layout.menu-drawer-open .drawer-context {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 21px 10px;
+  background: rgba(34, 56, 87, .34);
+  border-bottom: 1px solid rgba(203, 218, 242, .1);
+}
+.app-layout.menu-drawer-open .drawer-context span {
+  color: #97b1d5;
+  font-size: 10px;
+  letter-spacing: 1.35px;
+  font-weight: 850;
+}
+.app-layout.menu-drawer-open .drawer-context strong {
+  color: #f0f6ff;
+  font-size: 15px;
+  font-weight: 800;
+}
+
 .app-layout.menu-drawer-open .brand { justify-content: flex-start; min-width: 0; }
 .app-layout.menu-drawer-open .sidebar-close { display: inline-grid !important; color: #f3f7ff; flex: none; }
 .app-layout.menu-drawer-open .sidebar-scroll { padding: 15px 12px 22px; }
