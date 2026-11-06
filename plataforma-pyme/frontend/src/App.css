@@ -465,6 +465,71 @@
   .location-map-find { align-self:stretch; }
 }
 
+
+/* E1-B4 — Equipo de trabajo; registros DEMO separados de invitaciones pendientes. */
+.team-summary { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:0 0 18px; }
+.team-summary > div { display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);padding:18px;border-radius:14px;box-shadow:var(--shadow);min-width:0; }
+.team-summary > div > span:last-child { display:flex;flex-direction:column;gap:5px;min-width:0; }
+.team-summary small { font-size:12px;color:var(--muted);font-weight:700;line-height:1.4; }
+.team-summary strong { font-size:24px;color:var(--ink);font-weight:850; }
+.team-info-note { margin:0 0 20px; }
+.team-info-note code { font-size:11px;word-break:break-word; }
+.team-feedback { margin:0 0 17px; }
+.team-invite-form { max-width:900px;margin-bottom:23px; }
+.team-form-grid { display:grid;grid-template-columns:minmax(0,1.3fr) minmax(180px,.7fr);gap:16px; }
+.team-content-layout { display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.82fr);gap:20px;align-items:start; }
+.team-main, .team-side { display:flex;flex-direction:column;gap:18px;min-width:0; }
+.team-person { display:flex;align-items:center;gap:14px;padding:17px 0;border-top:1px solid var(--line);min-width:0; }
+.team-person:first-of-type { border-top:0;padding-top:0; }
+.team-avatar { display:grid;place-items:center;flex:none;width:53px;height:53px;border-radius:14px;background:#e8f0ff;color:#2c64c6;font-size:18px;font-weight:850; }
+.team-owner .team-avatar { background:#2d63c9;color:#fff; }
+.team-avatar-guest { background:#f1eeff;color:#7860c1; }
+.team-person-details { flex:1;min-width:0; }
+.team-person-details h3 { color:var(--ink);font-size:15px;margin:0 0 5px;overflow-wrap:anywhere; }
+.team-person-details p { color:#5b7190;font-size:12px;margin:0 0 5px;overflow-wrap:anywhere; }
+.team-person-details > span { font-size:11px;color:#8a99ae;overflow-wrap:anywhere; }
+.team-person-status { flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-align:right; }
+.team-person-status small { max-width:130px;color:#91a1b4;font-size:10px;line-height:1.35; }
+.team-empty { display:flex;align-items:center;gap:12px;background:#f6f9ff;border:1px dashed #c8d9f3;color:#657d9d;padding:17px;border-radius:11px;font-size:12px;line-height:1.6; }
+.team-empty svg { flex:none;color:#6d92c8; }
+.team-invitation-list { display:flex;flex-direction:column;gap:13px; }
+.team-invitation { border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0; }
+.team-invitation-top { display:flex;align-items:center;gap:11px;min-width:0; }
+.team-invitation-identity { flex:1;min-width:0;display:flex;flex-direction:column;gap:4px; }
+.team-invitation-identity strong { font-size:13px;color:var(--ink);overflow-wrap:anywhere; }
+.team-invitation-identity span { font-size:11px;color:var(--muted); }
+.team-invite-status { flex:none;border-radius:20px;padding:6px 9px;font-size:10px;font-weight:800;text-align:center; }
+.team-invite-status.status-pendiente { background:#fff0d8;color:#a87521; }
+.team-invite-status.status-aceptada { background:#e4f7ee;color:#197b5b; }
+.team-invite-status.status-rechazada,.team-invite-status.status-cancelada { background:#f1f3f8;color:#687a96; }
+.team-invite-status.status-expirada { background:#fff0f0;color:#a45454; }
+.team-invitation-meta { display:flex;flex-wrap:wrap;gap:13px;margin:12px 0;color:#8394ab;font-size:11px; }
+.team-invitation-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:13px;padding-top:12px;border-top:1px solid var(--line); }
+.team-invitation-actions .button { min-height:35px; }
+.team-response-box { margin-top:15px;padding:14px;background:#f1f6ff;border:1px solid #d1e0f6;border-radius:10px; }
+.team-response-box p { margin:0 0 12px;color:#4d678b;font-size:12px;line-height:1.6; }
+.team-response-box > div { display:flex;flex-wrap:wrap;gap:8px; }
+.team-role-explain { display:flex;flex-direction:column;gap:5px;padding:12px 0;border-top:1px solid var(--line); }
+.team-role-explain strong { color:#263f65;font-size:13px; }
+.team-role-explain span { color:#70829c;font-size:12px;line-height:1.55; }
+@media (max-width:1060px) {
+  .team-content-layout { grid-template-columns:1fr; }
+  .team-side { display:grid;grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:700px) {
+  .team-summary { grid-template-columns:1fr; }
+  .team-form-grid { grid-template-columns:1fr; }
+  .team-side { display:flex;flex-direction:column; }
+}
+@media (max-width:610px) {
+  .team-person { flex-wrap:wrap; }
+  .team-person-status { align-items:flex-start;text-align:left;flex-basis:100%;margin-left:67px; }
+  .team-invitation-top { flex-wrap:wrap; }
+  .team-invite-status { margin-left:55px; }
+  .team-invite-form { padding:18px; }
+  .team-response-box > div .button { flex:1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .tool-card, .company-card { transition: none; }
 }
