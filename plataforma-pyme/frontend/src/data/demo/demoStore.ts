@@ -13,7 +13,7 @@ import { normalizeSupplierInput, supplierNameKey } from './supplierPolicy'
 import type { SupplierInput } from './supplierPolicy'
 import { lineTotalCents, normalizePurchaseInput, physicalPurchaseLines, sumLineTotals } from './purchasePolicy'
 import type { PurchaseInput, PurchaseLineSnapshot, PurchaseReceipt } from './purchasePolicy'
-import { countDifference, inventoryOperationMovements, normalizeStockReason, requireTransferStock, stockBalance, validateStockMilli } from './inventoryPolicy'
+import { checkedCountDifference, countDifference, inventoryOperationMovements, normalizeStockReason, requireTransferStock, stockBalance, validateStockMilli } from './inventoryPolicy'
 import type { InventoryCountInput, InventoryCountLine, InventoryMovement, InventoryOperation } from './inventoryPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
@@ -446,8 +446,11 @@ function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is I
             typeof line.countedMilli !== 'number' || typeof line.deltaMilli !== 'number') return false
         validateStockMilli(line.expectedMilli, item.unit, true)
         validateStockMilli(line.countedMilli, item.unit, true)
-        if (line.deltaMilli !== line.countedMilli - line.expectedMilli ||
-            line.expectedMilli !== stockBalance(historicalMovements, raw.locationId, line.catalogItemId)) return false
+        if (line.deltaMilli !== checkedCountDifference(
+          line.expectedMilli,
+          stockBalance(historicalMovements, raw.locationId, line.catalogItemId),
+          line.countedMilli, item.unit,
+        )) return false
       }
       return true
     }
@@ -902,13 +905,10 @@ export const demoGateway = {
       validateStockMilli(input.expectedMilli, item.unit, true)
       validateStockMilli(input.countedMilli, item.unit, true)
       const current = inventoryBalanceMilli(state, businessId, item.id, locationId)
-      if (current !== input.expectedMilli) {
-        throw new Error('El stock cambió mientras contabas. Volvé a revisar los saldos antes de confirmar.')
-      }
+      const deltaMilli = checkedCountDifference(input.expectedMilli, current, input.countedMilli, item.unit)
       return {
         catalogItemId: item.id, itemNameSnapshot: item.name, unit: item.unit,
-        expectedMilli: current, countedMilli: input.countedMilli,
-        deltaMilli: input.countedMilli - current,
+        expectedMilli: current, countedMilli: input.countedMilli, deltaMilli,
       }
     })
     const operation: InventoryOperation = {
