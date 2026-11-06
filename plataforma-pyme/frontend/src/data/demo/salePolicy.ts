@@ -54,6 +54,7 @@ export function saleAmounts(lines: { quantityMilli: number; unitPriceCents: numb
     subtotal += BigInt(lineTotalCents(line.quantityMilli, line.unitPriceCents))
     if (subtotal > BigInt(MAX_SALE_CENTS)) throw new Error('El total supera el límite de la DEMO.')
   }
+  if (subtotal === 0n) throw new Error('La venta debe tener un total mayor a cero.')
   if (!Number.isSafeInteger(discountCents) || discountCents < 0 ||
       BigInt(discountCents) >= subtotal) {
     throw new Error('El descuento debe ser menor que el subtotal de la venta.')
