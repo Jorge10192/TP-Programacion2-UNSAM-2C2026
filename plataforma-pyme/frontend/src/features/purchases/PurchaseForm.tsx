@@ -215,7 +215,7 @@ export function PurchaseForm({
 
       <div className="purchase-total-box">
         <div><small>Total de la compra (ARS)</small><strong>{previewTotal === null ? 'Completar costos y cantidades' : moneyDisplay(previewTotal)}</strong></div>
-        <p>Al guardar se registra la compra, pero **no** el pago ni el ingreso al inventario. Para mercadería física habrá una acción separada de recepción.</p>
+        <p>Al guardar se registra la compra, pero no el pago ni el ingreso al inventario. Para mercadería física habrá una acción separada de recepción.</p>
       </div>
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions">
