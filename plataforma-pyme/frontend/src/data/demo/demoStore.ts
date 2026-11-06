@@ -7,6 +7,8 @@ import { useSyncExternalStore } from 'react'
 import { validateGoogleMapsLink } from './mapsLinks'
 import { canReplyToInvitation, displayInvitationStatus, invitationExpiresAt, normalizeInviteInput } from './teamPolicy'
 import type { InviteRole, InvitationStatus } from './teamPolicy'
+import { catalogNameKey, normalizeCatalogInput } from './catalogPolicy'
+import type { CatalogInput } from './catalogPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -80,6 +82,14 @@ export type DemoTeamMember = {
   sourceInvitationId: string
 }
 
+export type DemoCatalogItem = CatalogInput & {
+  id: string
+  businessId: string
+  status: 'ACTIVO' | 'INACTIVO'
+  createdAt: string
+  updatedAt: string
+}
+
 export type DemoSnapshot = {
   version: 1
   profile: DemoProfile
@@ -88,6 +98,7 @@ export type DemoSnapshot = {
   locationsById: Record<string, DemoLocation>
   teamInvitationsById: Record<string, DemoInvitation>
   teamMembersById: Record<string, DemoTeamMember>
+  catalogItemsById: Record<string, DemoCatalogItem>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -116,10 +127,11 @@ function defaults(): DemoSnapshot {
     locationsById: {},
     teamInvitationsById: {},
     teamMembersById: {},
+    catalogItemsById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -233,6 +245,46 @@ export function listDemoInvitations(snapshot: DemoSnapshot, businessId: string):
   return Object.values(snapshot.teamInvitationsById)
     .filter((invite) => invite.businessId === businessId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+export function listDemoCatalog(snapshot: DemoSnapshot, businessId: string): DemoCatalogItem[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.catalogItemsById)
+    .filter((item) => item.businessId === businessId)
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}
+
+function catalogItemOfBusiness(businessId: string, itemId: string): DemoCatalogItem {
+  activeBusiness(businessId)
+  const item = state.catalogItemsById[itemId]
+  if (!item || item.businessId !== businessId) throw new Error('Artículo no disponible para esta empresa DEMO.')
+  return item
+}
+
+function catalogUniqueness(businessId: string, input: CatalogInput, excludeItemId?: string) {
+  const otherItems = Object.values(state.catalogItemsById)
+    .filter((item) => item.businessId === businessId && item.id !== excludeItemId)
+  if (otherItems.some((item) => catalogNameKey(item.name) === catalogNameKey(input.name))) {
+    throw new Error('Esta empresa ya tiene un artículo o servicio con el mismo nombre, incluso si está inactivo.')
+  }
+  if (input.sku && otherItems.some((item) => item.sku === input.sku)) {
+    throw new Error('Ese SKU ya está utilizado dentro de esta empresa.')
+  }
+}
+
+function validCatalogItem(raw: unknown): raw is DemoCatalogItem {
+  if (!isRecord(raw)) return false
+  return typeof raw.id === 'string' && /^demo-catalog-[a-f0-9-]{36}$/.test(raw.id)
+    && typeof raw.businessId === 'string'
+    && typeof raw.name === 'string' && typeof raw.category === 'string'
+    && typeof raw.kind === 'string' && typeof raw.unit === 'string'
+    && typeof raw.sku === 'string' && typeof raw.description === 'string'
+    && typeof raw.sellable === 'boolean'
+    && (raw.priceCents === null || typeof raw.priceCents === 'number')
+    && (raw.referenceCostCents === null || typeof raw.referenceCostCents === 'number')
+    && (raw.status === 'ACTIVO' || raw.status === 'INACTIVO')
+    && typeof raw.createdAt === 'string' && Number.isFinite(Date.parse(raw.createdAt))
+    && typeof raw.updatedAt === 'string' && Number.isFinite(Date.parse(raw.updatedAt))
 }
 
 export function listDemoTeamMembers(snapshot: DemoSnapshot, businessId: string): DemoTeamMember[] {
@@ -363,6 +415,29 @@ function load(): DemoSnapshot {
         counts.set(rawMember.businessId, (counts.get(rawMember.businessId) ?? 0) + 1)
       }
     }
+    // Los artículos del catálogo son opcionales y no introducen stock ni ubicaciones implícitas.
+    if (Array.isArray(data.catalogItems)) {
+      const countByBusiness = new Map<string, number>()
+      for (const rawItem of data.catalogItems.slice(0, 10000)) {
+        if (!validCatalogItem(rawItem) || !state.businessesById[rawItem.businessId]) continue
+        if (state.catalogItemsById[rawItem.id]) continue
+        if ((countByBusiness.get(rawItem.businessId) ?? 0) >= 500) continue
+        try {
+          const fields = normalizeCatalogInput(rawItem)
+          const existing = Object.values(state.catalogItemsById).filter((item) => item.businessId === rawItem.businessId)
+          if (existing.some((item) => catalogNameKey(item.name) === catalogNameKey(fields.name)
+              || (fields.sku && item.sku === fields.sku))) continue
+          const clean: DemoCatalogItem = {
+            ...fields, id: rawItem.id, businessId: rawItem.businessId, status: rawItem.status,
+            createdAt: rawItem.createdAt, updatedAt: rawItem.updatedAt,
+          }
+          state.catalogItemsById[clean.id] = clean
+          countByBusiness.set(clean.businessId, (countByBusiness.get(clean.businessId) ?? 0) + 1)
+        } catch {
+          // Un registro inválido no debe eliminar los demás datos previos.
+        }
+      }
+    }
   } catch {
     // Datos corruptos o almacenamiento bloqueado: mostrar fixtures conocidos.
   }
@@ -383,6 +458,7 @@ function notify(next: DemoSnapshot) {
       locations: Object.values(state.locationsById),
       teamInvitations: Object.values(state.teamInvitationsById),
       teamMembers: Object.values(state.teamMembersById),
+      catalogItems: Object.values(state.catalogItemsById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
@@ -421,6 +497,40 @@ function requiredText(value: string, label: string, min: number, max: number): s
 }
 
 export const demoGateway = {
+  async createCatalogItem(businessId: string, input: CatalogInput): Promise<DemoCatalogItem> {
+    activeBusiness(businessId)
+    if (listDemoCatalog(state, businessId).length >= 500) {
+      throw new Error('La DEMO admite hasta 500 artículos por empresa.')
+    }
+    const fields = normalizeCatalogInput(input)
+    catalogUniqueness(businessId, fields)
+    const now = new Date().toISOString()
+    const item: DemoCatalogItem = {
+      ...fields, id: 'demo-catalog-' + crypto.randomUUID(), businessId,
+      status: 'ACTIVO', createdAt: now, updatedAt: now,
+    }
+    notify({ ...state, catalogItemsById: { ...state.catalogItemsById, [item.id]: item } })
+    return item
+  },
+
+  async updateCatalogItem(businessId: string, itemId: string, input: CatalogInput): Promise<DemoCatalogItem> {
+    const current = catalogItemOfBusiness(businessId, itemId)
+    const fields = normalizeCatalogInput(input)
+    catalogUniqueness(businessId, fields, itemId)
+    const updated: DemoCatalogItem = { ...current, ...fields, updatedAt: new Date().toISOString() }
+    notify({ ...state, catalogItemsById: { ...state.catalogItemsById, [itemId]: updated } })
+    return updated
+  },
+
+  async setCatalogItemStatus(businessId: string, itemId: string, status: DemoCatalogItem['status']): Promise<DemoCatalogItem> {
+    const current = catalogItemOfBusiness(businessId, itemId)
+    if (status !== 'ACTIVO' && status !== 'INACTIVO') throw new Error('Estado inválido.')
+    if (current.status === status) return current
+    const updated: DemoCatalogItem = { ...current, status, updatedAt: new Date().toISOString() }
+    notify({ ...state, catalogItemsById: { ...state.catalogItemsById, [itemId]: updated } })
+    return updated
+  },
+
   async createInvitation(businessId: string, emailInput: string, role: InviteRole): Promise<DemoInvitation> {
     activeBusiness(businessId)
     const { email } = normalizeInviteInput(emailInput, role)
