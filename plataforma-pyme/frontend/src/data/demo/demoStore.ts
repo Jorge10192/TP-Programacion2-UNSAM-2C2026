@@ -9,6 +9,8 @@ import { canReplyToInvitation, displayInvitationStatus, invitationExpiresAt, nor
 import type { InviteRole, InvitationStatus } from './teamPolicy'
 import { catalogNameKey, normalizeCatalogInput } from './catalogPolicy'
 import type { CatalogInput } from './catalogPolicy'
+import { normalizeSupplierInput, supplierNameKey } from './supplierPolicy'
+import type { SupplierInput } from './supplierPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -90,6 +92,14 @@ export type DemoCatalogItem = CatalogInput & {
   updatedAt: string
 }
 
+export type DemoSupplier = SupplierInput & {
+  id: string
+  businessId: string
+  status: 'ACTIVO' | 'INACTIVO'
+  createdAt: string
+  updatedAt: string
+}
+
 export type DemoSnapshot = {
   version: 1
   profile: DemoProfile
@@ -99,6 +109,7 @@ export type DemoSnapshot = {
   teamInvitationsById: Record<string, DemoInvitation>
   teamMembersById: Record<string, DemoTeamMember>
   catalogItemsById: Record<string, DemoCatalogItem>
+  suppliersById: Record<string, DemoSupplier>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -128,10 +139,11 @@ function defaults(): DemoSnapshot {
     teamInvitationsById: {},
     teamMembersById: {},
     catalogItemsById: {},
+    suppliersById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -252,6 +264,45 @@ export function listDemoCatalog(snapshot: DemoSnapshot, businessId: string): Dem
   return Object.values(snapshot.catalogItemsById)
     .filter((item) => item.businessId === businessId)
     .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}
+
+export function listDemoSuppliers(snapshot: DemoSnapshot, businessId: string): DemoSupplier[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.suppliersById)
+    .filter((supplier) => supplier.businessId === businessId)
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}
+
+function supplierOfBusiness(businessId: string, supplierId: string): DemoSupplier {
+  activeBusiness(businessId)
+  const supplier = state.suppliersById[supplierId]
+  if (!supplier || supplier.businessId !== businessId) {
+    throw new Error('El proveedor no pertenece a la empresa seleccionada.')
+  }
+  return supplier
+}
+
+function supplierUniqueness(businessId: string, name: string, excludeId?: string) {
+  const key = supplierNameKey(name)
+  if (Object.values(state.suppliersById).some((s) =>
+    s.businessId === businessId && s.id !== excludeId && supplierNameKey(s.name) === key)) {
+    throw new Error('Ya existe un proveedor con ese nombre en esta empresa (incluso si está inactivo).')
+  }
+}
+
+function validSupplier(raw: unknown): raw is DemoSupplier {
+  if (!isRecord(raw)) return false
+  return typeof raw.id === 'string' && /^demo-supplier-[a-f0-9-]{36}$/.test(raw.id)
+    && typeof raw.businessId === 'string' && typeof raw.name === 'string'
+    && typeof raw.offerings === 'string' && typeof raw.contactPerson === 'string'
+    && typeof raw.phone === 'string' && typeof raw.whatsapp === 'string'
+    && typeof raw.email === 'string' && typeof raw.address === 'string'
+    && typeof raw.mapsUrl === 'string' && typeof raw.website === 'string'
+    && typeof raw.instagram === 'string' && typeof raw.notes === 'string'
+    && Array.isArray(raw.paymentMethods) && Array.isArray(raw.promotions)
+    && (raw.status === 'ACTIVO' || raw.status === 'INACTIVO')
+    && typeof raw.createdAt === 'string' && Number.isFinite(Date.parse(raw.createdAt))
+    && typeof raw.updatedAt === 'string' && Number.isFinite(Date.parse(raw.updatedAt))
 }
 
 function catalogItemOfBusiness(businessId: string, itemId: string): DemoCatalogItem {
@@ -439,6 +490,30 @@ function load(): DemoSnapshot {
         }
       }
     }
+    if (Array.isArray(data.suppliers)) {
+      const counts = new Map<string, number>()
+      for (const rawSupplier of data.suppliers.slice(0, 4000)) {
+        if (!validSupplier(rawSupplier) || !state.businessesById[rawSupplier.businessId]) continue
+        if (state.suppliersById[rawSupplier.id]) continue
+        if ((counts.get(rawSupplier.businessId) ?? 0) >= 200) continue
+        try {
+          const fields = normalizeSupplierInput(rawSupplier)
+          const previous = Object.values(state.suppliersById).some((entry) =>
+            entry.businessId === rawSupplier.businessId &&
+            supplierNameKey(entry.name) === supplierNameKey(fields.name))
+          if (previous) continue
+          const supplier: DemoSupplier = {
+            ...fields, id: rawSupplier.id, businessId: rawSupplier.businessId,
+            status: rawSupplier.status, createdAt: rawSupplier.createdAt,
+            updatedAt: rawSupplier.updatedAt,
+          }
+          state.suppliersById[supplier.id] = supplier
+          counts.set(supplier.businessId, (counts.get(supplier.businessId) ?? 0) + 1)
+        } catch {
+          // La información de un proveedor inválido no descarta los otros módulos.
+        }
+      }
+    }
   } catch {
     // Datos corruptos o almacenamiento bloqueado: mostrar fixtures conocidos.
   }
@@ -460,6 +535,7 @@ function notify(next: DemoSnapshot) {
       teamInvitations: Object.values(state.teamInvitationsById),
       teamMembers: Object.values(state.teamMembersById),
       catalogItems: Object.values(state.catalogItemsById),
+      suppliers: Object.values(state.suppliersById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
@@ -498,6 +574,40 @@ function requiredText(value: string, label: string, min: number, max: number): s
 }
 
 export const demoGateway = {
+  async createSupplier(businessId: string, input: SupplierInput): Promise<DemoSupplier> {
+    activeBusiness(businessId)
+    if (listDemoSuppliers(state, businessId).length >= 200) {
+      throw new Error('El prototipo admite hasta 200 proveedores por empresa.')
+    }
+    const fields = normalizeSupplierInput(input)
+    supplierUniqueness(businessId, fields.name)
+    const now = new Date().toISOString()
+    const supplier: DemoSupplier = {
+      ...fields, id: 'demo-supplier-' + crypto.randomUUID(), businessId,
+      status: 'ACTIVO', createdAt: now, updatedAt: now,
+    }
+    notify({ ...state, suppliersById: { ...state.suppliersById, [supplier.id]: supplier } })
+    return supplier
+  },
+
+  async updateSupplier(businessId: string, supplierId: string, input: SupplierInput): Promise<DemoSupplier> {
+    const previous = supplierOfBusiness(businessId, supplierId)
+    const fields = normalizeSupplierInput(input)
+    supplierUniqueness(businessId, fields.name, supplierId)
+    const updated: DemoSupplier = { ...previous, ...fields, updatedAt: new Date().toISOString() }
+    notify({ ...state, suppliersById: { ...state.suppliersById, [supplierId]: updated } })
+    return updated
+  },
+
+  async setSupplierStatus(businessId: string, supplierId: string, status: DemoSupplier['status']): Promise<DemoSupplier> {
+    const supplier = supplierOfBusiness(businessId, supplierId)
+    if (status !== 'ACTIVO' && status !== 'INACTIVO') throw new Error('Estado de proveedor inválido.')
+    if (supplier.status === status) return supplier
+    const updated: DemoSupplier = { ...supplier, status, updatedAt: new Date().toISOString() }
+    notify({ ...state, suppliersById: { ...state.suppliersById, [supplierId]: updated } })
+    return updated
+  },
+
   async createCatalogItem(businessId: string, input: CatalogInput): Promise<DemoCatalogItem> {
     activeBusiness(businessId)
     if (listDemoCatalog(state, businessId).length >= 500) {
