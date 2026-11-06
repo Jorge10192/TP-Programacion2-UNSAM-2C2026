@@ -442,6 +442,29 @@
   .location-editor { padding:18px; }
 }
 
+
+/* Google Maps por enlace y copia voluntaria — sin iframe ni API de mapas. */
+.location-map-form { display:flex;flex-direction:column;gap:11px;padding:17px;background:#f8faff;border:1px solid #dce7f6;border-radius:12px; }
+.location-map-form .form-hint { margin:0; }
+.location-map-find { display:inline-flex;align-items:center;gap:8px;align-self:flex-start;padding:9px 12px;border:1px solid #bfdaff;border-radius:9px;background:#edf5ff;color:#245bb7;font-weight:750;font-size:12px;text-decoration:none; }
+.location-map-find:hover { background:#dbeaff; }
+.location-map-actions { display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:0 0 17px; }
+.location-map-link, .location-copy-link { display:inline-flex;align-items:center;gap:7px;padding:9px 11px;border-radius:9px;border:1px solid #cdddf2;font-size:12px;font-weight:750;text-decoration:none; }
+.location-map-link { color:#215dbe;background:#edf5ff; }
+.location-map-link:hover { background:#dcecff; }
+.location-copy-link { background:#fff;color:#35577c;cursor:pointer; }
+.location-copy-link:hover:not(:disabled) { background:#f1f7ff; }
+.location-copy-link:disabled { opacity:.45;cursor:not-allowed; }
+.location-map-missing { font-size:12px;color:#8595ac;font-style:italic; }
+.location-copy-fallback { display:flex;flex-direction:column;gap:8px;margin-bottom:17px;padding:12px;background:#f2f8ff;border:1px solid #c8d9ef;border-radius:10px; }
+.location-copy-fallback label { color:#3a5e8d;font-size:11px;font-weight:800; }
+.location-copy-fallback textarea { width:100%;padding:10px;border:1px solid #bcd1ee;border-radius:7px;background:#fff;color:#233e63;resize:vertical;font-size:12px;line-height:1.6; }
+@media (max-width:610px) {
+  .location-map-actions { flex-direction:column;align-items:stretch; }
+  .location-map-link,.location-copy-link,.location-map-find { justify-content:center;text-align:center; }
+  .location-map-find { align-self:stretch; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .tool-card, .company-card { transition: none; }
 }
