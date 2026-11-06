@@ -84,7 +84,7 @@ function App() {
 
   let content: ReactNode
   if (personal) content = <Welcome navigate={navigate} businesses={businesses} />
-  else if (pathname === '/perfil') content = <ProfilePage profile={snapshot.profile} companyCount={businesses.length} />
+  else if (pathname === '/perfil') content = <ProfilePage profile={snapshot.profile} businesses={businesses} memberships={snapshot.membershipsByBusinessId} />
   else if (pathname === '/empresas/nueva') content = <CreateBusinessPage navigate={navigate} profile={snapshot.profile} />
   else if (hasBusinessPath && !business) content = <NotFound navigate={navigate} accessDenied />
   else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} />
