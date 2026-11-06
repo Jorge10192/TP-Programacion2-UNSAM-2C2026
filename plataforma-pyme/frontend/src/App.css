@@ -382,6 +382,65 @@
   .profile-avatar-editor-fields { width: 100%; }
 }
 
+
+/* E1-B3: Ubicaciones opcionales. Capacidades de venta y almacenaje independientes. */
+.locations-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:0 0 18px; }
+.locations-summary > div { min-width:0;display:flex;align-items:center;gap:13px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow); }
+.locations-summary small { flex:1;color:#72829a;font-size:12px;font-weight:750; }
+.locations-summary strong { color:var(--ink);font-size:24px;font-weight:850;overflow-wrap:anywhere; }
+.locations-summary strong.location-primary-name {font-size:13px;line-height:1.4;}
+.location-info-note { margin:0 0 22px; }
+.locations-notice { margin:0 0 18px; }
+.locations-section-heading { margin:30px 0 16px; }
+.location-editor { max-width:900px; }
+.locations-form-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px; }
+.location-capabilities { border:1px solid var(--line);border-radius:12px;margin:0;padding:15px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+.location-capabilities legend { font-size:13px;font-weight:800;color:#344e70;padding:0 8px; }
+.location-capabilities label { display:flex;align-items:flex-start;gap:11px;padding:14px;background:#f8faff;border:1px solid #e4eaf4;border-radius:10px;cursor:pointer; }
+.location-capabilities input { width:16px;height:16px;accent-color:#2f66c9;margin-top:2px;flex:none; }
+.location-capabilities label span { display:flex;flex-direction:column;gap:5px; }
+.location-capabilities label strong { font-size:13px;color:var(--ink); }
+.location-capabilities label small { font-size:11px;color:var(--muted);line-height:1.45; }
+.locations-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px; }
+.location-card { background:#fff;border:1px solid var(--line);border-radius:16px;padding:21px;box-shadow:var(--shadow);min-width:0; }
+.location-card.location-paused { background:#fafbfd; }
+.location-card-heading { display:flex;align-items:center;gap:11px;min-width:0; }
+.location-card-heading > div { flex:1;min-width:0; }
+.location-card-heading h3 { margin:0 0 4px;color:var(--ink);font-size:16px;overflow-wrap:anywhere; }
+.location-card-heading p { margin:0;font-size:12px;color:var(--muted); }
+.location-status { padding:6px 9px;border-radius:20px;font-size:10px;font-weight:850;flex:none; }
+.location-status.active { background:#e5f6ef;color:#198365; }
+.location-status.paused { background:#fff1d9;color:#9c6e23; }
+.location-tags { display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:17px 0;min-height:26px; }
+.location-tag { display:inline-flex;align-items:center;gap:5px;border:1px solid #dce7f6;background:#f5f8fd;color:#567198;border-radius:20px;padding:6px 9px;font-size:11px;font-weight:700; }
+.location-address { display:flex;align-items:flex-start;gap:7px;color:#7a8ca5;font-size:12px;line-height:1.5;overflow-wrap:anywhere;min-height:28px;margin:0 0 17px; }
+.location-address svg { flex:none; }
+.location-actions { display:flex;flex-wrap:wrap;gap:8px;padding-top:16px;border-top:1px solid var(--line); }
+.location-actions .button { min-height:36px; }
+.location-confirm { padding:15px;margin-top:15px;border:1px solid #f0d3a6;background:#fff8ec;border-radius:11px; }
+.location-confirm p { margin:0 0 9px;font-size:12px;line-height:1.55;color:#7c5e2f; }
+.location-confirm > div { display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px; }
+.location-empty { margin:0 auto 22px; }
+@media (max-width:1140px) {
+  .locations-summary { grid-template-columns:1fr 1fr 1fr; }
+  .locations-summary > div { flex-wrap:wrap; }
+  .locations-summary small { flex-basis:60%; }
+}
+@media (max-width:800px) {
+  .locations-grid { grid-template-columns:1fr; }
+  .location-capabilities { grid-template-columns:1fr; }
+}
+@media (max-width:610px) {
+  .locations-summary { grid-template-columns:1fr; }
+  .locations-summary > div { padding:14px; }
+  .locations-form-grid { grid-template-columns:1fr; }
+  .locations-grid { gap:12px; }
+  .location-card { padding:16px; }
+  .location-card-heading { flex-wrap:wrap; }
+  .location-card-heading .location-status { margin-left:auto; }
+  .location-editor { padding:18px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .tool-card, .company-card { transition: none; }
 }
