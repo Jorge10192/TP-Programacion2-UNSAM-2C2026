@@ -151,6 +151,7 @@ export function CatalogPage({
   const currentlyEditing = editingId !== null && editingId !== 'new'
     ? items.find((item) => item.id === editingId)
     : undefined
+  const detailItem = detailId ? items.find((item) => item.id === detailId) : undefined
 
   return <>
     <div className="page-heading">
@@ -293,8 +294,8 @@ export function CatalogPage({
         </article>)}
       </div>
     </section>
-    {detailId && items.find((item) => item.id === detailId) && <CatalogDetailDialog
-      item={items.find((item) => item.id === detailId)!}
+    {detailItem && <CatalogDetailDialog
+      item={detailItem}
       onClose={() => setDetailId(null)}
       onEdit={(item) => startEdit(item)}
     />}
