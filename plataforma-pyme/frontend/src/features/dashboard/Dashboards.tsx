@@ -1,5 +1,7 @@
 import { AppLink } from '../../app/AppLink'
 import { Icon } from '../../app/Icon'
+import { DemoPhoto } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import { businessHref, navigationItems } from '../../app/navigation'
 import type { DemoBusiness, NavigationItem } from '../../app/navigation'
 import type { Navigate } from '../../app/types'
@@ -18,7 +20,8 @@ export function Welcome({ navigate, businesses }: { navigate: Navigate; business
     <div className="section-header"><div><h2>Mis empresas</h2><p>Empresas de ejemplo y negocios creados en este navegador. No hay registros comerciales reales.</p></div></div>
     <div className="company-grid">
       {businesses.map((business) => <button type="button" className="company-card" key={business.id} onClick={() => navigate(businessHref(business.id, 'inicio'))}>
-        <span className={'company-icon ' + business.accent}>{business.initials}</span>
+        <DemoPhoto imageKey={demoImageKey('business', business.id, 'logo')} alt={'Logo de ' + business.name}
+          fallback={business.initials} className={'company-icon ' + business.accent}/>
         <span className="company-copy"><strong>{business.name}</strong><small>{business.category}</small><span className="small-pill">{business.source === 'created' ? 'Creada en DEMO' : 'Empresa de ejemplo'}</span></span>
         <Icon name="arrow" size={19} className="company-arrow" />
       </button>)}
@@ -50,7 +53,8 @@ export function BusinessDashboard({ business, navigate, catalogCount, movementCo
     </div>
 
     <section className="business-hero">
-      <span className={'company-icon company-icon-large ' + business.accent}>{business.initials}</span>
+      <DemoPhoto imageKey={demoImageKey('business', business.id, 'logo')} alt={'Logo de ' + business.name}
+        fallback={business.initials} className={'company-icon company-icon-large ' + business.accent}/>
       <div><p className="hero-caption">EMPRESA SELECCIONADA</p><h2>{business.name}</h2><p>{business.category} · Vista de demostración</p></div>
       <button type="button" className="button button-secondary hero-action" onClick={() => navigate(businessHref(business.id, 'empresa'))}>Ver empresa <Icon name="arrow" size={16}/></button>
     </section>
