@@ -4,7 +4,7 @@ import { Sidebar } from './app/shell/SideMenu'
 import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
-import { demoBusinesses, navigationItems } from './app/navigation'
+import { businessHref, demoBusinesses, navigationItems } from './app/navigation'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
 import { ComingSoon, NotFound } from './features/common/Feedback'
@@ -23,20 +23,20 @@ function App() {
 
   useEffect(() => { saveSidebarMode(sidebarMode) }, [sidebarMode])
 
-  // El drawer móvil es temporal. Escape, navegación y regreso a escritorio lo cierran.
+  // Drawer modal en escritorio y móvil: bloquea el contenido, permite Escape.
   useEffect(() => {
     if (!menuOpen) return
+
+    const oldOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setMenuOpen(false)
     }
-    const onResize = () => {
-      if (window.innerWidth > 900) setMenuOpen(false)
-    }
     window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('resize', onResize)
+
     return () => {
+      document.body.style.overflow = oldOverflow
       window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('resize', onResize)
     }
   }, [menuOpen])
 
@@ -45,7 +45,9 @@ function App() {
   }
 
   const navigate: Navigate = (to) => {
-    if (to !== window.location.pathname) window.history.pushState(null, '', to)
+    if (to !== window.location.pathname) {
+      window.history.pushState({ assistantPymeFrom: window.location.pathname }, '', to)
+    }
     setPathname(to)
     setMenuOpen(false)
     window.scrollTo({ top: 0, behavior: 'auto' })
@@ -57,6 +59,19 @@ function App() {
   const section = match?.[2]
   const selectedPage = navigationItems.find((item) => item.segment === section)
   const personal = pathname === '/' || pathname === '/inicio'
+  const showBack = !personal && !(business && section === 'inicio')
+  const goBack = () => {
+    // Nunca regresamos accidentalmente a otra empresa ni a una web externa.
+    const previous = (window.history.state as { assistantPymeFrom?: unknown } | null)?.assistantPymeFrom
+    const contextPrefix = business ? businessHref(business.id, '') : '/'
+    const sameContext = typeof previous === 'string'
+      && previous !== pathname
+      && (business ? previous.startsWith(contextPrefix) : ['/inicio', '/perfil', '/empresas/nueva'].includes(previous))
+
+    setMenuOpen(false)
+    if (sameContext) window.history.back()
+    else navigate(business ? businessHref(business.id, 'inicio') : '/inicio')
+  }
   const pageTitle = business ? (selectedPage?.label ?? 'Sección desconocida') : pathname === '/perfil' ? 'Mi perfil' : pathname === '/empresas/nueva' ? 'Crear empresa' : 'Inicio'
 
   useEffect(() => { document.title = pageTitle + ' · Asistente PyME DEMO' }, [pageTitle])
@@ -70,10 +85,10 @@ function App() {
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
-  return <div className={"app-layout menu-" + sidebarMode}>
+  return <div className={'app-layout menu-' + sidebarMode + (menuOpen ? ' menu-drawer-open' : '')}>
     <Sidebar pathname={pathname} business={business} navigate={navigate} mode={sidebarMode} isOpen={menuOpen} onClose={() => setMenuOpen(false)}/>
-    <div className="main-column">
-      <Topbar business={business} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} mobileMenuOpen={menuOpen} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => setSidebarMode("hidden")} onToggleMobileMenu={() => setMenuOpen((open) => !open)} />
+    <div className="main-column" inert={menuOpen}>
+      <Topbar business={business} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => setSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} />
       <main id="main-content" className="main-content">{content}</main>
       <footer className="app-footer"><span>Asistente PyME · Prototipo E1-A1</span><span>Sin autenticación, stock ni cobros reales</span></footer>
     </div>
