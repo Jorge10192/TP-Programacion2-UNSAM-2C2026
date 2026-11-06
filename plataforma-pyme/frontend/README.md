@@ -1,79 +1,87 @@
 # Asistente PyME — Frontend (DEMO)
 
-Primer incremento de la plataforma multinegocio y multirrubro, dentro del repositorio del TP de Programación 2.
+Plataforma generalista de gestión para múltiples empresas y rubros, desarrollada dentro del TP de Programación 2. WALOS es sólo un negocio de ejemplo, **no** el producto ni su rubro obligatorio.
 
-**Estado:** E1-A1: shell visual, navegación DEMO y placeholders. **No es una aplicación comercial funcional**: no hay cuentas reales, permisos de servidor, altas persistidas, stock, ventas, caja ni cobros.
+**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) publicado y **pendiente de pruebas locales**. No hay autenticación, autorización real, backend, stock, ventas, caja ni pagos.
 
-El diseño toma como referencia la matriz E0-A de ../docs/00_MATRIZ_INTEGRACION_HTML.md, en particular Z003 (Menú principal) y Z014 (Módulo 1 v1.2). WALOS es únicamente una empresa ficticia de prueba.
+## Ejecutar en VS Code
 
-## Para ejecutar en VS Code
-
-Abrir una terminal en la raíz del repositorio:
+Desde la **raíz del repositorio**:
 
 ~~~powershell
 cd plataforma-pyme/frontend
 npm.cmd install
+npm.cmd run build
+npm.cmd run lint
 npm.cmd run dev
 ~~~
 
-Abrir la dirección que anuncie Vite, generalmente http://localhost:5173/.
+Si **ya estás ubicado** dentro de plataforma-pyme/frontend, **no vuelvas a hacer cd**: ejecutá directamente git pull, npm.cmd run build, npm.cmd run lint y npm.cmd run dev.
 
-Para verificar tipos y compilación:
+Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado Pago para esta DEMO. Detené Vite con Ctrl+C o q y Enter.
 
-~~~powershell
-npm.cmd run build
-npm.cmd run lint
-~~~
+## Qué funciona en la DEMO
 
-No se requieren PostgreSQL, FastAPI ni Mercado Pago para este incremento. Detener Vite con Ctrl+C.
+- **Inicio personal:** tres fixtures y empresas que creás en este navegador.
+- **Mi perfil:** nombre visible y correo de ejemplo opcional. Perfil global, no uno por empresa.
+- **Crear empresa:** nombre, actividad Productos / Servicios / Mixto, rubro y descripción opcionales. Crea una membresía DEMO activa y registra fundador/titular administrativo inicial.
+- **Selector superior:** todas las empresas de este entorno local, incluyendo las nuevas.
+- **Inicio empresarial:** resumen y accesos a módulos (operaciones aún pendientes).
+- **Datos de la empresa:** ficha inicial de solo lectura.
+- **Menú de tres líneas:** drawer modal; bloquea el fondo y se cierra desde el fondo, Escape, X o al elegir una sección.
+- **Menú fijo opcional:** expandido, compacto u oculto en escritorio, con preferencia local.
+- **Volver:** contextual dentro de la misma empresa o a su Inicio.
+- **Módulos aún sin desarrollar:** pantalla clara de «Próximamente».
 
-## Qué se puede recorrer
-
-- **Mi espacio personal**: pantalla inicial, tres empresas ficticias y accesos a Mi perfil/Crear empresa (ambos como «Próximamente»).
-- **Panel de empresa**: tarjetas de resumen sin cifras inventadas, accesos a secciones comerciales y administrativas.
-- **Navegación lateral** y barra superior: todos los destinos de la matriz E0-A; secciones aún no implementadas muestran un aviso claro.
-- **Selector de empresa**: cambia entre fixtures de presentación, sin transportar datos de pantalla.
-- **Botón de tres líneas**: en la esquina superior izquierda, abre un menú superpuesto en escritorio y móvil. Mientras está abierto, el contenido de fondo queda bloqueado. Se cierra con X, Escape, un clic fuera o al elegir una sección.
-- **Menú fijo opcional**: el botón adicional de panel permite fijar el menú en escritorio, expandido o compacto, o volver a ocultarlo. La preferencia se guarda localmente y no depende de la empresa activa; por defecto el menú empieza oculto.
-- **Volver contextual**: en pantallas internas aparece un botón Volver; regresa a la página anterior de la misma empresa cuando existe y, si no, al Inicio de esa empresa (o al Inicio personal).
-
-Rutas útiles:
+## Rutas
 
 - /inicio
+- /perfil
+- /empresas/nueva
 - /b/walos-demo/inicio
 - /b/comercio-demo/inicio
 - /b/servicios-demo/inicio
+- /b/walos-demo/empresa
 - /b/walos-demo/catalogo (placeholder)
-- /perfil (placeholder)
 
-La navegación se implementó provisionalmente con History API del navegador **sin dependencias adicionales**. La adopción de React Router, prevista en E0-B/ADR-007, queda para el siguiente corte de integración; no es un router final.
+Para empresas creadas, el identificador está incorporado en /b/:businessId/inicio.
 
-## Estructura
+El enrutado usa provisionalmente History API; **React Router todavía no está integrado**.
+
+## Organización
 
 ~~~text
 src/
 ├── App.tsx
 ├── app/
-│   ├── navigation.ts
-│   ├── Icon.tsx
-│   ├── AppLink.tsx
-│   ├── types.ts
+│   ├── navigation.ts, Icon.tsx, AppLink.tsx, types.ts
 │   └── shell/
 │       ├── SideMenu.tsx
-│       └── TopBar.tsx
+│       ├── TopBar.tsx
+│       └── sidebarPreference.ts
+├── data/demo/
+│   └── demoStore.ts        # perfil/empresas/membresías DEMO, gateway, persistencia local
 └── features/
     ├── dashboard/Dashboards.tsx
+    ├── profile/ProfilePage.tsx
+    ├── businesses/BusinessPages.tsx
     └── common/Feedback.tsx
 ~~~
 
-## Límites importantes
+## Límites de seguridad y datos
 
-- Los fixtures de las tres empresas son **públicos y estáticos**. El selector no implementa autorización, privacidad real ni separación entre usuarios.
-- Las cifras comerciales usan guiones («—») y no se generan registros ficticios que aparenten existir.
-- «Crear empresa», «Mi perfil» y las secciones comerciales no guardan datos.
-- No hay persistencia DEMO, gateway, Zustand, React Router, tests E2E, backend ni QR de Mercado Pago. Su implementación y aceptación pertenecen a futuros tickets E1.
-- No utilizar esta interfaz para datos personales, comerciales ni financieros reales.
+- La información se almacena en **localStorage del navegador** con una clave versionada. Es DEMO y no se sincroniza con otros dispositivos.
+- No uses nombres, emails ni datos comerciales reales; cualquiera que tenga acceso al navegador puede leer o modificar estos datos.
+- La UI no constituye autenticación, control de permisos, aislamiento multitenant seguro, respaldo ni garantía de persistencia.
+- El fundador y titular administrativo inicial son campos distintos pero ambos apuntan a la identidad DEMO global en este incremento; transferencias e invitaciones siguen pendientes.
+- No hay store de stock/ventas/caja ni QR de artículo/cobro implementado.
+- React Router, pruebas automáticas, integración de HTML originales restantes, contratos API, TP3 y backend siguen pendientes.
 
-Para revisar alcance y QA: ../docs/04_E1_A1_PRIMER_SHELL.md (shell inicial), ../docs/05_E1_A1_MENU_ADAPTABLE.md (menú adaptable anterior) y ../docs/06_E1_A1_DRAWER_Y_VOLVER.md (nueva navegación).
+## QA y decisiones
 
-**Estado de revisión actual:** menú superpuesto y volver publicados en GitHub; ejecutar npm.cmd run build, npm.cmd run lint y las verificaciones de ../docs/06_E1_A1_DRAWER_Y_VOLVER.md antes de considerarlo validado.
+- ../docs/04_E1_A1_PRIMER_SHELL.md — shell inicial
+- ../docs/05_E1_A1_MENU_ADAPTABLE.md — sidebar adaptable
+- ../docs/06_E1_A1_DRAWER_Y_VOLVER.md — hamburguesa y navegación
+- ../docs/07_E1_A2_PERFIL_EMPRESAS_DEMO.md — perfil, creación y pruebas de aceptación
+
+Arquitectura E0-B y ADR-001/002/007 permanecen como **propuestas**, sujetas a validación del equipo. Su adopción DEMO no implica aprobación definitiva.
