@@ -24,6 +24,17 @@ export type InventoryMovement = {
 }
 
 /** Una transferencia es una sola operación con DOS movimientos firmados. */
+export type InventoryCountLine = {
+  catalogItemId: string
+  itemNameSnapshot: string
+  unit: CatalogUnit
+  expectedMilli: number
+  countedMilli: number
+  deltaMilli: number
+}
+
+export type InventoryCountInput = Pick<InventoryCountLine, 'catalogItemId' | 'expectedMilli' | 'countedMilli'>
+
 export type InventoryOperation =
   | {
     kind: 'TRANSFER'
@@ -38,6 +49,16 @@ export type InventoryOperation =
     quantityMilli: number
     reason: string
     createdAt: string
+  }
+  | {
+    kind: 'BATCH_COUNT'
+    id: string
+    requestId: string
+    businessId: string
+    locationId: string
+    reason: string
+    createdAt: string
+    lines: InventoryCountLine[]
   }
   | {
     kind: 'COUNT'
@@ -127,6 +148,16 @@ export function stockBalance(
 }
 
 export function inventoryOperationMovements(operation: InventoryOperation): InventoryMovement[] {
+  if (operation.kind === 'BATCH_COUNT') return operation.lines
+    .filter((line) => line.deltaMilli !== 0)
+    .map((line) => ({
+      id: operation.id + ':batch:' + line.catalogItemId,
+      operationId: operation.id, businessId: operation.businessId,
+      catalogItemId: line.catalogItemId, itemNameSnapshot: line.itemNameSnapshot,
+      unit: line.unit, locationId: operation.locationId, deltaMilli: line.deltaMilli,
+      type: 'AJUSTE_CONTEO' as const, createdAt: operation.createdAt,
+      reason: operation.reason, reference: 'Control de stock DEMO',
+    }))
   const common = {
     operationId: operation.id, businessId: operation.businessId,
     catalogItemId: operation.catalogItemId, itemNameSnapshot: operation.itemNameSnapshot,
@@ -152,6 +183,10 @@ export function inventoryOperationMovements(operation: InventoryOperation): Inve
  * los movimientos originales para no ocultar evidencia.
  */
 export type InventoryHistoryEntry =
+  | {
+      kind: 'BATCH_COUNT'; id: string; createdAt: string; businessId: string
+      locationId: string; reason: string; lines: InventoryCountLine[]
+    }
   | { kind: 'MOVEMENT'; id: string; createdAt: string; movement: InventoryMovement }
   | {
       kind: 'TRANSFER'; id: string; createdAt: string; businessId: string
@@ -160,11 +195,20 @@ export type InventoryHistoryEntry =
       quantityMilli: number; reason: string; reference: string
     }
 
-export function inventoryHistoryEntries(movements: InventoryMovement[]): InventoryHistoryEntry[] {
-  const entries: InventoryHistoryEntry[] = []
+export function inventoryHistoryEntries(
+  movements: InventoryMovement[], operations: InventoryOperation[] = [],
+): InventoryHistoryEntry[] {
+  const audits = operations.filter((operation) => operation.kind === 'BATCH_COUNT')
+  const auditIds = new Set(audits.map((operation) => operation.id))
+  const entries: InventoryHistoryEntry[] = audits.map((operation) => ({
+    kind: 'BATCH_COUNT' as const, id: operation.id, createdAt: operation.createdAt,
+    businessId: operation.businessId, locationId: operation.locationId,
+    reason: operation.reason, lines: operation.lines,
+  }))
   const transfers = new Map<string, InventoryMovement[]>()
 
   for (const movement of movements) {
+    if (auditIds.has(movement.operationId)) continue
     if (movement.type === 'TRASLADO_SALIDA' || movement.type === 'TRASLADO_ENTRADA') {
       const bucket = transfers.get(movement.operationId) ?? []
       bucket.push(movement)
