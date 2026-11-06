@@ -1,13 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { AppLink } from '../AppLink'
 import { Icon } from '../Icon'
-import { businessHref, demoBusinesses } from '../navigation'
-import type { DemoBusiness } from '../navigation'
+import { businessHref } from '../navigation'
+import type { DemoBusiness, DemoProfile } from '../../data/demo/demoStore'
 import type { Navigate } from '../types'
 import type { SidebarMode } from './sidebarPreference'
 
 export function Topbar({
   business,
+  businesses,
+  profile,
   title,
   navigate,
   sidebarMode,
@@ -19,6 +21,8 @@ export function Topbar({
   onToggleMenu,
 }: {
   business: DemoBusiness | undefined
+  businesses: DemoBusiness[]
+  profile: DemoProfile
   title: string
   navigate: Navigate
   sidebarMode: SidebarMode
@@ -96,11 +100,11 @@ export function Topbar({
         <Icon name="building" size={16} />
         <select aria-label="Cambiar de empresa" value={business?.id ?? ''} onChange={(event) => navigate(event.target.value ? businessHref(event.target.value, 'inicio') : '/inicio')}>
           <option value="">Mi espacio personal</option>
-          {demoBusinesses.map((item) => <option key={item.id} value={item.id}>{item.name} · DEMO</option>)}
+          {businesses.map((item) => <option key={item.id} value={item.id}>{item.name} · DEMO</option>)}
         </select>
       </label>
       <span className="demo-chip">DEMO</span>
-      <AppLink navigate={navigate} to="/perfil" className="user-avatar" ariaLabel="Ir a mi perfil">UD</AppLink>
+      <AppLink navigate={navigate} to="/perfil" className="user-avatar" ariaLabel="Ir a mi perfil">{profile.displayName.split(/\s+/).slice(0, 2).map((word) => word.charAt(0)).join('').toUpperCase() || 'UD'}</AppLink>
     </div>
   </header>
 }
