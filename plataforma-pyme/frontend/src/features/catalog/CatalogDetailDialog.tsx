@@ -46,7 +46,13 @@ export function CatalogDetailDialog({
     ref={dialogRef}
     className="catalog-detail-modal"
     aria-labelledby="catalog-detail-heading"
-    onClose={onClose}
+    // No escuchar onClose: el cleanup de React StrictMode ejecuta dialog.close()
+    // durante el montaje de desarrollo y dispara un close asincrónico.
+    // Ese evento NO debe propagarse como intención del usuario.
+    onCancel={(event) => {
+      event.preventDefault()
+      onClose()
+    }}
     onClick={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}
