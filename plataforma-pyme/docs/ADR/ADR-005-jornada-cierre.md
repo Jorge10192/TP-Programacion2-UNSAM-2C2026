@@ -2,19 +2,19 @@
 **Fecha:** 2026-11-06  
 **Estado:** PROPUESTO; excepción «sin verificar» DIFERIDA y deshabilitada por defecto.  
 **Responsable de aprobación:** equipo del TP / responsable funcional (a designar).  
-**Fuentes:** E0-A Z092/Z093/Z075, H06/H07/H09/H13/H25/H26 y D05/D06; E0-B §8.4; v4 QA-JOR.
+**Fuentes:** E0-A Z092/Z093/Z075, H06/H07/H09/H13/H25/H26 y D05/D06; E0-B `8.4; v4 QA-JOR.
 
 ## Contexto
-El HTML Z093 aporta una UX de cierre útil pero §commitFinalClosure§ borra el borrador sin dejar snapshot verificable. Z075/Z092 ofrecen otros resúmenes, con diferencias sobre cierre sin conteo. E0-C debe fijar una variante conservadora para E1 sin aprobar silenciosamente excepciones.
+El HTML Z093 aporta una UX de cierre útil pero `commitFinalClosure` borra el borrador sin dejar snapshot verificable. Z075/Z092 ofrecen otros resúmenes, con diferencias sobre cierre sin conteo. E0-C debe fijar una variante conservadora para E1 sin aprobar silenciosamente excepciones.
 
 ## Decisión propuesta
-1. §CashSession§ pertenece a una empresa y, **cuando corresponde**, ubicación y caja. Empresas de servicios sin caja física pueden operar sin jornada obligatoria.
+1. `CashSession` pertenece a una empresa y, **cuando corresponde**, ubicación y caja. Empresas de servicios sin caja física pueden operar sin jornada obligatoria.
 2. Apertura guarda actor, instante y fondo de efectivo inicial; no confundir billetera/CBU con caja.
 3. Durante la jornada, movimientos registrados y aplicados tienen fuente/tipo/importe y referencias estables; no recalcular saldo desde capturas de pantalla.
 4. Cierre normal exige arqueo contado, corte identificable, esperado, contado, diferencia, actor, fecha y motivo cuando aplique.
 5. **Persistir snapshot inmutable primero** en el mismo cambio lógico que marca la sesión CERRADA. No reabrir, borrar ni sobreescribir evidencia. Reintento con misma clave no genera segundo cierre.
 6. Movimientos de stock/retorno de feria se registran por comando independiente. Cerrar caja **no** devuelve productos ni inventa merma. El dinero digital se concilia por pagos de la jornada, no por saldo total de una cuenta compartida.
-7. Cierre §sin verificar§ no se muestra como acción funcional en E1 salvo aprobación posterior de permiso especial, causa, alerta y estado diferenciado.
+7. Cierre `sin verificar` no se muestra como acción funcional en E1 salvo aprobación posterior de permiso especial, causa, alerta y estado diferenciado.
 
 ## Alternativas
 - Cerrar sin arqueo y borrar borrador: rechazado para E1 por H06.
