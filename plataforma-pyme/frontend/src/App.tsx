@@ -7,7 +7,8 @@ import type { SidebarMode } from './app/shell/sidebarPreference'
 import { businessHref, navigationItems } from './app/navigation'
 import { findDemoBusiness, listDemoBusinesses, useDemoSnapshot } from './data/demo/demoStore'
 import { ProfilePage } from './features/profile/ProfilePage'
-import { BusinessDetailsPage, CreateBusinessPage } from './features/businesses/BusinessPages'
+import { CreateBusinessPage } from './features/businesses/BusinessPages'
+import { BusinessDetailsPage } from './features/businesses/BusinessDetailsPage'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
 import { ComingSoon, NotFound } from './features/common/Feedback'
@@ -87,7 +88,7 @@ function App() {
   else if (pathname === '/empresas/nueva') content = <CreateBusinessPage navigate={navigate} profile={snapshot.profile} />
   else if (hasBusinessPath && !business) content = <NotFound navigate={navigate} accessDenied />
   else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} />
-  else if (business && section === 'empresa') content = <BusinessDetailsPage business={business} profile={snapshot.profile} navigate={navigate} />
+  else if (business && section === 'empresa') content = <BusinessDetailsPage key={business.id} business={business} profile={snapshot.profile} navigate={navigate} />
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
