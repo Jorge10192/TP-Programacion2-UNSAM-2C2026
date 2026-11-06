@@ -74,9 +74,5 @@ export function BusinessDashboard({ business, navigate }: { business: DemoBusine
       </AppLink>)}
     </div>
 
-    <section className="all-features">
-      <div><h2>Todas las secciones</h2><p>También disponibles en el menú lateral.</p></div>
-      <div className="feature-chips">{navigationItems.filter((item) => !priority.includes(item.id) && item.id !== 'inicio').map((item) => <AppLink key={item.id} to={businessHref(business.id, item.segment)} navigate={navigate} className="feature-chip"><Icon name={item.icon} size={17}/>{item.label}<Icon name="chevron" size={13}/></AppLink>)}</div>
-    </section>
   </>
 }
