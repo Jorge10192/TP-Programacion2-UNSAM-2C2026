@@ -994,6 +994,29 @@
  .inventory-audit-controls input{max-width:155px}
 }
 
+
+/* E1-B10 — Fotos opcionales DEMO almacenadas fuera de localStorage */
+.demo-photo{display:inline-flex;align-items:center;justify-content:center;overflow:hidden;flex:none;min-width:0}
+.demo-photo img{width:100%;height:100%;display:block;object-fit:cover}
+.demo-photo-list{width:46px;height:46px;border-radius:12px}
+.demo-photo-detail{overflow:hidden}
+.demo-photo-avatar{width:100%;height:100%;border-radius:50%;font:inherit}
+.demo-photo-avatar img{border-radius:50%}
+.demo-image-picker{display:flex;align-items:center;gap:17px;padding:16px;border:1px solid #dce7f5;border-radius:13px;background:#f7faff;margin:6px 0 18px}
+.demo-image-picker-preview{width:88px;height:88px;border-radius:13px;background:#e4eefb;color:#3768b8;border:1px solid #d7e6fa}
+.demo-image-picker-content{min-width:0;display:grid;gap:9px;flex:1}
+.demo-image-picker-content>strong{color:#17375d;font-size:13px}
+.demo-image-picker-content>small{color:#667e9c;font-size:11px;line-height:1.6;max-width:590px}
+.demo-image-picker-buttons{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.demo-image-picker-label{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.demo-image-picker-label.is-busy{opacity:.65;cursor:wait;pointer-events:none}
+.demo-image-picker-file{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
+.demo-image-picker-content .form-message{margin:0}
+@media(max-width:650px){
+ .demo-image-picker{align-items:flex-start;flex-direction:column}
+ .demo-image-picker-preview{width:78px;height:78px}
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .tool-card, .company-card { transition: none; }
 }
