@@ -366,6 +366,22 @@
   .business-edit-actions { flex-wrap: wrap; }
 }
 
+
+/* E1-B2 — Perfil global y función descriptiva scoped por membresía. */
+.profile-edit-column { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.profile-avatar-editor { display: flex; align-items: flex-start; gap: 17px; padding: 17px; background: #f8faff; border: 1px solid #e2eaf4; border-radius: 13px; }
+.profile-avatar-preview { flex: none; background: #2964dd; color: #fff; box-shadow: 0 3px 7px rgba(27, 70, 155, .18); }
+.profile-avatar-editor-fields { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.profile-avatar-editor-fields .form-hint { margin: 0; }
+.profile-membership-summary { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 15px; }
+.profile-membership-summary small { color: #7183a1; letter-spacing: .65px; font-size: 10px; font-weight: 850; overflow-wrap: anywhere; }
+.profile-membership-summary strong { font-size: 13px; color: #17375e; overflow-wrap: anywhere; }
+.profile-membership-summary > span { font-size: 11px; color: #7f8fa5; }
+@media (max-width: 610px) {
+  .profile-avatar-editor { flex-direction: column; padding: 14px; }
+  .profile-avatar-editor-fields { width: 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .tool-card, .company-card { transition: none; }
 }
