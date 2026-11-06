@@ -6,7 +6,7 @@ import {
 
 const base = {
   name: ' Servicio de prueba ', kind: 'SERVICIO', category: 'Servicios',
-  sku: '', unit: 'SERVICIO', description: '', sellable: true,
+  sku: '', unit: 'SERVICIO', description: '', observations: '', sellable: true,
   priceCents: null, referenceCostCents: null,
 }
 
@@ -45,4 +45,23 @@ test('nombre normalizado para unicidad por empresa y validación de centavos', (
   assert.throws(() => normalizeCatalogInput({ ...base, name: 'x' }))
   assert.throws(() => normalizeCatalogInput({ ...base, priceCents: 1.5 }))
   assert.throws(() => normalizeCatalogInput({ ...base, referenceCostCents: -1 }))
+})
+
+test('mantiene separadas la descripción y las observaciones internas', () => {
+  const saved = normalizeCatalogInput({
+    ...base,
+    description: '  Información pública para clientes.  ',
+    observations: '  Controlar lote antes de entregar.  ',
+  })
+  assert.equal(saved.description, 'Información pública para clientes.')
+  assert.equal(saved.observations, 'Controlar lote antes de entregar.')
+  assert.throws(() => normalizeCatalogInput({ ...base, observations: 'x'.repeat(601) }))
+})
+
+test('acepta fichas anteriores sin observaciones (migración no destructiva)', () => {
+  const oldEntry = { ...base }
+  delete oldEntry.observations
+  const restored = normalizeCatalogInput(oldEntry)
+  assert.equal(restored.observations, '')
+  assert.equal(restored.name, base.name.trim())
 })
