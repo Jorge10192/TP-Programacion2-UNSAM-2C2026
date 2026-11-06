@@ -15,7 +15,7 @@ import { lineTotalCents, normalizePurchaseInput, physicalPurchaseLines, sumLineT
 import type { PurchaseInput, PurchaseLineSnapshot, PurchaseReceipt } from './purchasePolicy'
 import { checkedCountDifference, countDifference, inventoryOperationMovements, normalizeStockReason, requireTransferStock, stockBalance, validateStockMilli } from './inventoryPolicy'
 import type { InventoryCountInput, InventoryCountLine, InventoryMovement, InventoryOperation } from './inventoryPolicy'
-import { normalizeSaleInput, saleAmounts, validateSalePayments, validSaleQuantity } from './salePolicy'
+import { normalizeSaleInput, saleAmounts, saleInventoryMovements, validateSalePayments, validSaleQuantity } from './salePolicy'
 import type { SaleInput, SaleLineSnapshot, SalePayment } from './salePolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
@@ -387,15 +387,9 @@ export function listDemoInventoryMovements(snapshot: DemoSnapshot, businessId: s
         reference: purchase.reference || 'Compra DEMO',
       }
     }) : [])
-  const sold: InventoryMovement[] = Object.values(snapshot.salesById)
-    .filter((sale) => sale.businessId === businessId && sale.locationId !== null)
-    .flatMap((sale) => sale.lines.filter((line) => line.kind === 'BIEN').map((line) => ({
-      id: 'demo-sale-stock-' + line.id, operationId: sale.id, businessId,
-      catalogItemId: line.catalogItemId, itemNameSnapshot: line.name,
-      unit: line.unit, locationId: sale.locationId!, deltaMilli: -line.quantityMilli,
-      type: 'VENTA_SALIDA' as const, createdAt: sale.createdAt,
-      reason: 'Venta registrada DEMO', reference: sale.id,
-    })))
+  const sold = Object.values(snapshot.salesById)
+    .filter((sale) => sale.businessId === businessId)
+    .flatMap(saleInventoryMovements)
   const localOps = Object.values(snapshot.inventoryOperationsById)
     .filter((operation) => operation.businessId === businessId)
     .flatMap(inventoryOperationMovements)
