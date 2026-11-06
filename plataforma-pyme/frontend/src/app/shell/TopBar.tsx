@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { profileInitials } from '../../features/profile/ProfilePage'
 import { AppLink } from '../AppLink'
 import { Icon } from '../Icon'
 import { businessHref } from '../navigation'
@@ -104,7 +105,7 @@ export function Topbar({
         </select>
       </label>
       <span className="demo-chip">DEMO</span>
-      <AppLink navigate={navigate} to="/perfil" className="user-avatar" ariaLabel="Ir a mi perfil">{profile.displayName.split(/\s+/).slice(0, 2).map((word) => word.charAt(0)).join('').toUpperCase() || 'UD'}</AppLink>
+      <AppLink navigate={navigate} to="/perfil" className="user-avatar" ariaLabel="Ir a mi perfil">{profileInitials(profile)}</AppLink>
     </div>
   </header>
 }
