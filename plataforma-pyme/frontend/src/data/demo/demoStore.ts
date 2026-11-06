@@ -15,6 +15,8 @@ import { lineTotalCents, normalizePurchaseInput, physicalPurchaseLines, sumLineT
 import type { PurchaseInput, PurchaseLineSnapshot, PurchaseReceipt } from './purchasePolicy'
 import { checkedCountDifference, countDifference, inventoryOperationMovements, normalizeStockReason, requireTransferStock, stockBalance, validateStockMilli } from './inventoryPolicy'
 import type { InventoryCountInput, InventoryCountLine, InventoryMovement, InventoryOperation } from './inventoryPolicy'
+import { normalizeSaleInput, saleAmounts, validateSalePayments, validSaleQuantity } from './salePolicy'
+import type { SaleInput, SaleLineSnapshot, SalePayment } from './salePolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -115,6 +117,13 @@ export type DemoPurchase = Omit<PurchaseInput, 'lines'> & {
   receipt: PurchaseReceipt | null
 }
 
+export type DemoSale = {
+  id: string; requestId: string; businessId: string; locationId: string | null
+  lines: SaleLineSnapshot[]; subtotalCents: number; discountCents: number
+  totalCents: number; payments: SalePayment[]; notes: string
+  createdAt: string; status: 'REGISTRADA_DEMO'
+}
+
 export type DemoReceiptMovement = PurchaseReceipt['movements'][number] & {
   businessId: string
   purchaseId: string
@@ -136,6 +145,7 @@ export type DemoSnapshot = {
   suppliersById: Record<string, DemoSupplier>
   purchasesById: Record<string, DemoPurchase>
   inventoryOperationsById: Record<string, InventoryOperation>
+  salesById: Record<string, DemoSale>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -168,10 +178,11 @@ function defaults(): DemoSnapshot {
     suppliersById: {},
     purchasesById: {},
     inventoryOperationsById: {},
+    salesById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown; sales?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -376,11 +387,26 @@ export function listDemoInventoryMovements(snapshot: DemoSnapshot, businessId: s
         reference: purchase.reference || 'Compra DEMO',
       }
     }) : [])
+  const sold: InventoryMovement[] = Object.values(snapshot.salesById)
+    .filter((sale) => sale.businessId === businessId && sale.locationId !== null)
+    .flatMap((sale) => sale.lines.filter((line) => line.kind === 'BIEN').map((line) => ({
+      id: 'demo-sale-stock-' + line.id, operationId: sale.id, businessId,
+      catalogItemId: line.catalogItemId, itemNameSnapshot: line.name,
+      unit: line.unit, locationId: sale.locationId!, deltaMilli: -line.quantityMilli,
+      type: 'VENTA_SALIDA' as const, createdAt: sale.createdAt,
+      reason: 'Venta registrada DEMO', reference: sale.id,
+    })))
   const localOps = Object.values(snapshot.inventoryOperationsById)
     .filter((operation) => operation.businessId === businessId)
     .flatMap(inventoryOperationMovements)
-  return [...receipts, ...localOps].sort((a, b) =>
+  return [...receipts, ...localOps, ...sold].sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+}
+
+export function listDemoSales(snapshot: DemoSnapshot, businessId: string): DemoSale[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.salesById).filter((sale) => sale.businessId === businessId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
 export function inventoryBalanceMilli(
@@ -1110,7 +1136,10 @@ export const demoGateway = {
           operation.businessId === businessId && (operation.kind === 'BATCH_COUNT'
             ? operation.lines.some((line) => line.catalogItemId === itemId)
             : operation.catalogItemId === itemId))
-      if (hasHistory) throw new Error('No podés cambiar la unidad ni convertir un bien en servicio mientras tenga compras o movimientos históricos.')
+      if (hasHistory || Object.values(state.salesById).some((sale) =>
+        sale.businessId === businessId && sale.lines.some((line) => line.catalogItemId === itemId))) {
+        throw new Error('No podés cambiar la unidad ni convertir un bien en servicio mientras tenga compras, ventas o movimientos históricos.')
+      }
     }
     const updated: DemoCatalogItem = { ...current, ...fields, updatedAt: new Date().toISOString() }
     notify({ ...state, catalogItemsById: { ...state.catalogItemsById, [itemId]: updated } })
