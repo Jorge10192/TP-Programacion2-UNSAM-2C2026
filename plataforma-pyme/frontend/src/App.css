@@ -38,7 +38,10 @@
 .sidebar-actions { display: flex; align-items: center; gap: 2px; padding-right: 10px; border-right: 1px solid var(--line); }
 .desktop-menu-trigger, .desktop-hide-trigger { display: inline-grid; color: #4e6689; }
 .desktop-menu-trigger:hover, .desktop-hide-trigger:hover { background: #edf3ff; color: #2259ad; }
-.mobile-menu-trigger { display: none; color: var(--ink); }
+.menu-drawer-trigger { display: inline-grid; color: #253e62; background: #f0f5fc; border: 1px solid #d9e4f4; margin-right: 4px; }
+.menu-drawer-trigger:hover { background: #e1edff; color: #2259ad; }
+.back-button { display: inline-flex; align-items: center; gap: 7px; flex: none; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: #415b7d; font-weight: 750; font-size: 12px; }
+.back-button:hover { background: #f3f7ff; border-color: #bad0f2; color: #215ab2; }
 .company-picker { border: 1px solid var(--line); color: #4c5f78; border-radius: 10px; display: flex; align-items: center; gap: 7px; padding: 9px 10px; background: #f9fbff; max-width: 240px; }
 .company-picker select { border: 0; outline: none; background: transparent; color: var(--ink); font-weight: 650; font-family: inherit; font-size: 12px; min-width: 0; max-width: 190px; cursor: pointer; }
 .demo-chip { padding: 6px 9px; background: #f0eaff; color: #6c48bb; border: 1px solid #e6dcff; border-radius: 7px; font-size: 10px; font-weight: 900; letter-spacing: .65px; }
@@ -143,7 +146,7 @@
 @media (max-width: 900px) {
   .sidebar { width: 258px; flex-basis: auto; position: fixed; left: 0; top: 0; bottom: 0; visibility: hidden; pointer-events: none; transform: translateX(-100%); transition: transform .18s ease, visibility .18s ease; }
   .sidebar.sidebar-open { visibility: visible; pointer-events: auto; transform: translateX(0); }
-  .sidebar-close, .mobile-menu-trigger { display: inline-grid !important; }
+  .sidebar-close { display: inline-grid !important; }
   .desktop-menu-trigger, .desktop-hide-trigger { display: none; }
   .mobile-scrim { display: block; position: fixed; inset: 0; background: rgba(10,25,46,.57); z-index: 35; border: 0; width: 100%; height: 100%; }
   .main-column { width: 100%; }
@@ -152,6 +155,10 @@
 @media (max-width: 610px) {
   .topbar { height: 65px; padding: 0 16px; }
   .topbar-left, .topbar-right { gap: 7px; }
+  .sidebar-actions { gap: 2px; padding-right: 7px; }
+  .menu-drawer-trigger { margin-right: 0; }
+  .back-button { padding: 9px; }
+  .back-button span { display: none; }
   .breadcrumbs span, .breadcrumbs svg { display: none; }
   .breadcrumbs { font-size: 12px; max-width: 125px; }
   .company-picker { max-width: 154px; padding: 7px 5px; gap: 4px; }
@@ -177,6 +184,52 @@
   .company-picker select { max-width: 97px; }
   .stats-grid { grid-template-columns: 1fr; }
 }
+
+/* E1-A1.2 — menú superpuesto: la sombra bloquea el fondo y el drawer es modal.
+   Es independiente del estado de menú fijo (expandido/compacto/oculto). */
+.app-layout.menu-drawer-open .mobile-scrim {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  border: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: rgba(10, 25, 46, .57);
+  cursor: pointer;
+}
+.app-layout.menu-drawer-open .sidebar {
+  display: flex;
+  flex: 0 0 auto;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(330px, calc(100vw - 36px));
+  height: 100dvh;
+  z-index: 60;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(0);
+  box-shadow: 10px 0 42px rgba(5, 17, 37, .35);
+}
+.app-layout.menu-drawer-open .sidebar-head { padding: 21px 16px; gap: 8px; justify-content: space-between; }
+.app-layout.menu-drawer-open .brand { justify-content: flex-start; min-width: 0; }
+.app-layout.menu-drawer-open .sidebar-close { display: inline-grid !important; color: #f3f7ff; flex: none; }
+.app-layout.menu-drawer-open .sidebar-scroll { padding: 15px 12px 22px; }
+.app-layout.menu-drawer-open .sidebar-group { padding: 10px 0 5px; }
+.app-layout.menu-drawer-open .sidebar-group + .sidebar-group { margin-top: 13px; }
+.app-layout.menu-drawer-open .side-link { justify-content: flex-start; padding: 11px 12px; }
+.app-layout.menu-drawer-open .sidebar-foot { padding: 15px 16px 18px; }
+.app-layout.menu-drawer-open .sidebar-foot-card { justify-content: flex-start; padding: 13px 12px; }
+.app-layout.menu-drawer-open .sidebar .brand-copy,
+.app-layout.menu-drawer-open .sidebar .group-label,
+.app-layout.menu-drawer-open .sidebar .side-label,
+.app-layout.menu-drawer-open .sidebar .sidebar-foot-copy,
+.app-layout.menu-drawer-open .sidebar .sidebar-version { display: block; }
+.app-layout.menu-drawer-open .sidebar .side-dot { display: inline-block; }
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .tool-card, .company-card { transition: none; }
 }
