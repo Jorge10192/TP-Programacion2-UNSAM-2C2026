@@ -485,10 +485,12 @@ function validCashSession(raw: unknown, snapshot: DemoSnapshot): raw is DemoCash
     cashCents(close.countedCashCents, 'Efectivo contado', true)
     cashCents(close.cashSalesCents, 'Ventas efectivo', true)
     cashCents(close.cashExpensesCents, 'Gastos efectivo', true)
-    cashText(close.notes, 'Observaciones de cierre', 500)
-    return close.expectedCashCents === raw.openingCashCents + close.cashSalesCents - close.cashExpensesCents &&
-      close.differenceCents === close.countedCashCents - close.expectedCashCents &&
-      (close.differenceCents === 0 || close.notes.trim().length >= 2)
+    const closeNotes = cashText(close.notes, 'Observaciones de cierre', 500)
+    const expected = (raw.openingCashCents as number) +
+      (close.cashSalesCents as number) - (close.cashExpensesCents as number)
+    const difference = (close.countedCashCents as number) - (close.expectedCashCents as number)
+    return close.expectedCashCents === expected && close.differenceCents === difference &&
+      (difference === 0 || closeNotes.length >= 2)
   } catch { return false }
 }
 
