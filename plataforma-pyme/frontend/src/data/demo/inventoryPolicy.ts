@@ -97,7 +97,9 @@ export function countDifference(current: number, counted: number, unit: CatalogU
 
 export function normalizeStockReason(reason: string): string {
   if (typeof reason !== 'string') throw new Error('Indicá un motivo para este movimiento.')
-  if (/[\u0000-\u001f\u007f]/.test(reason)) throw new Error('El motivo no admite caracteres de control.')
+  if ([...reason].some((char) => { const code = char.charCodeAt(0); return code <= 31 || code === 127 })) {
+    throw new Error('El motivo no admite caracteres de control.')
+  }
   const text = reason.trim().replace(/\s+/g, ' ')
   if (text.length < 5 || text.length > 180) {
     throw new Error('El motivo es obligatorio (entre 5 y 180 caracteres).')
