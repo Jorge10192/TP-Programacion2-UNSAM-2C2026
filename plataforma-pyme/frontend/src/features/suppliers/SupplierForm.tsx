@@ -102,10 +102,10 @@ export function SupplierForm({
               ...(usePhoneForWhatsapp ? { whatsapp: e.target.value } : {}),
             })) }} placeholder="+5491112345678"/>
           </label>
-          <label className="form-field"><span>WhatsApp (formato +país…)</span>
-            <input inputMode="tel" maxLength={35} value={draft.whatsapp} disabled={usePhoneForWhatsapp} onChange={(e) => set('whatsapp', e.target.value)} placeholder="+5491112345678"/>
+          <div className="form-field"><label htmlFor="supplier-whatsapp">WhatsApp (formato +país…)</label>
+            <input id="supplier-whatsapp" inputMode="tel" maxLength={35} value={draft.whatsapp} disabled={usePhoneForWhatsapp} onChange={(e) => set('whatsapp', e.target.value)} placeholder="+5491112345678"/>
             <label className="supplier-inline-check"><input type="checkbox" checked={usePhoneForWhatsapp} onChange={(e) => { setUsePhoneForWhatsapp(e.target.checked); if (e.target.checked) set('whatsapp', draft.phone) }}/> Usar el teléfono comercial</label>
-          </label>
+          </div>
           <label className="form-field"><span>Correo electrónico (opcional)</span>
             <input type="email" maxLength={120} value={draft.email} onChange={(e) => set('email', e.target.value)} placeholder="ventas@ejemplo.invalid"/>
           </label>
