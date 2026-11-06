@@ -2,13 +2,13 @@
 **Fecha:** 2026-11-06  
 **Estado:** PROPUESTO; transferencia y recuperación DIFERIDAS con diseño obligatorio antes de API real.  
 **Responsable de aprobación:** equipo del TP / responsable funcional (a designar).  
-**Fuentes:** E0-A §§3.1 y 5; E0-B §§6, 8 y 12; v4 §3, D01/H01.
+**Fuentes:** E0-A ``3.1 y 5; E0-B ``6, 8 y 12; v4 `3, D01/H01.
 
 ## Contexto
 Crear una empresa requiere responsable inicial, pero **fundador histórico**, **titular administrativo de plataforma** y **titular legal/socio** no equivalen. Algunos prototipos combinan estos conceptos o permiten roles inconsistentes.
 
 ## Decisión propuesta
-1. Al crear Business, registrar §founderUserId§ inmutable como hecho histórico.
+1. Al crear Business, registrar `founderUserId` inmutable como hecho histórico.
 2. Crear una Membership activa del creador y asignar exactamente **un titular administrativo activo inicial** por negocio (invariante).
 3. No permitir en E1 transferir, revocar o eliminar el último responsable. Acciones todavía no diseñadas deben aparecer «Próximamente», no ofrecer falsa transferencia.
 4. En API, transferencia de titularidad será transaccional, autorizada y auditada; la transición debe asegurar que nunca queden cero ni dos titulares **activos**. Recuperación y sucesión necesitan flujo aparte.
