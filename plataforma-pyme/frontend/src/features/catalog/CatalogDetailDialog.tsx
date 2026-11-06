@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Icon } from '../../app/Icon'
+import { DemoPhoto } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import type { IconName } from '../../app/navigation'
 import type { DemoCatalogItem } from '../../data/demo/demoStore'
 import { catalogKindLabels, catalogUnitLabels, moneyDisplay } from '../../data/demo/catalogPolicy'
@@ -66,7 +68,8 @@ export function CatalogDetailDialog({
       </header>
 
       <div className="catalog-detail-hero">
-        <span className="catalog-detail-symbol"><Icon name={kindIcon[item.kind]} size={30}/></span>
+        <DemoPhoto imageKey={demoImageKey('catalog', item.businessId, item.id)} alt={'Foto de ' + item.name}
+          fallback={<Icon name={kindIcon[item.kind]} size={30}/>} className="catalog-detail-symbol demo-photo-detail"/>
         <div className="catalog-detail-main">
           <div className="catalog-detail-name-row">
             <h2 id="catalog-detail-heading">{item.name}</h2>
