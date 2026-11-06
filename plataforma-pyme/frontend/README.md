@@ -31,7 +31,7 @@ Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado
 - **Ubicaciones:** alta, edición, lista, principal, pausa y reactivación. Tipos local/feria/depósito/oficina/otro; venta y almacenamiento separados, sin ubicación obligatoria para servicios ni creación de stock/caja. Enlaces de Google Maps opcionales: buscá dirección, pegá el link de un punto y copialo voluntariamente para compartir; sin Maps API ni pin seleccionado dentro de la plataforma.
 - **Google Maps y compartir:** campo opcional para pegar enlace compartido de Maps, búsqueda por dirección y botón para copiar nombre/dirección/enlace. No es mapa integrado ni geocodificación automática.
 - **Equipo de trabajo:** titular administrativo inicial, colaboradores ficticios e invitaciones por empresa. Invitar no envía correos ni crea usuarios: únicamente «Simular aceptación» agrega un integrante ficticio. Cancelación y rechazo disponibles, sin permisos efectivos.
-- **Catálogo:** elaboración propia, reventa, insumo y servicio; alta, edición, SKU opcional único por empresa, unidad, categoría, búsqueda, filtros, desactivar/reactivar, precios ARS en centavos enteros. No crea stock.
+- **Catálogo:** elaboración propia, reventa, insumo y servicio; alta, edición, SKU opcional único por empresa, unidad, categoría, búsqueda, filtros, desactivar/reactivar, precios ARS en centavos enteros. **Ver ficha** abre un modal con datos comerciales, fechas y observaciones internas separadas de la descripción. No crea stock.
 - **Menú de tres líneas:** drawer modal; bloquea el fondo y se cierra desde el fondo, Escape, X o al elegir una sección.
 - **Menú fijo opcional:** expandido, compacto u oculto en escritorio, con preferencia local.
 - **Volver:** contextual dentro de la misma empresa o a su Inicio.
@@ -76,6 +76,7 @@ src/
     ├── locations/LocationsPage.tsx
     ├── team/TeamPage.tsx
     ├── catalog/CatalogPage.tsx
+    │   └── CatalogDetailDialog.tsx
     ├── businesses/BusinessPages.tsx
     └── common/Feedback.tsx
 ~~~
@@ -102,5 +103,6 @@ src/
 - ../docs/11_E1_B3_1_GOOGLE_MAPS_Y_COMPARTIR.md — enlace de Maps y copia por ubicación; ejecutar también `npm.cmd run test:maps`
 - ../docs/12_E1_B4_EQUIPO_INVITACIONES_DEMO.md — equipo, invitaciones simuladas y pruebas; ejecutar también `npm.cmd run test:team`
 - ../docs/13_E1_B5_CATALOGO_DEMO.md — catálogo multirrubro y pruebas; ejecutar también `npm.cmd run test:catalog`
+- ../docs/14_E1_B5_1_FICHA_CATALOGO.md — modal de ficha y observaciones internas, compatible con fichas anteriores
 
 Arquitectura E0-B y ADR-001/002/007 permanecen como **propuestas**, sujetas a validación del equipo. Su adopción DEMO no implica aprobación definitiva.
