@@ -11,24 +11,26 @@ function usePhoto(imageKey: string): string | null {
     let cancelled = false
     let version = 0
     let currentUrl: string | null = null
-    async function refresh() {
+    function refresh() {
       const thisVersion = ++version
-      try {
-        const blob = await readDemoImage(imageKey)
+      void readDemoImage(imageKey).then((blob) => {
         if (cancelled || thisVersion !== version) return
         const next = blob ? URL.createObjectURL(blob) : null
         const prior = currentUrl
         currentUrl = next
         setSrc(next)
         if (prior) URL.revokeObjectURL(prior)
-      } catch {
-        if (!cancelled && thisVersion === version) setSrc(null)
-      }
+      }).catch(() => {
+        if (cancelled || thisVersion !== version) return
+        if (currentUrl) URL.revokeObjectURL(currentUrl)
+        currentUrl = null
+        setSrc(null)
+      })
     }
     function onChange(event: Event) {
-      if ((event as CustomEvent<string>).detail === imageKey) void refresh()
+      if ((event as CustomEvent<string>).detail === imageKey) refresh()
     }
-    void refresh()
+    refresh()
     window.addEventListener(DEMO_IMAGE_CHANGED, onChange)
     return () => {
       cancelled = true
