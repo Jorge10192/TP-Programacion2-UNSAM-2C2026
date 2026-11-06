@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { demoGateway, profileInitials } from '../../data/demo/demoStore'
@@ -26,13 +26,6 @@ export function ProfilePage({
   const [jobBusy, setJobBusy] = useState(false)
   const [jobError, setJobError] = useState('')
   const [jobNotice, setJobNotice] = useState('')
-
-  useEffect(() => {
-    setName(profile.displayName)
-    setEmail(profile.email)
-    setAvatarInitials(profile.avatarInitials)
-    setContactPhone(profile.contactPhone)
-  }, [profile])
 
   function selectBusiness(id: string) {
     setSelectedBusinessId(id)
