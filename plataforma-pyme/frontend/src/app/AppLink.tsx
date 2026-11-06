@@ -8,6 +8,8 @@ export function AppLink({
   className,
   onNavigate,
   ariaLabel,
+  title,
+  ariaCurrent,
 }: {
   to: string
   navigate: Navigate
@@ -15,6 +17,8 @@ export function AppLink({
   className?: string
   onNavigate?: () => void
   ariaLabel?: string
+  title?: string
+  ariaCurrent?: 'page'
 }) {
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
@@ -23,5 +27,5 @@ export function AppLink({
     onNavigate?.()
   }
 
-  return <a href={to} onClick={handleClick} className={className} aria-label={ariaLabel}>{children}</a>
+  return <a href={to} onClick={handleClick} className={className} aria-label={ariaLabel} title={title} aria-current={ariaCurrent}>{children}</a>
 }
