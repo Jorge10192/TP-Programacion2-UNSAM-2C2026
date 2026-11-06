@@ -166,13 +166,17 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
           </label>
         </div>
         {(() => {
-          const cents = parseMoneyCents(countedAmount)
-          if (cents === null) return null
-          const difference = cents - totals(closing).expectedCashCents
-          return <p className={'cash-form-hint ' + (difference === 0 ? 'linked' : 'unlinked')}>
-            <Icon name="receipt" size={17}/>
-            Diferencia estimada: {moneyDisplay(difference)}. {difference === 0 ? 'Arqueo coincidente.' : 'Si confirmás una diferencia, explicá el motivo.'}
-          </p>
+          try {
+            const cents = parseMoneyCents(countedAmount)
+            if (cents === null) return null
+            const difference = cents - totals(closing).expectedCashCents
+            return <p className={'cash-form-hint ' + (difference === 0 ? 'linked' : 'unlinked')}>
+              <Icon name="receipt" size={17}/>
+              Diferencia estimada: {moneyDisplay(difference)}. {difference === 0 ? 'Arqueo coincidente.' : 'Si confirmás una diferencia, explicá el motivo.'}
+            </p>
+          } catch {
+            return <p className="cash-form-hint unlinked">Revisá el importe contado: no uses separadores de miles.</p>
+          }
         })()}
         <div className="form-actions"><button type="submit" className="button button-primary" disabled={busy}>
           <Icon name="shield" size={17}/>{busy ? 'Cerrando…' : 'Confirmar cierre y guardar arqueo DEMO'}
