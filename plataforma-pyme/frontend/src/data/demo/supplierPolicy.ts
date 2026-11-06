@@ -2,7 +2,7 @@
  * Reglas puras de proveedores DEMO. Sin compras, usuarios ni pagos reales.
  * Nunca convertir condiciones comerciales informativas en descuentos aplicados.
  */
-import { validateGoogleMapsLink } from './mapsLinks'
+import { validateGoogleMapsLink } from './mapsLinks.ts'
 
 export const supplierPaymentLabels = {
   EFECTIVO: 'Efectivo',
