@@ -2,7 +2,7 @@
 
 Plataforma generalista de gestión para múltiples empresas y rubros, desarrollada dentro del TP de Programación 2. WALOS es sólo un negocio de ejemplo, **no** el producto ni su rubro obligatorio.
 
-**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) publicado y **pendiente de build/lint y pruebas locales**. No hay autenticación, autorización real, backend, stock, ventas, caja ni pagos.
+**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) validado visualmente y con persistencia por el equipo; compilación/lint de ese corte no confirmadas. E1-B2 (avatar, contacto y función por empresa) publicado y **pendiente de build/lint y pruebas locales**. No hay autenticación, autorización real, backend, stock, ventas, caja ni pagos.
 
 ## Ejecutar en VS Code
 
@@ -23,7 +23,7 @@ Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado
 ## Qué funciona en la DEMO
 
 - **Inicio personal:** tres fixtures y empresas que creás en este navegador.
-- **Mi perfil:** nombre visible y correo de ejemplo opcional. Perfil global, no uno por empresa.
+- **Mi perfil:** nombre visible, correo DEMO, iniciales de avatar y teléfono DEMO opcionales. El perfil es global. La función laboral se edita por empresa, sobre la membresía DEMO, sin confundirla con el rol o los permisos.
 - **Crear empresa:** nombre, actividad Productos / Servicios / Mixto, rubro y descripción opcionales. Crea una membresía DEMO activa y registra fundador/titular administrativo inicial.
 - **Selector superior:** todas las empresas de este entorno local, incluyendo las nuevas.
 - **Inicio empresarial:** resumen y accesos a módulos (operaciones aún pendientes).
@@ -70,7 +70,7 @@ src/
 
 ## Límites de seguridad y datos
 
-- La información se almacena en **localStorage del navegador** con una clave versionada. E1-B1 conserva la clave/formato previo de E1-A2 para no perder perfiles y empresas creadas; los cambios a los fixtures se guardan como overrides. Es DEMO y no se sincroniza con otros dispositivos.
+- La información se almacena en **localStorage del navegador** con una clave versionada. E1-B1 y E1-B2 conservan la clave/formato previo de E1-A2 para no perder perfiles y empresas creadas; las modificaciones de fixtures se guardan como overrides y las funciones laborales por businessId. Es DEMO y no se sincroniza con otros dispositivos.
 - No uses nombres, emails ni datos comerciales reales; cualquiera que tenga acceso al navegador puede leer o modificar estos datos.
 - La UI no constituye autenticación, control de permisos, aislamiento multitenant seguro, respaldo ni garantía de persistencia.
 - El fundador y titular administrativo inicial son campos distintos pero ambos apuntan a la identidad DEMO global en este incremento; transferencias e invitaciones siguen pendientes.
@@ -84,5 +84,6 @@ src/
 - ../docs/06_E1_A1_DRAWER_Y_VOLVER.md — hamburguesa y navegación
 - ../docs/07_E1_A2_PERFIL_EMPRESAS_DEMO.md — perfil, creación y pruebas de aceptación
 - ../docs/08_E1_B1_DATOS_EMPRESA.md — integración de Z001, edición contextual y pruebas
+- ../docs/09_E1_B2_PERFIL_GLOBAL_Y_FUNCION_EMPRESA.md — avatar global, contacto y función laboral por empresa
 
 Arquitectura E0-B y ADR-001/002/007 permanecen como **propuestas**, sujetas a validación del equipo. Su adopción DEMO no implica aprobación definitiva.
