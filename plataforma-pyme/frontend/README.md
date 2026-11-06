@@ -28,7 +28,7 @@ Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado
 - **Selector superior:** todas las empresas de este entorno local, incluyendo las nuevas.
 - **Inicio empresarial:** resumen y accesos a módulos (operaciones aún pendientes).
 - **Datos de la empresa:** ficha comercial con edición inmediata por campo de nombre, rubro, eslogan, presentación y CUIT ficticio opcional. Conserva los cambios de cada empresa tras F5 si localStorage está disponible.
-- **Ubicaciones:** alta, edición, lista, principal, pausa y reactivación. Tipos local/feria/depósito/oficina/otro; venta y almacenamiento separados, sin ubicación obligatoria para servicios ni creación de stock/caja.
+- **Ubicaciones:** alta, edición, lista, principal, pausa y reactivación. Tipos local/feria/depósito/oficina/otro; venta y almacenamiento separados, sin ubicación obligatoria para servicios ni creación de stock/caja. Enlaces de Google Maps opcionales: buscá dirección, pegá el link de un punto y copialo voluntariamente para compartir; sin Maps API ni pin seleccionado dentro de la plataforma.
 - **Google Maps y compartir:** campo opcional para pegar enlace compartido de Maps, búsqueda por dirección y botón para copiar nombre/dirección/enlace. No es mapa integrado ni geocodificación automática.
 - **Menú de tres líneas:** drawer modal; bloquea el fondo y se cierra desde el fondo, Escape, X o al elegir una sección.
 - **Menú fijo opcional:** expandido, compacto u oculto en escritorio, con preferencia local.
@@ -90,6 +90,7 @@ src/
 - ../docs/08_E1_B1_DATOS_EMPRESA.md — integración de Z001, edición contextual y pruebas
 - ../docs/09_E1_B2_PERFIL_GLOBAL_Y_FUNCION_EMPRESA.md — avatar global, contacto y función laboral por empresa
 - ../docs/10_E1_B3_UBICACIONES_DEMO.md — ubicaciones por empresa y pruebas
+- ../docs/11_E1_B3_MAPS_Y_COMPARTIR.md — mapa por enlace, apertura y copia voluntaria
 - ../docs/11_E1_B3_1_GOOGLE_MAPS_Y_COMPARTIR.md — enlace de Maps y copia por ubicación; ejecutar también `npm.cmd run test:maps`
 
 Arquitectura E0-B y ADR-001/002/007 permanecen como **propuestas**, sujetas a validación del equipo. Su adopción DEMO no implica aprobación definitiva.
