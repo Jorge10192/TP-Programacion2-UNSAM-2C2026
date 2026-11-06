@@ -440,7 +440,7 @@ function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is I
           snapshot.locationsById[raw.destinationLocationId].businessId !== raw.businessId ||
           typeof raw.quantityMilli !== 'number') return false
       validateStockMilli(raw.quantityMilli, raw.unit as DemoCatalogItem['unit'], false)
-      requireTransferStock(stockBalance(historicalMovements, raw.sourceLocationId, raw.catalogItemId), raw.quantityMilli, raw.unit)
+      requireTransferStock(stockBalance(historicalMovements, raw.sourceLocationId, raw.catalogItemId), raw.quantityMilli, raw.unit as DemoCatalogItem['unit'])
       return true
     }
     if (raw.kind === 'COUNT') {
@@ -449,7 +449,7 @@ function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is I
           typeof raw.countedMilli !== 'number' || typeof raw.deltaMilli !== 'number') return false
       validateStockMilli(raw.countedMilli, raw.unit as DemoCatalogItem['unit'], true)
       const current = stockBalance(historicalMovements, raw.locationId, raw.catalogItemId)
-      return raw.deltaMilli === countDifference(current, raw.countedMilli, raw.unit)
+      return raw.deltaMilli === countDifference(current, raw.countedMilli, raw.unit as DemoCatalogItem['unit'])
     }
     return false
   } catch { return false }
