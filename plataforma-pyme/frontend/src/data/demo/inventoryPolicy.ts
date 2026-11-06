@@ -78,6 +78,23 @@ export function validateStockMilli(value: number, unit: CatalogUnit, canBeZero: 
   }
 }
 
+/** Valida la salida antes de generar el par atómico de un traslado. */
+export function requireTransferStock(available: number, requested: number, unit: CatalogUnit): void {
+  validateStockMilli(requested, unit, false)
+  if (!Number.isSafeInteger(available) || available < 0 || available < requested) {
+    throw new Error('Stock insuficiente: no se permiten saldos negativos.')
+  }
+}
+
+/** Un conteo fija la existencia observada y genera sólo la diferencia. */
+export function countDifference(current: number, counted: number, unit: CatalogUnit): number {
+  validateStockMilli(counted, unit, true)
+  if (!Number.isSafeInteger(current) || current < 0) throw new Error('Saldo actual inválido.')
+  const delta = counted - current
+  if (delta === 0) throw new Error('El conteo coincide con el saldo actual. No hay ajuste que registrar.')
+  return delta
+}
+
 export function normalizeStockReason(reason: string): string {
   if (typeof reason !== 'string') throw new Error('Indicá un motivo para este movimiento.')
   const text = reason.trim().replace(/\s+/g, ' ')
