@@ -13,7 +13,7 @@ import { normalizeSupplierInput, supplierNameKey } from './supplierPolicy'
 import type { SupplierInput } from './supplierPolicy'
 import { lineTotalCents, normalizePurchaseInput, physicalPurchaseLines, sumLineTotals } from './purchasePolicy'
 import type { PurchaseInput, PurchaseLineSnapshot, PurchaseReceipt } from './purchasePolicy'
-import { inventoryOperationMovements, normalizeStockReason, stockBalance, validateStockMilli } from './inventoryPolicy'
+import { countDifference, inventoryOperationMovements, normalizeStockReason, requireTransferStock, stockBalance, validateStockMilli } from './inventoryPolicy'
 import type { InventoryMovement, InventoryOperation } from './inventoryPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
@@ -428,6 +428,10 @@ function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is I
       typeof raw.reason !== 'string') return false
   try {
     if (normalizeStockReason(raw.reason) !== raw.reason) return false
+    // Verificar cada operación contra el saldo histórico de su fecha. Las
+    // recepciones posteriores NO deben invalidar conteos/traslados previos al recargar.
+    const historicalMovements = listDemoInventoryMovements(snapshot, raw.businessId)
+      .filter((movement) => movement.createdAt <= raw.createdAt)
     if (raw.kind === 'TRANSFER') {
       if (typeof raw.sourceLocationId !== 'string' || typeof raw.destinationLocationId !== 'string' ||
           raw.sourceLocationId === raw.destinationLocationId ||
@@ -436,15 +440,16 @@ function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is I
           snapshot.locationsById[raw.destinationLocationId].businessId !== raw.businessId ||
           typeof raw.quantityMilli !== 'number') return false
       validateStockMilli(raw.quantityMilli, raw.unit as DemoCatalogItem['unit'], false)
-      return inventoryBalanceMilli(snapshot, raw.businessId, raw.catalogItemId, raw.sourceLocationId) >= raw.quantityMilli
+      requireTransferStock(stockBalance(historicalMovements, raw.sourceLocationId, raw.catalogItemId), raw.quantityMilli, raw.unit)
+      return true
     }
     if (raw.kind === 'COUNT') {
       if (typeof raw.locationId !== 'string' || !snapshot.locationsById[raw.locationId] ||
           snapshot.locationsById[raw.locationId].businessId !== raw.businessId ||
           typeof raw.countedMilli !== 'number' || typeof raw.deltaMilli !== 'number') return false
       validateStockMilli(raw.countedMilli, raw.unit as DemoCatalogItem['unit'], true)
-      const current = inventoryBalanceMilli(snapshot, raw.businessId, raw.catalogItemId, raw.locationId)
-      return raw.deltaMilli === raw.countedMilli - current && raw.deltaMilli !== 0
+      const current = stockBalance(historicalMovements, raw.locationId, raw.catalogItemId)
+      return raw.deltaMilli === countDifference(current, raw.countedMilli, raw.unit)
     }
     return false
   } catch { return false }
@@ -849,10 +854,9 @@ export const demoGateway = {
     inventoryLocationOfBusiness(businessId, sourceLocationId)
     inventoryLocationOfBusiness(businessId, destinationLocationId)
     if (sourceLocationId === destinationLocationId) throw new Error('Elegí ubicaciones distintas.')
-    validateStockMilli(quantityMilli, item.unit, false)
     const reason = normalizeStockReason(reasonInput)
     const available = inventoryBalanceMilli(state, businessId, item.id, sourceLocationId)
-    if (available < quantityMilli) throw new Error('Stock insuficiente: no se permiten saldos negativos.')
+    requireTransferStock(available, quantityMilli, item.unit)
     const operation: InventoryOperation = {
       kind: 'TRANSFER', id: 'demo-inventory-op-' + crypto.randomUUID(), requestId,
       businessId, catalogItemId: item.id, itemNameSnapshot: item.name, unit: item.unit,
@@ -878,11 +882,9 @@ export const demoGateway = {
       throw new Error('Se alcanzó el límite de operaciones DEMO por empresa.')
     const item = inventoryItemOfBusiness(businessId, catalogItemId)
     inventoryLocationOfBusiness(businessId, locationId)
-    validateStockMilli(countedMilli, item.unit, true)
     const reason = normalizeStockReason(reasonInput)
     const available = inventoryBalanceMilli(state, businessId, item.id, locationId)
-    const deltaMilli = countedMilli - available
-    if (deltaMilli === 0) throw new Error('El conteo coincide con el saldo actual. No hay ajuste que registrar.')
+    const deltaMilli = countDifference(available, countedMilli, item.unit)
     const operation: InventoryOperation = {
       kind: 'COUNT', id: 'demo-inventory-op-' + crypto.randomUUID(), requestId,
       businessId, catalogItemId: item.id, itemNameSnapshot: item.name, unit: item.unit,
