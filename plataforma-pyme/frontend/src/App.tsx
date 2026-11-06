@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { MouseEvent } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { Icon } from './app/Icon'
 import { businessHref, demoBusinesses, navigationGroups, navigationItems } from './app/navigation'
 import type { DemoBusiness, NavigationItem } from './app/navigation'
@@ -17,7 +17,7 @@ function AppLink({
 }: {
   to: string
   navigate: Navigate
-  children: React.ReactNode
+  children: ReactNode
   className?: string
   onNavigate?: () => void
   ariaLabel?: string
@@ -250,7 +250,7 @@ function App() {
     if (to !== window.location.pathname) window.history.pushState(null, '', to)
     setPathname(to)
     setMenuOpen(false)
-    window.scrollTo({ top: 0, behavior: 'instant' })
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const match = /^\/b\/([^/]+)\/([^/]+)$/.exec(pathname)
@@ -263,7 +263,7 @@ function App() {
 
   useEffect(() => { document.title = pageTitle + ' · Asistente PyME DEMO' }, [pageTitle])
 
-  let content: React.ReactNode
+  let content: ReactNode
   if (personal) content = <Welcome navigate={navigate} />
   else if (pathname === '/perfil') content = <ComingSoon title="Mi perfil" description="Tu perfil es personal e independiente de cada negocio." navigate={navigate} />
   else if (pathname === '/empresas/nueva') content = <ComingSoon title="Crear empresa" description="La creación de empresas se implementará en E1-A2." navigate={navigate} />
