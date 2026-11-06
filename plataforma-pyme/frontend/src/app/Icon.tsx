@@ -25,6 +25,8 @@ const art: Record<IconName, ReactNode> = {
   search: <><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></>,
   receipt: <><path d="M5 3h14v18l-3-2-4 2-4-2-3 2Z"/><path d="M8 8h8M8 12h8"/></>,
   briefcase: <><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M9 7V4h6v3M3 12h18"/></>,
+  panel: <><rect x="2.5" y="3" width="19" height="18" rx="2"/><path d="M9 3v18"/></>,
+  'panel-hide': <><rect x="2.5" y="3" width="19" height="18" rx="2"/><path d="M9 3v18m6-6-3 3 3 3"/></>,
 }
 
 export function Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {
