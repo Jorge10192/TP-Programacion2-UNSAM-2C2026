@@ -27,6 +27,7 @@ const art: Record<IconName, ReactNode> = {
   briefcase: <><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M9 7V4h6v3M3 12h18"/></>,
   panel: <><rect x="2.5" y="3" width="19" height="18" rx="2"/><path d="M9 3v18"/></>,
   'panel-hide': <><rect x="2.5" y="3" width="19" height="18" rx="2"/><path d="M9 3v18m6-6-3 3 3 3"/></>,
+  'arrow-left': <path d="M19 12H5m6 6-6-6 6-6"/>,
 }
 
 export function Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {
