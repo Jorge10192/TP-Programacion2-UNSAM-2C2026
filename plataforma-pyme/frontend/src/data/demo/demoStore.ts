@@ -279,6 +279,7 @@ function validCatalogItem(raw: unknown): raw is DemoCatalogItem {
     && typeof raw.name === 'string' && typeof raw.category === 'string'
     && typeof raw.kind === 'string' && typeof raw.unit === 'string'
     && typeof raw.sku === 'string' && typeof raw.description === 'string'
+    && (raw.observations === undefined || typeof raw.observations === 'string')
     && typeof raw.sellable === 'boolean'
     && (raw.priceCents === null || typeof raw.priceCents === 'number')
     && (raw.referenceCostCents === null || typeof raw.referenceCostCents === 'number')
