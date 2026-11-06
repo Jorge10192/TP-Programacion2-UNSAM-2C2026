@@ -906,6 +906,9 @@
 .inventory-stock-quantity small{color:#8194ac;font-size:10px;}
 .inventory-movement-icon.inbound{background:#e5f8ee;color:#159168;}
 .inventory-movement-icon.outbound{background:#fff1e6;color:#ca6f26;}
+.inventory-movement-icon.transfer{background:#ecedff;color:#5555b9;}
+.inventory-movement-aside strong.transfer-quantity{color:#3759a7;}
+.inventory-movement-info b{font-weight:800;}
 .inventory-movement-info span{font-size:11px;color:#587393;line-height:1.5;}
 .inventory-movement-aside{text-align:right;display:grid;gap:8px;min-width:145px;}
 .inventory-movement-aside strong{font-size:13px;white-space:nowrap;}
