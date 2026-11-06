@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { profileInitials } from '../../features/profile/ProfilePage'
+import { profileInitials } from '../../data/demo/demoStore'
 import { AppLink } from '../AppLink'
 import { Icon } from '../Icon'
 import { businessHref } from '../navigation'
