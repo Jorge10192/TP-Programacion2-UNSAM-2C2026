@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CatalogDetailDialog } from './CatalogDetailDialog'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import type { IconName } from '../../app/navigation'
@@ -17,7 +18,7 @@ type CatalogDraft = Omit<CatalogInput, 'priceCents' | 'referenceCostCents'> & {
 
 const defaultDraft: CatalogDraft = {
   name: '', kind: 'REVENTA', category: 'General', sku: '', unit: 'UNIDAD',
-  description: '', sellable: true, priceText: '', costText: '',
+  description: '', observations: '', sellable: true, priceText: '', costText: '',
 }
 
 const kindIcon: Record<CatalogKind, IconName> = {
@@ -30,7 +31,7 @@ const kindIcon: Record<CatalogKind, IconName> = {
 function draftOf(item: DemoCatalogItem): CatalogDraft {
   return {
     name: item.name, kind: item.kind, category: item.category, sku: item.sku,
-    unit: item.unit, description: item.description, sellable: item.sellable,
+    unit: item.unit, description: item.description, observations: item.observations ?? '', sellable: item.sellable,
     priceText: moneyInput(item.priceCents), costText: moneyInput(item.referenceCostCents),
   }
 }
@@ -38,7 +39,7 @@ function draftOf(item: DemoCatalogItem): CatalogDraft {
 function toInput(draft: CatalogDraft): CatalogInput {
   return {
     name: draft.name, kind: draft.kind, category: draft.category, sku: draft.sku,
-    unit: draft.unit, description: draft.description, sellable: draft.sellable,
+    unit: draft.unit, description: draft.description, observations: draft.observations, sellable: draft.sellable,
     priceCents: parseMoneyCents(draft.priceText),
     referenceCostCents: parseMoneyCents(draft.costText),
   }
@@ -216,8 +217,12 @@ export function CatalogPage({
             </label>
           </div>
         </div>
-        <label className="form-field"><span>Descripción (opcional)</span>
-          <textarea rows={3} maxLength={450} value={draft.description} onChange={(e) => setDraft((x) => ({ ...x, description: e.target.value }))} placeholder="Información comercial o técnica breve."/>
+        <label className="form-field"><span>Descripción comercial (opcional)</span>
+          <textarea rows={3} maxLength={450} value={draft.description} onChange={(e) => setDraft((x) => ({ ...x, description: e.target.value }))} placeholder="Información pública o comercial visible en la ficha."/>
+        </label>
+        <label className="form-field"><span>Observaciones internas (opcional)</span>
+          <textarea rows={3} maxLength={600} value={draft.observations} onChange={(e) => setDraft((x) => ({ ...x, observations: e.target.value }))} placeholder="Indicaciones internas, cuidados y recordatorios del equipo."/>
+          <small>Se guardan en esta DEMO local; todavía no existe autorización de lectura desde un servidor.</small>
         </label>
         <p className="form-hint">El SKU es único dentro de cada empresa, pero puede repetirse en negocios diferentes. No se convierten automáticamente paquetes, cajas ni kilos a otras unidades. Sin precio significa «A cotizar».</p>
         <div className="form-actions">
@@ -276,20 +281,10 @@ export function CatalogPage({
             ? 'Servicio: sin stock físico propio'
             : 'Producto o material: stock todavía no integrado'}</div>
           <div className="catalog-card-actions">
-            <button type="button" className="button button-secondary" onClick={() => { setDetailId(detailId === item.id ? null : item.id); setConfirmationId(null) }}>{detailId === item.id ? 'Ocultar detalle' : 'Ver detalle'}</button>
+            <button type="button" className="button button-secondary" onClick={() => { setDetailId(item.id); setConfirmationId(null) }}>Ver ficha</button>
             <button type="button" className="button button-secondary" onClick={() => startEdit(item)} disabled={busy}>Editar</button>
             <button type="button" className="button button-secondary" onClick={() => { setConfirmationId(confirmationId === item.id ? null : item.id); setDetailId(null) }} disabled={busy}>{item.status === 'ACTIVO' ? 'Desactivar' : 'Reactivar'}</button>
           </div>
-          {detailId === item.id && <section className="catalog-card-detail">
-            <h4>Ficha DEMO</h4>
-            <dl>
-              <div><dt>Código interno</dt><dd>{item.id}</dd></div>
-              <div><dt>SKU</dt><dd>{item.sku || 'No asignado'}</dd></div>
-              <div><dt>Unidad</dt><dd>{catalogUnitLabels[item.unit]}</dd></div>
-              <div><dt>Ofrecido a la venta</dt><dd>{item.sellable ? 'Sí' : 'No'}</dd></div>
-            </dl>
-            <p>No hay cantidades, proveedores, lotes, recetas ni movimientos asociados todavía.</p>
-          </section>}
           {confirmationId === item.id && <section className="catalog-confirm">
             <p>¿Querés {item.status === 'ACTIVO' ? 'desactivar' : 'reactivar'} esta ficha? No se borra su registro ni se modifican existencias.</p>
             <div><button className="button button-secondary" type="button" onClick={() => setConfirmationId(null)} disabled={busy}>Cancelar</button>
@@ -298,5 +293,10 @@ export function CatalogPage({
         </article>)}
       </div>
     </section>
+    {detailId && items.find((item) => item.id === detailId) && <CatalogDetailDialog
+      item={items.find((item) => item.id === detailId)!}
+      onClose={() => setDetailId(null)}
+      onEdit={(item) => startEdit(item)}
+    />}
   </>
 }
