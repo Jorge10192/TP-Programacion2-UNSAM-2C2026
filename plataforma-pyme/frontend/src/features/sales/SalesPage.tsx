@@ -9,16 +9,20 @@ import { saleAmounts, salePaymentLabels } from '../../data/demo/salePolicy'
 import type { SaleInput, SalePaymentMethod } from '../../data/demo/salePolicy'
 import { DemoPhoto } from '../common/DemoPhoto'
 import { demoImageKey } from '../../data/demo/imagePolicy'
+import { stockBalances, stockKey } from '../../data/demo/inventoryPolicy'
+import type { InventoryMovement } from '../../data/demo/inventoryPolicy'
+import { SaleCatalogPicker } from './SaleCatalogPicker'
 
 type DraftLine = { key: string; catalogItemId: string; quantity: string; price: string }
 type DraftPayment = { key: string; method: SalePaymentMethod; amount: string }
 const newLine = (): DraftLine => ({ key: crypto.randomUUID(), catalogItemId: '', quantity: '1', price: '' })
 const newPayment = (): DraftPayment => ({ key: crypto.randomUUID(), method: 'EFECTIVO', amount: '' })
 
-export function SalesPage({ business, items, locations, sales }: {
+export function SalesPage({ business, items, locations, movements, sales }: {
   business: DemoBusiness
   items: DemoCatalogItem[]
   locations: DemoLocation[]
+  movements: InventoryMovement[]
   sales: DemoSale[]
 }) {
   const [creating, setCreating] = useState(false)
@@ -64,7 +68,7 @@ export function SalesPage({ business, items, locations, sales }: {
     {notice && <p className="form-message success" role="status">{notice}</p>}
 
     {creating && <SaleForm key={business.id + ':' + formVersion}
-      business={business} items={items} locations={locations}
+      business={business} items={items} locations={locations} movements={movements}
       onSaved={saved} onCancel={() => setCreating(false)}/>}
 
     <section className="form-panel sales-history">
@@ -119,8 +123,9 @@ export function SalesPage({ business, items, locations, sales }: {
   </>
 }
 
-function SaleForm({ business, items, locations, onSaved, onCancel }: {
+function SaleForm({ business, items, locations, movements, onSaved, onCancel }: {
   business: DemoBusiness; items: DemoCatalogItem[]; locations: DemoLocation[]
+  movements: InventoryMovement[]
   onSaved: (id: string) => void; onCancel: () => void
 }) {
   const [requestId] = useState(() => 'demo-sale-request-' + crypto.randomUUID())
@@ -136,6 +141,51 @@ function SaleForm({ business, items, locations, onSaved, onCancel }: {
   const byId = new Map(items.map((item) => [item.id, item]))
   const physicalSelected = lines.some((line) => line.catalogItemId && byId.get(line.catalogItemId)?.kind !== 'SERVICIO')
   const eligibleLocations = sellLocations.filter((location) => !physicalSelected || location.canStore)
+
+  const selectedMilli = new Map<string, number>()
+  const selectedIds = new Set<string>()
+  for (const line of lines) {
+    const item = byId.get(line.catalogItemId)
+    if (!item) continue
+    selectedIds.add(item.id)
+    try {
+      selectedMilli.set(item.id, (selectedMilli.get(item.id) ?? 0) +
+        parseQuantityMilli(line.quantity, item.unit))
+    } catch {
+      // Las cantidades incompletas se validarán en el formulario y al confirmar.
+    }
+  }
+
+  function quickAddItem(itemId: string) {
+    const item = byId.get(itemId)
+    if (!item || item.status !== 'ACTIVO' || !item.sellable) return
+    try {
+      const existing = lines.find((line) => line.catalogItemId === item.id)
+      const nextMilli = existing ? parseQuantityMilli(existing.quantity, item.unit) + 1000 : 1000
+      if (item.kind !== 'SERVICIO') {
+        const location = locations.find((loc) => loc.id === locationId)
+        if (!location || location.status !== 'ACTIVA' || !location.canSell || !location.canStore) {
+          throw new Error('Elegí una ubicación activa habilitada para vender y almacenar.')
+        }
+        const available = stockBalances(movements).get(stockKey(location.id, item.id)) ?? 0
+        if (nextMilli > available) throw new Error('Stock insuficiente en esta ubicación. Revisá Inventario.')
+      }
+      if (existing) {
+        patchLine(existing.key, { quantity: String(nextMilli / 1000) })
+      } else {
+        const empty = lines.find((line) => !line.catalogItemId)
+        const fields = {
+          catalogItemId: item.id, quantity: '1', price: moneyInput(item.priceCents),
+        }
+        if (empty) patchLine(empty.key, fields)
+        else if (lines.length >= 30) throw new Error('La venta admite hasta 30 artículos diferentes.')
+        else setLines((current) => [...current, { key: crypto.randomUUID(), ...fields }])
+      }
+      setError('')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'No se pudo agregar el artículo.')
+    }
+  }
 
   function patchLine(key: string, fields: Partial<DraftLine>) {
     setLines((old) => old.map((line) => line.key === key ? { ...line, ...fields } : line))
@@ -223,7 +273,13 @@ function SaleForm({ business, items, locations, onSaved, onCancel }: {
         <p>Para vender productos físicos, elegí una ubicación activa habilitada para vender y almacenar. Los servicios no requieren stock ni depósito.</p>
       </div>
 
-      <div className="sales-subheading"><h3>Artículos y servicios</h3><button type="button" className="button button-secondary" disabled={lines.length >= 30}
+      <SaleCatalogPicker
+        business={business} items={sellable} locationId={locationId}
+        movements={movements} selectedMilli={selectedMilli}
+        selectedIds={selectedIds} onAdd={quickAddItem}
+      />
+
+      <div className="sales-subheading"><h3>Carrito y detalles de la venta</h3><button type="button" className="button button-secondary" disabled={lines.length >= 30}
         onClick={() => setLines((old) => [...old, newLine()])}><Icon name="plus" size={16}/> Agregar renglón</button></div>
       {lines.map((line, index) => {
         const item = byId.get(line.catalogItemId)
