@@ -15,7 +15,8 @@ test('fotos de catálogo, proveedor y ubicación tienen claves diferentes por em
   const b = demoImageKey('catalog', 'comercio-demo', 'demo-catalog-1')
   const c = demoImageKey('supplier', 'walos-demo', 'demo-catalog-1')
   const d = demoImageKey('location', 'walos-demo', 'demo-catalog-1')
-  assert.equal(new Set([a, b, c, d]).size, 4)
+  const e = demoImageKey('business', 'walos-demo', 'logo')
+  assert.equal(new Set([a, b, c, d, e]).size, 5)
   assert.equal(a, JSON.stringify(['catalog', 'walos-demo', 'demo-catalog-1']))
 })
 
