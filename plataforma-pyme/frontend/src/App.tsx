@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Sidebar } from './app/shell/SideMenu'
 import { Topbar } from './app/shell/TopBar'
+import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
+import type { SidebarMode } from './app/shell/sidebarPreference'
 import { demoBusinesses, navigationItems } from './app/navigation'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
@@ -11,12 +13,36 @@ import './App.css'
 function App() {
   const [pathname, setPathname] = useState(() => window.location.pathname || '/')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(loadSidebarMode)
 
   useEffect(() => {
     const handlePopState = () => { setPathname(window.location.pathname); setMenuOpen(false) }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
+
+  useEffect(() => { saveSidebarMode(sidebarMode) }, [sidebarMode])
+
+  // El drawer móvil es temporal. Escape, navegación y regreso a escritorio lo cierran.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    const onResize = () => {
+      if (window.innerWidth > 900) setMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [menuOpen])
+
+  const toggleDesktopSidebar = () => {
+    setSidebarMode((current) => current === 'expanded' ? 'compact' : 'expanded')
+  }
 
   const navigate: Navigate = (to) => {
     if (to !== window.location.pathname) window.history.pushState(null, '', to)
@@ -44,10 +70,10 @@ function App() {
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
-  return <div className="app-layout">
-    <Sidebar pathname={pathname} business={business} navigate={navigate} isOpen={menuOpen} onClose={() => setMenuOpen(false)}/>
+  return <div className={"app-layout menu-" + sidebarMode}>
+    <Sidebar pathname={pathname} business={business} navigate={navigate} mode={sidebarMode} isOpen={menuOpen} onClose={() => setMenuOpen(false)}/>
     <div className="main-column">
-      <Topbar business={business} title={pageTitle} navigate={navigate} onOpenMenu={() => setMenuOpen(true)} />
+      <Topbar business={business} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} mobileMenuOpen={menuOpen} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => setSidebarMode("hidden")} onToggleMobileMenu={() => setMenuOpen((open) => !open)} />
       <main id="main-content" className="main-content">{content}</main>
       <footer className="app-footer"><span>Asistente PyME · Prototipo E1-A1</span><span>Sin autenticación, stock ni cobros reales</span></footer>
     </div>
