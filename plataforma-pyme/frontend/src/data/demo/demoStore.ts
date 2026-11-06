@@ -501,9 +501,7 @@ function validExpense(raw: unknown, snapshot: DemoSnapshot): raw is DemoExpense 
       typeof raw.businessId !== 'string' || !snapshot.businessesById[raw.businessId] ||
       typeof raw.createdAt !== 'string' || !Number.isFinite(Date.parse(raw.createdAt)) ||
       (raw.cashSessionId !== null &&
-        (typeof raw.cashSessionId !== 'string' || !snapshot.cashSessionsById[raw.cashSessionId] ||
-          snapshot.cashSessionsById[raw.cashSessionId].businessId !== raw.businessId ||
-          snapshot.cashSessionsById[raw.cashSessionId].locationId !== raw.locationId ||
+        (typeof raw.cashSessionId !== 'string' || !/^demo-cash-session-[a-f0-9-]{36}$/.test(raw.cashSessionId) ||
           raw.paymentMethod !== 'EFECTIVO'))) return false
   try { normalizeExpense(raw as ExpenseInput); return true } catch { return false }
 }
@@ -523,9 +521,7 @@ function validSale(raw: unknown, snapshot: DemoSnapshot): raw is DemoSale {
       typeof raw.subtotalCents !== 'number' || typeof raw.totalCents !== 'number' ||
       typeof raw.discountCents !== 'number' ||
       (raw.cashSessionId !== undefined && raw.cashSessionId !== null &&
-        (typeof raw.cashSessionId !== 'string' || !snapshot.cashSessionsById[raw.cashSessionId] ||
-          snapshot.cashSessionsById[raw.cashSessionId].businessId !== raw.businessId ||
-          snapshot.cashSessionsById[raw.cashSessionId].locationId !== raw.locationId)) ||
+        (typeof raw.cashSessionId !== 'string' || !/^demo-cash-session-[a-f0-9-]{36}$/.test(raw.cashSessionId))) ||
       !Array.isArray(raw.payments) || typeof raw.notes !== 'string') return false
   try {
     normalizeSaleInput({
@@ -964,7 +960,12 @@ function load(): DemoSnapshot {
           totalCents: rawSale.totalCents,
           payments: rawSale.payments.map((payment) => ({ ...payment })),
           notes: rawSale.notes, createdAt: rawSale.createdAt, status: 'REGISTRADA_DEMO',
-          cashSessionId: rawSale.cashSessionId ?? null,
+          cashSessionId: (() => {
+            const session = typeof rawSale.cashSessionId === 'string'
+              ? state.cashSessionsById[rawSale.cashSessionId] : undefined
+            return session?.businessId === rawSale.businessId && session.locationId === rawSale.locationId
+              ? session.id : null
+          })(),
         }
         state.salesById[sale.id] = sale
         requests.add(sale.requestId)
@@ -985,7 +986,11 @@ function load(): DemoSnapshot {
           paidOn: rawExpense.paidOn, category: rawExpense.category,
           description: rawExpense.description, amountCents: rawExpense.amountCents,
           paymentMethod: rawExpense.paymentMethod, notes: rawExpense.notes,
-          locationId: rawExpense.locationId, cashSessionId: rawExpense.cashSessionId,
+          locationId: rawExpense.locationId, cashSessionId: (() => {
+            const session = rawExpense.cashSessionId ? state.cashSessionsById[rawExpense.cashSessionId] : undefined
+            return session?.businessId === rawExpense.businessId && session.locationId === rawExpense.locationId
+              ? session.id : null
+          })(),
           createdAt: rawExpense.createdAt,
         }
         state.expensesById[expense.id] = expense
