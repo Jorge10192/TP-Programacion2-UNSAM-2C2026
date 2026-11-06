@@ -13,6 +13,8 @@ import { normalizeSupplierInput, supplierNameKey } from './supplierPolicy'
 import type { SupplierInput } from './supplierPolicy'
 import { lineTotalCents, normalizePurchaseInput, physicalPurchaseLines, sumLineTotals } from './purchasePolicy'
 import type { PurchaseInput, PurchaseLineSnapshot, PurchaseReceipt } from './purchasePolicy'
+import { inventoryOperationMovements, normalizeStockReason, stockBalance, validateStockMilli } from './inventoryPolicy'
+import type { InventoryMovement, InventoryOperation } from './inventoryPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -133,6 +135,7 @@ export type DemoSnapshot = {
   catalogItemsById: Record<string, DemoCatalogItem>
   suppliersById: Record<string, DemoSupplier>
   purchasesById: Record<string, DemoPurchase>
+  inventoryOperationsById: Record<string, InventoryOperation>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -164,10 +167,11 @@ function defaults(): DemoSnapshot {
     catalogItemsById: {},
     suppliersById: {},
     purchasesById: {},
+    inventoryOperationsById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -356,6 +360,94 @@ export function receiptQuantityMilli(
   return listDemoReceiptMovements(snapshot, businessId)
     .filter((movement) => movement.catalogItemId === catalogItemId && movement.locationId === locationId)
     .reduce((qty, movement) => qty + movement.quantityMilli, 0)
+}
+
+/** Un único ledger: recepciones de Compras + transferencias/conteos de Inventario. */
+export function listDemoInventoryMovements(snapshot: DemoSnapshot, businessId: string): InventoryMovement[] {
+  const receipts: InventoryMovement[] = listDemoPurchases(snapshot, businessId).flatMap((purchase) =>
+    purchase.receipt ? purchase.receipt.movements.map((movement) => {
+      const line = purchase.lines.find((candidate) => candidate.id === movement.purchaseLineId)
+      return {
+        id: movement.id, operationId: purchase.receipt!.id, businessId,
+        catalogItemId: movement.catalogItemId, itemNameSnapshot: line?.description ?? 'Artículo',
+        unit: movement.unit, locationId: purchase.receipt!.locationId,
+        deltaMilli: movement.quantityMilli, type: 'RECEPCION_COMPRA' as const,
+        createdAt: purchase.receipt!.createdAt, reason: 'Mercadería recibida',
+        reference: purchase.reference || 'Compra DEMO',
+      }
+    }) : [])
+  const localOps = Object.values(snapshot.inventoryOperationsById)
+    .filter((operation) => operation.businessId === businessId)
+    .flatMap(inventoryOperationMovements)
+  return [...receipts, ...localOps].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+}
+
+export function inventoryBalanceMilli(
+  snapshot: DemoSnapshot, businessId: string, catalogItemId: string, locationId: string,
+): number {
+  return stockBalance(listDemoInventoryMovements(snapshot, businessId), locationId, catalogItemId)
+}
+
+export function listDemoInventoryOperations(snapshot: DemoSnapshot, businessId: string): InventoryOperation[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.inventoryOperationsById)
+    .filter((operation) => operation.businessId === businessId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+function inventoryItemOfBusiness(businessId: string, itemId: string): DemoCatalogItem {
+  const item = catalogItemOfBusiness(businessId, itemId)
+  if (item.status !== 'ACTIVO' || item.kind === 'SERVICIO' || item.unit === 'SERVICIO') {
+    throw new Error('Seleccioná un artículo físico activo del Catálogo.')
+  }
+  return item
+}
+
+function inventoryLocationOfBusiness(businessId: string, locationId: string): DemoLocation {
+  const location = locationOfBusiness(businessId, locationId)
+  if (location.status !== 'ACTIVA' || !location.canStore) {
+    throw new Error('La ubicación debe estar activa y habilitada para almacenar.')
+  }
+  return location
+}
+
+function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is InventoryOperation {
+  if (!isRecord(raw) || typeof raw.id !== 'string' ||
+      !/^demo-inventory-op-[a-f0-9-]{36}$/.test(raw.id) ||
+      typeof raw.requestId !== 'string' ||
+      !/^demo-inventory-request-[a-f0-9-]{36}$/.test(raw.requestId) ||
+      typeof raw.businessId !== 'string' || !snapshot.businessesById[raw.businessId] ||
+      typeof raw.catalogItemId !== 'string' ||
+      !snapshot.catalogItemsById[raw.catalogItemId] ||
+      snapshot.catalogItemsById[raw.catalogItemId].businessId !== raw.businessId ||
+      snapshot.catalogItemsById[raw.catalogItemId].kind === 'SERVICIO' ||
+      raw.unit !== snapshot.catalogItemsById[raw.catalogItemId].unit ||
+      typeof raw.itemNameSnapshot !== 'string' || raw.itemNameSnapshot.length > 90 ||
+      typeof raw.createdAt !== 'string' || !Number.isFinite(Date.parse(raw.createdAt)) ||
+      typeof raw.reason !== 'string') return false
+  try {
+    if (normalizeStockReason(raw.reason) !== raw.reason) return false
+    if (raw.kind === 'TRANSFER') {
+      if (typeof raw.sourceLocationId !== 'string' || typeof raw.destinationLocationId !== 'string' ||
+          raw.sourceLocationId === raw.destinationLocationId ||
+          !snapshot.locationsById[raw.sourceLocationId] || !snapshot.locationsById[raw.destinationLocationId] ||
+          snapshot.locationsById[raw.sourceLocationId].businessId !== raw.businessId ||
+          snapshot.locationsById[raw.destinationLocationId].businessId !== raw.businessId ||
+          typeof raw.quantityMilli !== 'number') return false
+      validateStockMilli(raw.quantityMilli, raw.unit as DemoCatalogItem['unit'], false)
+      return inventoryBalanceMilli(snapshot, raw.businessId, raw.catalogItemId, raw.sourceLocationId) >= raw.quantityMilli
+    }
+    if (raw.kind === 'COUNT') {
+      if (typeof raw.locationId !== 'string' || !snapshot.locationsById[raw.locationId] ||
+          snapshot.locationsById[raw.locationId].businessId !== raw.businessId ||
+          typeof raw.countedMilli !== 'number' || typeof raw.deltaMilli !== 'number') return false
+      validateStockMilli(raw.countedMilli, raw.unit as DemoCatalogItem['unit'], true)
+      const current = inventoryBalanceMilli(snapshot, raw.businessId, raw.catalogItemId, raw.locationId)
+      return raw.deltaMilli === raw.countedMilli - current && raw.deltaMilli !== 0
+    }
+    return false
+  } catch { return false }
 }
 
 function purchaseOfBusiness(businessId: string, purchaseId: string): DemoPurchase {
@@ -652,6 +744,31 @@ function load(): DemoSnapshot {
         countByBusiness.set(purchase.businessId, (countByBusiness.get(purchase.businessId) ?? 0) + 1)
       }
     }
+    // Operaciones opcionales: se reconstruyen contra las recepciones y las
+    // operaciones anteriores. Rechazar una operación inválida no borra compras.
+    if (Array.isArray(data.inventoryOperations)) {
+      const counts = new Map<string, number>()
+      const seenRequests = new Set<string>()
+      for (const rawOperation of data.inventoryOperations.slice(0, 10000)) {
+        if (!validInventoryOperation(rawOperation, state)) continue
+        if (state.inventoryOperationsById[rawOperation.id] || seenRequests.has(rawOperation.requestId)) continue
+        if ((counts.get(rawOperation.businessId) ?? 0) >= 1500) continue
+        const operation: InventoryOperation = rawOperation.kind === 'TRANSFER'
+          ? { kind: 'TRANSFER', id: rawOperation.id, requestId: rawOperation.requestId,
+            businessId: rawOperation.businessId, catalogItemId: rawOperation.catalogItemId,
+            itemNameSnapshot: rawOperation.itemNameSnapshot, unit: rawOperation.unit,
+            sourceLocationId: rawOperation.sourceLocationId, destinationLocationId: rawOperation.destinationLocationId,
+            quantityMilli: rawOperation.quantityMilli, reason: rawOperation.reason, createdAt: rawOperation.createdAt }
+          : { kind: 'COUNT', id: rawOperation.id, requestId: rawOperation.requestId,
+            businessId: rawOperation.businessId, catalogItemId: rawOperation.catalogItemId,
+            itemNameSnapshot: rawOperation.itemNameSnapshot, unit: rawOperation.unit,
+            locationId: rawOperation.locationId, countedMilli: rawOperation.countedMilli,
+            deltaMilli: rawOperation.deltaMilli, reason: rawOperation.reason, createdAt: rawOperation.createdAt }
+        state.inventoryOperationsById[operation.id] = operation
+        seenRequests.add(operation.requestId)
+        counts.set(operation.businessId, (counts.get(operation.businessId) ?? 0) + 1)
+      }
+    }
   } catch {
     // Datos corruptos o almacenamiento bloqueado: mostrar fixtures conocidos.
   }
@@ -675,6 +792,7 @@ function notify(next: DemoSnapshot) {
       catalogItems: Object.values(state.catalogItemsById),
       suppliers: Object.values(state.suppliersById),
       purchases: Object.values(state.purchasesById),
+      inventoryOperations: Object.values(state.inventoryOperationsById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
@@ -713,6 +831,67 @@ function requiredText(value: string, label: string, min: number, max: number): s
 }
 
 export const demoGateway = {
+  async transferInventory(
+    businessId: string, catalogItemId: string, sourceLocationId: string,
+    destinationLocationId: string, quantityMilli: number, reasonInput: string, requestId: string,
+  ): Promise<InventoryOperation> {
+    activeBusiness(businessId)
+    if (!/^demo-inventory-request-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Solicitud inválida.')
+    const previous = Object.values(state.inventoryOperationsById).find((operation) => operation.requestId === requestId)
+    if (previous) {
+      if (previous.businessId !== businessId || previous.kind !== 'TRANSFER')
+        throw new Error('La solicitud de traslado ya fue utilizada.')
+      return previous
+    }
+    if (listDemoInventoryOperations(state, businessId).length >= 1500)
+      throw new Error('Se alcanzó el límite de operaciones DEMO por empresa.')
+    const item = inventoryItemOfBusiness(businessId, catalogItemId)
+    inventoryLocationOfBusiness(businessId, sourceLocationId)
+    inventoryLocationOfBusiness(businessId, destinationLocationId)
+    if (sourceLocationId === destinationLocationId) throw new Error('Elegí ubicaciones distintas.')
+    validateStockMilli(quantityMilli, item.unit, false)
+    const reason = normalizeStockReason(reasonInput)
+    const available = inventoryBalanceMilli(state, businessId, item.id, sourceLocationId)
+    if (available < quantityMilli) throw new Error('Stock insuficiente: no se permiten saldos negativos.')
+    const operation: InventoryOperation = {
+      kind: 'TRANSFER', id: 'demo-inventory-op-' + crypto.randomUUID(), requestId,
+      businessId, catalogItemId: item.id, itemNameSnapshot: item.name, unit: item.unit,
+      sourceLocationId, destinationLocationId, quantityMilli, reason, createdAt: new Date().toISOString(),
+    }
+    notify({ ...state, inventoryOperationsById: { ...state.inventoryOperationsById, [operation.id]: operation } })
+    return operation
+  },
+
+  async countInventory(
+    businessId: string, catalogItemId: string, locationId: string,
+    countedMilli: number, reasonInput: string, requestId: string,
+  ): Promise<InventoryOperation> {
+    activeBusiness(businessId)
+    if (!/^demo-inventory-request-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Solicitud inválida.')
+    const previous = Object.values(state.inventoryOperationsById).find((operation) => operation.requestId === requestId)
+    if (previous) {
+      if (previous.businessId !== businessId || previous.kind !== 'COUNT')
+        throw new Error('La solicitud de conteo ya fue utilizada.')
+      return previous
+    }
+    if (listDemoInventoryOperations(state, businessId).length >= 1500)
+      throw new Error('Se alcanzó el límite de operaciones DEMO por empresa.')
+    const item = inventoryItemOfBusiness(businessId, catalogItemId)
+    inventoryLocationOfBusiness(businessId, locationId)
+    validateStockMilli(countedMilli, item.unit, true)
+    const reason = normalizeStockReason(reasonInput)
+    const available = inventoryBalanceMilli(state, businessId, item.id, locationId)
+    const deltaMilli = countedMilli - available
+    if (deltaMilli === 0) throw new Error('El conteo coincide con el saldo actual. No hay ajuste que registrar.')
+    const operation: InventoryOperation = {
+      kind: 'COUNT', id: 'demo-inventory-op-' + crypto.randomUUID(), requestId,
+      businessId, catalogItemId: item.id, itemNameSnapshot: item.name, unit: item.unit,
+      locationId, countedMilli, deltaMilli, reason, createdAt: new Date().toISOString(),
+    }
+    notify({ ...state, inventoryOperationsById: { ...state.inventoryOperationsById, [operation.id]: operation } })
+    return operation
+  },
+
   async registerPurchase(businessId: string, input: PurchaseInput, requestId: string): Promise<DemoPurchase> {
     activeBusiness(businessId)
     if (!/^demo-request-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Identificador de solicitud inválido.')
@@ -838,6 +1017,13 @@ export const demoGateway = {
     const current = catalogItemOfBusiness(businessId, itemId)
     const fields = normalizeCatalogInput(input)
     catalogUniqueness(businessId, fields, itemId)
+    if (fields.unit !== current.unit || (fields.kind === 'SERVICIO') !== (current.kind === 'SERVICIO')) {
+      const hasHistory = Object.values(state.purchasesById).some((purchase) =>
+        purchase.businessId === businessId && purchase.lines.some((line) => line.catalogItemId === itemId))
+        || Object.values(state.inventoryOperationsById).some((operation) =>
+          operation.businessId === businessId && operation.catalogItemId === itemId)
+      if (hasHistory) throw new Error('No podés cambiar la unidad ni convertir un bien en servicio mientras tenga compras o movimientos históricos.')
+    }
     const updated: DemoCatalogItem = { ...current, ...fields, updatedAt: new Date().toISOString() }
     notify({ ...state, catalogItemsById: { ...state.catalogItemsById, [itemId]: updated } })
     return updated
@@ -931,6 +1117,11 @@ export const demoGateway = {
   async updateLocation(businessId: string, locationId: string, input: LocationInput): Promise<DemoLocation> {
     const previous = locationOfBusiness(businessId, locationId)
     const fields = normalizeLocationInput(input)
+    if (previous.canStore && !fields.canStore) {
+      const hasStock = listDemoCatalog(state, businessId).some((item) =>
+        item.kind !== 'SERVICIO' && inventoryBalanceMilli(state, businessId, item.id, locationId) > 0)
+      if (hasStock) throw new Error('La ubicación conserva existencias. Trasladá o ajustá el stock antes de deshabilitar el almacenamiento.')
+    }
     const updated: DemoLocation = { ...previous, ...fields }
     notify({ ...state, locationsById: { ...state.locationsById, [locationId]: updated } })
     return updated
