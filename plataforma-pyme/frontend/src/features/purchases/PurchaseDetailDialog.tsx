@@ -87,7 +87,7 @@ export function PurchaseDetailDialog({
       </section>
 
       <section className="purchase-detail-section">
-        <h3><Icon name="boxes" size={18}/> Recepción de mercadería</h3>
+        <h3><Icon name="boxes" size={18}/> Paso 2 · Ubicación y recepción de mercadería</h3>
         {purchase.receipt ? <>
           <div className="purchase-received-banner"><Icon name="shield" size={20}/><span>Recepción confirmada · {locationName} · {new Date(purchase.receipt.createdAt).toLocaleString('es-AR')}</span></div>
           <div className="purchase-received-lines">{purchase.receipt.movements.map((movement) => {
@@ -97,28 +97,29 @@ export function PurchaseDetailDialog({
           <p className="purchase-detail-muted">Recepción única para esta compra. Volver a consultar o reintentar no duplica los movimientos. Estos eventos alimentarán el Inventario por ubicación.</p>
         </> : physical.length === 0 ? <p className="purchase-detail-muted">Esta compra contiene sólo servicios o conceptos libres. No hay bienes físicos del Catálogo para ingresar al inventario.</p>
           : <>
-            <p className="purchase-detail-muted">Podés confirmar la recepción de {physical.length} {physical.length === 1 ? 'renglón físico' : 'renglones físicos'} en una única ubicación. Los servicios y los conceptos libres no ingresan a stock. No se realizan conversiones de cajas, paquetes, kilos u otras unidades.</p>
+            <p className="purchase-location-pending"><Icon name="clock" size={17}/><span><strong>Compra guardada · ubicación por confirmar.</strong> Los artículos todavía no ingresaron al Inventario. Elegí a continuación dónde se recibieron y confirmá su ingreso.</span></p>
+            <p className="purchase-detail-muted">Se recibirán {physical.length} {physical.length === 1 ? 'renglón físico' : 'renglones físicos'} en una única ubicación. Los servicios y los conceptos libres no ingresan a stock. No se realizan conversiones de cajas, paquetes, kilos u otras unidades.</p>
             {availableLocations.length === 0 ? <div className="purchase-warning">
               Para recibir necesitás una ubicación <strong>activa</strong> que tenga habilitada la capacidad «Puede almacenar». Creala o editala en <strong>Ubicaciones</strong>.
             </div> : <>
               <div className="purchase-receipt-preview">
                 {physical.map((line) => <div key={line.id}><span>{line.description}</span><strong>+ {quantityText(line.quantityMilli, line.unit)}</strong></div>)}
               </div>
-              <label className="form-field purchase-location-select"><span>Ubicación que recibirá los bienes *</span>
+              <label className="form-field purchase-location-select"><span>Ubicación de recepción (pendiente de confirmar) *</span>
                 <select value={locationId} onChange={(event) => { setLocationId(event.target.value); setConfirming(false) }}>
                   <option value="">Seleccionar ubicación activa con almacenamiento…</option>
                   {availableLocations.map((location) => <option key={location.id} value={location.id}>{location.name} · {location.kind}</option>)}
                 </select>
               </label>
               {!confirming && <button type="button" className="button button-primary" disabled={!locationId || busy} onClick={() => setConfirming(true)}>
-                <Icon name="truck" size={17}/> Revisar recepción completa
+                <Icon name="truck" size={17}/> Revisar ubicación y mercadería
               </button>}
               {confirming && <div className="purchase-confirm-receipt">
                 <strong>Confirmación de ingreso</strong>
                 <p>Se registrarán {physical.length} {physical.length === 1 ? 'entrada' : 'entradas'} en «{availableLocations.find((location) => location.id === locationId)?.name}». Esta operación no se puede editar ni repetir; las recepciones parciales se incorporarán en otro incremento.</p>
                 <div>
                   <button type="button" className="button button-secondary" disabled={busy} onClick={() => setConfirming(false)}>Volver</button>
-                  <button type="button" className="button button-primary" disabled={busy || !locationId} onClick={receive}>{busy ? 'Confirmando…' : 'Confirmar recepción DEMO'}</button>
+                  <button type="button" className="button button-primary" disabled={busy || !locationId} onClick={receive}>{busy ? 'Confirmando…' : 'Confirmar ubicación e ingresar a Inventario'}</button>
                 </div>
               </div>}
             </>}
