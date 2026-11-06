@@ -251,6 +251,55 @@
 .app-layout.menu-drawer-open .sidebar .sidebar-version { display: block; }
 .app-layout.menu-drawer-open .sidebar .side-dot { display: inline-block; }
 
+
+/* E1-A2 — formularios DEMO y ficha de negocio. */
+.form-layout { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(250px, .9fr); align-items: start; gap: 20px; }
+.form-panel, .form-aside { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 28px; box-shadow: var(--shadow); }
+.form-panel-header { display: flex; gap: 14px; align-items: center; padding-bottom: 21px; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+.form-panel-header h2, .form-aside h2 { font-size: 18px; color: var(--ink); letter-spacing: -.35px; margin: 0 0 6px; }
+.form-panel-header p, .form-aside p { font-size: 13px; line-height: 1.6; color: var(--muted); margin: 0; }
+.demo-form { display: flex; flex-direction: column; gap: 19px; }
+.form-field { display: flex; flex-direction: column; gap: 8px; }
+.form-field > span { color: #3b506f; font-size: 12px; font-weight: 800; }
+.form-field > span strong { color: #d24c4c; }
+.form-field input, .form-field select, .form-field textarea { background: #fff; color: var(--ink); width: 100%; border: 1px solid #cad6e7; border-radius: 10px; padding: 12px 13px; font-size: 14px; resize: vertical; outline-offset: 1px; }
+.form-field input::placeholder, .form-field textarea::placeholder { color: #9ba7b7; }
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: #4481da; box-shadow: 0 0 0 3px #d6e8ff; }
+.form-hint { font-size: 12px; color: #7b8ba2; line-height: 1.6; margin: -2px 0 0; }
+.form-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 17px; margin-top: 4px; border-top: 1px solid var(--line); }
+.form-actions button:disabled { cursor: not-allowed; opacity: .6; }
+.form-message { padding: 12px 14px; margin: 0; border-radius: 10px; font-size: 13px; font-weight: 650; }
+.form-message.error { color: #ad3434; background: #fff0f0; border: 1px solid #f3c4c4; }
+.form-message.success { color: #157956; background: #eafaf2; border: 1px solid #bcebd2; }
+.form-aside { position: sticky; top: 22px; display: flex; flex-direction: column; gap: 12px; }
+.form-aside .feature-icon { margin-bottom: 2px; }
+.profile-avatar { width: 64px; height: 64px; border-radius: 17px; display: grid; place-items: center; background: #e8f1ff; color: #3866bd; font-size: 20px; font-weight: 900; }
+.form-aside-stat { display: flex; align-items: center; gap: 9px; padding: 16px 0; margin-top: 13px; border-top: 1px solid var(--line); color: #5f708c; font-size: 13px; }
+.form-aside-stat span { flex: 1; }
+.form-aside-stat strong { font-size: 19px; color: var(--ink); }
+.form-aside-note { display: flex; align-items: flex-start; gap: 9px; padding: 14px; border-radius: 11px; background: #f2f7ff; color: #57739e; font-size: 12px; line-height: 1.6; }
+.form-aside-note svg { flex: none; }
+.business-overview-top { display: flex; align-items: center; gap: 18px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+.business-overview-top h2 { color: var(--ink); font-size: 22px; margin: 0 0 6px; }
+.business-overview-top p { color: var(--muted); font-size: 13px; margin: 0 0 9px; }
+.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 19px; margin-top: 25px; }
+.detail-grid > div { min-width: 0; padding: 17px; background: #f8faff; border: 1px solid #e7edf6; border-radius: 11px; }
+.detail-grid small { color: #687a92; font-size: 11px; display: block; margin-bottom: 7px; font-weight: 750; }
+.detail-grid strong { font-size: 13px; color: #263e61; overflow-wrap: anywhere; }
+.business-overview > .informational-note { margin-top: 25px; }
+.business-overview > .form-actions { margin-top: 22px; }
+@media (max-width: 850px) {
+  .form-layout { grid-template-columns: 1fr; }
+  .form-aside { position: static; }
+}
+@media (max-width: 610px) {
+  .form-panel, .form-aside { padding: 20px; }
+  .form-panel-header { align-items: flex-start; }
+  .detail-grid { grid-template-columns: 1fr; gap: 10px; }
+  .form-actions { justify-content: stretch; }
+  .form-actions .button { flex: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .tool-card, .company-card { transition: none; }
 }
