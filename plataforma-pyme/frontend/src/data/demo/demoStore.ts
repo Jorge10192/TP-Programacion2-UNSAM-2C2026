@@ -455,6 +455,57 @@ function inventoryLocationOfBusiness(businessId: string, locationId: string): De
   return location
 }
 
+function validCashSession(raw: unknown, snapshot: DemoSnapshot): raw is DemoCashSession {
+  if (!isRecord(raw) || typeof raw.id !== 'string' ||
+      !/^demo-cash-session-[a-f0-9-]{36}$/.test(raw.id) ||
+      typeof raw.openRequestId !== 'string' || !/^demo-cash-open-[a-f0-9-]{36}$/.test(raw.openRequestId) ||
+      typeof raw.businessId !== 'string' || !snapshot.businessesById[raw.businessId] ||
+      (raw.locationId !== null && (typeof raw.locationId !== 'string' ||
+        !snapshot.locationsById[raw.locationId] ||
+        snapshot.locationsById[raw.locationId].businessId !== raw.businessId)) ||
+      raw.openedBy !== 'demo-user' || typeof raw.openedAt !== 'string' ||
+      !Number.isFinite(Date.parse(raw.openedAt))) return false
+  try { cashCents(raw.openingCashCents, 'Fondo inicial', true) } catch { return false }
+  if (raw.status === 'ABIERTA') return raw.closeRequestId === null && raw.closeSnapshot === null
+  if (raw.status !== 'CERRADA' || typeof raw.closeRequestId !== 'string' ||
+      !/^demo-cash-close-[a-f0-9-]{36}$/.test(raw.closeRequestId) ||
+      !isRecord(raw.closeSnapshot)) return false
+  const close = raw.closeSnapshot
+  if (typeof close.closedAt !== 'string' || !Number.isFinite(Date.parse(close.closedAt)) ||
+      Date.parse(close.closedAt) < Date.parse(raw.openedAt) || close.closedBy !== 'demo-user' ||
+      close.openingCashCents !== raw.openingCashCents ||
+      !Array.isArray(close.saleIds) || !Array.isArray(close.expenseIds) ||
+      close.saleIds.length > 500 || close.expenseIds.length > 500 ||
+      close.saleIds.some((id) => typeof id !== 'string' || !/^demo-sale-[a-f0-9-]{36}$/.test(id)) ||
+      close.expenseIds.some((id) => typeof id !== 'string' || !/^demo-expense-[a-f0-9-]{36}$/.test(id)) ||
+      new Set(close.saleIds).size !== close.saleIds.length ||
+      new Set(close.expenseIds).size !== close.expenseIds.length) return false
+  try {
+    cashCents(close.expectedCashCents, 'Efectivo esperado', true)
+    cashCents(close.countedCashCents, 'Efectivo contado', true)
+    cashCents(close.cashSalesCents, 'Ventas efectivo', true)
+    cashCents(close.cashExpensesCents, 'Gastos efectivo', true)
+    cashText(close.notes, 'Observaciones de cierre', 500)
+    return close.expectedCashCents === raw.openingCashCents + close.cashSalesCents - close.cashExpensesCents &&
+      close.differenceCents === close.countedCashCents - close.expectedCashCents &&
+      (close.differenceCents === 0 || close.notes.trim().length >= 2)
+  } catch { return false }
+}
+
+function validExpense(raw: unknown, snapshot: DemoSnapshot): raw is DemoExpense {
+  if (!isRecord(raw) || typeof raw.id !== 'string' ||
+      !/^demo-expense-[a-f0-9-]{36}$/.test(raw.id) ||
+      typeof raw.requestId !== 'string' || !/^demo-expense-request-[a-f0-9-]{36}$/.test(raw.requestId) ||
+      typeof raw.businessId !== 'string' || !snapshot.businessesById[raw.businessId] ||
+      typeof raw.createdAt !== 'string' || !Number.isFinite(Date.parse(raw.createdAt)) ||
+      (raw.cashSessionId !== null &&
+        (typeof raw.cashSessionId !== 'string' || !snapshot.cashSessionsById[raw.cashSessionId] ||
+          snapshot.cashSessionsById[raw.cashSessionId].businessId !== raw.businessId ||
+          snapshot.cashSessionsById[raw.cashSessionId].locationId !== raw.locationId ||
+          raw.paymentMethod !== 'EFECTIVO'))) return false
+  try { normalizeExpense(raw as ExpenseInput); return true } catch { return false }
+}
+
 function validSale(raw: unknown, snapshot: DemoSnapshot): raw is DemoSale {
   if (!isRecord(raw) || typeof raw.id !== 'string' ||
       !/^demo-sale-[a-f0-9-]{36}$/.test(raw.id) ||
@@ -469,6 +520,10 @@ function validSale(raw: unknown, snapshot: DemoSnapshot): raw is DemoSale {
       !Array.isArray(raw.lines) || raw.lines.length < 1 || raw.lines.length > 30 ||
       typeof raw.subtotalCents !== 'number' || typeof raw.totalCents !== 'number' ||
       typeof raw.discountCents !== 'number' ||
+      (raw.cashSessionId !== undefined && raw.cashSessionId !== null &&
+        (typeof raw.cashSessionId !== 'string' || !snapshot.cashSessionsById[raw.cashSessionId] ||
+          snapshot.cashSessionsById[raw.cashSessionId].businessId !== raw.businessId ||
+          snapshot.cashSessionsById[raw.cashSessionId].locationId !== raw.locationId)) ||
       !Array.isArray(raw.payments) || typeof raw.notes !== 'string') return false
   try {
     normalizeSaleInput({
