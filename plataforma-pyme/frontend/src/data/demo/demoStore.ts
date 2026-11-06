@@ -14,6 +14,8 @@ export type DemoBusiness = {
   category: string
   kind: BusinessKind
   description: string
+  slogan: string
+  taxId: string
   initials: string
   accent: Accent
   source: 'fixture' | 'created'
@@ -35,9 +37,9 @@ export type DemoSnapshot = {
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
 const fixtures: DemoBusiness[] = [
-  { id: 'walos-demo', name: 'WALOS', category: 'Elaboración de productos', kind: 'PRODUCTOS', description: '', initials: 'W', accent: 'mint', source: 'fixture', founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user' },
-  { id: 'comercio-demo', name: 'Comercio Ejemplo', category: 'Reventa de productos', kind: 'PRODUCTOS', description: '', initials: 'C', accent: 'blue', source: 'fixture', founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user' },
-  { id: 'servicios-demo', name: 'Servicios Ejemplo', category: 'Prestación de servicios', kind: 'SERVICIOS', description: '', initials: 'S', accent: 'violet', source: 'fixture', founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user' },
+  { id: 'walos-demo', name: 'WALOS', category: 'Elaboración de productos', kind: 'PRODUCTOS', description: '', slogan: '', taxId: '', initials: 'W', accent: 'mint', source: 'fixture', founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user' },
+  { id: 'comercio-demo', name: 'Comercio Ejemplo', category: 'Reventa de productos', kind: 'PRODUCTOS', description: '', slogan: '', taxId: '', initials: 'C', accent: 'blue', source: 'fixture', founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user' },
+  { id: 'servicios-demo', name: 'Servicios Ejemplo', category: 'Prestación de servicios', kind: 'SERVICIOS', description: '', slogan: '', taxId: '', initials: 'S', accent: 'violet', source: 'fixture', founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user' },
 ]
 
 export const kindLabels: Record<BusinessKind, string> = {
@@ -59,7 +61,25 @@ function defaults(): DemoSnapshot {
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown }
+
+export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
+export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
+
+function editableFields(business: DemoBusiness): BusinessDetailsPatch {
+  return { name: business.name, category: business.category, description: business.description, slogan: business.slogan, taxId: business.taxId }
+}
+
+function cleanEditable(raw: unknown): BusinessDetailsPatch {
+  if (!isRecord(raw)) return {}
+  const patch: BusinessDetailsPatch = {}
+  if (typeof raw.name === 'string' && raw.name.trim().length >= 2 && raw.name.trim().length <= 80) patch.name = raw.name.trim()
+  if (typeof raw.category === 'string' && raw.category.length <= 120) patch.category = raw.category.trim() || 'Sin rubro especificado'
+  if (typeof raw.description === 'string' && raw.description.length <= 350) patch.description = raw.description.trim()
+  if (typeof raw.slogan === 'string' && raw.slogan.length <= 120) patch.slogan = raw.slogan.trim()
+  if (typeof raw.taxId === 'string' && raw.taxId.length <= 15 && (/^$|^\d{11}$|^\d{2}-\d{8}-\d$/.test(raw.taxId))) patch.taxId = raw.taxId
+  return patch
+}
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
@@ -97,6 +117,8 @@ function load(): DemoSnapshot {
           name: rawBusiness.name.trim(),
           category: rawBusiness.category.trim() || 'Sin rubro especificado',
           description: rawBusiness.description.trim(),
+          slogan: typeof rawBusiness.slogan === 'string' && rawBusiness.slogan.length <= 120 ? rawBusiness.slogan.trim() : '',
+          taxId: typeof rawBusiness.taxId === 'string' && rawBusiness.taxId.length <= 15 && (/^$|^\d{11}$|^\d{2}-\d{8}-\d$/.test(rawBusiness.taxId)) ? rawBusiness.taxId : '',
           kind: rawBusiness.kind,
           initials: rawBusiness.name.trim().slice(0, 1).toUpperCase(),
           accent: 'blue',
@@ -106,6 +128,13 @@ function load(): DemoSnapshot {
         }
         state.businessesById[item.id] = item
         state.membershipsByBusinessId[item.id] = membership(item.id)
+      }
+    }
+    // Compatible con la versión E1-A2: el nuevo campo fixtureEdits es opcional.
+    if (isRecord(data.fixtureEdits)) {
+      for (const item of fixtures) {
+        const updated = { ...state.businessesById[item.id], ...cleanEditable(data.fixtureEdits[item.id]) }
+        state.businessesById[item.id] = { ...updated, initials: updated.name.slice(0, 1).toUpperCase() }
       }
     }
   } catch {
@@ -123,6 +152,7 @@ function notify(next: DemoSnapshot) {
       version: 1,
       profile: state.profile,
       createdBusinesses: Object.values(state.businessesById).filter((b) => b.source === 'created'),
+      fixtureEdits: Object.fromEntries(fixtures.map((item) => [item.id, editableFields(state.businessesById[item.id])])),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
@@ -183,7 +213,7 @@ export const demoGateway = {
     const id = 'demo-business-' + crypto.randomUUID()
     const business: DemoBusiness = {
       id, name, category: category || 'Sin rubro especificado',
-      kind: input.kind, description, initials: name.slice(0, 1).toUpperCase(),
+      kind: input.kind, description, slogan: '', taxId: '', initials: name.slice(0, 1).toUpperCase(),
       accent: 'blue', source: 'created',
       founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user',
     }
@@ -193,5 +223,28 @@ export const demoGateway = {
       membershipsByBusinessId: { ...state.membershipsByBusinessId, [id]: membership(id) },
     })
     return business
+  },
+
+  /** Edita exclusivamente los campos comerciales de la empresa solicitada. */
+  async updateBusinessDetails(businessId: string, patch: BusinessDetailsPatch): Promise<DemoBusiness> {
+    const current = findDemoBusiness(state, businessId)
+    if (!current) throw new Error('Empresa DEMO no disponible.')
+    if (Object.keys(patch).some((key) => !['name', 'category', 'description', 'slogan', 'taxId'].includes(key))) {
+      throw new Error('Campo de empresa no permitido.')
+    }
+    const name = patch.name === undefined ? current.name : requiredText(patch.name, 'El nombre comercial', 2, 80)
+    const category = patch.category === undefined ? current.category : patch.category.trim() || 'Sin rubro especificado'
+    const description = patch.description === undefined ? current.description : patch.description.trim()
+    const slogan = patch.slogan === undefined ? current.slogan : patch.slogan.trim()
+    const taxId = patch.taxId === undefined ? current.taxId : patch.taxId.trim()
+    if (category.length > 120) throw new Error('El rubro admite hasta 120 caracteres.')
+    if (description.length > 350) throw new Error('La descripción admite hasta 350 caracteres.')
+    if (slogan.length > 120) throw new Error('El eslogan admite hasta 120 caracteres.')
+    if (taxId.length > 0 && !/^\d{11}$|^\d{2}-\d{8}-\d$/.test(taxId)) {
+      throw new Error('El CUIT de prueba debe tener 11 dígitos, con guiones opcionales.')
+    }
+    const updated: DemoBusiness = { ...current, name, category, description, slogan, taxId, initials: name.slice(0, 1).toUpperCase() }
+    notify({ ...state, businessesById: { ...state.businessesById, [businessId]: updated } })
+    return updated
   },
 }
