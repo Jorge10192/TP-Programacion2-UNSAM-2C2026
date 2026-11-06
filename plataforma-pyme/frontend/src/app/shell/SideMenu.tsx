@@ -59,6 +59,11 @@ export function Sidebar({
           <button type="button" ref={closeButtonRef} className="icon-button sidebar-close" aria-label="Cerrar menú" onClick={onClose}><Icon name="close" /></button>
         </div>
 
+        <div className="drawer-context" aria-hidden={!isOpen}>
+          <span>MENÚ PRINCIPAL</span>
+          <strong>{business?.name ?? 'Mi espacio personal'}</strong>
+        </div>
+
         <div className="sidebar-scroll">
           {!business ? (
             <nav className="sidebar-group" aria-label="Navegación personal">
