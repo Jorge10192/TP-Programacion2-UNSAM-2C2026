@@ -4,6 +4,7 @@
  * No usar datos comerciales o personales verdaderos.
  */
 import { useSyncExternalStore } from 'react'
+import { validateGoogleMapsLink } from './mapsLinks'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -42,12 +43,13 @@ export type DemoLocation = {
   name: string
   kind: LocationKind
   address: string
+  mapUrl: string
   canSell: boolean
   canStore: boolean
   isPrimary: boolean
   status: 'ACTIVA' | 'PAUSADA'
 }
-export type LocationInput = Pick<DemoLocation, 'name' | 'kind' | 'address' | 'canSell' | 'canStore'>
+export type LocationInput = Pick<DemoLocation, 'name' | 'kind' | 'address' | 'mapUrl' | 'canSell' | 'canStore'>
 export const locationKindLabels: Record<LocationKind, string> = {
   LOCAL: 'Local o sucursal',
   FERIA: 'Feria o punto temporal',
@@ -124,6 +126,15 @@ function validCreated(value: unknown): value is DemoBusiness {
     && value.administrativeOwnerUserId === 'demo-user'
 }
 
+function safeLoadedMapLink(input: string): string {
+  try {
+    return validateGoogleMapsLink(input)
+  } catch {
+    // Un enlace inválido no debe borrar los datos restantes de una ubicación.
+    return ''
+  }
+}
+
 function validLocation(raw: unknown): raw is DemoLocation {
   if (!isRecord(raw)) return false
   return typeof raw.id === 'string' && /^demo-location-[a-f0-9-]{36}$/.test(raw.id)
@@ -139,6 +150,7 @@ function validLocation(raw: unknown): raw is DemoLocation {
 function normalizeLocationInput(input: LocationInput): LocationInput {
   const name = requiredText(input.name, 'El nombre de la ubicación', 2, 80)
   const address = input.address.trim()
+  const mapUrl = validateGoogleMapsLink(input.mapUrl)
   if (address.length > 160) throw new Error('La referencia de ubicación admite hasta 160 caracteres.')
   if (!['LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'OTRO'].includes(input.kind)) {
     throw new Error('Tipo de ubicación inválido.')
@@ -146,7 +158,7 @@ function normalizeLocationInput(input: LocationInput): LocationInput {
   if (typeof input.canSell !== 'boolean' || typeof input.canStore !== 'boolean') {
     throw new Error('Las capacidades de venta y almacenamiento deben ser explícitas.')
   }
-  return { name, kind: input.kind, address, canSell: input.canSell, canStore: input.canStore }
+  return { name, kind: input.kind, address, mapUrl, canSell: input.canSell, canStore: input.canStore }
 }
 
 export function listDemoLocations(snapshot: DemoSnapshot, businessId: string): DemoLocation[] {
@@ -233,6 +245,7 @@ function load(): DemoSnapshot {
         state.locationsById[rawLocation.id] = {
           id: rawLocation.id, businessId: rawLocation.businessId,
           name: rawLocation.name.trim(), kind: rawLocation.kind, address: rawLocation.address.trim(),
+          mapUrl: typeof rawLocation.mapUrl === 'string' ? safeLoadedMapLink(rawLocation.mapUrl) : '',
           canSell: rawLocation.canSell, canStore: rawLocation.canStore,
           status: rawLocation.status, isPrimary,
         }
