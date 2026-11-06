@@ -39,7 +39,7 @@ export function PurchaseForm({
   business: DemoBusiness
   catalog: DemoCatalogItem[]
   suppliers: DemoSupplier[]
-  onSaved: (purchaseId: string) => void
+  onSaved: (purchaseId: string, containsPhysicalGoods: boolean) => void
   onCancel: () => void
 }) {
   const [draft, setDraft] = useState<Draft>(() => ({
@@ -52,6 +52,8 @@ export function PurchaseForm({
   const [error, setError] = useState('')
   const activeCatalog = catalog.filter((item) => item.status === 'ACTIVO')
   const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'ACTIVO')
+  const containsPhysicalGoods = draft.lines.some((line) =>
+    catalog.some((item) => item.id === line.catalogId && item.kind !== 'SERVICIO'))
 
   function updateLine(id: string, fields: Partial<LineDraft>) {
     setDraft((current) => ({
@@ -100,7 +102,7 @@ export function PurchaseForm({
     setError('')
     try {
       const purchase = await demoGateway.registerPurchase(business.id, makeInput(), requestId)
-      onSaved(purchase.id)
+      onSaved(purchase.id, containsPhysicalGoods)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar la compra.')
     } finally {
@@ -125,6 +127,14 @@ export function PurchaseForm({
     <div className="form-panel-header">
       <span className="feature-icon blue"><Icon name="shopping" size={24}/></span>
       <div><h2>Registrar compra</h2><p>Comprobante y conceptos de «{business.name}». No equivale a pagar ni a recibir mercadería.</p></div>
+    </div>
+    <div className="purchase-flow-steps" aria-label="Etapas de registro y recepción">
+      <div className="purchase-flow-step current"><span className="purchase-flow-number">1</span>
+        <div><strong>Registrar la compra</strong><small>Elegí los artículos, cantidades y costos.</small></div>
+      </div>
+      <div className="purchase-flow-step"><span className="purchase-flow-number">2</span>
+        <div><strong>Confirmar ubicación y recepción</strong><small>Después de guardar, sólo para mercadería física.</small></div>
+      </div>
     </div>
     <form className="demo-form" onSubmit={submit}>
       <section className="purchase-form-section">
@@ -215,13 +225,19 @@ export function PurchaseForm({
 
       <div className="purchase-total-box">
         <div><small>Total de la compra (ARS)</small><strong>{previewTotal === null ? 'Completar costos y cantidades' : moneyDisplay(previewTotal)}</strong></div>
-        <p>Al guardar se registra la compra, pero no el pago ni el ingreso al inventario. Para mercadería física habrá una acción separada de recepción.</p>
+        <p>{containsPhysicalGoods
+          ? 'Paso 1: guardás la compra. A continuación se abrirá el detalle, donde elegirás la ubicación y confirmarás la recepción. El stock no cambia hasta entonces.'
+          : 'Al guardar sólo se registra la compra. Si elegís bienes físicos, la recepción y su ubicación se confirman después. Este registro no representa un pago.'}</p>
       </div>
+      {containsPhysicalGoods && <p className="purchase-location-pending" role="status">
+        <Icon name="clock" size={17}/>
+        <span><strong>Falta confirmar la ubicación de recepción.</strong> Primero guardá estos artículos; luego elegí el destino en el detalle y confirmá el ingreso a Inventario.</span>
+      </p>}
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions">
         <button type="button" className="button button-secondary" disabled={saving} onClick={onCancel}>Cancelar</button>
         <button type="submit" className="button button-primary" disabled={saving}>
-          <Icon name="receipt" size={17}/> {saving ? 'Guardando…' : 'Registrar compra DEMO'}
+          <Icon name="receipt" size={17}/> {saving ? 'Guardando…' : containsPhysicalGoods ? 'Guardar compra y elegir ubicación' : 'Registrar compra DEMO'}
         </button>
       </div>
     </form>
