@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   parseCountedMilli, requireTransferStock, countDifference, stockBalances,
   stockBalance, stockKey, inventoryOperationMovements, inventoryHistoryEntries, normalizeStockReason,
+  checkedCountDifference,
 } from '../src/data/demo/inventoryPolicy.ts'
 import { parseQuantityMilli } from '../src/data/demo/purchasePolicy.ts'
 
@@ -149,4 +150,51 @@ test('historial conserva recepciones y conteos como operaciones individuales', (
   assert.ok(history.every((entry) => entry.kind === 'MOVEMENT'))
   assert.equal(history[0].movement.type, 'AJUSTE_CONTEO')
   assert.equal(history[1].movement.type, 'RECEPCION_COMPRA')
+})
+
+test('control multiartículo registra diferencias y omite saldos sin modificación', () => {
+  const audit = {
+    kind: 'BATCH_COUNT', id, requestId: common.requestId,
+    businessId: 'walos-demo', locationId: 'dep-1', reason: 'Conteo semanal en depósito',
+    createdAt: common.createdAt,
+    lines: [
+      { catalogItemId: 'catalog-1', itemNameSnapshot: 'Shampoo', unit: 'UNIDAD', expectedMilli: 10000, countedMilli: 7000, deltaMilli: -3000 },
+      { catalogItemId: 'catalog-2', itemNameSnapshot: 'Crema', unit: 'UNIDAD', expectedMilli: 5000, countedMilli: 5000, deltaMilli: 0 },
+    ],
+  }
+  const events = inventoryOperationMovements(audit)
+  assert.equal(events.length, 1)
+  assert.equal(events[0].catalogItemId, 'catalog-1')
+  assert.equal(events[0].deltaMilli, -3000)
+  assert.equal(events[0].operationId, id)
+  const history = inventoryHistoryEntries([receipt, ...events], [audit])
+  assert.equal(history.length, 2)
+  assert.equal(history[0].kind, 'BATCH_COUNT')
+  assert.equal(history[0].lines.length, 2)
+  assert.equal(history[1].kind, 'MOVEMENT')
+  assert.equal(stockBalance([receipt, ...events], 'dep-1', 'catalog-1'), 7000)
+})
+
+test('una sesión sin diferencias queda en historial sin generar movimiento falso', () => {
+  const audit = {
+    kind: 'BATCH_COUNT', id, requestId: common.requestId,
+    businessId: 'walos-demo', locationId: 'dep-1',
+    reason: 'Control mensual sin cambios', createdAt: common.createdAt,
+    lines: [
+      { catalogItemId: 'catalog-1', itemNameSnapshot: 'Shampoo', unit: 'UNIDAD',
+        expectedMilli: 10000, countedMilli: 10000, deltaMilli: 0 },
+    ],
+  }
+  assert.equal(inventoryOperationMovements(audit).length, 0)
+  const history = inventoryHistoryEntries([receipt], [audit])
+  assert.equal(history.length, 2)
+  assert.equal(history[0].kind, 'BATCH_COUNT')
+})
+
+test('conteo confirmado falla si el saldo cambió después de revisar', () => {
+  assert.equal(checkedCountDifference(5000, 5000, 2000, 'UNIDAD'), -3000)
+  assert.equal(checkedCountDifference(5000, 5000, 5000, 'UNIDAD'), 0)
+  assert.throws(() => checkedCountDifference(5000, 6000, 2000, 'UNIDAD'), /cambió/)
+  assert.throws(() => checkedCountDifference(0, 1000, 0, 'UNIDAD'), /cambió/)
+  assert.throws(() => checkedCountDifference(5000, 5000, 500, 'CAJA'), /unidad de control/)
 })
