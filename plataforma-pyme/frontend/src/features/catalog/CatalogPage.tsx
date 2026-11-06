@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { CatalogDetailDialog } from './CatalogDetailDialog'
+import { DemoImagePicker, DemoPhoto } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import type { IconName } from '../../app/navigation'
@@ -185,6 +187,8 @@ export function CatalogPage({
         </p></div>
       </div>
       <form className="demo-form" onSubmit={saveItem}>
+        {currentlyEditing ? <DemoImagePicker imageKey={demoImageKey('catalog', business.id, currentlyEditing.id)} label="Imagen del artículo o servicio"/> :
+          <p className="form-hint">Guardá primero la ficha; después vas a poder agregarle su foto desde «Editar».</p>}
         <div className="catalog-form-grid">
           <label className="form-field"><span>Nombre del artículo o servicio *</span>
             <input required minLength={2} maxLength={90} autoFocus value={draft.name} onChange={(e) => setDraft((x) => ({ ...x, name: e.target.value }))} placeholder="Ej.: Producto, insumo o servicio de prueba" />
@@ -268,7 +272,8 @@ export function CatalogPage({
       <div className="catalog-grid">
         {filtered.map((item) => <article key={item.id} className={'catalog-card'+(item.status === 'INACTIVO' ? ' catalog-card-inactive' : '')}>
           <div className="catalog-card-head">
-            <span className="feature-icon blue"><Icon name={kindIcon[item.kind]} size={23}/></span>
+            <DemoPhoto imageKey={demoImageKey('catalog', business.id, item.id)} alt={'Imagen de ' + item.name}
+              fallback={<Icon name={kindIcon[item.kind]} size={23}/>} className="feature-icon blue demo-photo-list"/>
             <div className="catalog-card-title"><h3>{item.name}</h3><span>{catalogKindLabels[item.kind]}</span></div>
             <span className={'catalog-state '+(item.status === 'ACTIVO' ? 'is-active' : 'is-inactive')}>{item.status === 'ACTIVO' ? 'Activo' : 'Inactivo'}</span>
           </div>
