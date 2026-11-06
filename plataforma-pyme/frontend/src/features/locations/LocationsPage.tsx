@@ -2,9 +2,10 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { demoGateway, locationKindLabels } from '../../data/demo/demoStore'
+import { getLocationMapsLink, locationShareText, mapsSearchUrl } from '../../data/demo/mapsLinks'
 import type { DemoBusiness, DemoLocation, LocationInput, LocationKind } from '../../data/demo/demoStore'
 
-const blank: LocationInput = { name: '', kind: 'LOCAL', address: '', canSell: true, canStore: false }
+const blank: LocationInput = { name: '', kind: 'LOCAL', address: '', mapUrl: '', canSell: true, canStore: false }
 
 function typeIcon(kind: LocationKind) {
   return kind === 'DEPOSITO' ? 'boxes' : kind === 'FERIA' ? 'shopping' : kind === 'OFICINA' ? 'briefcase' : 'pin'
@@ -17,6 +18,7 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [manualShare, setManualShare] = useState<{ locationId: string; text: string } | null>(null)
 
   const activeCount = locations.filter((item) => item.status === 'ACTIVA').length
   const primary = locations.find((item) => item.isPrimary && item.status === 'ACTIVA')
@@ -27,17 +29,19 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
     setPendingStatusId(null)
     setError('')
     setNotice('')
+    setManualShare(null)
   }
 
   function startEdit(location: DemoLocation) {
     setEditor(location.id)
     setDraft({
-      name: location.name, kind: location.kind, address: location.address,
+      name: location.name, kind: location.kind, address: location.address, mapUrl: location.mapUrl,
       canSell: location.canSell, canStore: location.canStore,
     })
     setPendingStatusId(null)
     setError('')
     setNotice('')
+    setManualShare(null)
   }
 
   function cancel() {
@@ -100,6 +104,25 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
     }
   }
 
+  async function copyLocation(location: DemoLocation) {
+    setError('')
+    setNotice('')
+    setManualShare(null)
+    const message = locationShareText(business.name, location)
+    if (!message) {
+      setError('Para compartir la ubicación primero agregá una dirección o un enlace de Google Maps.')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(message)
+      setNotice('Ubicación copiada. Ya podés pegarla en un mensaje o documento.')
+    } catch {
+      // En un navegador sin permiso de portapapeles, ofrecer copia manual.
+      setManualShare({ locationId: location.id, text: message })
+      setNotice('El navegador bloqueó el portapapeles. Seleccioná y copiá el texto de la tarjeta.')
+    }
+  }
+
   const editingLocation = editor && editor !== 'new' ? locations.find((item) => item.id === editor) : undefined
 
   return <>
@@ -139,8 +162,17 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
           </label>
         </div>
         <label className="form-field"><span>Dirección o referencia (opcional)</span>
-          <input maxLength={160} autoComplete="off" value={draft.address} onChange={(event) => setDraft((x) => ({ ...x, address: event.target.value }))} placeholder="Referencia ficticia, sin GPS ni mapa" />
+          <input maxLength={160} autoComplete="off" value={draft.address} onChange={(event) => setDraft((x) => ({ ...x, address: event.target.value }))} placeholder="Ej.: Av. Siempreviva 123, Ciudad (datos DEMO)" />
         </label>
+        <div className="location-map-form">
+          <label className="form-field"><span>Enlace de Google Maps (opcional)</span>
+            <input type="url" maxLength={2048} autoComplete="off" value={draft.mapUrl} onChange={(event) => setDraft((x) => ({ ...x, mapUrl: event.target.value }))} placeholder="https://maps.app.goo.gl/… o https://www.google.com/maps/…" />
+          </label>
+          <p className="form-hint">Para guardar un punto preciso: abrí Maps, seleccioná el lugar y elegí «Compartir → Copiar enlace». Pegá ese enlace arriba. Si solo completás la dirección, ofreceremos una búsqueda, no una ubicación verificada.</p>
+          <a className="location-map-find" href={mapsSearchUrl(draft.address) ?? 'https://www.google.com/maps'} target="_blank" rel="noopener noreferrer">
+            <Icon name="pin" size={16}/> {draft.address.trim() ? 'Buscar esta dirección en Google Maps' : 'Abrir Google Maps para elegir un punto'}
+          </a>
+        </div>
         <fieldset className="location-capabilities">
           <legend>¿Para qué se utiliza este espacio?</legend>
           <label><input type="checkbox" checked={draft.canSell} onChange={(event) => setDraft((x) => ({ ...x, canSell: event.target.checked }))}/><span><strong>Permite vender</strong><small>Punto de atención, venta o prestación de servicios</small></span></label>
@@ -177,6 +209,21 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
           {!location.canSell && !location.canStore && <span className="location-tag">Sin capacidades operativas</span>}
         </div>
         <p className="location-address"><Icon name="pin" size={16}/> {location.address || 'Sin dirección o referencia'}</p>
+        <div className="location-map-actions">
+          {(() => {
+            const mapsLink = getLocationMapsLink(location)
+            return mapsLink ? <a className="location-map-link" href={mapsLink.url} target="_blank" rel="noopener noreferrer">
+              <Icon name="pin" size={16}/> {mapsLink.source === 'shared' ? 'Ver ubicación en Google Maps' : 'Buscar dirección en Google Maps'}
+            </a> : <span className="location-map-missing">Sin mapa ni dirección asignados</span>
+          })()}
+          <button type="button" className="location-copy-link" onClick={() => copyLocation(location)} disabled={!getLocationMapsLink(location)}>
+            <Icon name="book" size={16}/> Copiar ubicación
+          </button>
+        </div>
+        {manualShare?.locationId === location.id && <div className="location-copy-fallback">
+          <label htmlFor={'share-location-' + location.id}>Texto listo para copiar manualmente</label>
+          <textarea id={'share-location-' + location.id} value={manualShare.text} readOnly rows={4} onFocus={(event) => event.currentTarget.select()} />
+        </div>}
         <div className="location-actions">
           <button type="button" className="button button-secondary" onClick={() => startEdit(location)} disabled={busy}>Editar</button>
           {!location.isPrimary && location.status === 'ACTIVA' && <button type="button" className="button button-secondary" onClick={() => markPrimary(location.id)} disabled={busy}>Hacer principal</button>}
