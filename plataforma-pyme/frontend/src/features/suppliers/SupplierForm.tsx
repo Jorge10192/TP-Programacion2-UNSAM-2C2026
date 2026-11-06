@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
+import { DemoImagePicker } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import type { DemoSupplier } from '../../data/demo/demoStore'
 import { mapsSearchUrl } from '../../data/demo/mapsLinks'
 import {
@@ -78,6 +80,8 @@ export function SupplierForm({
       <div><h2>{supplier ? 'Editar proveedor: ' + supplier.name : 'Agregar proveedor'}</h2><p>Contacto y condiciones comerciales de «{businessName}». Sólo el nombre es obligatorio.</p></div>
     </div>
     <form className="demo-form" onSubmit={submit}>
+      {supplier ? <DemoImagePicker imageKey={demoImageKey('supplier', supplier.businessId, supplier.id)} label="Imagen comercial del proveedor"/> :
+        <p className="form-hint">Guardá el proveedor y luego abrí «Editar» para elegir su imagen.</p>}
       <div className="supplier-form-section">
         <h3>1. Identificación comercial</h3>
         <div className="supplier-form-grid">
