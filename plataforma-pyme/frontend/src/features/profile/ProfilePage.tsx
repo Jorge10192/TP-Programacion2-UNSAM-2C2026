@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
+import { DemoPhoto, DemoImagePicker } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import { demoGateway, profileInitials } from '../../data/demo/demoStore'
 import type { DemoBusiness, DemoMembership, DemoProfile } from '../../data/demo/demoStore'
 
@@ -77,15 +79,17 @@ export function ProfilePage({
           <div className="form-panel-header"><span className="feature-icon blue"><Icon name="user" /></span><div><h2>Datos personales DEMO</h2><p>Podés modificar tu nombre, avatar y medios de contacto de prueba.</p></div></div>
           <form onSubmit={savePersonalData} className="demo-form">
             <div className="profile-avatar-editor">
-              <span className="profile-avatar profile-avatar-preview">{previewInitials}</span>
+              <DemoPhoto imageKey={demoImageKey('profile')} alt="Imagen de tu perfil DEMO" fallback={previewInitials}
+                className="profile-avatar profile-avatar-preview"/>
               <div className="profile-avatar-editor-fields">
                 <label className="form-field">
                   <span>Avatar / Iniciales (opcional)</span>
                   <input maxLength={4} value={avatarInitials} autoComplete="off" onChange={(event) => { setAvatarInitials(event.target.value); setNotice('') }} placeholder="Ej.: AB" />
                 </label>
-                <p className="form-hint">Hasta 4 letras. Si lo dejás vacío, usaremos las iniciales del nombre visible. La carga de fotos queda para otra etapa.</p>
+                <p className="form-hint">Hasta 4 letras. Si no elegís foto, usaremos las iniciales del nombre visible.</p>
               </div>
             </div>
+            <DemoImagePicker imageKey={demoImageKey('profile')} label="Foto del perfil personal DEMO"/>
             <label className="form-field">
               <span>Nombre visible <strong>*</strong></span>
               <input required minLength={2} maxLength={70} autoComplete="off" value={name} onChange={(event) => { setName(event.target.value); setNotice('') }} placeholder="Ej.: Usuario DEMO" />
@@ -127,7 +131,8 @@ export function ProfilePage({
       </div>
 
       <aside className="form-aside">
-        <span className="profile-avatar">{profileInitials(profile)}</span>
+        <DemoPhoto imageKey={demoImageKey('profile')} alt="Foto de tu perfil DEMO"
+          fallback={profileInitials(profile)} className="profile-avatar"/>
         <h2>{profile.displayName}</h2>
         <p>Perfil único · Usuario DEMO</p>
         <div className="form-aside-stat"><Icon name="building" size={19}/><span>Empresas disponibles</span><strong>{businesses.length}</strong></div>
