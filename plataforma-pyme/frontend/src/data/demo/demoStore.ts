@@ -917,6 +917,35 @@ function load(): DemoSnapshot {
         countByBusiness.set(purchase.businessId, (countByBusiness.get(purchase.businessId) ?? 0) + 1)
       }
     }
+    // Jornadas opcionales: se cargan después de Ubicaciones y antes de Ventas/Gastos.
+    // Una jornada cerrada tiene snapshot inmutable, no un recalculo reactivo.
+    if (Array.isArray(data.cashSessions)) {
+      const counts = new Map<string, number>()
+      const requests = new Set<string>()
+      const openScopes = new Set<string>()
+      for (const rawSession of data.cashSessions.slice(0, 10000)) {
+        if (!validCashSession(rawSession, state) || requests.has(rawSession.openRequestId) ||
+            state.cashSessionsById[rawSession.id]) continue
+        if ((counts.get(rawSession.businessId) ?? 0) >= 300) continue
+        const scope = JSON.stringify([rawSession.businessId, rawSession.locationId])
+        if (rawSession.status === 'ABIERTA' && openScopes.has(scope)) continue
+        const session: DemoCashSession = {
+          id: rawSession.id, openRequestId: rawSession.openRequestId,
+          closeRequestId: rawSession.closeRequestId, businessId: rawSession.businessId,
+          locationId: rawSession.locationId, openingCashCents: rawSession.openingCashCents,
+          openedAt: rawSession.openedAt, openedBy: 'demo-user',
+          status: rawSession.status,
+          closeSnapshot: rawSession.closeSnapshot
+            ? { ...rawSession.closeSnapshot,
+              saleIds: [...rawSession.closeSnapshot.saleIds],
+              expenseIds: [...rawSession.closeSnapshot.expenseIds] } : null,
+        }
+        state.cashSessionsById[session.id] = session
+        if (session.status === 'ABIERTA') openScopes.add(scope)
+        requests.add(session.openRequestId)
+        counts.set(session.businessId, (counts.get(session.businessId) ?? 0) + 1)
+      }
+    }
     // Ventas DEMO opcionales. Primero se recuperan para que los conteos
     // posteriores a una venta puedan reconstruir su saldo histórico real.
     if (Array.isArray(data.sales)) {
@@ -933,10 +962,33 @@ function load(): DemoSnapshot {
           totalCents: rawSale.totalCents,
           payments: rawSale.payments.map((payment) => ({ ...payment })),
           notes: rawSale.notes, createdAt: rawSale.createdAt, status: 'REGISTRADA_DEMO',
+          cashSessionId: rawSale.cashSessionId ?? null,
         }
         state.salesById[sale.id] = sale
         requests.add(sale.requestId)
         counts.set(sale.businessId, (counts.get(sale.businessId) ?? 0) + 1)
+      }
+    }
+    // Los egresos son registros independientes de las Compras, no las pagan
+    // automáticamente. Sólo el efectivo ligado a una jornada afecta arqueo.
+    if (Array.isArray(data.expenses)) {
+      const counts = new Map<string, number>()
+      const requests = new Set<string>()
+      for (const rawExpense of data.expenses.slice(0, 10000)) {
+        if (!validExpense(rawExpense, state) || requests.has(rawExpense.requestId) ||
+            state.expensesById[rawExpense.id]) continue
+        if ((counts.get(rawExpense.businessId) ?? 0) >= 500) continue
+        const expense: DemoExpense = {
+          id: rawExpense.id, requestId: rawExpense.requestId, businessId: rawExpense.businessId,
+          paidOn: rawExpense.paidOn, category: rawExpense.category,
+          description: rawExpense.description, amountCents: rawExpense.amountCents,
+          paymentMethod: rawExpense.paymentMethod, notes: rawExpense.notes,
+          locationId: rawExpense.locationId, cashSessionId: rawExpense.cashSessionId,
+          createdAt: rawExpense.createdAt,
+        }
+        state.expensesById[expense.id] = expense
+        requests.add(expense.requestId)
+        counts.set(expense.businessId, (counts.get(expense.businessId) ?? 0) + 1)
       }
     }
     // Operaciones opcionales: se reconstruyen contra las recepciones y las
@@ -999,6 +1051,8 @@ function notify(next: DemoSnapshot) {
       purchases: Object.values(state.purchasesById),
       inventoryOperations: Object.values(state.inventoryOperationsById),
       sales: Object.values(state.salesById),
+      expenses: Object.values(state.expensesById),
+      cashSessions: Object.values(state.cashSessionsById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
