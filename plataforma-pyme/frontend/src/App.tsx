@@ -106,6 +106,7 @@ function App() {
     items={listDemoCatalog(snapshot, business.id)}
     locations={listDemoLocations(snapshot, business.id)}
     sales={listDemoSales(snapshot, business.id)}
+    movements={listDemoInventoryMovements(snapshot, business.id)}
   />
   else if (business && section === 'compras') content = <PurchasesPage key={business.id} business={business} purchases={listDemoPurchases(snapshot, business.id)} catalog={listDemoCatalog(snapshot, business.id)} suppliers={listDemoSuppliers(snapshot, business.id)} locations={listDemoLocations(snapshot, business.id)} />
   else if (business && (section === 'inventario' || section === 'movimientos')) content = <InventoryPage
