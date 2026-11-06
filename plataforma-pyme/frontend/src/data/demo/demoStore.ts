@@ -17,6 +17,8 @@ import { checkedCountDifference, countDifference, inventoryOperationMovements, n
 import type { InventoryCountInput, InventoryCountLine, InventoryMovement, InventoryOperation } from './inventoryPolicy'
 import { normalizeSaleInput, saleAmounts, saleInventoryMovements, validateSalePayments, validSaleQuantity } from './salePolicy'
 import type { SaleInput, SaleLineSnapshot, SalePayment } from './salePolicy'
+import { cashCents, cashSessionTotals, cashText, makeCloseSnapshot, normalizeExpense } from './cashPolicy'
+import type { CashCloseInput, DemoCashSession, DemoExpense, ExpenseInput } from './cashPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -121,7 +123,7 @@ export type DemoSale = {
   id: string; requestId: string; businessId: string; locationId: string | null
   lines: SaleLineSnapshot[]; subtotalCents: number; discountCents: number
   totalCents: number; payments: SalePayment[]; notes: string
-  createdAt: string; status: 'REGISTRADA_DEMO'
+  createdAt: string; status: 'REGISTRADA_DEMO'; cashSessionId?: string | null
 }
 
 export type DemoReceiptMovement = PurchaseReceipt['movements'][number] & {
@@ -146,6 +148,8 @@ export type DemoSnapshot = {
   purchasesById: Record<string, DemoPurchase>
   inventoryOperationsById: Record<string, InventoryOperation>
   salesById: Record<string, DemoSale>
+  expensesById: Record<string, DemoExpense>
+  cashSessionsById: Record<string, DemoCashSession>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -179,10 +183,12 @@ function defaults(): DemoSnapshot {
     purchasesById: {},
     inventoryOperationsById: {},
     salesById: {},
+    expensesById: {},
+    cashSessionsById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown; sales?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown; sales?: unknown; expenses?: unknown; cashSessions?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -395,6 +401,23 @@ export function listDemoInventoryMovements(snapshot: DemoSnapshot, businessId: s
     .flatMap(inventoryOperationMovements)
   return [...receipts, ...localOps, ...sold].sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+}
+
+export function listDemoExpenses(snapshot: DemoSnapshot, businessId: string): DemoExpense[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.expensesById).filter((expense) => expense.businessId === businessId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+export function listDemoCashSessions(snapshot: DemoSnapshot, businessId: string): DemoCashSession[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.cashSessionsById).filter((session) => session.businessId === businessId)
+    .sort((a, b) => b.openedAt.localeCompare(a.openedAt))
+}
+
+export function activeCashSession(snapshot: DemoSnapshot, businessId: string, locationId: string | null): DemoCashSession | undefined {
+  return listDemoCashSessions(snapshot, businessId).find((session) =>
+    session.locationId === locationId && session.status === 'ABIERTA')
 }
 
 export function listDemoSales(snapshot: DemoSnapshot, businessId: string): DemoSale[] {
