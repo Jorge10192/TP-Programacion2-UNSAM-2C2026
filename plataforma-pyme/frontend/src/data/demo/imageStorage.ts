@@ -31,7 +31,7 @@ async function transact<T>(
 ): Promise<T> {
   const db = await openDatabase()
   return new Promise((resolve, reject) => {
-    let result: T
+    let result!: T
     try {
       const transaction = db.transaction(STORE_NAME, mode)
       const request = run(transaction.objectStore(STORE_NAME))
