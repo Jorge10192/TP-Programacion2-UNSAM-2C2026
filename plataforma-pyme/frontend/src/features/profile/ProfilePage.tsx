@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
-import { demoGateway } from '../../data/demo/demoStore'
+import { demoGateway, profileInitials } from '../../data/demo/demoStore'
 import type { DemoBusiness, DemoMembership, DemoProfile } from '../../data/demo/demoStore'
-
-export function profileInitials(profile: Pick<DemoProfile, 'displayName' | 'avatarInitials'>): string {
-  return profile.avatarInitials ||
-    profile.displayName.trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() ||
-    'UD'
-}
 
 export function ProfilePage({
   profile,
