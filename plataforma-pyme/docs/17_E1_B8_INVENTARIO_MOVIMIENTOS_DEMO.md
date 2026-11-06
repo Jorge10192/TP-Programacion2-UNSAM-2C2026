@@ -6,13 +6,13 @@
 ## Alcance funcional entregado
 
 - **Inventario:** existencias por empresa, artículo físico del Catálogo y ubicación. Sin stock ficticio precargado. Los servicios no tienen existencias.
-- **Movimientos:** ruta `/b/:businessId/movimientos` con el mismo componente y ledger que Inventario; abre directamente el historial de recepciones, traslados y ajustes.
+- **Movimientos:** ruta `/b/:businessId/movimientos` con el mismo componente y ledger que Inventario; abre directamente el historial de recepciones, traslados y ajustes. **Vista mejorada:** cada traslado se muestra en **una única fila** con origen → destino y cantidad transferida. Las dos piernas firmadas permanecen intactas en el ledger.
 - **Recepción de Compras:** las entradas previamente confirmadas en E1-B7 aparecen automáticamente, incluso las registradas antes de este incremento. Una compra todavía pendiente NO modifica existencias.
 - **Traslado:** un comando valida dos ubicaciones distintas, activas y habilitadas para almacenar; descuenta del origen y suma exactamente la misma cantidad al destino en **una sola operación**. Rechaza faltantes y no genera stock negativo.
 - **Conteo físico:** registra la cantidad efectivamente observada en una ubicación. La diferencia contra el saldo previo genera un movimiento firmado con motivo obligatorio; el conteo puede ser **cero**. No se acepta ajuste de diferencia cero ni cantidades negativas.
-- **Trazabilidad:** cada movimiento guarda fecha/hora, tipo, empresa, artículo, unidad, ubicación y motivo; los traslados comparten `operationId` y generan dos movimientos correlacionados. Los eventos no se editan ni eliminan.
+- **Trazabilidad:** cada movimiento guarda fecha/hora, tipo, empresa, artículo, unidad, ubicación y motivo; los traslados comparten `operationId` y generan dos movimientos correlacionados. El historial agrupa sólo pares coherentes del mismo artículo, empresa y cantidad. Si falta una pierna o los datos no concuerdan, muestra los registros individuales para no ocultar evidencia. Los eventos no se editan ni eliminan.
 - **Filtros:** nombre/SKU/categoría y ubicación para existencias; artículo/referencia/motivo y tipo/ubicación para movimientos. Las vistas limitan registros renderizados para evitar saturar pantalla.
-- **Indicadores**: cantidad de artículos con stock, combinaciones artículo-ubicación con stock, renglones recibidos y cantidad de movimientos. **No se suman cantidades de unidades heterogéneas**.
+- **Indicadores**: cantidad de artículos con stock, combinaciones artículo-ubicación con stock, renglones recibidos y cantidad de **operaciones visibles** (un traslado cuenta una vez). **No se suman cantidades de unidades heterogéneas**.
 
 ## Reglas del ledger
 
@@ -61,7 +61,7 @@ Si Vite ya está abierto, omitir `npm.cmd run dev`.
 | INV-01 | Abrir Inventario luego de confirmar una recepción de Compra E1-B7 | El bien recibido aparece en la ubicación de recepción; no hay que cargarlo de nuevo |
 | INV-02 | Consultar otra empresa | No aparecen movimientos ni saldos de la empresa anterior |
 | INV-03 | Elegir una ubicación y activar «Incluir saldos en cero» | Se ven artículos físicos sin existencia, expresados en su unidad |
-| INV-04 | Trasladar 2 unidades del depósito al local | Origen −2, destino +2, total combinado constante, dos movimientos correlacionados |
+| INV-04 | Trasladar 2 unidades del depósito al local | Origen −2, destino +2, total combinado constante, dos movimientos correlacionados internamente y **una sola fila** en el historial |
 | INV-05 | Intentar trasladar más stock del disponible | Error «Stock insuficiente», sin evento ni saldo negativo |
 | INV-06 | Intentar trasladar a la misma ubicación o a una pausada | Rechazo |
 | INV-07 | Registrar conteo real de 7 unidades donde había 9 | Se registra ajuste −2 y queda saldo 7 |
@@ -77,6 +77,9 @@ Si Vite ya está abierto, omitir `npm.cmd run dev`.
 | INV-17 | Actualizar F5, navegar a otras secciones y volver | Persistencia y filtros correctos, sin cruces entre empresas |
 | INV-18 | Pantalla de 390px | Listado, botones y formularios legibles sin desbordamientos |
 | INV-19 | Build, lint, test:inventory y demás scripts de regresión | Sin errores ni advertencias |
+| INV-20 | Filtrar traslados por ubicación de origen o por ubicación de destino | Una fila por operación, visible con cualquiera de ambos filtros |
+| INV-21 | Filtrar el historial por tipo «Traslados entre ubicaciones» | Una fila por traslado, sin duplicación visual |
+| INV-22 | Proyección de un traslado con una pierna faltante/incoherente | El historial no la agrupa ni oculta; quedan visibles los eventos originales |
 
 ## Fuera de alcance y siguiente corte
 
