@@ -11,6 +11,7 @@ type Tab = 'stock' | 'movements'
 type Row = { item: DemoCatalogItem; location: DemoLocation; milli: number }
 const movementsFilters = [
   { value: 'RECEPCION_COMPRA', label: 'Recepciones de compras' },
+  { value: 'VENTA_SALIDA', label: 'Salidas por ventas' },
   { value: 'TRANSFER', label: 'Traslados entre ubicaciones' },
   { value: 'AJUSTE_CONTEO', label: 'Ajustes por conteo individual' },
   { value: 'BATCH_COUNT', label: 'Controles de stock por ubicación' },
