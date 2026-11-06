@@ -4,7 +4,7 @@ import { Icon } from '../../app/Icon'
 import { businessHref } from '../../app/navigation'
 import type { Navigate } from '../../app/types'
 import { demoGateway, kindLabels } from '../../data/demo/demoStore'
-import type { BusinessKind, DemoBusiness, DemoProfile } from '../../data/demo/demoStore'
+import type { BusinessKind, DemoProfile } from '../../data/demo/demoStore'
 
 export function CreateBusinessPage({ navigate, profile }: { navigate: Navigate; profile: DemoProfile }) {
   const [name, setName] = useState('')
@@ -73,22 +73,3 @@ export function CreateBusinessPage({ navigate, profile }: { navigate: Navigate; 
   </>
 }
 
-export function BusinessDetailsPage({ business, profile, navigate }: { business: DemoBusiness; profile: DemoProfile; navigate: Navigate }) {
-  return <>
-    <div className="page-heading"><div><p className="eyebrow">ADMINISTRACIÓN DEL NEGOCIO</p><h1>Datos de la empresa</h1><p>Información inicial del negocio seleccionado.</p></div></div>
-    <section className="form-panel business-overview">
-      <div className="business-overview-top">
-        <span className={'company-icon company-icon-large ' + business.accent}>{business.initials}</span>
-        <div><h2>{business.name}</h2><p>{business.category}</p><span className="small-pill">Empresa {business.source === 'fixture' ? 'de ejemplo' : 'creada en DEMO'}</span></div>
-      </div>
-      <div className="detail-grid">
-        <div><small>Actividad</small><strong>{kindLabels[business.kind]}</strong></div>
-        <div><small>Identificador DEMO</small><strong>{business.id}</strong></div>
-        <div><small>Fundador y responsable inicial</small><strong>{profile.displayName} (DEMO)</strong></div>
-        <div><small>Descripción</small><strong>{business.description || 'Sin descripción'}</strong></div>
-      </div>
-      <div className="informational-note"><Icon name="shield" size={19}/><span>Esta ficha es de solo lectura en E1-A2. La edición de empresas y los permisos reales se incorporarán en próximos incrementos.</span></div>
-      <div className="form-actions"><button type="button" className="button button-secondary" onClick={() => navigate(businessHref(business.id, 'inicio'))}><Icon name="arrow-left" size={17}/> Volver al Inicio del negocio</button></div>
-    </section>
-  </>
-}
