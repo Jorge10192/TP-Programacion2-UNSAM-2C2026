@@ -1091,6 +1091,96 @@ function requiredText(value: string, label: string, min: number, max: number): s
 }
 
 export const demoGateway = {
+  async openCashSession(
+    businessId: string, locationId: string | null,
+    openingCashCents: number, requestId: string,
+  ): Promise<DemoCashSession> {
+    activeBusiness(businessId)
+    if (!/^demo-cash-open-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Solicitud de apertura inválida.')
+    const prior = Object.values(state.cashSessionsById).find((session) => session.openRequestId === requestId)
+    if (prior) {
+      if (prior.businessId !== businessId) throw new Error('La solicitud ya pertenece a otra empresa.')
+      return prior
+    }
+    if (listDemoCashSessions(state, businessId).length >= 300) throw new Error('Se alcanzó el límite de jornadas DEMO por empresa.')
+    cashCents(openingCashCents, 'Fondo inicial', true)
+    if (locationId !== null) {
+      const location = locationOfBusiness(businessId, locationId)
+      if (location.status !== 'ACTIVA' || !location.canSell) {
+        throw new Error('Elegí una ubicación activa habilitada para vender.')
+      }
+    }
+    if (activeCashSession(state, businessId, locationId)) {
+      throw new Error('Ya existe una jornada abierta para esa ubicación/caja.')
+    }
+    const opened: DemoCashSession = {
+      id: 'demo-cash-session-' + crypto.randomUUID(), openRequestId: requestId,
+      closeRequestId: null, businessId, locationId, openingCashCents,
+      openedAt: new Date().toISOString(), openedBy: 'demo-user',
+      status: 'ABIERTA', closeSnapshot: null,
+    }
+    notify({ ...state, cashSessionsById: { ...state.cashSessionsById, [opened.id]: opened } })
+    return opened
+  },
+
+  async registerExpense(businessId: string, input: ExpenseInput, requestId: string): Promise<DemoExpense> {
+    activeBusiness(businessId)
+    if (!/^demo-expense-request-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Solicitud de gasto inválida.')
+    const prior = Object.values(state.expensesById).find((expense) => expense.requestId === requestId)
+    if (prior) {
+      if (prior.businessId !== businessId) throw new Error('La solicitud de gasto ya pertenece a otra empresa.')
+      return prior
+    }
+    if (listDemoExpenses(state, businessId).length >= 500) throw new Error('Límite de gastos DEMO alcanzado.')
+    const fields = normalizeExpense(input)
+    if (fields.locationId !== null) {
+      const loc = locationOfBusiness(businessId, fields.locationId)
+      if (loc.status !== 'ACTIVA') throw new Error('Elegí una ubicación activa o dejá el gasto general.')
+    }
+    const session = fields.paymentMethod === 'EFECTIVO'
+      ? activeCashSession(state, businessId, fields.locationId) : undefined
+    if (session) {
+      const { expectedCashCents } = cashSessionTotals(session,
+        Object.values(state.salesById), Object.values(state.expensesById))
+      if (fields.amountCents > expectedCashCents) {
+        throw new Error('Efectivo insuficiente en esta jornada. No podés registrar un gasto mayor al efectivo esperado.')
+      }
+    }
+    const expense: DemoExpense = {
+      ...fields, id: 'demo-expense-' + crypto.randomUUID(),
+      requestId, businessId, cashSessionId: session?.id ?? null,
+      createdAt: new Date().toISOString(),
+    }
+    notify({ ...state, expensesById: { ...state.expensesById, [expense.id]: expense } })
+    return expense
+  },
+
+  async closeCashSession(
+    businessId: string, sessionId: string, input: CashCloseInput,
+    requestId: string,
+  ): Promise<DemoCashSession> {
+    activeBusiness(businessId)
+    if (!/^demo-cash-close-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Solicitud de cierre inválida.')
+    const session = state.cashSessionsById[sessionId]
+    if (!session || session.businessId !== businessId) throw new Error('Jornada no disponible para esta empresa.')
+    if (session.status === 'CERRADA') {
+      if (session.closeRequestId === requestId) return session
+      throw new Error('Esta jornada ya está cerrada; su arqueo no se puede modificar.')
+    }
+    const used = Object.values(state.cashSessionsById).some((other) =>
+      other.id !== session.id && other.closeRequestId === requestId)
+    if (used) throw new Error('La solicitud ya fue usada para cerrar otra jornada.')
+    const snapshot = makeCloseSnapshot(session,
+      Object.values(state.salesById), Object.values(state.expensesById),
+      input, new Date().toISOString())
+    const closed: DemoCashSession = {
+      ...session, status: 'CERRADA', closeRequestId: requestId, closeSnapshot: snapshot,
+    }
+    // Snapshot + estado CERRADA se guardan juntos; nunca se elimina el detalle.
+    notify({ ...state, cashSessionsById: { ...state.cashSessionsById, [closed.id]: closed } })
+    return closed
+  },
+
   async countInventoryBatch(
     businessId: string, locationId: string, inputLines: InventoryCountInput[],
     reasonInput: string, requestId: string,
@@ -1242,6 +1332,7 @@ export const demoGateway = {
       locationId: location?.id ?? null, lines,
       ...amounts, payments: fields.payments.map((payment) => ({ ...payment })),
       notes: fields.notes, createdAt: new Date().toISOString(), status: 'REGISTRADA_DEMO',
+      cashSessionId: activeCashSession(state, businessId, location?.id ?? null)?.id ?? null,
     }
     // El descuento de existencias y el registro de pagos se proyectan de esta
     // misma venta con un único notify; no se aplica otra salida de stock.
