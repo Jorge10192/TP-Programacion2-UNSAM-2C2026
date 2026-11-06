@@ -1069,6 +1069,60 @@ export const demoGateway = {
     return operation
   },
 
+  async registerSale(businessId: string, input: SaleInput, requestId: string): Promise<DemoSale> {
+    activeBusiness(businessId)
+    if (!/^demo-sale-request-[a-f0-9-]{36}$/.test(requestId)) {
+      throw new Error('Identificador de venta inválido.')
+    }
+    const previous = Object.values(state.salesById).find((sale) => sale.requestId === requestId)
+    if (previous) {
+      if (previous.businessId !== businessId) throw new Error('La solicitud ya pertenece a otra empresa.')
+      return previous
+    }
+    if (listDemoSales(state, businessId).length >= 500) {
+      throw new Error('Esta empresa alcanzó el límite de ventas de demostración.')
+    }
+    const fields = normalizeSaleInput(input)
+    const location = fields.locationId ? locationOfBusiness(businessId, fields.locationId) : null
+    if (location && (location.status !== 'ACTIVA' || !location.canSell)) {
+      throw new Error('Seleccioná una ubicación activa habilitada para vender.')
+    }
+    const seen = new Set<string>()
+    const lines: SaleLineSnapshot[] = fields.lines.map((line) => {
+      if (seen.has(line.catalogItemId)) throw new Error('Un mismo artículo no debe repetirse en el carrito. Sumá su cantidad.')
+      seen.add(line.catalogItemId)
+      const item = catalogItemOfBusiness(businessId, line.catalogItemId)
+      if (item.status !== 'ACTIVO' || !item.sellable) {
+        throw new Error('El artículo no está activo o no está disponible para vender.')
+      }
+      validSaleQuantity(line.quantityMilli, item.unit)
+      const kind: SaleLineSnapshot['kind'] = item.kind === 'SERVICIO' ? 'SERVICIO' : 'BIEN'
+      if (kind === 'BIEN') {
+        if (!location || !location.canStore) {
+          throw new Error('Para vender bienes elegí una ubicación activa que permita ventas y almacenamiento.')
+        }
+        requireTransferStock(inventoryBalanceMilli(state, businessId, item.id, location.id), line.quantityMilli, item.unit)
+      }
+      return {
+        ...line, id: 'demo-sale-line-' + crypto.randomUUID(),
+        name: item.name, sku: item.sku, unit: item.unit, kind,
+        lineTotalCents: lineTotalCents(line.quantityMilli, line.unitPriceCents),
+      }
+    })
+    const amounts = saleAmounts(lines, fields.discountCents)
+    validateSalePayments(fields.payments, amounts.totalCents)
+    const sale: DemoSale = {
+      id: 'demo-sale-' + crypto.randomUUID(), requestId, businessId,
+      locationId: location?.id ?? null, lines,
+      ...amounts, payments: fields.payments.map((payment) => ({ ...payment })),
+      notes: fields.notes, createdAt: new Date().toISOString(), status: 'REGISTRADA_DEMO',
+    }
+    // El descuento de existencias y el registro de pagos se proyectan de esta
+    // misma venta con un único notify; no se aplica otra salida de stock.
+    notify({ ...state, salesById: { ...state.salesById, [sale.id]: sale } })
+    return sale
+  },
+
   async registerPurchase(businessId: string, input: PurchaseInput, requestId: string): Promise<DemoPurchase> {
     activeBusiness(businessId)
     if (!/^demo-request-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Identificador de solicitud inválido.')
