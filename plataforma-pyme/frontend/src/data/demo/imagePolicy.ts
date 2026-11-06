@@ -1,5 +1,5 @@
 /** E1-B10: fotos sólo para la DEMO local, separadas del ledger y del estado de negocio. */
-export type DemoImageScope = 'profile' | 'catalog' | 'supplier' | 'location'
+export type DemoImageScope = 'profile' | 'business' | 'catalog' | 'supplier' | 'location'
 export const MAX_IMAGE_FILE_BYTES = 8 * 1024 * 1024
 export const MAX_IMAGE_SIDE = 512
 export const MAX_STORED_IMAGE_BYTES = 400 * 1024
