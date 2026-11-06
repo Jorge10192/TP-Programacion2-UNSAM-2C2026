@@ -182,7 +182,7 @@ export function InventoryBatchCount({
       <div className="form-actions">
         <button type="button" className="button button-secondary" onClick={onCancel}>Cancelar</button>
         <button className="button button-primary" type="submit" disabled={!chosenLocation || counted.length === 0}>
-          Revisar diferencias <Icon name="arrow-right" size={17}/>
+          Revisar diferencias <Icon name="arrow" size={17}/>
         </button>
       </div>
     </form> : <div className="inventory-audit-review">
