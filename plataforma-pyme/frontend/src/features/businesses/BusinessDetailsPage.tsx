@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
+import { DemoPhoto, DemoImagePicker } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import { businessHref } from '../../app/navigation'
 import type { IconName } from '../../app/navigation'
 import type { Navigate } from '../../app/types'
@@ -79,7 +81,8 @@ export function BusinessDetailsPage({
     </div>
 
     <section className="company-summary">
-      <span className={'company-emblem ' + business.accent}>{business.initials}</span>
+      <DemoPhoto imageKey={demoImageKey('business', business.id, 'logo')} alt={'Logo de ' + business.name}
+        fallback={business.initials} className={'company-emblem ' + business.accent}/>
       <div className="company-summary-copy">
         <div className="company-summary-title"><h2>{business.name}</h2><span className="small-pill">{business.source === 'created' ? 'Creada en DEMO' : 'Empresa de ejemplo'}</span></div>
         <p>{business.slogan || business.description || business.category}</p>
@@ -95,11 +98,12 @@ export function BusinessDetailsPage({
         </div>
 
         <div className="brand-identity-row">
-          <span className={'company-emblem company-emblem-small ' + business.accent}>{business.initials}</span>
-          <div><strong>Imagen de la empresa</strong><p>Usamos la inicial de su nombre como imagen de ejemplo. La carga de logos se integrará más adelante.</p></div>
-          <span className="small-pill amber-pill">Imagen pendiente</span>
+          <DemoPhoto imageKey={demoImageKey('business', business.id, 'logo')} alt={'Imagen de ' + business.name}
+            fallback={business.initials} className={'company-emblem company-emblem-small ' + business.accent}/>
+          <div><strong>Imagen de la empresa</strong><p>Podés usar un logo o fotografía desde tu computadora. Si no hay foto, se muestran las iniciales.</p></div>
         </div>
 
+        <DemoImagePicker imageKey={demoImageKey('business', business.id, 'logo')} label="Logo o imagen comercial de la empresa"/>
         {notice && <p className="form-message success" role="status">{notice}</p>}
 
         <div className="business-fields-grid">
