@@ -144,3 +144,65 @@ export function inventoryOperationMovements(operation: InventoryOperation): Inve
     deltaMilli: operation.deltaMilli, type: 'AJUSTE_CONTEO',
   }]
 }
+
+/**
+ * Vista del historial: un traslado se presenta como una única acción,
+ * pero el ledger mantiene sus dos movimientos (salida y entrada).
+ * Si falta una de las piernas o la pareja es inconsistente, se muestran
+ * los movimientos originales para no ocultar evidencia.
+ */
+export type InventoryHistoryEntry =
+  | { kind: 'MOVEMENT'; id: string; createdAt: string; movement: InventoryMovement }
+  | {
+      kind: 'TRANSFER'; id: string; createdAt: string; businessId: string
+      catalogItemId: string; itemNameSnapshot: string; unit: CatalogUnit
+      sourceLocationId: string; destinationLocationId: string
+      quantityMilli: number; reason: string; reference: string
+    }
+
+export function inventoryHistoryEntries(movements: InventoryMovement[]): InventoryHistoryEntry[] {
+  const entries: InventoryHistoryEntry[] = []
+  const transfers = new Map<string, InventoryMovement[]>()
+
+  for (const movement of movements) {
+    if (movement.type === 'TRASLADO_SALIDA' || movement.type === 'TRASLADO_ENTRADA') {
+      const bucket = transfers.get(movement.operationId) ?? []
+      bucket.push(movement)
+      transfers.set(movement.operationId, bucket)
+    } else {
+      entries.push({ kind: 'MOVEMENT', id: movement.id, createdAt: movement.createdAt, movement })
+    }
+  }
+
+  for (const [operationId, pair] of transfers) {
+    const outbound = pair.find((event) => event.type === 'TRASLADO_SALIDA')
+    const inbound = pair.find((event) => event.type === 'TRASLADO_ENTRADA')
+    const consistent = pair.length === 2 && outbound !== undefined && inbound !== undefined &&
+      outbound.businessId === inbound.businessId &&
+      outbound.catalogItemId === inbound.catalogItemId &&
+      outbound.unit === inbound.unit &&
+      outbound.itemNameSnapshot === inbound.itemNameSnapshot &&
+      outbound.createdAt === inbound.createdAt &&
+      outbound.reason === inbound.reason &&
+      outbound.reference === inbound.reference &&
+      outbound.locationId !== inbound.locationId &&
+      Number.isSafeInteger(outbound.deltaMilli) &&
+      outbound.deltaMilli < 0 && inbound.deltaMilli === -outbound.deltaMilli
+
+    if (consistent && outbound && inbound) {
+      entries.push({
+        kind: 'TRANSFER', id: operationId, createdAt: outbound.createdAt,
+        businessId: outbound.businessId, catalogItemId: outbound.catalogItemId,
+        itemNameSnapshot: outbound.itemNameSnapshot, unit: outbound.unit,
+        sourceLocationId: outbound.locationId, destinationLocationId: inbound.locationId,
+        quantityMilli: inbound.deltaMilli, reason: outbound.reason, reference: outbound.reference,
+      })
+    } else {
+      for (const movement of pair) {
+        entries.push({ kind: 'MOVEMENT', id: movement.id, createdAt: movement.createdAt, movement })
+      }
+    }
+  }
+
+  return entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+}
