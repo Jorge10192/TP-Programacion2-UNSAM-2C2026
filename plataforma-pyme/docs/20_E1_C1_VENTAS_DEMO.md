@@ -18,13 +18,13 @@
 
 ## Arquitectura y compatibilidad
 
-- `frontend/src/data/demo/salePolicy.ts`: `SaleInput`, `SalePayment`, `SaleLineSnapshot`, normalización y aritmética de checkout.
+- `frontend/src/data/demo/salePolicy.ts`: `SaleInput`, `SalePayment`, `SaleLineSnapshot`, normalización, aritmética de checkout y proyección pura de salidas físicas.
 - `frontend/src/data/demo/demoStore.ts`: `DemoSale`, `salesById`, `registerSale`, `listDemoSales`, carga opcional de ventas, serialización y proyección del ledger.
 - `frontend/src/data/demo/inventoryPolicy.ts`: incorpora el tipo de movimiento `VENTA_SALIDA`.
 - `frontend/src/features/sales/SalesPage.tsx`: formulario de venta, pagos divididos, descuentos y comprobante.
 - `frontend/src/features/inventory/InventoryPage.tsx`: filtra salida por venta.
 - `frontend/src/features/dashboard/Dashboards.tsx`, `frontend/src/App.tsx`, `frontend/src/App.css`: navegación, indicadores, estilos responsive.
-- `frontend/tests/sale-policy.test.mjs`: pruebas unitarias puras de centavos, descuentos, split y validaciones.
+- `frontend/tests/sale-policy.test.mjs`: 12 pruebas unitarias puras de centavos, descuentos, split, stock y proyección de salidas.
 
 **Persistencia:** se mantiene exactamente la clave `asistente-pyme.e1a2.demo.v1` y el objeto almacenado `version:1`. Se agrega un campo **opcional** `sales` a `Stored`, sin borrar ni reconstruir datos previos del perfil, negocios, Catálogo, Ubicaciones, Compras, Inventario o fotos de IndexedDB. `load` lee las ventas previamente guardadas antes de reproducir los conteos históricos para que una venta anterior a un conteo no desfigure su saldo. Las ventas tienen IDs propios y no escriben en `inventoryOperationsById`.
 
