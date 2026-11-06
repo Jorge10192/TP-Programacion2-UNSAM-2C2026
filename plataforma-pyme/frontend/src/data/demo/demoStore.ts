@@ -19,6 +19,8 @@ import { normalizeSaleInput, saleAmounts, saleInventoryMovements, validateSalePa
 import type { SaleInput, SaleLineSnapshot, SalePayment } from './salePolicy'
 import { cashCents, cashSessionTotals, cashText, makeCloseSnapshot, normalizeExpense } from './cashPolicy'
 import type { CashCloseInput, DemoCashSession, DemoExpense, ExpenseInput } from './cashPolicy'
+import { financialAccountKey, normalizeFinancialAccountInput } from './financialAccountPolicy'
+import type { DemoFinancialAccount, FinancialAccountInput } from './financialAccountPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -150,6 +152,7 @@ export type DemoSnapshot = {
   salesById: Record<string, DemoSale>
   expensesById: Record<string, DemoExpense>
   cashSessionsById: Record<string, DemoCashSession>
+  financialAccountsById: Record<string, DemoFinancialAccount>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -185,10 +188,11 @@ function defaults(): DemoSnapshot {
     salesById: {},
     expensesById: {},
     cashSessionsById: {},
+    financialAccountsById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown; sales?: unknown; expenses?: unknown; cashSessions?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown; sales?: unknown; expenses?: unknown; cashSessions?: unknown; financialAccounts?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -335,6 +339,20 @@ function supplierUniqueness(businessId: string, name: string, excludeId?: string
   }
 }
 
+function validFinancialAccount(raw: unknown): raw is DemoFinancialAccount {
+  if (!isRecord(raw) || typeof raw.id !== 'string' ||
+      !/^demo-financial-account-[a-f0-9-]{36}$/.test(raw.id) ||
+      typeof raw.businessId !== 'string' ||
+      (raw.status !== 'ACTIVA' && raw.status !== 'INACTIVA') ||
+      typeof raw.isPrimary !== 'boolean' ||
+      typeof raw.createdAt !== 'string' || !Number.isFinite(Date.parse(raw.createdAt)) ||
+      typeof raw.updatedAt !== 'string' || !Number.isFinite(Date.parse(raw.updatedAt))) return false
+  try {
+    normalizeFinancialAccountInput(raw as FinancialAccountInput)
+    return true
+  } catch { return false }
+}
+
 function validSupplier(raw: unknown): raw is DemoSupplier {
   if (!isRecord(raw)) return false
   return typeof raw.id === 'string' && /^demo-supplier-[a-f0-9-]{36}$/.test(raw.id)
@@ -401,6 +419,38 @@ export function listDemoInventoryMovements(snapshot: DemoSnapshot, businessId: s
     .flatMap(inventoryOperationMovements)
   return [...receipts, ...localOps, ...sold].sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+}
+
+export function listDemoFinancialAccounts(snapshot: DemoSnapshot, businessId: string): DemoFinancialAccount[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.financialAccountsById)
+    .filter((account) => account.businessId === businessId)
+    .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) ||
+      Number(b.status === 'ACTIVA') - Number(a.status === 'ACTIVA') ||
+      a.label.localeCompare(b.label, 'es-AR'))
+}
+
+function financialAccountOfBusiness(businessId: string, accountId: string): DemoFinancialAccount {
+  activeBusiness(businessId)
+  const account = state.financialAccountsById[accountId]
+  if (!account || account.businessId !== businessId) {
+    throw new Error('La cuenta DEMO no pertenece a la empresa seleccionada.')
+  }
+  return account
+}
+
+function uniqueFinancialAccount(businessId: string, fields: FinancialAccountInput, excludeId?: string): void {
+  const current = Object.values(state.financialAccountsById).filter((account) =>
+    account.businessId === businessId && account.id !== excludeId)
+  if (current.some((account) => financialAccountKey(account.label) === financialAccountKey(fields.label))) {
+    throw new Error('Ya existe una cuenta con ese nombre en esta empresa.')
+  }
+  if (fields.alias && current.some((account) => account.alias === fields.alias)) {
+    throw new Error('Ese alias ya figura en otra cuenta de esta empresa.')
+  }
+  if (fields.identifier && current.some((account) => account.identifier === fields.identifier)) {
+    throw new Error('Ese CBU/CVU ya figura en otra cuenta de esta empresa.')
+  }
 }
 
 export function listDemoExpenses(snapshot: DemoSnapshot, businessId: string): DemoExpense[] {
@@ -891,6 +941,38 @@ function load(): DemoSnapshot {
         }
       }
     }
+    // Cuentas DEMO: datos de referencia por empresa. Nunca se interpretan como
+    // depósitos reales ni se derivan saldos a partir de Ventas o Gastos.
+    if (Array.isArray(data.financialAccounts)) {
+      const counts = new Map<string, number>()
+      const primaries = new Set<string>()
+      for (const rawAccount of data.financialAccounts.slice(0, 6000)) {
+        if (!validFinancialAccount(rawAccount) || !state.businessesById[rawAccount.businessId] ||
+            state.financialAccountsById[rawAccount.id]) continue
+        if ((counts.get(rawAccount.businessId) ?? 0) >= 100) continue
+        try {
+          const fields = normalizeFinancialAccountInput(rawAccount)
+          const existing = Object.values(state.financialAccountsById)
+            .filter((account) => account.businessId === rawAccount.businessId)
+          if (existing.some((account) =>
+            financialAccountKey(account.label) === financialAccountKey(fields.label) ||
+            (fields.alias && account.alias === fields.alias) ||
+            (fields.identifier && account.identifier === fields.identifier))) continue
+          const isPrimary = rawAccount.status === 'ACTIVA' &&
+            rawAccount.isPrimary && !primaries.has(rawAccount.businessId)
+          if (isPrimary) primaries.add(rawAccount.businessId)
+          const account: DemoFinancialAccount = {
+            ...fields, id: rawAccount.id, businessId: rawAccount.businessId,
+            status: rawAccount.status, isPrimary,
+            createdAt: rawAccount.createdAt, updatedAt: rawAccount.updatedAt,
+          }
+          state.financialAccountsById[account.id] = account
+          counts.set(account.businessId, (counts.get(account.businessId) ?? 0) + 1)
+        } catch {
+          // Una cuenta DEMO dañada nunca elimina registros de otros módulos.
+        }
+      }
+    }
     // Compras opcionales: sólo se recuperan snapshots completos y recepciones consistentes.
     if (Array.isArray(data.purchases)) {
       const countByBusiness = new Map<string, number>()
@@ -1060,6 +1142,7 @@ function notify(next: DemoSnapshot) {
       sales: Object.values(state.salesById),
       expenses: Object.values(state.expensesById),
       cashSessions: Object.values(state.cashSessionsById),
+      financialAccounts: Object.values(state.financialAccountsById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
