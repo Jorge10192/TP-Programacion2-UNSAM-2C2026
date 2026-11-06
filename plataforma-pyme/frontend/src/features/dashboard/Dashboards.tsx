@@ -39,7 +39,7 @@ const summaryCards = [
   { label: 'Jornada de caja', detail: 'Sin jornada activa', icon: 'wallet' as const, accent: 'orange' },
 ]
 
-export function BusinessDashboard({ business, navigate }: { business: DemoBusiness; navigate: Navigate }) {
+export function BusinessDashboard({ business, navigate, catalogCount }: { business: DemoBusiness; navigate: Navigate; catalogCount: number }) {
   const priority = ['catalogo', 'inventario', 'ventas', 'compras', 'gastos', 'jornadas', 'ubicaciones', 'equipo']
   const quickActions = priority.map((id) => navigationItems.find((entry) => entry.id === id)).filter((item): item is NavigationItem => item !== undefined)
 
@@ -60,8 +60,8 @@ export function BusinessDashboard({ business, navigate }: { business: DemoBusine
       {summaryCards.map((item) => <div key={item.label} className="stat-card">
         <span className={'feature-icon ' + item.accent}><Icon name={item.icon} size={20}/></span>
         <span className="stat-label">{item.label}</span>
-        <strong className="stat-value">—</strong>
-        <small>{item.detail}</small>
+        <strong className="stat-value">{item.label === 'Artículos y servicios' ? catalogCount : '—'}</strong>
+        <small>{item.label === 'Artículos y servicios' ? 'Fichas activas DEMO' : item.detail}</small>
       </div>)}
     </div>
 
@@ -69,7 +69,7 @@ export function BusinessDashboard({ business, navigate }: { business: DemoBusine
     <div className="tool-grid">
       {quickActions.map((item, index) => <AppLink to={businessHref(business.id, item.segment)} navigate={navigate} key={item.id} className="tool-card">
         <span className={'feature-icon ' + ['blue', 'mint', 'violet', 'orange'][index % 4]}><Icon name={item.icon} size={24}/></span>
-        <span className="tool-copy"><strong>{item.label}</strong><small>{item.description}</small><span className={'tool-status' + (['ubicaciones', 'equipo'].includes(item.id) ? ' tool-available' : '')}>{['ubicaciones', 'equipo'].includes(item.id) ? 'Disponible DEMO' : 'Próximamente'}</span></span>
+        <span className="tool-copy"><strong>{item.label}</strong><small>{item.description}</small><span className={'tool-status' + (['ubicaciones', 'equipo', 'catalogo'].includes(item.id) ? ' tool-available' : '')}>{['ubicaciones', 'equipo', 'catalogo'].includes(item.id) ? 'Disponible DEMO' : 'Próximamente'}</span></span>
         <Icon name="arrow" size={17} className="tool-arrow"/>
       </AppLink>)}
     </div>
