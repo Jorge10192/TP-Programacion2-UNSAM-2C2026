@@ -46,6 +46,10 @@ export function InventoryBatchCount({
   }
   function stepValue(item: DemoCatalogItem, direction: 1 | -1) {
     const oldValue = values[item.id]
+    if ((!oldValue || !oldValue.trim()) && direction === -1) {
+      setError('El artículo sigue sin contar. Usá «Marcar 0» si verificaste que no hay existencias.')
+      return
+    }
     let milli = 0
     try {
       milli = oldValue && oldValue.trim() ? parseCountedMilli(oldValue, item.unit) : 0
@@ -156,6 +160,7 @@ export function InventoryBatchCount({
                     placeholder="Sin contar" onChange={(event) => write(item.id, event.target.value)}/>
                   <button type="button" aria-label={'Sumar a ' + item.name} onClick={() => stepValue(item, 1)}>+</button>
                   <button type="button" onClick={() => write(item.id, '0')}>Marcar 0</button>
+                  {input.trim() && <button type="button" onClick={() => write(item.id, '')}>Sin contar</button>}
                 </div>
               </div>
               <div className="inventory-audit-difference"><small>Diferencia</small>
