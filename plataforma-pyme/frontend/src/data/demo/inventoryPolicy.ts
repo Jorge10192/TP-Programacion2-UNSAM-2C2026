@@ -6,7 +6,7 @@ import type { CatalogUnit } from './catalogPolicy.ts'
 import { isDiscreteUnit, parseQuantityMilli } from './purchasePolicy.ts'
 
 export type InventoryMovementType =
-  | 'RECEPCION_COMPRA' | 'TRASLADO_SALIDA' | 'TRASLADO_ENTRADA' | 'AJUSTE_CONTEO'
+  | 'RECEPCION_COMPRA' | 'TRASLADO_SALIDA' | 'TRASLADO_ENTRADA' | 'AJUSTE_CONTEO' | 'VENTA_SALIDA'
 
 export type InventoryMovement = {
   id: string
@@ -80,6 +80,7 @@ export const inventoryMovementLabels: Record<InventoryMovementType, string> = {
   TRASLADO_SALIDA: 'Traslado · salida',
   TRASLADO_ENTRADA: 'Traslado · entrada',
   AJUSTE_CONTEO: 'Ajuste por conteo',
+  VENTA_SALIDA: 'Venta · salida de stock',
 }
 
 export function stockKey(locationId: string, catalogItemId: string): string {
