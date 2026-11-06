@@ -4,13 +4,18 @@ import { Sidebar } from './app/shell/SideMenu'
 import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
-import { businessHref, demoBusinesses, navigationItems } from './app/navigation'
+import { businessHref, navigationItems } from './app/navigation'
+import { findDemoBusiness, listDemoBusinesses, useDemoSnapshot } from './data/demo/demoStore'
+import { ProfilePage } from './features/profile/ProfilePage'
+import { BusinessDetailsPage, CreateBusinessPage } from './features/businesses/BusinessPages'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
 import { ComingSoon, NotFound } from './features/common/Feedback'
 import './App.css'
 
 function App() {
+  const snapshot = useDemoSnapshot()
+  const businesses = listDemoBusinesses(snapshot)
   const [pathname, setPathname] = useState(() => window.location.pathname || '/')
   const [menuOpen, setMenuOpen] = useState(false)
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(loadSidebarMode)
@@ -55,7 +60,7 @@ function App() {
 
   const match = /^\/b\/([^/]+)\/([^/]+)$/.exec(pathname)
   const hasBusinessPath = pathname.startsWith('/b/')
-  const business = match ? demoBusinesses.find((item) => item.id === match[1]) : undefined
+  const business = match ? findDemoBusiness(snapshot, match[1]) : undefined
   const section = match?.[2]
   const selectedPage = navigationItems.find((item) => item.segment === section)
   const personal = pathname === '/' || pathname === '/inicio'
@@ -77,20 +82,21 @@ function App() {
   useEffect(() => { document.title = pageTitle + ' · Asistente PyME DEMO' }, [pageTitle])
 
   let content: ReactNode
-  if (personal) content = <Welcome navigate={navigate} />
-  else if (pathname === '/perfil') content = <ComingSoon title="Mi perfil" description="Tu perfil es personal e independiente de cada negocio." navigate={navigate} />
-  else if (pathname === '/empresas/nueva') content = <ComingSoon title="Crear empresa" description="La creación de empresas se implementará en E1-A2." navigate={navigate} />
+  if (personal) content = <Welcome navigate={navigate} businesses={businesses} />
+  else if (pathname === '/perfil') content = <ProfilePage profile={snapshot.profile} companyCount={businesses.length} />
+  else if (pathname === '/empresas/nueva') content = <CreateBusinessPage navigate={navigate} profile={snapshot.profile} />
   else if (hasBusinessPath && !business) content = <NotFound navigate={navigate} accessDenied />
   else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} />
+  else if (business && section === 'empresa') content = <BusinessDetailsPage business={business} navigate={navigate} />
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
   return <div className={'app-layout menu-' + sidebarMode + (menuOpen ? ' menu-drawer-open' : '')}>
     <Sidebar pathname={pathname} business={business} navigate={navigate} mode={sidebarMode} isOpen={menuOpen} onClose={() => setMenuOpen(false)}/>
     <div className="main-column" inert={menuOpen}>
-      <Topbar business={business} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => setSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} />
+      <Topbar business={business} businesses={businesses} profile={snapshot.profile} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => setSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} />
       <main id="main-content" className="main-content">{content}</main>
-      <footer className="app-footer"><span>Asistente PyME · Prototipo E1-A1</span><span>Sin autenticación, stock ni cobros reales</span></footer>
+      <footer className="app-footer"><span>Asistente PyME · Prototipo E1-A2</span><span>Sin autenticación, stock ni cobros reales</span></footer>
     </div>
   </div>
 }
