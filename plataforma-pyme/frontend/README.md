@@ -2,7 +2,7 @@
 
 Plataforma generalista de gestión para múltiples empresas y rubros, desarrollada dentro del TP de Programación 2. WALOS es sólo un negocio de ejemplo, **no** el producto ni su rubro obligatorio.
 
-**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) validado visualmente y con persistencia por el equipo; compilación/lint de ese corte no confirmadas. E1-B2 (avatar, contacto y función por empresa) validado funcionalmente por el equipo. E1-B3 de Ubicaciones validado funcionalmente en el navegador por el equipo. E1-B3.1 (Google Maps y compartir) validado manualmente por el equipo. E1-B4 (Equipo e invitaciones DEMO) validado funcionalmente por el equipo. E1-B5 (Catálogo DEMO) validado funcionalmente por el equipo; su ficha ampliada y el bug de modal fueron corregidos y el último build/lint informó cero errores y cero advertencias. E1-B6 (Proveedores DEMO) validado funcionalmente por el equipo. E1-B7 (Compras y recepción DEMO) validado funcionalmente por el usuario. E1-B8 (Inventario y Movimientos DEMO) validado manualmente por el usuario. E1-B9 (Control de stock multiartículo DEMO) publicado y pendiente de build/lint/tests/QA local. No hay autenticación, autorización real, backend, ventas, caja ni pagos reales.
+**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) validado visualmente y con persistencia por el equipo; compilación/lint de ese corte no confirmadas. E1-B2 (avatar, contacto y función por empresa) validado funcionalmente por el equipo. E1-B3 de Ubicaciones validado funcionalmente en el navegador por el equipo. E1-B3.1 (Google Maps y compartir) validado manualmente por el equipo. E1-B4 (Equipo e invitaciones DEMO) validado funcionalmente por el equipo. E1-B5 (Catálogo DEMO) validado funcionalmente por el equipo; su ficha ampliada y el bug de modal fueron corregidos y el último build/lint informó cero errores y cero advertencias. E1-B6 (Proveedores DEMO) validado funcionalmente por el equipo. E1-B7 (Compras y recepción DEMO) validado funcionalmente por el usuario. E1-B8 (Inventario y Movimientos DEMO) validado manualmente por el usuario. E1-B9 (Control de stock multiartículo DEMO) validado funcionalmente por el usuario. E1-B10 (imágenes de fichas en IndexedDB) publicado y pendiente de build/lint/tests/QA local. No hay autenticación, autorización real, backend, ventas, caja ni pagos reales.
 
 ## Ejecutar en VS Code
 
@@ -36,6 +36,7 @@ Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado
 - **Compras:** multi-renglón, proveedor opcional, artículo del Catálogo o concepto libre, referencia de comprobante, precios ARS y cantidades exactas, historial, filtros y ficha con snapshots. **Registrar no recibe ni paga**; una recepción posterior y explícita genera entradas por artículo físico y ubicación apta, sólo una vez por compra.
 - **Inventario y Movimientos:** stock por artículo físico y ubicación derivado de recepciones, traslados y conteos. Los traslados registran salida y entrada atómicas; los conteos registran la diferencia con motivo. Sin negativos ni cambios automáticos de unidad. Una empresa sin artículos físicos puede tener stock vacío.
 - **Control de stock por ubicación (E1-B9):** sesión multiartículo con progreso, «Sin contar» distinto de «Marcar 0», revisión de diferencias y confirmación atómica. El historial muestra una fila desplegable por sesión; se conserva «Ajuste rápido» por producto.
+- **Imágenes opcionales (E1-B10):** seleccionar/reemplazar/quitar fotos JPG, PNG o WebP de Catálogo, Proveedores, Ubicaciones y Perfil personal. Se guardan optimizadas en IndexedDB del navegador, aisladas por empresa y ficha. Se asocian desde «Editar» luego de crear cada ficha y no alteran el inventario.
 - **Menú de tres líneas:** drawer modal; bloquea el fondo y se cierra desde el fondo, Escape, X o al elegir una sección.
 - **Menú fijo opcional:** expandido, compacto u oculto en escritorio, con preferencia local.
 - **Volver:** contextual dentro de la misma empresa o a su Inicio.
@@ -110,8 +111,8 @@ src/
 - No uses nombres, emails ni datos comerciales reales; cualquiera que tenga acceso al navegador puede leer o modificar estos datos.
 - La UI no constituye autenticación, control de permisos, aislamiento multitenant seguro, respaldo ni garantía de persistencia.
 - El fundador y titular administrativo inicial son campos distintos pero ambos apuntan a la identidad DEMO global en este incremento; transferencias e invitaciones **reales** siguen pendientes. En Equipo sólo hay invitación y aceptación simuladas, sin correo, token ni acceso.
-- Las recepciones de Compras, los traslados y los ajustes por conteo constituyen ahora el ledger local de Inventario DEMO. No están implementados ventas, reservas, costos por lote, caja ni QR de artículo/cobro. Una compra sin recepción no crea existencias. Documentos, imágenes y cambios programados siguen pendientes.
-- React Router, pruebas automatizadas de interfaz, integración de HTML originales restantes, contratos API, TP3 y backend siguen pendientes. Existen pruebas unitarias puras para Maps, Equipo, Catálogo, Proveedores, Compras e Inventario.
+- Las recepciones de Compras, los traslados y los ajustes por conteo constituyen ahora el ledger local de Inventario DEMO. No están implementados ventas, reservas, costos por lote, caja ni QR de artículo/cobro. Una compra sin recepción no crea existencias. Documentos, imágenes de empresa/logos y cambios programados siguen pendientes. Las imágenes de Catálogo, Proveedores, Ubicaciones y Perfil son locales y ya se pueden cargar en la DEMO.
+- React Router, pruebas automatizadas de interfaz, integración de HTML originales restantes, contratos API, TP3 y backend siguen pendientes. Existen pruebas unitarias puras para Maps, Equipo, Catálogo, Proveedores, Compras, Inventario y política de imágenes.
 
 ## QA y decisiones
 
@@ -131,5 +132,6 @@ src/
 - ../docs/16_E1_B7_COMPRAS_RECEPCION_DEMO.md — compras por empresa, snapshots, recepción única y QA; ejecutar también `npm.cmd run test:purchases`
 - ../docs/17_E1_B8_INVENTARIO_MOVIMIENTOS_DEMO.md — ledger, existencias, traslados, conteos y QA; ejecutar `npm.cmd run test:inventory`
 - ../docs/18_E1_B9_CONTROL_STOCK_MULTIPLE.md — control de inventario multiartículo por ubicación y QA; usa `npm.cmd run test:inventory`
+- ../docs/19_E1_B10_IMAGENES_DEMO.md — imágenes locales para Catálogo, Proveedores, Ubicaciones y Perfil; ejecutar `npm.cmd run test:images`
 
 Arquitectura E0-B y ADR-001/002/007 permanecen como **propuestas**, sujetas a validación del equipo. Su adopción DEMO no implica aprobación definitiva.
