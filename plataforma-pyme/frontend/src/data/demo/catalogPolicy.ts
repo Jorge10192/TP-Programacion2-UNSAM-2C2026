@@ -29,6 +29,7 @@ export type CatalogInput = {
   sku: string
   unit: CatalogUnit
   description: string
+  observations: string
   sellable: boolean
   priceCents: number | null
   referenceCostCents: number | null
@@ -76,6 +77,8 @@ export function normalizeCatalogInput(input: CatalogInput): CatalogInput {
   const name = cleanText(input.name, 'El nombre', 2, 90)
   const category = cleanText(input.category || 'General', 'La categoría', 2, 60)
   const description = cleanText(input.description, 'La descripción', 0, 450)
+  // Compatibilidad con fichas anteriores a E1-B5.1, que no tenían observaciones.
+  const observations = cleanText(input.observations ?? '', 'Las observaciones internas', 0, 600)
   const sku = input.sku.trim().toUpperCase()
   if (sku.length > 32 || (sku && !/^[A-Z0-9._-]+$/.test(sku))) {
     throw new Error('El SKU admite hasta 32 caracteres: letras, números, punto, guion o guion bajo.')
@@ -93,7 +96,7 @@ export function normalizeCatalogInput(input: CatalogInput): CatalogInput {
     }
   }
   return {
-    name, kind: input.kind, category, sku, unit: input.unit, description,
+    name, kind: input.kind, category, sku, unit: input.unit, description, observations,
     sellable: input.sellable, priceCents: input.priceCents, referenceCostCents: input.referenceCostCents,
   }
 }
