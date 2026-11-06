@@ -3,6 +3,7 @@
  * de la unidad del Catálogo. Pago DECLARADO no significa cobro verificado.
  */
 import type { CatalogUnit } from './catalogPolicy.ts'
+import type { InventoryMovement } from './inventoryPolicy.ts'
 import { isDiscreteUnit, lineTotalCents } from './purchasePolicy.ts'
 
 export type SalePaymentMethod = 'EFECTIVO' | 'TRANSFERENCIA' | 'CUENTA_DNI' | 'TARJETA' | 'MERCADO_PAGO_DECLARADO'
@@ -31,6 +32,24 @@ export type SaleInput = {
 export type SaleLineSnapshot = SaleLineInput & {
   id: string; name: string; sku: string; unit: CatalogUnit
   kind: 'BIEN' | 'SERVICIO'; lineTotalCents: number
+}
+
+/**
+ * Una venta produce una salida por renglón físico. No hay stock mutable
+ * paralelo ni una segunda operación que pueda descontar las mismas unidades.
+ */
+export function saleInventoryMovements(sale: {
+  id: string; businessId: string; locationId: string | null
+  createdAt: string; lines: SaleLineSnapshot[]
+}): InventoryMovement[] {
+  if (sale.locationId === null) return []
+  return sale.lines.filter((line) => line.kind === 'BIEN').map((line) => ({
+    id: 'demo-sale-stock-' + line.id, operationId: sale.id,
+    businessId: sale.businessId, catalogItemId: line.catalogItemId,
+    itemNameSnapshot: line.name, unit: line.unit, locationId: sale.locationId!,
+    deltaMilli: -line.quantityMilli, type: 'VENTA_SALIDA' as const,
+    createdAt: sale.createdAt, reason: 'Venta registrada DEMO', reference: sale.id,
+  }))
 }
 
 const MAX_SALE_CENTS = 99_999_999_999
