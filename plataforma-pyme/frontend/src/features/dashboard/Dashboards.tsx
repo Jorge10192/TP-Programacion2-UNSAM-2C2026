@@ -69,7 +69,7 @@ export function BusinessDashboard({ business, navigate }: { business: DemoBusine
     <div className="tool-grid">
       {quickActions.map((item, index) => <AppLink to={businessHref(business.id, item.segment)} navigate={navigate} key={item.id} className="tool-card">
         <span className={'feature-icon ' + ['blue', 'mint', 'violet', 'orange'][index % 4]}><Icon name={item.icon} size={24}/></span>
-        <span className="tool-copy"><strong>{item.label}</strong><small>{item.description}</small><span className={'tool-status' + (item.id === 'ubicaciones' ? ' tool-available' : '')}>{item.id === 'ubicaciones' ? 'Disponible DEMO' : 'Próximamente'}</span></span>
+        <span className="tool-copy"><strong>{item.label}</strong><small>{item.description}</small><span className={'tool-status' + (['ubicaciones', 'equipo'].includes(item.id) ? ' tool-available' : '')}>{['ubicaciones', 'equipo'].includes(item.id) ? 'Disponible DEMO' : 'Próximamente'}</span></span>
         <Icon name="arrow" size={17} className="tool-arrow"/>
       </AppLink>)}
     </div>
