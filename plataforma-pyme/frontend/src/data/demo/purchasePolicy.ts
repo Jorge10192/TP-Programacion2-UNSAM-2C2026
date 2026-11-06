@@ -84,7 +84,7 @@ export function sumLineTotals(lines: Pick<PurchaseLineSnapshot, 'totalCents'>[])
 function cleanText(value: unknown, label: string, max: number, min = 0): string {
   if (typeof value !== 'string') throw new Error(label + ': formato inválido.')
   const clean = value.trim().replace(/[\t ]+/g, ' ')
-  if (clean.length < min || clean.length > max || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(clean)) {
+  if (clean.length < min || clean.length > max || [...clean].some((char) => { const code = char.charCodeAt(0); return code <= 8 || code === 11 || code === 12 || (code >= 14 && code <= 31) || code === 127 })) {
     throw new Error(label + ': longitud o caracteres inválidos.')
   }
   return clean
