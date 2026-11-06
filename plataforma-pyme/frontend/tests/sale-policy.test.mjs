@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { saleAmounts, normalizeSaleInput, validateSalePayments, validSaleQuantity } from '../src/data/demo/salePolicy.ts'
+import { saleAmounts, normalizeSaleInput, saleInventoryMovements, validateSalePayments, validSaleQuantity } from '../src/data/demo/salePolicy.ts'
 import { lineTotalCents } from '../src/data/demo/purchasePolicy.ts'
 import { requireTransferStock } from '../src/data/demo/inventoryPolicy.ts'
 
@@ -84,4 +84,39 @@ test('no admite nombres o importes arbitrarios en pagos', () => {
 test('no admite una venta sin renglones ni una total cero', () => {
   assert.throws(() => saleAmounts([], 0), /renglones/)
   assert.throws(() => saleAmounts([line(1000, 0)], 0), /total mayor a cero/)
+})
+
+test('una venta mixta genera exactamente una salida por producto físico', () => {
+  const sale = {
+    id: 'demo-sale-11111111-1111-4111-8111-111111111111',
+    businessId: 'walos-demo',
+    locationId, createdAt: '2026-11-06T16:00:00.000Z',
+    lines: [
+      { id: 'demo-sale-line-11111111-1111-4111-8111-111111111111', catalogItemId: goodId,
+        name: 'Shampoo', sku: 'SHA-001', unit: 'UNIDAD', kind: 'BIEN',
+        quantityMilli: 2000, unitPriceCents: 125050, lineTotalCents: 250100 },
+      { id: 'demo-sale-line-22222222-2222-4222-8222-222222222222',
+        catalogItemId: 'demo-catalog-22222222-2222-4222-8222-222222222222',
+        name: 'Corte', sku: 'CORTE-1', unit: 'SERVICIO', kind: 'SERVICIO',
+        quantityMilli: 1000, unitPriceCents: 100000, lineTotalCents: 100000 },
+    ],
+  }
+  const events = saleInventoryMovements(sale)
+  assert.equal(events.length, 1)
+  assert.equal(events[0].deltaMilli, -2000)
+  assert.equal(events[0].type, 'VENTA_SALIDA')
+  assert.equal(events[0].locationId, locationId)
+  assert.equal(events[0].operationId, sale.id)
+  assert.deepEqual(saleInventoryMovements(sale), events)
+})
+
+test('venta de servicios sin ubicación no crea salidas de inventario', () => {
+  const events = saleInventoryMovements({
+    id: 'demo-sale-service', businessId: 'servicios-demo', locationId: null,
+    createdAt: '2026-11-06T18:00:00.000Z',
+    lines: [{ id: 'demo-sale-line-service', catalogItemId: goodId, name: 'Asesoría',
+      sku: '', unit: 'SERVICIO', kind: 'SERVICIO', quantityMilli: 1000,
+      unitPriceCents: 100000, lineTotalCents: 100000 }],
+  })
+  assert.equal(events.length, 0)
 })
