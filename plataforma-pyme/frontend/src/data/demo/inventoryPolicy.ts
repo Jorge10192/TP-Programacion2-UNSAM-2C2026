@@ -116,6 +116,22 @@ export function countDifference(current: number, counted: number, unit: CatalogU
   return delta
 }
 
+/**
+ * El conteo confirma una foto del saldo vista durante la revisión. Si otra
+ * operación cambió ese saldo, se cancela toda la sesión antes de escribir.
+ */
+export function checkedCountDifference(
+  expectedMilli: number, currentMilli: number, countedMilli: number, unit: CatalogUnit,
+): number {
+  validateStockMilli(expectedMilli, unit, true)
+  validateStockMilli(currentMilli, unit, true)
+  validateStockMilli(countedMilli, unit, true)
+  if (currentMilli !== expectedMilli) {
+    throw new Error('El stock cambió mientras contabas. Volvé a revisar los saldos antes de confirmar.')
+  }
+  return countedMilli - currentMilli
+}
+
 export function normalizeStockReason(reason: string): string {
   if (typeof reason !== 'string') throw new Error('Indicá un motivo para este movimiento.')
   if ([...reason].some((char) => { const code = char.charCodeAt(0); return code <= 31 || code === 127 })) {
