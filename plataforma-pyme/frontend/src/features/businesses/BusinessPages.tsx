@@ -73,7 +73,7 @@ export function CreateBusinessPage({ navigate, profile }: { navigate: Navigate; 
   </>
 }
 
-export function BusinessDetailsPage({ business, navigate }: { business: DemoBusiness; navigate: Navigate }) {
+export function BusinessDetailsPage({ business, profile, navigate }: { business: DemoBusiness; profile: DemoProfile; navigate: Navigate }) {
   return <>
     <div className="page-heading"><div><p className="eyebrow">ADMINISTRACIÓN DEL NEGOCIO</p><h1>Datos de la empresa</h1><p>Información inicial del negocio seleccionado.</p></div></div>
     <section className="form-panel business-overview">
@@ -84,7 +84,7 @@ export function BusinessDetailsPage({ business, navigate }: { business: DemoBusi
       <div className="detail-grid">
         <div><small>Actividad</small><strong>{kindLabels[business.kind]}</strong></div>
         <div><small>Identificador DEMO</small><strong>{business.id}</strong></div>
-        <div><small>Fundador y responsable inicial</small><strong>Usuario DEMO</strong></div>
+        <div><small>Fundador y responsable inicial</small><strong>{profile.displayName} (DEMO)</strong></div>
         <div><small>Descripción</small><strong>{business.description || 'Sin descripción'}</strong></div>
       </div>
       <div className="informational-note"><Icon name="shield" size={19}/><span>Esta ficha es de solo lectura en E1-A2. La edición de empresas y los permisos reales se incorporarán en próximos incrementos.</span></div>
