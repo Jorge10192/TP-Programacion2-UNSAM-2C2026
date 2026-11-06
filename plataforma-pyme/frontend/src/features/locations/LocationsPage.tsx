@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
+import { DemoPhoto, DemoImagePicker } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 import { demoGateway, locationKindLabels } from '../../data/demo/demoStore'
 import { getLocationMapsLink, locationShareText, mapsSearchUrl } from '../../data/demo/mapsLinks'
 import type { DemoBusiness, DemoLocation, LocationInput, LocationKind } from '../../data/demo/demoStore'
@@ -151,6 +153,8 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
         <div><h2>{editingLocation ? 'Editar ubicación' : 'Nueva ubicación'}</h2><p>Se guardará únicamente dentro de {business.name}.</p></div>
       </div>
       <form className="demo-form" onSubmit={submit}>
+        {editingLocation ? <DemoImagePicker imageKey={demoImageKey('location', business.id, editingLocation.id)} label="Foto de la ubicación"/> :
+          <p className="form-hint">Guardá primero la ubicación; después podés añadir una fotografía desde «Editar».</p>}
         <div className="locations-form-grid">
           <label className="form-field"><span>Nombre de la ubicación *</span>
             <input autoFocus required minLength={2} maxLength={80} value={draft.name} onChange={(event) => setDraft((x) => ({ ...x, name: event.target.value }))} placeholder="Ej.: Local centro / Feria del sábado" />
@@ -198,7 +202,8 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
     <div className="locations-grid">
       {locations.map((location) => <article className={'location-card' + (location.status === 'PAUSADA' ? ' location-paused' : '')} key={location.id}>
         <div className="location-card-heading">
-          <span className="feature-icon blue"><Icon name={typeIcon(location.kind)} size={22}/></span>
+          <DemoPhoto imageKey={demoImageKey('location', business.id, location.id)} alt={'Foto de ' + location.name}
+            fallback={<Icon name={typeIcon(location.kind)} size={22}/>} className="feature-icon blue demo-photo-list"/>
           <div><h3>{location.name}</h3><p>{locationKindLabels[location.kind]}</p></div>
           <span className={'location-status ' + (location.status === 'ACTIVA' ? 'active' : 'paused')}>{location.status === 'ACTIVA' ? 'Activa' : 'Pausada'}</span>
         </div>
