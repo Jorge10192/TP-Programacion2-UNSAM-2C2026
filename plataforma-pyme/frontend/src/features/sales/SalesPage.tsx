@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { demoGateway } from '../../data/demo/demoStore'
 import type { DemoBusiness, DemoCatalogItem, DemoLocation, DemoSale } from '../../data/demo/demoStore'
+import type { DemoCashSession } from '../../data/demo/cashPolicy'
 import { moneyDisplay, moneyInput, parseMoneyCents } from '../../data/demo/catalogPolicy'
 import { lineTotalCents, parseQuantityMilli, quantityText } from '../../data/demo/purchasePolicy'
 import { saleAmounts, salePaymentLabels } from '../../data/demo/salePolicy'
@@ -18,12 +19,13 @@ type DraftPayment = { key: string; method: SalePaymentMethod; amount: string }
 const newLine = (): DraftLine => ({ key: crypto.randomUUID(), catalogItemId: '', quantity: '1', price: '' })
 const newPayment = (): DraftPayment => ({ key: crypto.randomUUID(), method: 'EFECTIVO', amount: '' })
 
-export function SalesPage({ business, items, locations, movements, sales }: {
+export function SalesPage({ business, items, locations, movements, sales, sessions }: {
   business: DemoBusiness
   items: DemoCatalogItem[]
   locations: DemoLocation[]
   movements: InventoryMovement[]
   sales: DemoSale[]
+  sessions: DemoCashSession[]
 }) {
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
@@ -63,12 +65,12 @@ export function SalesPage({ business, items, locations, movements, sales }: {
     </section>
     <div className="informational-note">
       <Icon name="shield" size={19}/>
-      <span><strong>Simulación local.</strong> Los pagos se registran como declarados por quien opera, no se verifican en bancos ni en Mercado Pago. Una venta descuenta existencias una sola vez. Todavía no se realizan arqueos ni movimientos de caja.</span>
+      <span><strong>Simulación local.</strong> Los pagos se registran como declarados por quien opera, no se verifican en bancos ni en Mercado Pago. Una venta descuenta existencias una sola vez. Los cobros en efectivo se incluyen en una caja sólo cuando existe una jornada abierta para esa ubicación.</span>
     </div>
     {notice && <p className="form-message success" role="status">{notice}</p>}
 
     {creating && <SaleForm key={business.id + ':' + formVersion}
-      business={business} items={items} locations={locations} movements={movements}
+      business={business} items={items} locations={locations} movements={movements} sessions={sessions}
       onSaved={saved} onCancel={() => setCreating(false)}/>}
 
     <section className="form-panel sales-history">
@@ -104,6 +106,7 @@ export function SalesPage({ business, items, locations, movements, sales }: {
       </div>
       <p><strong>{business.name}</strong> · {new Date(selected.createdAt).toLocaleString('es-AR')} · <code>{selected.id}</code></p>
       <p>Ubicación: {locations.find((location) => location.id === selected.locationId)?.name ?? 'Sin ubicación física (servicios)'}</p>
+      <p>Jornada de caja: {selected.cashSessionId ? 'Vinculada a una jornada DEMO (sólo suma los pagos en efectivo).' : 'Sin jornada vinculada; no ingresa en arqueos de caja.'}</p>
       <div className="sales-receipt-list">
         {selected.lines.map((line) => <div key={line.id}>
           <strong>{line.name}</strong><span>{quantityText(line.quantityMilli, line.unit)} × {moneyDisplay(line.unitPriceCents)}</span>
@@ -123,9 +126,10 @@ export function SalesPage({ business, items, locations, movements, sales }: {
   </>
 }
 
-function SaleForm({ business, items, locations, movements, onSaved, onCancel }: {
+function SaleForm({ business, items, locations, movements, sessions, onSaved, onCancel }: {
   business: DemoBusiness; items: DemoCatalogItem[]; locations: DemoLocation[]
   movements: InventoryMovement[]
+  sessions: DemoCashSession[]
   onSaved: (id: string) => void; onCancel: () => void
 }) {
   const [requestId] = useState(() => 'demo-sale-request-' + crypto.randomUUID())
@@ -141,6 +145,8 @@ function SaleForm({ business, items, locations, movements, onSaved, onCancel }: 
   const byId = new Map(items.map((item) => [item.id, item]))
   const physicalSelected = lines.some((line) => line.catalogItemId && byId.get(line.catalogItemId)?.kind !== 'SERVICIO')
   const eligibleLocations = sellLocations.filter((location) => !physicalSelected || location.canStore)
+  const linkedCashSession = sessions.find((session) => session.status === 'ABIERTA' && session.locationId === (locationId || null))
+  const hasCash = payments.some((payment) => payment.method === 'EFECTIVO')
 
   const selectedMilli = new Map<string, number>()
   const selectedIds = new Set<string>()
@@ -334,7 +340,13 @@ function SaleForm({ business, items, locations, movements, onSaved, onCancel }: 
         <button type="button" className="button button-secondary" disabled={payments.length >= 6}
           onClick={() => setPayments((old) => [...old, newPayment()])}><Icon name="plus" size={16}/> Agregar medio</button>
       </div>
-      <div className="informational-note"><Icon name="shield" size={17}/><span>Los importes declarados deben sumar exactamente el total. Transferencia, tarjetas, Cuenta DNI y Mercado Pago no se verifican en esta DEMO. Todavía no hay jornada de caja.</span></div>
+      <div className="informational-note"><Icon name="shield" size={17}/><span>Los importes declarados deben sumar exactamente el total. Transferencia, tarjetas, Cuenta DNI y Mercado Pago no se verifican en esta DEMO. La caja registra únicamente los pagos en efectivo de ventas vinculadas a una jornada abierta.</span></div>
+      {hasCash && <p className={'cash-form-hint ' + (linkedCashSession ? 'linked' : 'unlinked')}>
+        <Icon name={linkedCashSession ? 'shield' : 'clock'} size={17}/>
+        {linkedCashSession
+          ? 'La parte en efectivo de esta venta quedará vinculada a la jornada abierta de la ubicación elegida.'
+          : 'No hay una jornada abierta para esta ubicación. Podés registrar la venta, pero el efectivo no ingresará en ningún arqueo de caja.'}
+      </p>}
       {payments.map((payment, index) => <div className="sales-payment-row" key={payment.key}>
         <label className="form-field"><span>Medio de pago {index + 1}</span>
           <select value={payment.method} onChange={(event) => patchPayment(payment.key, { method: event.target.value as SalePaymentMethod })}>
