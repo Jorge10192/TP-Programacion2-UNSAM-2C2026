@@ -1,32 +1,75 @@
-# React + TypeScript + Vite
+# Asistente PyME — Frontend (DEMO)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Primer incremento de la plataforma multinegocio y multirrubro, dentro del repositorio del TP de Programación 2.
 
-Currently, two official plugins are available:
+**Estado:** E1-A1: shell visual, navegación DEMO y placeholders. **No es una aplicación comercial funcional**: no hay cuentas reales, permisos de servidor, altas persistidas, stock, ventas, caja ni cobros.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+El diseño toma como referencia la matriz E0-A de ../docs/00_MATRIZ_INTEGRACION_HTML.md, en particular Z003 (Menú principal) y Z014 (Módulo 1 v1.2). WALOS es únicamente una empresa ficticia de prueba.
 
-## React Compiler
+## Para ejecutar en VS Code
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Abrir una terminal en la raíz del repositorio:
 
-## Expanding the Oxlint configuration
+~~~powershell
+cd plataforma-pyme/frontend
+npm.cmd install
+npm.cmd run dev
+~~~
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+Abrir la dirección que anuncie Vite, generalmente http://localhost:5173/.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+Para verificar tipos y compilación:
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+~~~powershell
+npm.cmd run build
+npm.cmd run lint
+~~~
+
+No se requieren PostgreSQL, FastAPI ni Mercado Pago para este incremento. Detener Vite con Ctrl+C.
+
+## Qué se puede recorrer
+
+- **Mi espacio personal**: pantalla inicial, tres empresas ficticias y accesos a Mi perfil/Crear empresa (ambos como «Próximamente»).
+- **Panel de empresa**: tarjetas de resumen sin cifras inventadas, accesos a secciones comerciales y administrativas.
+- **Navegación lateral** y barra superior: todos los destinos de la matriz E0-A; secciones aún no implementadas muestran un aviso claro.
+- **Selector de empresa**: cambia entre fixtures de presentación, sin transportar datos de pantalla.
+- **Móvil**: menú lateral desplegable, layout adaptable y navegación con enlaces reales.
+
+Rutas útiles:
+
+- /inicio
+- /b/walos-demo/inicio
+- /b/comercio-demo/inicio
+- /b/servicios-demo/inicio
+- /b/walos-demo/catalogo (placeholder)
+- /perfil (placeholder)
+
+La navegación se implementó provisionalmente con History API del navegador **sin dependencias adicionales**. La adopción de React Router, prevista en E0-B/ADR-007, queda para el siguiente corte de integración; no es un router final.
+
+## Estructura
+
+~~~text
+src/
+├── App.tsx
+├── app/
+│   ├── navigation.ts
+│   ├── Icon.tsx
+│   ├── AppLink.tsx
+│   ├── types.ts
+│   └── shell/
+│       ├── SideMenu.tsx
+│       └── TopBar.tsx
+└── features/
+    ├── dashboard/Dashboards.tsx
+    └── common/Feedback.tsx
+~~~
+
+## Límites importantes
+
+- Los fixtures de las tres empresas son **públicos y estáticos**. El selector no implementa autorización, privacidad real ni separación entre usuarios.
+- Las cifras comerciales usan guiones («—») y no se generan registros ficticios que aparenten existir.
+- «Crear empresa», «Mi perfil» y las secciones comerciales no guardan datos.
+- No hay persistencia DEMO, gateway, Zustand, React Router, tests E2E, backend ni QR de Mercado Pago. Su implementación y aceptación pertenecen a futuros tickets E1.
+- No utilizar esta interfaz para datos personales, comerciales ni financieros reales.
+
+Para revisar estado, QA y pasos siguientes: ../docs/04_E1_A1_PRIMER_SHELL.md.
