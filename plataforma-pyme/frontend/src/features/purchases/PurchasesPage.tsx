@@ -43,9 +43,11 @@ export function PurchasesPage({
     ].some((value) => value.toLocaleLowerCase('es-AR').includes(term))))
   const detailed = detailId ? purchases.find((item) => item.id === detailId) : undefined
 
-  function saveSuccess(id: string) {
+  function saveSuccess(id: string, containsPhysicalGoods: boolean) {
     setCreating(false)
-    setNotice('Compra registrada en esta empresa. No se registró un pago ni se incrementó el stock.')
+    setNotice(containsPhysicalGoods
+      ? 'Compra guardada. El paso pendiente es elegir la ubicación y confirmar la recepción de los bienes para que ingresen a Inventario.'
+      : 'Compra registrada en esta empresa. No hay recepción física pendiente ni se registró un pago.')
     setFilter('TODAS')
     setDetailId(id)
   }
@@ -129,7 +131,9 @@ export function PurchasesPage({
             </div>
             <div className="purchase-card-right">
               <strong>{moneyDisplay(purchase.totalCents)}</strong>
-              <button type="button" className="button button-secondary" onClick={() => setDetailId(purchase.id)}>Ver compra <Icon name="arrow" size={15}/></button>
+              <button type="button" className="button button-secondary" onClick={() => setDetailId(purchase.id)}>
+                {state === 'PENDIENTE' ? 'Confirmar ubicación y recepción' : 'Ver compra'} <Icon name="arrow" size={15}/>
+              </button>
             </div>
           </article>
         })}
