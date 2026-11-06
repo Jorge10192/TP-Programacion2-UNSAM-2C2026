@@ -27,10 +27,12 @@ const editableFields: FieldDefinition[] = [
 export function BusinessDetailsPage({
   business,
   profile,
+  jobTitle,
   navigate,
 }: {
   business: DemoBusiness
   profile: DemoProfile
+  jobTitle: string
   navigate: Navigate
 }) {
   const [editing, setEditing] = useState<EditableBusinessField | null>(null)
@@ -139,13 +141,14 @@ export function BusinessDetailsPage({
           <p className="business-aside-description">Todavía no hay carga de archivos ni almacenamiento documental. No se muestran cifras o documentos ficticios.</p>
         </section>
         <section className="form-panel">
-          <div className="business-aside-heading"><span className="feature-icon mint"><Icon name="shield" size={21}/></span><div><h2>Responsabilidad inicial</h2><p>Información de la membresía DEMO.</p></div></div>
+          <div className="business-aside-heading"><span className="feature-icon mint"><Icon name="shield" size={21}/></span><div><h2>Tu vínculo con la empresa</h2><p>Función laboral y responsabilidad administrativa son datos diferentes.</p></div></div>
           <dl className="business-owner-facts">
             <div><dt>Perfil personal</dt><dd>{profile.displayName}</dd></div>
-            <div><dt>Rol de demostración</dt><dd>Titular administrativo inicial</dd></div>
+            <div><dt>Función laboral en esta empresa</dt><dd>{jobTitle || 'No indicada'}</dd></div>
+            <div><dt>Responsabilidad administrativa (DEMO)</dt><dd>Titular administrativo inicial</dd></div>
             <div><dt>ID interno</dt><dd>{business.id}</dd></div>
           </dl>
-          <p className="business-aside-description">Esta vista no acredita titularidad legal ni establece permisos de servidor.</p>
+          <p className="business-aside-description">La función laboral describe tu puesto; no modifica tu responsabilidad administrativa. Ninguno de estos valores establece permisos reales de servidor.</p>
         </section>
       </aside>
     </div>
