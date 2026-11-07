@@ -61,7 +61,7 @@ export function QrDemoPanel({ intent, business, onApproved, onCanceled, onClose 
         {intent.status === 'PENDIENTE' && <div className="form-actions qr-demo-actions">
           <button type="button" className="button button-secondary" disabled={busy} onClick={() => void act('cancel')}>Cancelar intención</button>
           <button type="button" className="button button-primary" disabled={busy} onClick={() => void act('approve')}>
-            <Icon name="check" size={16}/>{busy ? 'Procesando…' : 'Simular aprobación (sin cobro real)'}
+            <Icon name="shield" size={16}/>{busy ? 'Procesando…' : 'Simular aprobación (sin cobro real)'}
           </button>
         </div>}
         {intent.status === 'SIMULADO_APROBADO' && <p className="cash-form-hint linked"><Icon name="receipt" size={17}/> Se registró una única venta DEMO. Se puede consultar en el historial de ventas.</p>}
