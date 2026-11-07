@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   blankFinancialAccount, normalizeFinancialAccountInput,
   financialAccountKey, financialAccountShareText,
-  maskedAccountIdentifier, financialChannelLabels,
+  maskedAccountIdentifier, financialChannelLabels, accountSupportsDeclaredPayment,
 } from '../src/data/demo/financialAccountPolicy.ts'
 
 const bank = {
@@ -96,4 +96,21 @@ test('los tipos de cuenta no incorporan saldos, dinero ni secretos', () => {
   assert.equal('balanceCents' in fields, false)
   assert.equal('accessToken' in fields, false)
   assert.equal('password' in fields, false)
+})
+
+test('sólo permite asociar una cuenta activa del canal declarado', () => {
+  const bank = { status: 'ACTIVA', channel: 'TRANSFERENCIA' }
+  const inactive = { status: 'INACTIVA', channel: 'TRANSFERENCIA' }
+  const wallet = { status: 'ACTIVA', channel: 'MERCADO_PAGO_DECLARADO' }
+  assert.equal(accountSupportsDeclaredPayment(bank, 'TRANSFERENCIA'), true)
+  assert.equal(accountSupportsDeclaredPayment(inactive, 'TRANSFERENCIA'), false)
+  assert.equal(accountSupportsDeclaredPayment(wallet, 'MERCADO_PAGO_DECLARADO'), true)
+  assert.equal(accountSupportsDeclaredPayment(wallet, 'TRANSFERENCIA'), false)
+  assert.equal(accountSupportsDeclaredPayment(bank, 'EFECTIVO'), false)
+  assert.equal(accountSupportsDeclaredPayment(bank, 'TARJETA'), false)
+})
+test('Cuenta DNI y otros medios requieren compatibilidad explícita', () => {
+  assert.equal(accountSupportsDeclaredPayment({ status: 'ACTIVA', channel: 'CUENTA_DNI' }, 'CUENTA_DNI'), true)
+  assert.equal(accountSupportsDeclaredPayment({ status: 'ACTIVA', channel: 'CUENTA_DNI' }, 'TRANSFERENCIA'), false)
+  assert.equal(accountSupportsDeclaredPayment({ status: 'ACTIVA', channel: 'OTRO_DECLARADO' }, 'OTRO_DECLARADO'), true)
 })
