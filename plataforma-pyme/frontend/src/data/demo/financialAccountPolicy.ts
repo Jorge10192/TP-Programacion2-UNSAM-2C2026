@@ -103,3 +103,13 @@ export function financialAccountShareText(account: Pick<DemoFinancialAccount,
   ]
   return lines.filter(Boolean).join('\n')
 }
+
+/** Una cuenta de referencia sólo se ofrece para operaciones compatibles. */
+export function accountSupportsDeclaredPayment(account: Pick<DemoFinancialAccount, 'status' | 'channel'>, method: string): boolean {
+  if (account.status !== 'ACTIVA') return false
+  if (method === 'TRANSFERENCIA') return account.channel === 'TRANSFERENCIA'
+  if (method === 'CUENTA_DNI') return account.channel === 'CUENTA_DNI'
+  if (method === 'MERCADO_PAGO_DECLARADO') return account.channel === 'MERCADO_PAGO_DECLARADO'
+  if (method === 'OTRO_DECLARADO') return account.channel === 'OTRO_DECLARADO'
+  return false // Efectivo y tarjeta no usan cuentas bancarias de referencia.
+}
