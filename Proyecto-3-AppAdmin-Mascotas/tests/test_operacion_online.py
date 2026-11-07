@@ -440,10 +440,10 @@ def test_cronologia_utc_independiente_de_zona_postgresql_y_legado_sin_zona(onlin
     if original_engine.dialect.name == 'postgresql':
         # Per-connection setting on this disposable test DB only; no ALTER/host TZ.
         zoned = create_engine(original_engine.url, connect_args={
-            'options': '-c timezone=America/Buenos_Aires'})
+            'options': '-c timezone=America/Argentina/Buenos_Aires'})
         case.sessions.configure(bind=zoned)
         with case.sessions() as db:
-            assert db.scalar(text("SELECT current_setting('TimeZone')")) == 'America/Buenos_Aires'
+            assert db.scalar(text("SELECT current_setting('TimeZone')")) == 'America/Argentina/Buenos_Aires'
             local, utc_clock = db.execute(text("SELECT now()::timestamp, now() AT TIME ZONE 'UTC'")).one()
             assert utc_clock - local == timedelta(hours=3)
     try:

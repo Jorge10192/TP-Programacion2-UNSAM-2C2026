@@ -2,13 +2,13 @@ import { expect, test } from '@playwright/test'
 
 test('navegación personal, tenants, placeholder y URL de empresa ajena', async ({ page }) => {
   await page.goto('/inicio')
-  await expect(page.getByRole('heading', { name: 'Bienvenido a tu espacio de trabajo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Empezá tu jornada', level: 1, exact: true })).toBeVisible()
 
   await page.goto('/b/walos-demo/inicio')
-  await expect(page.locator('.business-hero h2')).toHaveText('WALOS')
+  await expect(page.getByRole('heading', { name: 'Tu jornada en WALOS', level: 1, exact: true })).toBeVisible()
 
   await page.goto('/b/comercio-demo/inicio')
-  await expect(page.locator('.business-hero h2')).toHaveText('Comercio Ejemplo')
+  await expect(page.getByRole('heading', { name: 'Tu jornada en Comercio Ejemplo', level: 1, exact: true })).toBeVisible()
 
   await page.goto('/b/walos-demo/analisis')
   await expect(page.getByRole('heading', { name: 'Estamos preparando esta sección' })).toBeVisible()
@@ -44,7 +44,7 @@ test('servicio por empresa y QR DEMO: pendiente, persistencia, cancelación y ap
   await page.getByLabel('Nombre del artículo o servicio *').fill(service)
   await page.getByLabel('Tipo *').selectOption('SERVICIO')
   await page.getByLabel('Precio de lista (ARS, opcional)').fill('1500,00')
-  await page.getByRole('button', { name: 'Agregar a catálogo DEMO' }).click()
+  await page.getByRole('button', { name: 'Agregar a catálogo', exact: true }).click()
   await expect(page.getByText(service, { exact: true })).toBeVisible()
 
   await page.goto('/b/comercio-demo/catalogo')
@@ -61,7 +61,7 @@ test('servicio por empresa y QR DEMO: pendiente, persistencia, cancelación y ap
   }
 
   await createQr()
-  await expect(page.getByRole('heading', { name: 'Comprobante de venta DEMO' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Comprobante de venta', level: 2, exact: true })).toHaveCount(0)
 
   // El estado sobrevive F5. En otra empresa el QR no debe aparecer.
   await page.reload()
@@ -78,7 +78,7 @@ test('servicio por empresa y QR DEMO: pendiente, persistencia, cancelación y ap
 
   await createQr()
   await page.getByRole('button', { name: 'Simular aprobación (sin cobro real)' }).click()
-  await expect(page.getByRole('heading', { name: 'Comprobante de venta DEMO' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Comprobante de venta', level: 2, exact: true })).toBeVisible()
   await expect(page.locator('.sales-list-row')).toHaveCount(1)
   await page.reload()
   await expect(page.locator('.sales-list-row')).toHaveCount(1)
