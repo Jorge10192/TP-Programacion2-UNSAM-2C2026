@@ -30,3 +30,6 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+markers = [
+    "integration: tests de integracion con PostgreSQL real (requieren RUN_DB_INTEGRATION=1)",
+]
