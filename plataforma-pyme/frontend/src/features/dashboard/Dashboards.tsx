@@ -59,7 +59,7 @@ export function BusinessDashboard({ business, navigate, catalogCount, movementCo
       <button type="button" className="button button-secondary hero-action" onClick={() => navigate(businessHref(business.id, 'empresa'))}>Ver empresa <Icon name="arrow" size={16}/></button>
     </section>
 
-    <div className="section-header"><div><h2>Resumen del negocio</h2><p>Los indicadores aparecerán cuando conectemos las operaciones.</p></div><span className="small-pill">Sin datos reales</span></div>
+    <div className="section-header"><div><h2>Resumen del negocio</h2><p>Indicadores calculados con las operaciones registradas en esta empresa DEMO.</p></div><span className="small-pill">Sin datos reales</span></div>
     <div className="stats-grid">
       {summaryCards.map((item) => <div key={item.label} className="stat-card">
         <span className={'feature-icon ' + item.accent}><Icon name={item.icon} size={20}/></span>

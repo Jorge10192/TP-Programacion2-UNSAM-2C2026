@@ -1,6 +1,6 @@
 # E1-D1 — Cobro con QR visual DEMO
 
-**Estado:** construido en rama de integración; pruebas locales y navegación pendientes de validar por el equipo.
+**Estado:** E1-D1 validado manualmente por el usuario en el navegador, incluyendo QR pendiente sin venta, cancelación y bloqueo de aprobación al desactivar un artículo. La integración externa con Mercado Pago continúa fuera del MVP.
 
 ## Alcance
 

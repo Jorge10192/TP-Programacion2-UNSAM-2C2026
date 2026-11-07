@@ -146,7 +146,7 @@ function App() {
     <div className="main-column" inert={menuOpen}>
       <Topbar business={business} businesses={businesses} profile={snapshot.profile} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => setSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} />
       <main id="main-content" className="main-content">{content}</main>
-      <footer className="app-footer"><span>Asistente PyME · Prototipo E1-A2</span><span>Sin autenticación ni cobros reales · Stock sólo DEMO</span></footer>
+      <footer className="app-footer"><span>Asistente PyME · Prototipo E1-D2</span><span>Sin autenticación ni pagos reales · Datos locales DEMO</span></footer>
     </div>
   </div>
 }

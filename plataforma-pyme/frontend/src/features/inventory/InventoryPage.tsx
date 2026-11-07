@@ -121,7 +121,7 @@ export function InventoryPage({
       <div>
         <p className="eyebrow">OPERACIONES · EMPRESA DEMO</p>
         <h1>{initialTab === 'movements' ? 'Movimientos de inventario' : 'Inventario'}</h1>
-        <p>Existencias por ubicación calculadas a partir de recepciones, traslados y conteos en «{business.name}».</p>
+        <p>Existencias por ubicación derivadas de recepciones, traslados, conteos y ventas en «{business.name}».</p>
       </div>
       <div className="inventory-heading-actions">
         <button type="button" className="button button-secondary" disabled={!canAct || !canMove}

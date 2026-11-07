@@ -2,7 +2,7 @@
 
 Plataforma generalista de gestión para múltiples empresas y rubros, desarrollada dentro del TP de Programación 2. WALOS es sólo un negocio de ejemplo, **no** el producto ni su rubro obligatorio.
 
-**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) validado visualmente y con persistencia por el equipo; compilación/lint de ese corte no confirmadas. E1-B2 (avatar, contacto y función por empresa) validado funcionalmente por el equipo. E1-B3 de Ubicaciones validado funcionalmente en el navegador por el equipo. E1-B3.1 (Google Maps y compartir) validado manualmente por el equipo. E1-B4 (Equipo e invitaciones DEMO) validado funcionalmente por el equipo. E1-B5 (Catálogo DEMO) validado funcionalmente por el equipo; su ficha ampliada y el bug de modal fueron corregidos y el último build/lint informó cero errores y cero advertencias. E1-B6 (Proveedores DEMO) validado funcionalmente por el equipo. E1-B7 (Compras y recepción DEMO) validado funcionalmente por el usuario. E1-B8 (Inventario y Movimientos DEMO) validado manualmente por el usuario. E1-B9 (Control de stock multiartículo DEMO) validado funcionalmente por el usuario. E1-B10 (imágenes de fichas en IndexedDB) validado en el equipo: build, lint, 6 tests y funcionamiento visual. E1-C1 (Ventas DEMO conectadas a Inventario) ya probado funcionalmente por el usuario; E1-C1.1 (selector visual POS con fotos, filtros y stock por ubicación) publicado y pendiente de build/lint/QA local. E1-C2 (Gastos y Apertura/Cierre DEMO) probado visual y funcionalmente por el usuario, incluido cierre con diferencia y snapshot persistido. E1-C3 (Cuentas y medios DEMO) y E1-C3.1 (asociación opcional de cuentas en Ventas/Gastos) validados en build, lint y QA manual por el usuario. E1-D1 (QR visual DEMO, sin pagos reales) y el ajuste de completar saldo del último medio están en integración con CI; queda QA visual del usuario. No hay autenticación, autorización real, backend ni pagos externos verificados.
+**Estado:** E1-A1 (shell/navegación) verificado por el equipo con build, lint y revisión visual. E1-A2.1 (perfil personal y creación de empresas DEMO) validado visualmente por el equipo. E1-B1 (Datos de la Empresa editables) validado visualmente y con persistencia por el equipo; compilación/lint de ese corte no confirmadas. E1-B2 (avatar, contacto y función por empresa) validado funcionalmente por el equipo. E1-B3 de Ubicaciones validado funcionalmente en el navegador por el equipo. E1-B3.1 (Google Maps y compartir) validado manualmente por el equipo. E1-B4 (Equipo e invitaciones DEMO) validado funcionalmente por el equipo. E1-B5 (Catálogo DEMO) validado funcionalmente por el equipo; su ficha ampliada y el bug de modal fueron corregidos y el último build/lint informó cero errores y cero advertencias. E1-B6 (Proveedores DEMO) validado funcionalmente por el equipo. E1-B7 (Compras y recepción DEMO) validado funcionalmente por el usuario. E1-B8 (Inventario y Movimientos DEMO) validado manualmente por el usuario. E1-B9 (Control de stock multiartículo DEMO) validado funcionalmente por el usuario. E1-B10 (imágenes de fichas en IndexedDB) validado en el equipo: build, lint, 6 tests y funcionamiento visual. E1-C1 (Ventas DEMO conectadas a Inventario) ya probado funcionalmente por el usuario; E1-C1.1 (selector visual POS con fotos, filtros y stock por ubicación) publicado y pendiente de build/lint/QA local. E1-C2 (Gastos y Apertura/Cierre DEMO) probado visual y funcionalmente por el usuario, incluido cierre con diferencia y snapshot persistido. E1-C3 (Cuentas y medios DEMO) y E1-C3.1 (asociación opcional de cuentas en Ventas/Gastos) validados en build, lint y QA manual por el usuario. E1-D1 (QR visual DEMO y completar el último medio) validado manualmente por el usuario, incluida la aprobación rechazada si se desactiva el artículo antes de confirmar. E1-D2 agrega recorridos automatizados de navegador escritorio/móvil, QA de integración y documentación de cierre; sin seguridad backend todavía. No hay autenticación, autorización real, backend ni pagos externos verificados.
 
 ## Ejecutar en VS Code
 
@@ -149,3 +149,20 @@ src/
 - ../docs/24_E1_C3_CUENTAS_Y_MEDIOS_DEMO.md — Cuentas de referencia, billeteras, protección de datos, aislamiento y QA; ejecutar `npm.cmd run test:accounts`
 
 Arquitectura E0-B y ADR-001/002/007 permanecen como **propuestas**, sujetas a validación del equipo. Su adopción DEMO no implica aprobación definitiva.
+
+## Pruebas de integración de navegador E1-D2
+
+Además de `npm.cmd run build`, `npm.cmd run lint` y los tests `npm.cmd run test:...`, hay recorridos reales de **Playwright / Chromium** en dos formatos: escritorio y móvil. Las dependencias de Playwright están aisladas en `e2e/`; no se alteró el package-lock del frontend.
+
+```powershell
+# Desde plataforma-pyme/frontend
+npm.cmd ci
+cd e2e
+npm.cmd install
+npx.cmd playwright install chromium
+npm.cmd test
+```
+
+Los tests crean su propio contexto de navegador y datos ficticios. Validan rutas válidas y ajenas, placeholder, foco/ESC del drawer, ausencia de scroll horizontal, aislamiento de catálogo, intención QR, F5, cancelación y aprobación única. CI ejecuta esta suite junto con las pruebas unitarias y conserva evidencias ante fallos. **No sustituyen** la QA real del usuario sobre imágenes locales, caja, ventas físicas ni permisos del servidor futuro.
+
+La matriz y límites de esta etapa están en `../docs/27_E1_D2_INTEGRACION_Y_CIERRE_FRONTEND.md`.
