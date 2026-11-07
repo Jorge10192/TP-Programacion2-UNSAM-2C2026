@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1.2A: registro de usuarios con Argon2id y pruebas; login/sesiones pendientes de E2-1.2B. Frontend React DEMO permanece independiente.
+**Estado:** E2-1.2B: registro Argon2id + login, /me, logout y sesiones personales revocables. Frontend DEMO independiente.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -291,3 +291,35 @@ Remove-Item Env:\RUN_DB_INTEGRATION
 Las pruebas HTTP contra PostgreSQL usan una transaccion exterior y SAVEPOINT: las altas de prueba se revierten siempre, sin guardar usuarios. GitHub Actions ejecuta las pruebas en una base efimera. Para probar manualmente Swagger, usar la API en `http://127.0.0.1:8000/docs` (Uvicorn Windows) o reconstruir la imagen Docker y abrir `http://127.0.0.1:18000/docs`.
 
 **No enviar credenciales reales en mensajes ni archivos.** Una alta manual realizada fuera de tests **si persiste**. Para despliegue publico faltan HTTPS, controles antiabuso y antifuerza bruta, proteccion frente a enumeracion (409 revela duplicados), verificacion/recuperacion de email y gestion de sesiones. E2-1.2B incorporara login, expiracion y revocacion. No se modifico el frontend.
+
+## E2-1.2B — Sesiones personales
+
+Nueva revisión Alembic `e212b_sessions`: tabla `auth_sessions` vinculada a `users` con FK, huella SHA-256 única del token, fechas de creación, vencimiento y revocación. No guarda el bearer en claro. El token aleatorio de 256 bits se emite **solo al iniciar sesión**; dura **12 horas**. Cada solicitud protegida consulta PostgreSQL para verificar sesión vigente y usuario activo.
+
+| Ruta | Acción |
+|---|---|
+| `POST /api/v1/auth/register` | Crea identidad global, sin empresa |
+| `POST /api/v1/auth/login` | Comprueba contraseña Argon2id y emite Bearer opaco |
+| `GET /api/v1/auth/me` | Identidad pública, requiere Bearer |
+| `POST /api/v1/auth/logout` | Revoca solo sesión actual; HTTP 204 |
+
+Credenciales erróneas, usuario inexistente o deshabilitado, sesión vencida o revocada retornan HTTP 401 genérico, sin revelar qué condición ocurrió. Los permisos por empresa siguen **pendientes**, y el login personal no concede acceso comercial.
+
+### Probarlo en PowerShell
+
+Desde `plataforma-pyme/`, con PostgreSQL Docker iniciado:
+
+```powershell
+git pull origin main
+cd backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -v
+Remove-Item Env:\RUN_DB_INTEGRATION
+```
+
+Las pruebas de integración usan PostgreSQL real bajo transacciones exteriores reversibles; no dejan usuarios ni sesiones de prueba. Desde `plataforma-pyme/`, reconstruí solo la API Docker: `docker compose --profile api up -d --build api`. Consultá Swagger en `http://127.0.0.1:18000/docs`. No pegues tokens ni contraseñas reales en el chat, logs o capturas.
+
+**Limitaciones para producción:** falta HTTPS público, límites de intentos antiabuso, protección frente a enumeración, recuperación y confirmación de correo, almacenamiento seguro de credenciales en frontend y estrategia de cookies/CSRF si se adopta después. No exponer públicamente esta API sin resolver estas medidas; el navegador React DEMO permanece sin integración.

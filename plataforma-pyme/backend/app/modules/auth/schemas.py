@@ -2,6 +2,7 @@
 import re
 from datetime import datetime
 from uuid import UUID
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, field_validator
 
@@ -68,3 +69,30 @@ class UserPublic(BaseModel):
             contact_phone=user.contact_phone, status=user.status,
             created_at=user.created_at,
         )
+
+
+class LoginRequest(BaseModel):
+    """Login: credenciales incorrectas reciben 401, sin regla de alta."""
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr
+    password: SecretStr = Field(min_length=1, max_length=1024)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def strip_email(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        result = str(value).lower()
+        if not result.isascii() or len(result) > 254:
+            raise ValueError("Se requiere un email ASCII valido")
+        return result
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_at: datetime
+    user: UserPublic

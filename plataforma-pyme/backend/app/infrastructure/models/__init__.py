@@ -1,4 +1,5 @@
-"""Modelos SQLAlchemy registrados en los metadatos de Alembic."""
+"""Importar todos los modelos en Base.metadata para Alembic."""
 from app.infrastructure.models.user import User
+from app.infrastructure.models.auth_session import AuthSession
 
-__all__ = ["User"]
+__all__ = ["User", "AuthSession"]
