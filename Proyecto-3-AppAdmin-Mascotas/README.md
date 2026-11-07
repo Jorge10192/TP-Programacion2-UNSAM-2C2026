@@ -19,6 +19,8 @@ En Linux/macOS, usar `.venv/bin/python`. El administrador inicial se crea una ve
 
 API y contratos: [Swagger](http://localhost:8000/docs). Ejecutar `/auth/login` y pegar `access_token` en **Authorize**. Sesiones de 8 horas; cinco errores bloquean el usuario 15 minutos.
 
+Compras: referencia obligatoria para reintentos; borrador vacío permitido, con edición de cabecera e ítems antes de confirmar. Presentaciones e imágenes: `/presentaciones-insumos` y `/imagenes-insumos` (referencias de archivo, sin subida binaria). La migración nueva actualiza el esquema de `main`; una base creada con la antigua rama `feature/modulo-compras` requiere exportación y adaptación previa.
+
 Pruebas: `.venv\Scripts\python -m pytest -q`. GitHub Actions ejecuta pruebas y construye la imagen.
 
 ## Docker y despliegue

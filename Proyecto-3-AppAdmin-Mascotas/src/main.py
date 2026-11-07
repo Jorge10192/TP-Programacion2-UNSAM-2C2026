@@ -7,6 +7,7 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 
 from src.auth.routes import router as auth_router
+from src.compras.catalogos import router as catalogos_router
 from src.compras.routes import router as proveedores_router
 from src.database.session import PROJECT_DIR, get_db
 from src.inventario.routes import router as inventario_router
@@ -15,11 +16,12 @@ from src.inventario.routes import router as inventario_router
 app = FastAPI(
     title="WALOS API",
     description="API para la gestión del emprendimiento WALOS",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 # Incorporá a la aplicación los endpoints definidos en routes.py
 app.include_router(proveedores_router)
+app.include_router(catalogos_router)
 app.include_router(auth_router)
 app.include_router(inventario_router)
 EXPECTED_HEAD = ScriptDirectory.from_config(Config(str(PROJECT_DIR / "alembic.ini"))).get_current_head()
