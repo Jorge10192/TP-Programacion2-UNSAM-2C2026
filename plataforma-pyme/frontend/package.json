@@ -18,7 +18,8 @@
     "test:images": "node --experimental-strip-types --test tests/image-policy.test.mjs",
     "test:sales": "node --experimental-strip-types --test tests/sale-policy.test.mjs",
     "test:cash": "node --experimental-strip-types --test tests/cash-policy.test.mjs",
-    "test:accounts": "node --experimental-strip-types --test tests/financial-account-policy.test.mjs"
+    "test:accounts": "node --experimental-strip-types --test tests/financial-account-policy.test.mjs",
+    "test:qr": "node --experimental-strip-types --test tests/qr-demo-policy.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",

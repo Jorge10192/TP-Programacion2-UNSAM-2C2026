@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { saleAmounts, normalizeSaleInput, saleInventoryMovements, validateSalePayments, validSaleQuantity } from '../src/data/demo/salePolicy.ts'
+import { saleAmounts, normalizeSaleInput, saleInventoryMovements, validateSalePayments, validSaleQuantity, remainingLastSalePaymentCents } from '../src/data/demo/salePolicy.ts'
 import { lineTotalCents } from '../src/data/demo/purchasePolicy.ts'
 import { requireTransferStock } from '../src/data/demo/inventoryPolicy.ts'
 
@@ -132,4 +132,13 @@ test('cuenta opcional por pago se valida sin modificar el total de venta', () =>
   assert.equal(normalizeSaleInput({ ...input, payments: [
     { method: 'TRANSFERENCIA', amountCents: 125050 },
   ] }).payments[0].financialAccountId, null)
+})
+
+test('completar saldo apunta al último medio y conserva importes previos', () => {
+  const payments = [85000, 200000, null]
+  assert.equal(remainingLastSalePaymentCents(385000, payments), 100000)
+  assert.deepEqual(payments, [85000, 200000, null])
+  assert.equal(remainingLastSalePaymentCents(380000, [null]), 380000)
+  assert.throws(() => remainingLastSalePaymentCents(100000, [null, null]), /Completá primero/)
+  assert.throws(() => remainingLastSalePaymentCents(100000, [100000, null]), /cubren o superan/)
 })

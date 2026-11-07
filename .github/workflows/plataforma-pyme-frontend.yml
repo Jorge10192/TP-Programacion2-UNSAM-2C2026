@@ -1,11 +1,18 @@
-name: Asistente PyME frontend
+name: Plataforma PyME · Frontend
+
 on:
   push:
-    paths: ['plataforma-pyme/frontend/**', '.github/workflows/pyme-frontend.yml']
+    paths:
+      - 'plataforma-pyme/frontend/**'
+      - '.github/workflows/plataforma-pyme-frontend.yml'
   pull_request:
-    paths: ['plataforma-pyme/frontend/**', '.github/workflows/pyme-frontend.yml']
+    paths:
+      - 'plataforma-pyme/frontend/**'
+      - '.github/workflows/plataforma-pyme-frontend.yml'
+
 permissions:
   contents: read
+
 jobs:
   frontend:
     runs-on: ubuntu-latest
@@ -14,12 +21,12 @@ jobs:
         working-directory: plataforma-pyme/frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
+          cache: 'npm'
           cache-dependency-path: plataforma-pyme/frontend/package-lock.json
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm test
-      - run: npm run lint
       - run: npm run build
+      - run: npm run lint
+      - run: npm test

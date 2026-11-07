@@ -141,3 +141,19 @@ export function normalizeSaleInput(input: SaleInput): SaleInput {
     }),
     notes: input.notes.trim() }
 }
+
+/** El último medio recibe el saldo pendiente sin sobrescribir los importes anteriores. */
+export function remainingLastSalePaymentCents(totalCents: number, amounts: (number | null)[]): number {
+  if (!Number.isSafeInteger(totalCents) || totalCents <= 0 || !Array.isArray(amounts) ||
+      amounts.length < 1 || amounts.length > 6) throw new Error('Total o pagos inválidos.')
+  let previous = 0n
+  for (const cents of amounts.slice(0, -1)) {
+    if (!Number.isSafeInteger(cents) || cents === null || cents <= 0) {
+      throw new Error('Completá primero los importes de los medios anteriores.')
+    }
+    previous += BigInt(cents)
+  }
+  const remaining = BigInt(totalCents) - previous
+  if (remaining <= 0n) throw new Error('Los pagos anteriores ya cubren o superan el total.')
+  return Number(remaining)
+}
