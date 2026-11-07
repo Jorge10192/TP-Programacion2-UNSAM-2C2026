@@ -1,0 +1,17 @@
+# Entorno local y secretos
+.venv/
+.env
+.env.*
+!.env.example
+
+# Cache de Python y herramientas
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Metadata de instalacion editable
+*.egg-info/
