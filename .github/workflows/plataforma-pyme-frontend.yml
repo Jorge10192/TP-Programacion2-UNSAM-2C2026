@@ -34,3 +34,35 @@ jobs:
       - run: npm run test:cash
       - run: npm run test:qr
       - run: npm run test:inventory
+
+  browser-e2e:
+    name: E2E Chromium escritorio y móvil
+    needs: frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: plataforma-pyme/frontend/package-lock.json
+      - name: Instalar frontend
+        working-directory: plataforma-pyme/frontend
+        run: npm ci
+      - name: Instalar Playwright aislado
+        working-directory: plataforma-pyme/frontend/e2e
+        run: npm install --no-audit --no-fund
+      - name: Preparar Chromium
+        working-directory: plataforma-pyme/frontend/e2e
+        run: npx playwright install --with-deps chromium
+      - name: Recorridos reales de navegador
+        working-directory: plataforma-pyme/frontend/e2e
+        run: npm test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: pyme-e2e-evidencia
+          path: |
+            plataforma-pyme/frontend/e2e/playwright-report/
+            plataforma-pyme/frontend/e2e/test-results/
+          retention-days: 14
