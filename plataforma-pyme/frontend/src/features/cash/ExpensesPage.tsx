@@ -6,6 +6,8 @@ import type { DemoBusiness, DemoLocation, DemoSnapshot } from '../../data/demo/d
 import { moneyDisplay, parseMoneyCents } from '../../data/demo/catalogPolicy'
 import { expenseCategories, expensePaymentLabels } from '../../data/demo/cashPolicy'
 import type { DemoExpense, ExpenseCategory, ExpensePaymentMethod } from '../../data/demo/cashPolicy'
+import { accountSupportsDeclaredPayment } from '../../data/demo/financialAccountPolicy'
+import { listDemoFinancialAccounts } from '../../data/demo/demoStore'
 
 const today = () => {
   const now = new Date()
@@ -22,6 +24,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<ExpensePaymentMethod>('EFECTIVO')
+  const [financialAccountId, setFinancialAccountId] = useState('')
   const [locationId, setLocationId] = useState('')
   const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
@@ -29,6 +32,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
   const [notice, setNotice] = useState('')
   const [query, setQuery] = useState('')
   const [methodFilter, setMethodFilter] = useState('TODOS')
+  const accounts = listDemoFinancialAccounts(snapshot, business.id)
   const sum = expenses.reduce((total, entry) => total + entry.amountCents, 0)
   const cash = expenses.filter(entry => entry.paymentMethod === 'EFECTIVO')
     .reduce((total, entry) => total + entry.amountCents, 0)
@@ -48,6 +52,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
       if (cents === null) throw new Error('Ingresá un importe válido en pesos.')
       const record = await demoGateway.registerExpense(business.id, {
         paidOn, category, description, amountCents: cents, paymentMethod,
+        financialAccountId: financialAccountId || null,
         locationId: locationId || null, notes,
       }, requestId)
       setNotice('Gasto DEMO registrado: ' + record.description +
@@ -55,7 +60,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
           '. No se actualizó ninguna cuenta bancaria ni saldo de caja fuera de jornada.'))
       setFormOpen(false)
       setRequestId('demo-expense-request-' + crypto.randomUUID())
-      setDescription(''); setAmount(''); setNotes('')
+      setDescription(''); setAmount(''); setNotes(''); setFinancialAccountId('')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo registrar el gasto.')
     } finally { setBusy(false) }
@@ -93,9 +98,17 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
           <label className="form-field"><span>Importe (ARS) *</span><input type="text" inputMode="decimal" required value={amount}
             onChange={(e) => setAmount(e.target.value)} placeholder="Ej.: 12500,00"/></label>
           <label className="form-field"><span>Medio de pago declarado *</span><select value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value as ExpensePaymentMethod)}>
+            onChange={(e) => { setPaymentMethod(e.target.value as ExpensePaymentMethod); setFinancialAccountId('') }}>
             {Object.entries(expensePaymentLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
           </select></label>
+          {paymentMethod !== 'EFECTIVO' && paymentMethod !== 'TARJETA' && <label className="form-field">
+            <span>Cuenta de origen declarada (opcional)</span>
+            <select value={financialAccountId} onChange={event => setFinancialAccountId(event.target.value)}>
+              <option value="">Sin asociar a cuenta</option>
+              {accounts.filter(a => accountSupportsDeclaredPayment(a, paymentMethod)).map(a =>
+                <option key={a.id} value={a.id}>{a.label}{a.isPrimary ? ' · Principal' : ''}</option>)}
+            </select>
+          </label>}
           <label className="form-field"><span>Ubicación (opcional, gasto general si se omite)</span>
             <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
               <option value="">Gasto general de la empresa</option>
@@ -109,7 +122,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
             : 'No hay jornada abierta para este destino. El gasto quedará registrado fuera de caja y no modificará ningún arqueo.'}
         </p>}
         {paymentMethod !== 'EFECTIVO' && <p className="cash-form-hint">
-          <Icon name="credit" size={17}/> El medio digital se registra como declaración interna. Asociar una cuenta financiera real corresponde a un módulo posterior.
+          <Icon name="credit" size={17}/> El medio digital se registra como declaración interna. Podés asociar una cuenta declarada de esta empresa. No se transfiere dinero ni se verifica el saldo bancario.
         </p>}
         <label className="form-field"><span>Observaciones (opcional)</span>
           <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500}/>
@@ -139,6 +152,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
         <span className="feature-icon blue"><Icon name="wallet"/></span>
         <div><strong>{entry.description}</strong><small>{entry.paidOn} · {expenseCategories[entry.category]} · {expensePaymentLabels[entry.paymentMethod]}</small>
           <small>{locations.find(l => l.id === entry.locationId)?.name ?? 'Gasto general'} · {entry.cashSessionId ? 'Asociado a caja' : 'Sin movimiento de caja'} · {new Date(entry.createdAt).toLocaleString('es-AR')}</small>
+          {entry.financialAccountLabelSnapshot && <small>Cuenta de origen declarada: {entry.financialAccountLabelSnapshot}</small>}
           {entry.notes && <small>{entry.notes}</small>}</div>
         <strong>{moneyDisplay(entry.amountCents)}</strong>
       </article>)}</div> : <div className="sales-empty"><Icon name="wallet" size={30}/>
