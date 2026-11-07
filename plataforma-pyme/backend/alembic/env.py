@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, pool
 
 from app.core.settings import get_settings
 from app.infrastructure.models.base import Base
+from app.infrastructure.models import User  # noqa: F401; registra el modelo
 
 
 config = context.config
