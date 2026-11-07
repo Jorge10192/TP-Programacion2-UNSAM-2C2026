@@ -87,13 +87,13 @@ def test_atomic_create_owner_and_original_founder(isolated) -> None:
     assert body["membership"]["status"] == "ACTIVA"
     assert body["status"] == "ACTIVA"
     assert body["activity_kind"] == "SERVICIOS"
-    company = connection.execute(
-        select(Business).where(Business.id == body["id"])
+    founder_id = connection.execute(
+        select(Business.founder_user_id).where(Business.id == body["id"])
     ).scalar_one()
-    assert company.founder_user_id == body["founder_user_id"]
+    assert str(founder_id) == body["founder_user_id"]
     assert connection.execute(
-        select(Membership).where(Membership.business_id == body["id"])
-    ).scalar_one().role == "TITULAR_ADMINISTRATIVO"
+        select(Membership.role).where(Membership.business_id == body["id"])
+    ).scalar_one() == "TITULAR_ADMINISTRATIVO"
 
 
 def test_idempotency_same_request_returns_same_business_and_conflict_on_change(isolated) -> None:
@@ -108,13 +108,14 @@ def test_idempotency_same_request_returns_same_business_and_conflict_on_change(i
     assert repeated.json() == first.json()
     assert conflict.status_code == 409, conflict.text
     assert len(client.get("/api/v1/businesses", headers=headers).json()) == 1
-    request = connection.execute(
-        select(BusinessCreationRequest).where(
-            BusinessCreationRequest.idempotency_key == key
-        )
-    ).scalar_one()
-    assert request.business_id == first.json()["id"]
-    assert len(request.request_sha256) == 64
+    stored_business_id, stored_digest = connection.execute(
+        select(
+            BusinessCreationRequest.business_id,
+            BusinessCreationRequest.request_sha256,
+        ).where(BusinessCreationRequest.idempotency_key == key)
+    ).one()
+    assert str(stored_business_id) == first.json()["id"]
+    assert len(stored_digest) == 64
 
 
 def test_two_users_cannot_see_each_others_businesses(isolated) -> None:
