@@ -13,19 +13,22 @@ import { demoImageKey } from '../../data/demo/imagePolicy'
 import { stockBalances, stockKey } from '../../data/demo/inventoryPolicy'
 import type { InventoryMovement } from '../../data/demo/inventoryPolicy'
 import { SaleCatalogPicker } from './SaleCatalogPicker'
+import { accountSupportsDeclaredPayment } from '../../data/demo/financialAccountPolicy'
+import type { DemoFinancialAccount } from '../../data/demo/financialAccountPolicy'
 
 type DraftLine = { key: string; catalogItemId: string; quantity: string; price: string }
-type DraftPayment = { key: string; method: SalePaymentMethod; amount: string }
+type DraftPayment = { key: string; method: SalePaymentMethod; amount: string; financialAccountId: string }
 const newLine = (): DraftLine => ({ key: crypto.randomUUID(), catalogItemId: '', quantity: '1', price: '' })
-const newPayment = (): DraftPayment => ({ key: crypto.randomUUID(), method: 'EFECTIVO', amount: '' })
+const newPayment = (): DraftPayment => ({ key: crypto.randomUUID(), method: 'EFECTIVO', amount: '', financialAccountId: '' })
 
-export function SalesPage({ business, items, locations, movements, sales, sessions }: {
+export function SalesPage({ business, items, locations, movements, sales, sessions, accounts }: {
   business: DemoBusiness
   items: DemoCatalogItem[]
   locations: DemoLocation[]
   movements: InventoryMovement[]
   sales: DemoSale[]
   sessions: DemoCashSession[]
+  accounts: DemoFinancialAccount[]
 }) {
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
@@ -71,7 +74,7 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
 
     {creating && <SaleForm key={business.id + ':' + formVersion}
       business={business} items={items} locations={locations} movements={movements} sessions={sessions}
-      onSaved={saved} onCancel={() => setCreating(false)}/>}
+      accounts={accounts} onSaved={saved} onCancel={() => setCreating(false)}/>}
 
     <section className="form-panel sales-history">
       <div className="business-section-heading">
@@ -119,17 +122,19 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
         <span>Total registrado</span><strong>{moneyDisplay(selected.totalCents)}</strong>
       </div>
       <h3>Pagos declarados</h3>
-      {selected.payments.map((payment, index) => <p key={index}>{salePaymentLabels[payment.method]}: <strong>{moneyDisplay(payment.amountCents)}</strong></p>)}
+      {selected.payments.map((payment, index) => <p key={index}>{salePaymentLabels[payment.method]}: <strong>{moneyDisplay(payment.amountCents)}</strong>
+        {payment.financialAccountLabelSnapshot && <small> · Cuenta declarada: {payment.financialAccountLabelSnapshot}</small>}</p>)}
       {selected.notes && <p>Observaciones: {selected.notes}</p>}
       <div className="informational-note"><Icon name="shield" size={17}/><span>Comprobante interno DEMO. No acredita cobro real ni representa comprobante fiscal.</span></div>
     </section>}
   </>
 }
 
-function SaleForm({ business, items, locations, movements, sessions, onSaved, onCancel }: {
+function SaleForm({ business, items, locations, movements, sessions, accounts, onSaved, onCancel }: {
   business: DemoBusiness; items: DemoCatalogItem[]; locations: DemoLocation[]
   movements: InventoryMovement[]
   sessions: DemoCashSession[]
+  accounts: DemoFinancialAccount[]
   onSaved: (id: string) => void; onCancel: () => void
 }) {
   const [requestId] = useState(() => 'demo-sale-request-' + crypto.randomUUID())
@@ -220,7 +225,7 @@ function SaleForm({ business, items, locations, movements, sessions, onSaved, on
     const parsedPayments = payments.map((payment) => {
       const amountCents = parseMoneyCents(payment.amount)
       if (amountCents === null) throw new Error('Completá cada importe de pago declarado.')
-      return { method: payment.method, amountCents }
+      return { method: payment.method, amountCents, financialAccountId: payment.financialAccountId || null }
     })
     return { locationId: locationId || null, lines: validatedLines, discountCents,
       payments: parsedPayments, notes }
@@ -349,7 +354,7 @@ function SaleForm({ business, items, locations, movements, sessions, onSaved, on
       </p>}
       {payments.map((payment, index) => <div className="sales-payment-row" key={payment.key}>
         <label className="form-field"><span>Medio de pago {index + 1}</span>
-          <select value={payment.method} onChange={(event) => patchPayment(payment.key, { method: event.target.value as SalePaymentMethod })}>
+          <select value={payment.method} onChange={(event) => patchPayment(payment.key, { method: event.target.value as SalePaymentMethod, financialAccountId: '' })}>
             {Object.entries(salePaymentLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         </label>
@@ -357,6 +362,15 @@ function SaleForm({ business, items, locations, movements, sessions, onSaved, on
           <input required type="text" inputMode="decimal" placeholder="0,00" value={payment.amount}
             onChange={(event) => patchPayment(payment.key, { amount: event.target.value })}/>
         </label>
+        {payment.method !== 'EFECTIVO' && payment.method !== 'TARJETA' && <label className="form-field">
+          <span>Cuenta receptora declarada (opcional)</span>
+          <select value={payment.financialAccountId}
+            onChange={event => patchPayment(payment.key, { financialAccountId: event.target.value })}>
+            <option value="">Sin asociar a cuenta</option>
+            {accounts.filter(a => accountSupportsDeclaredPayment(a, payment.method)).map(a =>
+              <option key={a.id} value={a.id}>{a.label}{a.isPrimary ? ' · Principal' : ''}</option>)}
+          </select>
+        </label>}
         <button type="button" className="button button-secondary sales-delete" disabled={payments.length === 1}
           aria-label={'Quitar medio de pago ' + (index + 1)}
           onClick={() => setPayments((old) => old.filter((candidate) => candidate.key !== payment.key))}>
