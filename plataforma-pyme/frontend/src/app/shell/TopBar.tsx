@@ -46,10 +46,10 @@ export function Topbar({
   }, [menuOpen])
 
   const pinAction = sidebarMode === 'expanded'
-    ? 'Contraer menú fijo a íconos'
+    ? 'Mostrar sólo iconos'
     : sidebarMode === 'compact'
-      ? 'Expandir menú fijo'
-      : 'Fijar menú lateral'
+      ? 'Mostrar iconos y nombres'
+      : 'Mostrar menú con nombres'
 
   return <header className="topbar">
     <div className="topbar-left">
@@ -73,6 +73,7 @@ export function Topbar({
           aria-label={pinAction}
           title={pinAction}
           aria-controls="app-sidebar"
+          aria-expanded={sidebarMode === 'expanded'}
           onClick={onToggleSidebar}
         >
           <Icon name="panel" size={20} />
@@ -92,7 +93,7 @@ export function Topbar({
       </div>
       {showBack && <button type="button" className="back-button" aria-label="Volver a la sección anterior" title="Volver" onClick={onBack}><Icon name="arrow-left" size={19}/><span>Volver</span></button>}
       <div className="breadcrumbs">
-        <span>{business ? 'Mi negocio' : 'Mi espacio'}</span>
+        <span>{business?.name ?? 'Mi espacio'}</span>
         <Icon name="chevron" size={14} />
         <strong>{title}</strong>
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../app/Icon'
+import { useUnsavedChanges } from '../../app/unsavedChanges'
 import { demoGateway } from '../../data/demo/demoStore'
 import type { DemoPurchase, DemoBusiness, DemoLocation } from '../../data/demo/demoStore'
 import { moneyDisplay } from '../../data/demo/catalogPolicy'
@@ -19,6 +20,7 @@ export function PurchaseDetailDialog({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const { confirmDiscard, markSaved } = useUnsavedChanges(!purchase.receipt && locationId !== '', busy)
   const physical = physicalPurchaseLines(purchase.lines)
   const availableLocations = locations.filter((location) => location.status === 'ACTIVA' && location.canStore)
 
@@ -29,6 +31,10 @@ export function PurchaseDetailDialog({
     return () => { if (dialog.open) dialog.close() }
   }, [])
 
+  function close() {
+    if (confirmDiscard()) onClose()
+  }
+
   async function receive() {
     if (busy || !locationId || purchase.receipt) return
     setBusy(true)
@@ -36,7 +42,8 @@ export function PurchaseDetailDialog({
     setNotice('')
     try {
       await demoGateway.receivePurchase(business.id, purchase.id, locationId)
-      setNotice('Recepción DEMO confirmada una única vez. La compra y los movimientos quedaron guardados.')
+      markSaved()
+      setNotice('Recepción DEMO confirmada una única vez. El Inventario de la ubicación ya está actualizado y los movimientos quedaron guardados.')
       setConfirming(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No fue posible confirmar la recepción.')
@@ -53,13 +60,13 @@ export function PurchaseDetailDialog({
     ref={dialogRef}
     className="catalog-detail-modal purchase-detail-modal"
     aria-labelledby="purchase-detail-title"
-    onCancel={(event) => { event.preventDefault(); onClose() }}
-    onClick={(event) => { if (event.target === event.currentTarget) onClose() }}
+    onCancel={(event) => { event.preventDefault(); close() }}
+    onClick={(event) => { if (event.target === event.currentTarget) close() }}
   >
     <div className="catalog-detail-body">
       <div className="catalog-detail-topline">
         <p className="eyebrow">COMPRA REGISTRADA · DEMO</p>
-        <button type="button" className="icon-button" onClick={onClose} aria-label="Cerrar detalle de compra"><Icon name="close" size={20}/></button>
+        <button type="button" className="icon-button" disabled={busy} onClick={close} aria-label="Cerrar detalle de compra"><Icon name="close" size={20}/></button>
       </div>
       <header className="purchase-detail-head">
         <div>
@@ -94,7 +101,7 @@ export function PurchaseDetailDialog({
             const line = purchase.lines.find((entry) => entry.id === movement.purchaseLineId)
             return <div key={movement.id}><span>{line?.description ?? 'Artículo del catálogo'}</span><strong>+ {quantityText(movement.quantityMilli, movement.unit)}</strong></div>
           })}</div>
-          <p className="purchase-detail-muted">Recepción única para esta compra. Volver a consultar o reintentar no duplica los movimientos. Estos eventos alimentarán el Inventario por ubicación.</p>
+          <p className="purchase-detail-muted">Recepción única para esta compra. El Inventario de esta ubicación ya está actualizado. Volver a consultar o reintentar no duplica los movimientos.</p>
         </> : physical.length === 0 ? <p className="purchase-detail-muted">Esta compra contiene sólo servicios o conceptos libres. No hay bienes físicos del Catálogo para ingresar al inventario.</p>
           : <>
             <p className="purchase-location-pending"><Icon name="clock" size={17}/><span><strong>Compra guardada · ubicación por confirmar.</strong> Los artículos todavía no ingresaron al Inventario. Elegí a continuación dónde se recibieron y confirmá su ingreso.</span></p>
@@ -129,7 +136,7 @@ export function PurchaseDetailDialog({
       </section>
       <footer className="catalog-detail-footer">
         <div className="catalog-detail-dates"><span>Empresa: {business.name}</span><span>Registrada en DEMO: {new Date(purchase.createdAt).toLocaleString('es-AR')}</span></div>
-        <button type="button" className="button button-secondary" disabled={busy} onClick={onClose}>Cerrar detalle</button>
+        <button type="button" className="button button-secondary" disabled={busy} onClick={close}>Cerrar detalle</button>
       </footer>
     </div>
   </dialog>

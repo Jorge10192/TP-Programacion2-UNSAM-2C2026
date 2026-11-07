@@ -101,7 +101,7 @@ export function SuppliersPage({
 
     <div className="informational-note supplier-info-note">
       <Icon name="shield" size={19}/>
-      <span>Proveedores independientes por empresa. No hay compras ni comprobantes vinculados todavía. Las promociones informadas no generan descuentos automáticos y los contactos son únicamente de demostración.</span>
+      <span>Proveedores independientes por empresa. Podés seleccionarlos al registrar compras. Las promociones informadas no generan descuentos automáticos y los contactos son únicamente de demostración.</span>
     </div>
 
     {notice && <p className="form-message success supplier-message" role="status">{notice}</p>}
