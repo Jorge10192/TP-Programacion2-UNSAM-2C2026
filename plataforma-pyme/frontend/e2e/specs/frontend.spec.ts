@@ -37,6 +37,64 @@ test('drawer: Escape cierra y devuelve foco; páginas sin desborde horizontal', 
   }
 })
 
+test('DEMO: conserva el borrador al cancelar cierre, navegación y recarga; descarta al aceptar', async ({ page }) => {
+  await page.goto('/b/walos-demo/compras')
+  await page.getByRole('button', { name: 'Registrar compra', exact: true }).click()
+  const editor = page.locator('.purchase-editor')
+  const reference = page.getByLabel('Número de comprobante o referencia (opcional)', { exact: true })
+  const draftReference = 'BORRADOR-E2E-SIN-GUARDAR'
+  await reference.fill(draftReference)
+  const originalUrl = page.url()
+  const discardMessage = 'Tenés cambios sin guardar. ¿Querés descartarlos?\n\nAceptar: descartar los cambios y salir.\nCancelar: seguir editando sin perder los datos.'
+
+  async function answerDiscard(action: () => Promise<unknown>, decision: 'dismiss' | 'accept') {
+    const dialogEvent = page.waitForEvent('dialog')
+    const attempt = action()
+    const dialog = await dialogEvent
+    expect(dialog.type()).toBe('confirm')
+    expect(dialog.message()).toBe(discardMessage)
+    if (decision === 'accept') await dialog.accept()
+    else await dialog.dismiss()
+    await attempt
+  }
+
+  async function expectDraftPreserved() {
+    await expect(page).toHaveURL(originalUrl)
+    await expect(editor).toBeVisible()
+    await expect(reference).toHaveValue(draftReference)
+  }
+
+  await answerDiscard(() => page.getByRole('button', { name: 'Cerrar formulario', exact: true }).click(), 'dismiss')
+  await expectDraftPreserved()
+
+  const journey = page.getByRole('navigation', { name: 'Recorrido de la jornada', exact: true })
+  await answerDiscard(() => journey.getByRole('link', { name: 'Stock', exact: true }).click(), 'dismiss')
+  await expectDraftPreserved()
+
+  const unloadEvent = page.waitForEvent('dialog')
+  const reloadAttempt = page.reload().catch((error: unknown) => {
+    if (!(error instanceof Error) || !error.message.includes('net::ERR_ABORTED')) throw error
+  })
+  const unloadDialog = await unloadEvent
+  expect(unloadDialog.type()).toBe('beforeunload')
+  // Ambos proyectos usan Chromium: el aviso nativo no expone el mensaje personalizado.
+  expect(unloadDialog.message()).toBe('')
+  await unloadDialog.dismiss()
+  await reloadAttempt
+  await expectDraftPreserved()
+
+  await answerDiscard(() => page.getByRole('button', { name: 'Cerrar formulario', exact: true }).click(), 'accept')
+  await expect(page).toHaveURL(originalUrl)
+  await expect(editor).toHaveCount(0)
+  await expect(reference).toHaveCount(0)
+
+  // Reabrir comprueba que el descarte fue efectivo, sin registrar ninguna compra.
+  await page.getByRole('button', { name: 'Registrar compra', exact: true }).click()
+  await expect(reference).toHaveValue('')
+  await page.getByRole('button', { name: 'Cerrar formulario', exact: true }).click()
+  await expect(editor).toHaveCount(0)
+})
+
 test('servicio por empresa y QR DEMO: pendiente, persistencia, cancelación y aprobación única', async ({ page }) => {
   const service = 'Servicio E2E de prueba'
   await page.goto('/b/walos-demo/catalogo')
