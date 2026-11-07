@@ -1222,3 +1222,47 @@
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .tool-card, .company-card { transition: none; }
 }
+
+
+/* E1-D1: los selectores digitales no deben desplazar el botón de quitar renglón. */
+.sales-payment-row.has-account{grid-template-columns:minmax(175px,1fr) minmax(135px,.7fr) minmax(210px,1.2fr) auto}
+.sales-payment-row.has-account>.form-field{min-width:0}
+.sales-payment-row.has-account>.sales-delete{justify-self:end;align-self:end}
+
+/* Intención visual QR DEMO: no escaneable y separada de la venta registrada. */
+.qr-demo-panel,.qr-demo-list{margin-top:22px}
+.qr-demo-content{display:grid;grid-template-columns:minmax(195px,255px) minmax(0,1fr);gap:28px;align-items:start}
+.qr-demo-visual{border:1px solid #d6e3f4;border-radius:17px;background:#f6faff;padding:20px 16px;display:grid;justify-items:center;gap:9px;text-align:center}
+.qr-demo-visual svg{display:block;background:white;border:11px solid white;border-radius:7px;max-width:100%;width:215px;height:auto;image-rendering:pixelated;box-shadow:0 4px 20px rgba(28,70,116,.12)}
+.qr-demo-visual strong{font-size:11px;letter-spacing:.1em;color:#204f88}
+.qr-demo-visual small,.qr-demo-muted{font-size:11px;color:#647e9d;line-height:1.6}
+.qr-demo-info{display:grid;gap:11px;min-width:0}
+.qr-demo-info>p{margin:0;color:#607a9c;font-size:13px;overflow-wrap:anywhere}
+.qr-demo-info>p strong{color:#17385e}
+.qr-demo-info .qr-demo-amount{font-size:29px;font-weight:850;color:#123d73}
+.qr-demo-info code{font-size:10px;overflow-wrap:anywhere}
+.qr-demo-info .informational-note{margin:0}
+.qr-demo-state{justify-self:start;display:inline-block;padding:7px 12px;font-size:12px;font-weight:800;border-radius:22px}
+.qr-demo-state.pending{background:#fff1d9;color:#926119}
+.qr-demo-state.cancelled{background:#f2f4f8;color:#63738c}
+.qr-demo-state.approved{background:#e8f8f0;color:#0f805b}
+.qr-demo-actions{justify-content:flex-start;flex-wrap:wrap}
+.qr-demo-entries{display:grid;gap:9px}
+.qr-demo-entry{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 16px;border:1px solid #e0e9f5;border-radius:12px;background:#fafcff}
+.qr-demo-entry>div{display:grid;gap:5px;min-width:0}
+.qr-demo-entry strong{color:#173d6b;font-size:14px}
+.qr-demo-entry small{color:#768bac;font-size:11px}
+.qr-demo-muted{margin:12px 0 0}
+@media(max-width:900px){
+ .sales-payment-row.has-account{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .sales-payment-row.has-account>.form-field:nth-of-type(3){grid-column:1/3}
+ .sales-payment-row.has-account>.sales-delete{grid-column:2;grid-row:2}
+}
+@media(max-width:720px){
+ .sales-payment-row.has-account{grid-template-columns:1fr}
+ .sales-payment-row.has-account>.form-field:nth-of-type(3){grid-column:auto}
+ .sales-payment-row.has-account>.sales-delete{grid-column:auto;grid-row:auto}
+ .qr-demo-content{grid-template-columns:1fr}
+ .qr-demo-visual{max-width:270px}
+ .qr-demo-entry{flex-wrap:wrap}
+}
