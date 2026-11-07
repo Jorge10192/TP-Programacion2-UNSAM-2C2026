@@ -1,0 +1,7 @@
+# Credenciales y configuracion local (Compose)
+.env
+.env.*
+!.env.example
+
+# Archivos temporales de editores
+*.local
