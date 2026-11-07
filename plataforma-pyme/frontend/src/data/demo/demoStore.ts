@@ -21,6 +21,8 @@ import { cashCents, cashSessionTotals, cashText, makeCloseSnapshot, normalizeExp
 import type { CashCloseInput, DemoCashSession, DemoExpense, ExpenseInput } from './cashPolicy'
 import { accountSupportsDeclaredPayment, financialAccountKey, normalizeFinancialAccountInput } from './financialAccountPolicy'
 import type { DemoFinancialAccount, FinancialAccountInput } from './financialAccountPolicy'
+import { normalizeQrSaleInput, validQrDemoIntent } from './qrDemoPolicy'
+import type { DemoQrIntent } from './qrDemoPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
 export type Accent = 'mint' | 'blue' | 'violet'
@@ -153,6 +155,7 @@ export type DemoSnapshot = {
   expensesById: Record<string, DemoExpense>
   cashSessionsById: Record<string, DemoCashSession>
   financialAccountsById: Record<string, DemoFinancialAccount>
+  qrIntentsById: Record<string, DemoQrIntent>
 }
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
@@ -189,10 +192,11 @@ function defaults(): DemoSnapshot {
     expensesById: {},
     cashSessionsById: {},
     financialAccountsById: {},
+    qrIntentsById: {},
   }
 }
 
-type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown; sales?: unknown; expenses?: unknown; cashSessions?: unknown; financialAccounts?: unknown }
+type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown; sales?: unknown; expenses?: unknown; cashSessions?: unknown; financialAccounts?: unknown; qrIntents?: unknown }
 
 export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
 export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
@@ -477,6 +481,22 @@ export function listDemoCashSessions(snapshot: DemoSnapshot, businessId: string)
 export function activeCashSession(snapshot: DemoSnapshot, businessId: string, locationId: string | null): DemoCashSession | undefined {
   return listDemoCashSessions(snapshot, businessId).find((session) =>
     session.locationId === locationId && session.status === 'ABIERTA')
+}
+
+/** Las intenciones sin venta no cuentan como ingresos ni como salida de inventario. */
+export function listDemoQrIntents(snapshot: DemoSnapshot, businessId: string): DemoQrIntent[] {
+  if (!findDemoBusiness(snapshot, businessId)) return []
+  return Object.values(snapshot.qrIntentsById).filter(intent => intent.businessId === businessId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+function qrIntentOfBusiness(businessId: string, qrId: string): DemoQrIntent {
+  activeBusiness(businessId)
+  const intent = state.qrIntentsById[qrId]
+  if (!intent || intent.businessId !== businessId) {
+    throw new Error('La intención QR DEMO no pertenece a esta empresa.')
+  }
+  return intent
 }
 
 export function listDemoSales(snapshot: DemoSnapshot, businessId: string): DemoSale[] {
@@ -1103,6 +1123,38 @@ function load(): DemoSnapshot {
         counts.set(expense.businessId, (counts.get(expense.businessId) ?? 0) + 1)
       }
     }
+    // E1-D1: intenciones persistentes. Se cargan luego de las ventas para
+    // recuperar un eventual intento aprobado cuya venta se guardó primero.
+    if (Array.isArray(data.qrIntents)) {
+      const seenRequests = new Set<string>()
+      const seenSaleRequests = new Set<string>()
+      const counts = new Map<string, number>()
+      for (const rawQr of data.qrIntents.slice(0, 6000)) {
+        if (!validQrDemoIntent(rawQr) || !state.businessesById[rawQr.businessId] ||
+            state.qrIntentsById[rawQr.id] || seenRequests.has(rawQr.requestId) ||
+            seenSaleRequests.has(rawQr.saleRequestId) ||
+            (counts.get(rawQr.businessId) ?? 0) >= 100) continue
+        const loc = rawQr.input.locationId ? state.locationsById[rawQr.input.locationId] : null
+        if (loc && loc.businessId !== rawQr.businessId) continue
+        if (rawQr.input.locationId !== null && !loc) continue
+        if (rawQr.input.lines.some(line =>
+          state.catalogItemsById[line.catalogItemId]?.businessId !== rawQr.businessId)) continue
+        const accountId = rawQr.input.payments[0].financialAccountId
+        if (accountId && state.financialAccountsById[accountId]?.businessId !== rawQr.businessId) continue
+        const sale = Object.values(state.salesById).find(s =>
+          s.businessId === rawQr.businessId && s.requestId === rawQr.saleRequestId)
+        if (rawQr.status === 'SIMULADO_APROBADO' &&
+            (!sale || sale.id !== rawQr.saleId || sale.totalCents !== rawQr.amountCents)) continue
+        if (rawQr.status === 'CANCELADO' && sale) continue
+        const recovered = rawQr.status === 'PENDIENTE' && sale?.totalCents === rawQr.amountCents
+          ? { ...rawQr, status: 'SIMULADO_APROBADO' as const, saleId: sale.id }
+          : { ...rawQr }
+        state.qrIntentsById[recovered.id] = recovered
+        seenRequests.add(recovered.requestId)
+        seenSaleRequests.add(recovered.saleRequestId)
+        counts.set(recovered.businessId, (counts.get(recovered.businessId) ?? 0) + 1)
+      }
+    }
     // Operaciones opcionales: se reconstruyen contra las recepciones y las
     // operaciones anteriores. Rechazar una operación inválida no borra compras.
     if (Array.isArray(data.inventoryOperations)) {
@@ -1166,6 +1218,7 @@ function notify(next: DemoSnapshot) {
       expenses: Object.values(state.expensesById),
       cashSessions: Object.values(state.cashSessionsById),
       financialAccounts: Object.values(state.financialAccountsById),
+      qrIntents: Object.values(state.qrIntentsById),
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
@@ -1472,6 +1525,85 @@ export const demoGateway = {
     }
     notify({ ...state, inventoryOperationsById: { ...state.inventoryOperationsById, [operation.id]: operation } })
     return operation
+  },
+
+  async createQrDemoIntent(businessId: string, input: SaleInput, requestId: string, saleRequestId: string): Promise<DemoQrIntent> {
+    activeBusiness(businessId)
+    if (!/^demo-qr-request-[a-f0-9-]{36}$/.test(requestId) ||
+        !/^demo-sale-request-[a-f0-9-]{36}$/.test(saleRequestId)) {
+      throw new Error('Identificador de intención QR DEMO inválido.')
+    }
+    const previous = Object.values(state.qrIntentsById).find(i => i.requestId === requestId)
+    if (previous) {
+      if (previous.businessId !== businessId) throw new Error('La solicitud QR pertenece a otra empresa.')
+      return previous
+    }
+    if (Object.values(state.qrIntentsById).some(i => i.saleRequestId === saleRequestId) ||
+        Object.values(state.salesById).some(s => s.requestId === saleRequestId)) {
+      throw new Error('Este identificador de venta ya está reservado.')
+    }
+    if (listDemoQrIntents(state, businessId).length >= 100) {
+      throw new Error('Límite de 100 intenciones QR DEMO por empresa.')
+    }
+    const normalized = normalizeQrSaleInput(input)
+    const location = normalized.locationId ? locationOfBusiness(businessId, normalized.locationId) : null
+    if (location && (location.status !== 'ACTIVA' || !location.canSell)) {
+      throw new Error('Elegí una ubicación de venta activa.')
+    }
+    const seen = new Set<string>()
+    for (const line of normalized.lines) {
+      if (seen.has(line.catalogItemId)) throw new Error('Sumá las cantidades de un mismo artículo.')
+      seen.add(line.catalogItemId)
+      const item = catalogItemOfBusiness(businessId, line.catalogItemId)
+      if (item.status !== 'ACTIVO' || !item.sellable) throw new Error('Artículo no disponible para vender.')
+      validSaleQuantity(line.quantityMilli, item.unit)
+      if (item.kind !== 'SERVICIO') {
+        if (!location?.canStore) throw new Error('Elegí una ubicación que venda y almacene este producto.')
+        requireTransferStock(inventoryBalanceMilli(state, businessId, item.id, location.id), line.quantityMilli, item.unit)
+      }
+    }
+    const account = accountForDeclaredPayment(businessId, 'MERCADO_PAGO_DECLARADO',
+      normalized.payments[0].financialAccountId)
+    const payment = { ...normalized.payments[0], financialAccountId: account?.id ?? null }
+    const now = new Date().toISOString()
+    const intent: DemoQrIntent = {
+      id: 'demo-qr-intent-' + crypto.randomUUID(),
+      requestId, saleRequestId, businessId,
+      input: { ...normalized, payments: [payment] },
+      amountCents: saleAmounts(normalized.lines, normalized.discountCents).totalCents,
+      status: 'PENDIENTE', saleId: null, createdAt: now, updatedAt: now,
+    }
+    // Sólo se crea la intención. Ni venta ni egreso de stock hasta la aprobación simulada.
+    notify({ ...state, qrIntentsById: { ...state.qrIntentsById, [intent.id]: intent } })
+    return intent
+  },
+
+  async cancelQrDemoIntent(businessId: string, intentId: string): Promise<DemoQrIntent> {
+    const intent = qrIntentOfBusiness(businessId, intentId)
+    if (intent.status === 'CANCELADO') return intent
+    if (intent.status !== 'PENDIENTE') throw new Error('Una intención aprobada no se puede cancelar como pendiente.')
+    const updated: DemoQrIntent = { ...intent, status: 'CANCELADO', updatedAt: new Date().toISOString() }
+    notify({ ...state, qrIntentsById: { ...state.qrIntentsById, [intent.id]: updated } })
+    return updated
+  },
+
+  async simulateQrDemoApproval(businessId: string, intentId: string): Promise<DemoSale> {
+    const intent = qrIntentOfBusiness(businessId, intentId)
+    if (intent.status === 'CANCELADO') throw new Error('La intención fue cancelada. Creá otra para reintentar.')
+    if (intent.status === 'SIMULADO_APROBADO') {
+      const sale = intent.saleId ? state.salesById[intent.saleId] : undefined
+      if (!sale || sale.businessId !== businessId) throw new Error('No se encontró la venta simulada asociada.')
+      return sale
+    }
+    // registerSale valida stock, ubicación, cuentas y montos nuevamente. El ID
+    // persistente de solicitud impide registrar dos ventas por reintentos.
+    const sale = await demoGateway.registerSale(businessId, intent.input, intent.saleRequestId)
+    const updated: DemoQrIntent = {
+      ...intent, status: 'SIMULADO_APROBADO', saleId: sale.id,
+      updatedAt: new Date().toISOString(),
+    }
+    notify({ ...state, qrIntentsById: { ...state.qrIntentsById, [intent.id]: updated } })
+    return sale
   },
 
   async registerSale(businessId: string, input: SaleInput, requestId: string): Promise<DemoSale> {
