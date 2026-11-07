@@ -1,0 +1,36 @@
+name: Plataforma PyME · Frontend
+
+on:
+  push:
+    paths:
+      - 'plataforma-pyme/frontend/**'
+      - '.github/workflows/plataforma-pyme-frontend.yml'
+  pull_request:
+    paths:
+      - 'plataforma-pyme/frontend/**'
+      - '.github/workflows/plataforma-pyme-frontend.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plataforma-pyme/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: plataforma-pyme/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+      - run: npm run test:accounts
+      - run: npm run test:sales
+      - run: npm run test:cash
+      - run: npm run test:qr
+      - run: npm run test:inventory
