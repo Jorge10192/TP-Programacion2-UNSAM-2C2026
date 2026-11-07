@@ -115,7 +115,7 @@ La API y la base levantan **en procesos independientes**. `/health` comprueba el
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-El extra `.[dev]` instala **httpx2** para `TestClient` (Starlette moderna); mantenerlo en el manifiesto evita la advertencia que apareció al usuario. Las tres pruebas actuales son solo de infraestructura: **no equivalen a diez tests unitarios de lógica de negocio del TP**. Se añadirán pruebas de reglas de negocio, integración real con PostgreSQL y CI en las siguientes etapas.
+El extra `.[dev]` instala **httpx2** para `TestClient` (Starlette moderna); mantenerlo en el manifiesto evita la advertencia que apareció al usuario. Las pruebas unitarias existentes son de infraestructura: **no equivalen a diez tests unitarios de lógica de negocio del TP**. Se añadirán pruebas de reglas de negocio, integración real con PostgreSQL y CI en las siguientes etapas.
 
 No se guardan secretos ni datos comerciales reales. **No se modificó `frontend/`.**
 
@@ -165,3 +165,53 @@ Arquitectura: `app/core/settings.py` lee las variables del `.env` ubicado en la 
 Las pruebas automáticas de E2-0.3 usan dobles de conexión y no escriben en PostgreSQL real. El `alembic upgrade head` y el `/ready` real son las verificaciones de integración ejecutadas explícitamente por el desarrollador.
 
 **Seguridad:** no compartir `.env`, `docker compose config` sin `--quiet` ni logs con secretos. No utilizar `docker compose down -v` para detener la base.
+
+## E2-0.4 — API Docker y CI independiente
+
+El servicio `api` es **opcional** y usa un perfil Compose: `docker compose up -d db` sigue iniciando exclusivamente PostgreSQL. La API se ejecuta dentro de Docker con el hostname PostgreSQL `db` y puerto interno `5432`, sin publicar credenciales ni copiar `.env` a la imagen. El servicio utiliza un usuario sin privilegios de root.
+
+Desde `plataforma-pyme/`, con Docker Desktop funcionando y el mismo `.env` privado de E2-0.2:
+
+```powershell
+git pull origin main
+docker compose config --quiet
+docker compose --profile api up -d --build api
+docker compose ps
+Invoke-RestMethod http://127.0.0.1:18000/health
+Invoke-RestMethod http://127.0.0.1:18000/ready
+```
+
+Resultado esperado: `db` y `api` activos; ambos endpoints devuelven HTTP 200. El contenedor expone `127.0.0.1:18000` en Windows, **no 8000**, para permitir que tu Uvicorn local use 8000 sin conflicto. Si 18000 estuviera ocupado, definí `API_HOST_PORT` en `.env` y usá ese puerto. `POSTGRES_HOST_PORT` continúa en 55432; ninguna de estas opciones interfiere con PostgreSQL local de Windows en 5432.
+
+```powershell
+# Desde plataforma-pyme/
+docker compose --profile api stop api
+```
+
+Detiene solo la API Docker, manteniendo PostgreSQL y su volumen. No ejecutar `docker compose down -v`. En el contenedor no se ejecutan migraciones automáticamente: son una operación de despliegue separada. La migración inicial ya fue aplicada al PostgreSQL local en E2-0.3.
+
+### Tests con PostgreSQL real
+
+Desde `backend/` siguen funcionando las pruebas independientes de PostgreSQL:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -v
+```
+
+Además, el archivo `tests/test_postgres_integration.py` incluye comprobaciones reales de conexión y del registro `alembic_version`. **No se activan por defecto** para evitar acceso accidental a bases de datos reales. Si querés ejecutarlas manualmente contra el PostgreSQL de desarrollo, desde `backend/`, con el contenedor `db` saludable y la migración aplicada:
+
+```powershell
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -v
+Remove-Item Env:\RUN_DB_INTEGRATION
+```
+
+Esperamos **15 tests**: 13 de infraestructura + 2 de integración (los tests comerciales se agregarán en E2-1 y posteriores). No se crean ni alteran registros comerciales.
+
+### GitHub Actions
+
+El workflow `.github/workflows/plataforma-pyme-backend.yml` es independiente del frontend y se activa ante cambios en backend, Compose o el workflow. Usa Python 3.12 y 3.14 con PostgreSQL 16 efímero, migra desde cero, ejecuta `alembic check` y todos los tests con las integraciones habilitadas. Otro job construye la imagen Docker y verifica `/health` en un contenedor.
+
+Las credenciales de CI son **ficticias y efímeras** (no las del equipo). El pipeline del frontend sigue independiente. Verificar resultados en la pestaña **Actions** antes de afirmar que CI está aprobado.
+
+El backend dockerizado todavía no está desplegado públicamente. Una imagen construida y un pipeline exitoso **no sustituyen el despliegue requerido por el TP**.

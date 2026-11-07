@@ -1,4 +1,4 @@
-# E2-0.2: PostgreSQL local de desarrollo. FastAPI se conecta en E2-0.3.
+# E2-0.4: PostgreSQL + FastAPI opcional en Docker; desarrollo Python local sigue disponible.
 name: asistente-pyme-e2
 
 services:
@@ -19,6 +19,26 @@ services:
       timeout: 3s
       retries: 12
       start_period: 10s
+
+  # Se inicia solo con: docker compose --profile api up -d --build api
+  # La API Docker usa 18000 en Windows para no interferir con Uvicorn local 8000.
+  api:
+    profiles: ["api"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defini una contrasena en plataforma-pyme/.env}
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: asistente_pyme
+      DB_USER: pyme
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-18000}:8000"
 
 volumes:
   db_data:

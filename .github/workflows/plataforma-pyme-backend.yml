@@ -1,0 +1,89 @@
+name: Plataforma PyME · Backend FastAPI
+
+on:
+  push:
+    paths:
+      - 'plataforma-pyme/backend/**'
+      - 'plataforma-pyme/compose.yaml'
+      - '.github/workflows/plataforma-pyme-backend.yml'
+  pull_request:
+    paths:
+      - 'plataforma-pyme/backend/**'
+      - 'plataforma-pyme/compose.yaml'
+      - '.github/workflows/plataforma-pyme-backend.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    name: Python ${{ matrix.python-version }} · Pytest + PostgreSQL
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.14']
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: asistente_pyme
+          POSTGRES_USER: pyme
+          POSTGRES_PASSWORD: ci_only_ephemeral_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pyme -d asistente_pyme"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      # Contraseña inventada exclusivamente para el contenedor efimero de CI.
+      POSTGRES_PASSWORD: ci_only_ephemeral_test_password
+      POSTGRES_HOST_PORT: '5432'
+      DB_HOST: 127.0.0.1
+      RUN_DB_INTEGRATION: '1'
+    defaults:
+      run:
+        working-directory: plataforma-pyme/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: plataforma-pyme/backend/pyproject.toml
+      - name: Instalar dependencias de desarrollo
+        run: python -m pip install -e ".[dev]"
+      - name: Aplicar migracion inicial
+        run: python -m alembic upgrade head
+      - name: Comprobar version y deriva de esquema
+        run: |
+          python -m alembic current
+          python -m alembic check
+      - name: Tests unitarios e integracion PostgreSQL
+        run: python -m pytest -v
+
+  backend-container:
+    name: Construir imagen y comprobar liveness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir imagen Docker sin secretos
+        run: docker build --tag asistente-pyme-api:ci plataforma-pyme/backend
+      - name: Iniciar contenedor de prueba
+        run: docker run -d --rm --name pyme-api-smoke -p 127.0.0.1:18000:8000 asistente-pyme-api:ci
+      - name: Verificar salud del proceso
+        run: |
+          for n in $(seq 1 25); do
+            if curl --fail --silent http://127.0.0.1:18000/health | grep -q '"status":"ok"'; then
+              echo "API Docker responde /health correctamente"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs pyme-api-smoke
+          exit 1
+      - name: Detener contenedor
+        if: always()
+        run: docker rm -f pyme-api-smoke || true
