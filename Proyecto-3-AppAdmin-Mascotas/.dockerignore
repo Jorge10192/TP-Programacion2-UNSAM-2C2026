@@ -4,6 +4,7 @@
 __pycache__
 *.db
 *.sqlite*
+*.dump
 .pytest_cache
 tests
 docs
