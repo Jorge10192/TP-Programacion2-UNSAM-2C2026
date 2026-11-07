@@ -1,0 +1,13 @@
+# Referencia de despliegue de la API. La base PostgreSQL se configura aparte.
+services:
+  - type: web
+    name: walos-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Proyecto-3-AppAdmin-Mascotas/Dockerfile
+    dockerContext: ./Proyecto-3-AppAdmin-Mascotas
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
