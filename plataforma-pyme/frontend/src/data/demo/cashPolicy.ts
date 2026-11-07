@@ -28,6 +28,8 @@ export type ExpenseInput = {
   description: string
   amountCents: number
   paymentMethod: ExpensePaymentMethod
+  financialAccountId?: string | null
+  financialAccountLabelSnapshot?: string | null
   notes: string
 }
 
@@ -98,9 +100,14 @@ export function normalizeExpense(input: ExpenseInput): ExpenseInput {
   }
   if (!Object.hasOwn(expenseCategories, input.category)) throw new Error('Seleccioná una categoría válida.')
   if (!Object.hasOwn(expensePaymentLabels, input.paymentMethod)) throw new Error('Medio de pago inválido.')
+  const financialAccountId = input.financialAccountId ?? null
+  if (financialAccountId !== null && (typeof financialAccountId !== 'string' ||
+      !/^demo-financial-account-[a-f0-9-]{36}$/.test(financialAccountId))) {
+    throw new Error('La cuenta de origen debe ser una ficha DEMO válida.')
+  }
   return {
     paidOn: input.paidOn, locationId: input.locationId,
-    category: input.category, paymentMethod: input.paymentMethod,
+    category: input.category, paymentMethod: input.paymentMethod, financialAccountId,
     description: cashText(input.description, 'Concepto del gasto', 140, true),
     notes: cashText(input.notes, 'Observaciones', 500),
     amountCents: cashCents(input.amountCents, 'Importe del gasto'),
