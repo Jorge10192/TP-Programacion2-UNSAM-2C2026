@@ -106,9 +106,10 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
             <select value={financialAccountId} onChange={event => setFinancialAccountId(event.target.value)}>
               <option value="">Sin asociar a cuenta</option>
               {accounts.filter(a => accountSupportsDeclaredPayment(a, paymentMethod)).map(a =>
-                <option key={a.id} value={a.id}>{a.label}{a.isPrimary ? ' · Principal' : ''}</option>)}
+                <option key={a.id} value={a.id}>{a.label} · {a.kind === 'BANCARIA' ? 'Banco' : 'Billetera'}{a.isPrimary ? ' · Principal' : ''}</option>)}
             </select>
-          </label>}
+            {paymentMethod === 'TRANSFERENCIA' && <small>También podés declarar una transferencia desde una billetera virtual.</small>}
+          </label>
           <label className="form-field"><span>Ubicación (opcional, gasto general si se omite)</span>
             <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
               <option value="">Gasto general de la empresa</option>
