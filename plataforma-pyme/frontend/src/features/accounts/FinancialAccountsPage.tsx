@@ -106,6 +106,7 @@ export function FinancialAccountsPage({ business, accounts }: {
       <strong>Directorio local, no conexión financiera.</strong> Usá únicamente datos ficticios.
       Los alias y CBU/CVU no se verifican ni se envían a bancos o billeteras. No almacenes contraseñas, tokens, tarjetas o información financiera real.
       <strong> Caja</strong> es un registro de efectivo físico distinto; esta pantalla no calcula saldos ni acredita cobros.
+      Una billetera virtual también puede seleccionarse para transferencias declaradas mediante alias o CVU, sin conexión externa.
     </span></div>
     <div className="financial-principal-note">
       <span className="feature-icon blue"><Icon name="credit" size={20}/></span>
