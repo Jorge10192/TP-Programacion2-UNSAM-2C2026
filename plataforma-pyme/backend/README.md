@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1.1 (infraestructura E2-0 validada + primera tabla de identidad global `users`, migración y pruebas). Todavía no hay endpoints de registro/login ni empresas; el frontend React DEMO permanece independiente.
+**Estado:** E2-1.2A: registro de usuarios con Argon2id y pruebas; login/sesiones pendientes de E2-1.2B. Frontend React DEMO permanece independiente.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -272,3 +272,22 @@ docker compose exec -T db psql -U pyme -d asistente_pyme -c "\d users"
 - **Pendiente de validar en el equipo:** aplicación de migración y tests de integración.
 - **E2-1.2 (después):** normalización de correo, Argon2id, registro y login reales, DTOs seguros y tests HTTP. La política concreta de credenciales se cerrará antes de programarla.
 - **E2-1.3:** empresa, rol por membresía y controles multiempresa. El UML 03A seguirá siendo conceptual hasta integrar estas entidades y sus relaciones.
+
+## E2-1.2A — Registro real de cuentas
+
+Se incorpora `POST /api/v1/auth/register`: crea un usuario global, sin empresa ni membresia, devolviendo HTTP 201 con campos publicos (`id`, `email`, `display_name`, `contact_phone`, `status`, `created_at`). No devuelve password ni hash. La direccion de correo se valida y normaliza; se exige ASCII por consistencia con el CHECK PostgreSQL, la unicidad queda garantizada por `uq_users_email_normalizado`. Un duplicado devuelve 409 con mensaje generico. Invalidos devuelven 422.
+
+Se utiliza Argon2id con sal aleatoria, memoria 64 MiB, 3 iteraciones y paralelismo 2. La politica inicial requiere frases de acceso de entre 15 y 128 caracteres. El registro **NO inicia sesion** ni otorga permisos empresariales. No se agregaron migraciones nuevas: se utiliza la tabla `users` ya validada en E2-1.1.
+
+Desde `plataforma-pyme/backend/`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -v
+Remove-Item Env:\RUN_DB_INTEGRATION
+```
+
+Las pruebas HTTP contra PostgreSQL usan una transaccion exterior y SAVEPOINT: las altas de prueba se revierten siempre, sin guardar usuarios. GitHub Actions ejecuta las pruebas en una base efimera. Para probar manualmente Swagger, usar la API en `http://127.0.0.1:8000/docs` (Uvicorn Windows) o reconstruir la imagen Docker y abrir `http://127.0.0.1:18000/docs`.
+
+**No enviar credenciales reales en mensajes ni archivos.** Una alta manual realizada fuera de tests **si persiste**. Para despliegue publico faltan HTTPS, controles antiabuso y antifuerza bruta, proteccion frente a enumeracion (409 revela duplicados), verificacion/recuperacion de email y gestion de sesiones. E2-1.2B incorporara login, expiracion y revocacion. No se modifico el frontend.
