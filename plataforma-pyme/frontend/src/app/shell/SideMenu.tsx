@@ -23,12 +23,14 @@ export function Sidebar({
   isOpen: boolean
   onClose: () => void
 }) {
-  const { mode: appMode } = useAppData()
+  const { mode: appMode, snapshot } = useAppData()
   const visibleItems = appMode === 'demo' ? navigationItems : navigationItems.filter((item) =>
-    ['inicio', 'compras', 'inventario', 'jornadas', 'ventas', 'gastos', 'catalogo', 'proveedores', 'ubicaciones', 'movimientos'].includes(item.id))
+    ['inicio', 'compras', 'inventario', 'jornadas', 'ventas', 'gastos', 'catalogo', 'proveedores', 'ubicaciones', 'movimientos'].includes(item.id)
+    || item.id === 'historial' && Boolean(snapshot?.apiLegacyRecords?.length))
   const compact = mode === 'compact' && !isOpen
   const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const secondaryGroups = navigationGroups.filter((group) => group !== 'Tu jornada' && group !== 'Preparación')
+  const secondaryGroups = navigationGroups.filter((group) => group !== 'Tu jornada' && group !== 'Preparación'
+    && visibleItems.some(item => item.group === group))
   const secondaryActive = !!business && visibleItems.some((item) => secondaryGroups.some((group) => group === item.group)
     && pathname === businessHref(business.id, item.segment))
 
@@ -58,15 +60,18 @@ export function Sidebar({
 
   function renderGroup(group: (typeof navigationGroups)[number]) {
     if (!business) return null
+    const items = visibleItems.filter((item) => item.group === group)
+    if (!items.length) return null
     return <div key={group} className={'sidebar-group' + (group === 'Tu jornada' ? ' sidebar-group-primary' : group === 'Preparación' ? ' sidebar-group-preparation' : ' sidebar-group-secondary')}>
-      <p className="group-label">{group.toUpperCase()}</p>
-      {visibleItems.filter((item) => item.group === group).map((item) => {
+      {(appMode === 'demo' || group === 'Tu jornada' || group === 'Preparación') && <p className="group-label">{group.toUpperCase()}</p>}
+      {items.map((item) => {
         const href = businessHref(business.id, item.segment)
         const active = pathname === href
-        return <AppLink key={item.id} navigate={navigate} to={href} ariaLabel={item.label}
-          ariaCurrent={active ? 'page' : undefined} title={compact ? item.label : undefined}
+        const label = appMode === 'api' && item.id === 'historial' ? 'Registros anteriores' : item.label
+        return <AppLink key={item.id} navigate={navigate} to={href} ariaLabel={label}
+          ariaCurrent={active ? 'page' : undefined} title={compact ? label : undefined}
           className={'side-link' + (active ? ' active' : '')}>
-          <Icon name={item.icon} size={19}/><span className="side-label">{item.label}</span>
+          <Icon name={item.icon} size={19}/><span className="side-label">{label}</span>
           {item.phase === 'Posterior' && <span className="side-dot" title="Próximamente"/>}
         </AppLink>
       })}
@@ -78,16 +83,12 @@ export function Sidebar({
       {isOpen && <button type="button" tabIndex={-1} className="mobile-scrim" aria-label="Cerrar menú al tocar fuera" onClick={onClose} />}
       <aside id="app-sidebar" className={'sidebar' + (isOpen ? ' sidebar-open' : '')} role={isOpen ? 'dialog' : undefined} aria-modal={isOpen ? true : undefined} aria-label={isOpen ? 'Menú principal' : 'Navegación principal'} onKeyDown={handleDrawerKeys}>
         <div className="sidebar-head">
-          <AppLink navigate={navigate} to="/inicio" className="brand" ariaLabel="Ir al inicio personal" title={compact ? 'Asistente PyME · Inicio personal' : undefined}>
+          <AppLink navigate={navigate} to={appMode === 'api' ? businessHref(business?.id ?? 'walos', 'inicio') : '/inicio'} className="brand"
+            ariaLabel={appMode === 'api' ? 'Inicio de WALOS' : 'Ir al inicio personal'} title={compact ? appMode === 'api' ? 'Inicio de WALOS' : 'Asistente PyME · Inicio personal' : undefined}>
             <span className="brand-logo"><Icon name="building" size={25} /></span>
-            <span className="brand-copy"><strong>Asistente PyME</strong><small>Tu jornada de trabajo</small></span>
+            <span className="brand-copy"><strong>{appMode === 'api' ? business?.name ?? 'WALOS' : 'Asistente PyME'}</strong><small>Tu jornada de trabajo</small></span>
           </AppLink>
           <button type="button" ref={closeButtonRef} className="icon-button sidebar-close" aria-label="Cerrar menú" onClick={onClose}><Icon name="close" /></button>
-        </div>
-
-        <div className="drawer-context" aria-hidden={!isOpen}>
-          <span>MENÚ PRINCIPAL</span>
-          <strong>{business?.name ?? 'Mi espacio personal'}</strong>
         </div>
 
         <div className="sidebar-scroll">
@@ -108,19 +109,19 @@ export function Sidebar({
             <nav aria-label="Secciones del negocio">
               {navigationGroups.filter((group) => group === 'Tu jornada' || group === 'Preparación').map(renderGroup)}
               <details className="sidebar-secondary-options" open={compact || secondaryActive}>
-                <summary className="group-label">Más opciones</summary>
+                <summary className="group-label">{appMode === 'api' ? 'Consultas' : 'Más opciones'}</summary>
                 {secondaryGroups.map(renderGroup)}
               </details>
             </nav>
           )}
         </div>
-        <div className="sidebar-foot">
+        {appMode === 'demo' && <div className="sidebar-foot">
           <div className="sidebar-foot-card" title={compact ? 'Entorno de demostración. Sin operaciones ni pagos reales.' : undefined}>
             <div className="sidebar-foot-icon"><Icon name="shield" size={17}/></div>
-            <div className="sidebar-foot-copy"><strong>{appMode === 'demo' ? 'Entorno de demostración' : 'WALOS conectado'}</strong><span>{appMode === 'demo' ? 'Sin operaciones reales ni pagos.' : 'Datos en servidor. Pagos declarados.'}</span></div>
+            <div className="sidebar-foot-copy"><strong>Entorno de demostración</strong><span>Sin operaciones reales ni pagos.</span></div>
           </div>
-          <span className="sidebar-version">Jornada WALOS · {appMode === 'demo' ? 'Demo local' : 'Servidor'}</span>
-        </div>
+          <span className="sidebar-version">Jornada WALOS · Demo local</span>
+        </div>}
       </aside>
     </>
   )

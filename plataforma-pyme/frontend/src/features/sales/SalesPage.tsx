@@ -3,6 +3,9 @@ import { useLeaveConfirmation } from '../../app/unsavedChanges'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
+import { AppLink } from '../../app/AppLink'
+import { businessHref } from '../../app/navigation'
+import type { Navigate } from '../../app/types'
 import { useAppData, useStockBalances } from '../../data/dataContext'
 import type { Business, CatalogItem, Location, Sale } from '../../data/models'
 import type { CashSession } from '../../data/demo/cashPolicy'
@@ -24,7 +27,7 @@ type DraftPayment = { key: string; method: SalePaymentMethod; amount: string; fi
 const newLine = (): DraftLine => ({ key: crypto.randomUUID(), catalogItemId: '', quantity: '1', price: '' })
 const newPayment = (): DraftPayment => ({ key: crypto.randomUUID(), method: 'EFECTIVO', amount: '', financialAccountId: '' })
 
-export function SalesPage({ business, items, locations, movements, sales, sessions, accounts, qrIntents }: {
+export function SalesPage({ business, items, locations, movements, sales, sessions, accounts, qrIntents, navigate }: {
   business: Business
   items: CatalogItem[]
   locations: Location[]
@@ -33,8 +36,19 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
   sessions: CashSession[]
   accounts: FinancialAccount[]
   qrIntents: QrIntent[]
+  navigate: Navigate
 }) {
   const { mode, capabilities } = useAppData()
+  const balances = useStockBalances(movements)
+  const availableItems = items.filter(item => item.status === 'ACTIVO' && item.sellable && !item.readonlyReason && (capabilities.services || item.kind !== 'SERVICIO'))
+  const hasStock = availableItems.some(item => item.kind === 'SERVICIO' || locations.some(location =>
+    location.status === 'ACTIVA' && location.canSell && location.canStore && (balances.get(stockKey(location.id, item.id)) ?? 0) > 0))
+  const preparation = mode !== 'api' ? null : availableItems.length === 0
+    ? { segment: 'catalogo', label: 'Agregar productos', hint: 'Agregá productos y precios al Catálogo para empezar a vender.' }
+    : !hasStock ? { segment: 'inventario', label: 'Cargar stock', hint: 'Cargá las unidades disponibles en Stock antes de vender.' }
+      : !sessions.some(session => session.status === 'ABIERTA')
+        ? { segment: 'jornadas', label: 'Abrir caja para vender', hint: 'Abrí Caja con el efectivo inicial antes de registrar ventas.' }
+        : null
   const requestLeave = useLeaveConfirmation()
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
@@ -72,20 +86,16 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
         <h1>Ventas</h1>
         <p>Venta rápida, descuentos, pagos divididos e historial de {business.name}.</p>
       </div>
-      <button type="button" className="button button-primary" onClick={() => { if (creating && !requestLeave()) return; setCreating(!creating); setDetailId(null); setQrDetailId(null); setNotice('') }}>
+      {preparation && !creating ? <AppLink navigate={navigate} to={businessHref(business.id, preparation.segment)} className="button button-primary">{preparation.label}<Icon name="arrow" size={17}/></AppLink> : <button type="button" className="button button-primary" onClick={() => { if (creating && !requestLeave()) return; setCreating(!creating); setDetailId(null); setQrDetailId(null); setNotice('') }}>
         <Icon name={creating ? 'close' : 'plus'} size={17}/>{creating ? 'Cerrar formulario' : 'Nueva venta'}
-      </button>
+      </button>}
     </div>
 
-    <section className="sales-kpis">
+    {sales.length > 0 && <section className="sales-kpis">
       <div><span className="feature-icon blue"><Icon name="receipt"/></span><small>Ventas</small><strong>{sales.length}</strong></div>
       <div><span className="feature-icon mint"><Icon name="chart"/></span><small>Total de ventas declaradas</small><strong>{moneyDisplay(sold)}</strong></div>
-      <div><span className="feature-icon violet"><Icon name="shopping"/></span><small>{capabilities.services ? 'Productos y servicios disponibles' : 'Artículos disponibles'}</small><strong>{items.filter((item) => item.status === 'ACTIVO' && item.sellable && !item.readonlyReason && (capabilities.services || item.kind !== 'SERVICIO')).length}</strong></div>
-    </section>
-    <div className="informational-note">
-      <Icon name="shield" size={19}/>
-      <span>Una venta descuenta stock. <strong>Abrí caja antes de vender</strong> para incluir el efectivo en su arqueo. Los pagos son declarados, sin verificación bancaria.</span>
-    </div>
+      <div><span className="feature-icon violet"><Icon name="shopping"/></span><small>{capabilities.services ? 'Productos y servicios disponibles' : 'Artículos disponibles'}</small><strong>{availableItems.length}</strong></div>
+    </section>}
     {notice && <p className="form-message success" role="status">{notice}</p>}
 
     {creating && <SaleForm key={business.id + ':' + formVersion}
@@ -112,7 +122,7 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
         {qrIntents.slice(0, 100).map((intent) => <div className="qr-demo-entry" key={intent.id}>
           <div>
             <strong>{moneyDisplay(intent.amountCents)}</strong>
-            <small>{new Date(intent.createdAt).toLocaleString('es-AR')} · {intent.status === 'PENDIENTE' ? 'Pendiente' : intent.status === 'CANCELADO' ? 'Cancelada' : 'Aprobada (simulada)'}</small>
+            <small>{new Date(intent.createdAt).toLocaleString('es-AR', { hour12: false })} · {intent.status === 'PENDIENTE' ? 'Pendiente' : intent.status === 'CANCELADO' ? 'Cancelada' : 'Aprobada (simulada)'}</small>
           </div>
           <button type="button" className="button button-secondary"
             onClick={() => { setQrDetailId(intent.id); setDetailId(null); setCreating(false) }}>
@@ -126,21 +136,21 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
     <section className="form-panel sales-history">
       <div className="business-section-heading">
         <div><Icon name="receipt" size={21}/><h2>Historial de ventas</h2></div>
-        <span>{shown.length} visibles de {sales.length}</span>
+        {sales.length > 0 && <span>{shown.length} visibles de {sales.length}</span>}
       </div>
-      <label className="form-field sales-search"><span>Buscar artículo, SKU o referencia</span>
+      {sales.length > 0 && <label className="form-field sales-search"><span>Buscar artículo, SKU o referencia</span>
         <input type="search" placeholder="Buscar en ventas…" value={query} onChange={(event) => setQuery(event.target.value)}/>
-      </label>
+      </label>}
       {shown.length === 0 ? <div className="sales-empty">
         <Icon name="receipt" size={34}/>
         <h3>{sales.length ? 'No hay resultados para esa búsqueda' : 'Todavía no hay ventas registradas'}</h3>
-        <p>{sales.length ? 'Probá con otra búsqueda.' : mode === 'api' ? 'Registrá una venta de artículos en el servidor desde el botón «Nueva venta».' : 'Registrá una venta de prueba de bienes o servicios desde el botón «Nueva venta».'}</p>
+        <p>{sales.length ? 'Probá con otra búsqueda.' : preparation?.hint ?? (mode === 'api' ? 'Registrá tu primera venta desde «Nueva venta».' : 'Registrá una venta de prueba de bienes o servicios desde el botón «Nueva venta».')}</p>
       </div> : <div className="sales-list">
         {shown.slice(0, 100).map((sale) => <article className="sales-list-row" key={sale.id}>
           <span className="feature-icon blue"><Icon name="receipt" size={20}/></span>
           <div>
             <strong>Venta · {sale.lines.length} {sale.lines.length === 1 ? 'renglón' : 'renglones'}</strong>
-            <small>{new Date(sale.createdAt).toLocaleString('es-AR')} · {sale.lines.map((line) => line.name).join(', ')}</small>
+            <small>{new Date(sale.createdAt).toLocaleString('es-AR', { hour12: false })} · {sale.lines.map((line) => line.name).join(', ')}</small>
           </div>
           <strong>{moneyDisplay(sale.totalCents)}</strong>
           <button type="button" className="button button-secondary" onClick={() => { setQrDetailId(null); setDetailId(sale.id) }}>Ver comprobante</button>
@@ -154,7 +164,7 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
         <div><Icon name="receipt" size={22}/><h2>Comprobante de venta</h2></div>
         <button type="button" className="button button-secondary" onClick={() => setDetailId(null)}><Icon name="close" size={17}/> Cerrar</button>
       </div>
-      <p><strong>{business.name}</strong> · {new Date(selected.createdAt).toLocaleString('es-AR')} · <code>{selected.id}</code></p>
+      <p><strong>{business.name}</strong> · {new Date(selected.createdAt).toLocaleString('es-AR', { hour12: false })} · <code>{selected.id}</code></p>
       <p>Ubicación: {locations.find((location) => location.id === selected.locationId)?.name ?? 'Sin ubicación física (servicios)'}</p>
       <p>Jornada de caja: {selected.cashSessionId ? 'Vinculada a una jornada (sólo suma los pagos en efectivo).' : 'Sin jornada vinculada; no ingresa en arqueos de caja.'}</p>
       <div className="sales-receipt-list">
@@ -333,7 +343,7 @@ export function SaleForm({ business, items, locations, movements, sessions, acco
   }
 
   return <section className="form-panel sales-form">
-    <div className="business-section-heading"><div><Icon name="shopping" size={22}/><h2>Venta rápida</h2></div><span>Sin cobros bancarios reales</span></div>
+    <div className="business-section-heading"><div><Icon name="shopping" size={22}/><h2>Venta rápida</h2></div></div>
     <form className="demo-form" onSubmit={(event) => void submit(event)}>
       <div className="sales-form-top">
         <label className="form-field"><span>Ubicación de venta {physicalSelected || mode === 'api' ? '*' : '(opcional para servicios)'}</span>
@@ -342,7 +352,7 @@ export function SaleForm({ business, items, locations, movements, sessions, acco
             {eligibleLocations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
           </select>
         </label>
-        <p>Para vender productos físicos, elegí una ubicación activa habilitada para vender y almacenar.{capabilities.services && ' Los servicios no requieren stock ni depósito.'}</p>
+        {capabilities.services && <p>Los servicios no requieren stock ni depósito.</p>}
       </div>
 
       <SaleCatalogPicker
@@ -380,7 +390,7 @@ export function SaleForm({ business, items, locations, movements, sessions, acco
           {item && <div className="sales-line-preview">
             <DemoPhoto target={{ scope: 'catalog', businessId: business.id, entityId: item.id }} alt={'Imagen de ' + item.name}
               fallback={<Icon name={item.kind === 'SERVICIO' ? 'briefcase' : 'package'} size={18}/>} className="feature-icon blue demo-photo-list"/>
-            <span>{item.kind === 'SERVICIO' ? 'Sin inventario físico' : 'La venta descontará stock en la ubicación seleccionada'} · {item.sku || 'Sin SKU'}</span>
+            <span>{item.kind === 'SERVICIO' ? 'Sin stock' : 'Descuenta stock'} · {item.sku || 'Sin SKU'}</span>
             <strong>{(() => { try {
               const cents = parseMoneyCents(line.price)
               return cents === null ? 'A cotizar' : moneyDisplay(lineTotalCents(parseQuantityMilli(line.quantity, item.unit), cents))
@@ -406,12 +416,12 @@ export function SaleForm({ business, items, locations, movements, sessions, acco
         <button type="button" className="button button-secondary" disabled={payments.length >= 6}
           onClick={() => setPayments((old) => [...old, newPayment()])}><Icon name="plus" size={16}/> Agregar medio</button>
       </div>
-      <div className="informational-note"><Icon name="shield" size={17}/><span>Los pagos declarados deben sumar el total. Sólo la parte en efectivo integra el arqueo. Registrar una venta no acredita un cobro bancario.</span></div>
+      <p className="cash-quiet">Los pagos deben sumar el total. Se registran como declaración; no se procesa un cobro bancario.</p>
       {(hasCash || capabilities.cashRequired) && <p className={'cash-form-hint ' + (linkedCashSession ? 'linked' : 'unlinked')}>
         <Icon name={linkedCashSession ? 'shield' : 'clock'} size={17}/>
         {linkedCashSession
-          ? hasCash ? 'La parte en efectivo de esta venta quedará vinculada a la jornada abierta de la ubicación elegida.' : 'La venta quedará vinculada a la jornada abierta. Los pagos digitales no modifican su efectivo.'
-          : 'No hay una jornada abierta para esta ubicación. En modo conectado debés abrirla antes de registrar la venta, cualquiera sea el medio de pago.'}
+          ? hasCash ? 'El efectivo se suma a la caja abierta.' : 'El pago digital no modifica el efectivo de caja.'
+          : capabilities.cashRequired ? 'Abrí Caja antes de confirmar la venta.' : 'No hay caja abierta: el efectivo quedará fuera del arqueo.'}
       </p>}
       {payments.map((payment, index) => <div className={'sales-payment-row' + (capabilities.financialAccounts && payment.method !== 'EFECTIVO' && payment.method !== 'TARJETA' ? ' has-account' : '')} key={payment.key}>
         <label className="form-field"><span>Medio de pago {index + 1}</span>

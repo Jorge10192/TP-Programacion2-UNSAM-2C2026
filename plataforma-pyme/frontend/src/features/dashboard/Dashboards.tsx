@@ -45,41 +45,40 @@ export function Welcome({ navigate, businesses }: { navigate: Navigate; business
 }
 
 const journeySteps = [
-  { title: 'Comprá y recibí', segment: 'compras', link: 'Ir a Compras', text: 'Registrá la compra y confirmá dónde recibiste la mercadería. Comprar no registra un pago.' },
-  { title: 'Revisá el stock', segment: 'inventario', link: 'Consultar Stock', text: 'Revisá existencias por ubicación. Cargá los productos terminados con un conteo.' },
-  { title: 'Abrí caja', segment: 'jornadas', link: 'Abrir Caja', text: 'Indicá ubicación y fondo inicial antes de vender. El efectivo sin caja abierta queda fuera del arqueo.' },
-  { title: 'Registrá las ventas', segment: 'ventas', link: 'Ir a Ventas', text: 'Elegí productos, cantidades y pagos. Usá la misma ubicación; la venta descuenta stock.' },
-  { title: 'Registrá los gastos', segment: 'gastos', link: 'Ir a Gastos', text: 'Anotá cada egreso pagado. El efectivo de esa ubicación se descuenta de la caja abierta.' },
-  { title: 'Cerrá caja', segment: 'jornadas', link: 'Ir a Caja para cerrar', text: 'Contá el efectivo y explicá diferencias. Volvé a Caja y confirmá el cierre.' },
+  { title: 'Comprá y recibí', segment: 'compras', link: 'Ir a Compras', text: 'Guardá la compra y confirmá la recepción para sumar stock.' },
+  { title: 'Revisá el stock', segment: 'inventario', link: 'Consultar Stock', text: 'Contá y cargá las unidades de producto terminado.' },
+  { title: 'Abrí caja', segment: 'jornadas', link: 'Abrir Caja', text: 'Indicá el efectivo inicial antes de vender.' },
+  { title: 'Registrá las ventas', segment: 'ventas', link: 'Ir a Ventas', text: 'Elegí productos, cantidades y medios de pago.' },
+  { title: 'Registrá los gastos', segment: 'gastos', link: 'Ir a Gastos', text: 'Anotá los gastos pagados durante la jornada.' },
+  { title: 'Cerrá caja', segment: 'jornadas', link: 'Ir a Caja para cerrar', text: 'Contá el efectivo y explicá cualquier diferencia.' },
 ]
 
 export function BusinessDashboard({
-  business, navigate, catalogCount, physicalItemCount, storageLocationCount,
-  pendingPurchaseCount, hasStock, movementCount, saleCount, openCashCount,
+  business, navigate, catalogCount, physicalItemCount, storageLocationCount, supplierCount,
+  pendingPurchaseCount, hasStock, openCashCount,
 }: {
   business: Business
   navigate: Navigate
   catalogCount: number
   physicalItemCount: number
   storageLocationCount: number
+  supplierCount: number
   pendingPurchaseCount: number
   hasStock: boolean
-  movementCount: number
-  saleCount: number
   openCashCount: number
 }) {
   const { mode } = useAppData()
+  const needsPreparation = catalogCount === 0 || storageLocationCount === 0 || (mode === 'api' && supplierCount === 0)
   const nextAction = catalogCount === 0 ? { segment: 'catalogo', label: 'Preparar el catálogo' }
     : physicalItemCount > 0 && storageLocationCount === 0 ? { segment: 'ubicaciones', label: 'Preparar una ubicación' }
+      : mode === 'api' && supplierCount === 0 ? { segment: 'proveedores', label: 'Agregar un proveedor' }
       : pendingPurchaseCount > 0 ? { segment: 'compras', label: 'Revisar recepciones pendientes' }
         : openCashCount > 0 ? { segment: 'ventas', label: 'Registrar una venta' }
           : physicalItemCount > 0 && !hasStock ? { segment: 'compras', label: 'Registrar una compra' }
             : { segment: 'jornadas', label: 'Abrir caja' }
   const statusItems = [
     { label: 'Por recibir', value: pendingPurchaseCount, note: 'Compras físicas pendientes' },
-    { label: 'Cajas abiertas', value: openCashCount, note: 'En esta empresa' },
-    { label: 'Ventas registradas', value: saleCount, note: mode === 'demo' ? 'Histórico de la demo' : 'Histórico del servidor' },
-    { label: 'Movimientos de stock', value: movementCount, note: mode === 'demo' ? 'Histórico de la demo' : 'Histórico del servidor' },
+    { label: 'Caja', value: openCashCount > 0 ? (openCashCount === 1 ? 'Abierta' : openCashCount + ' abiertas') : 'Cerrada', note: openCashCount > 0 ? 'Lista para registrar ventas y gastos' : 'Abrila antes de vender' },
   ]
   const preparationItems = [
     { label: 'Catálogo', segment: 'catalogo', icon: 'package' as const, text: 'Definí artículos, unidades y precios. Las fichas no crean stock.', status: catalogCount + ' fichas activas' },
@@ -103,19 +102,19 @@ export function BusinessDashboard({
 
     <section className="journey-guide" aria-labelledby="journey-guide-title">
       <div className="section-header journey-guide-heading"><h2 id="journey-guide-title">Cómo recorrer la jornada</h2></div>
-      <p className="journey-guide-intro">Entrá a la sección que necesitás; no hay módulos que activar. Caja se usa al abrir y al cerrar.</p>
+      <p className="journey-guide-intro">Prepará el stock, abrí caja y registrá la operación. Al terminar, volvé a Caja para cerrar.</p>
       <ol className="journey-guide-list">
         {journeySteps.map((step, index) => <li key={step.title} className="journey-guide-step">
           <span className="journey-guide-number" aria-hidden="true">{index + 1}</span>
-          <div className="journey-guide-copy"><h3>{step.title}</h3><p>{mode === 'api' && index === 2 ? 'Abrí la jornada antes de registrar cualquier venta o gasto. Sólo el efectivo integra el arqueo.' : step.text}</p>
+          <div className="journey-guide-copy"><h3>{step.title}</h3><p>{step.text}</p>
             <AppLink to={businessHref(business.id, step.segment)} navigate={navigate} className="journey-guide-link">{step.link} <Icon name="arrow" size={15}/></AppLink>
           </div>
         </li>)}
       </ol>
     </section>
 
-    <section className="dashboard-preparation" aria-labelledby="dashboard-preparation-title">
-      <div className="section-header"><div><h2 id="dashboard-preparation-title">Antes de empezar, sólo si falta</h2><p>Reutilizá estos datos. El stock terminado se carga por conteo, sin recetas.</p></div></div>
+    <details className="dashboard-preparation" open={needsPreparation}>
+      <summary>Preparación del negocio</summary>
       <ul className="dashboard-preparation-list">
         {preparationItems.map((item) => <li key={item.segment} className="dashboard-preparation-item">
           <AppLink to={businessHref(business.id, item.segment)} navigate={navigate} className="dashboard-preparation-link">
@@ -123,6 +122,6 @@ export function BusinessDashboard({
           </AppLink>
         </li>)}
       </ul>
-    </section>
+    </details>
   </div>
 }

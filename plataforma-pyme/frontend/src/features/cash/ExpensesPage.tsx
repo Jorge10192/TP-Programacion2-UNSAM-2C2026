@@ -79,17 +79,17 @@ export function ExpensesPage({ business, locations, expenses, snapshot, navigate
       <div><p className="eyebrow">FINANZAS · EMPRESA</p><h1>Gastos</h1>
         <p>Registrá egresos operativos de {business.name} y su medio de pago declarado.</p>
       </div>
-      <button className="button button-primary" type="button" onClick={() => { setFormOpen((open) => !open); setError(''); setNotice('') }}>
+      {mode === 'api' && !selectedSession && !formOpen ? <AppLink navigate={navigate} to={businessHref(business.id, 'jornadas')} className="button button-primary">Abrir caja para gastos<Icon name="arrow" size={17}/></AppLink> : <button className="button button-primary" type="button" onClick={() => { setFormOpen((open) => !open); setError(''); setNotice('') }}>
         <Icon name={formOpen ? 'close' : 'plus'} size={18}/>{formOpen ? 'Cerrar formulario' : 'Registrar gasto'}
-      </button>
+      </button>}
     </div>
-    <section className="sales-kpis">
+    {expenses.length > 0 && <section className="sales-kpis">
       <div><span className="feature-icon blue"><Icon name="receipt"/></span><small>Egresos registrados</small><strong>{expenses.length}</strong></div>
       <div><span className="feature-icon violet"><Icon name="wallet"/></span><small>Total declarado (histórico)</small><strong>{moneyDisplay(sum)}</strong></div>
       <div><span className="feature-icon mint"><Icon name="credit"/></span><small>Pagos en efectivo declarados</small><strong>{moneyDisplay(cash)}</strong></div>
-    </section>
+    </section>}
     <div className="informational-note"><Icon name="shield" size={18}/><span>
-      Registrá sólo egresos pagados. Para descontar efectivo de caja, elegí su ubicación con jornada abierta. Una compra registrada no cuenta automáticamente como gasto.
+      Registrá gastos pagados. Sólo el efectivo modifica la caja abierta.
     </span></div>
     {notice && <p className="form-message success" role="status">{notice}</p>}
     {formOpen && <section className="form-panel cash-form">
@@ -161,7 +161,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot, navigate
       {filtered.length ? <div className="cash-entry-list">{filtered.slice(0, 100).map((entry) => <article key={entry.id} className="cash-entry">
         <span className="feature-icon blue"><Icon name="wallet"/></span>
         <div><strong>{entry.description}</strong><small>{entry.paidOn} · {expenseCategories[entry.category]} · {expensePaymentLabels[entry.paymentMethod]}</small>
-          <small>{locations.find(l => l.id === entry.locationId)?.name ?? 'Gasto general'} · {entry.cashSessionId ? 'Asociado a caja' : 'Sin movimiento de caja'} · {new Date(entry.createdAt).toLocaleString('es-AR')}</small>
+          <small>{locations.find(l => l.id === entry.locationId)?.name ?? 'Gasto general'} · {entry.cashSessionId ? 'Asociado a caja' : 'Sin movimiento de caja'} · {new Date(entry.createdAt).toLocaleString('es-AR', { hour12: false })}</small>
           {entry.financialAccountLabelSnapshot && <small>Cuenta de origen declarada: {entry.financialAccountLabelSnapshot}</small>}
           {entry.notes && <small>{entry.notes}</small>}</div>
         <strong>{moneyDisplay(entry.amountCents)}</strong>

@@ -26,7 +26,6 @@
 .sidebar-version { display: block; font-size: 10px; color: #8da6c8; margin: 14px 8px 0; }
 .sidebar-close { display: none !important; }
 .mobile-scrim { display: none; }
-.drawer-context { display: none; }
 
 .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar { height: 76px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px, 3vw, 43px); gap: 16px; }
@@ -34,14 +33,15 @@
 .topbar-right { justify-content: flex-end; }
 .breadcrumbs { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 13px; overflow: hidden; white-space: nowrap; }
 .breadcrumbs strong { color: var(--ink); overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
-.icon-button { cursor: pointer; border: 0; background: transparent; padding: 8px; display: inline-grid; place-items: center; border-radius: 9px; color: inherit; }
+.icon-button { cursor: pointer; border: 0; background: transparent; padding: 8px; display: inline-grid; place-items: center; border-radius: var(--control-radius, 12px); color: inherit; }
 .icon-button:hover { background: rgba(127,148,182,.14); }
-.sidebar-actions { display: flex; align-items: center; gap: 2px; padding-right: 10px; border-right: 1px solid var(--line); }
-.desktop-menu-trigger, .desktop-hide-trigger { display: inline-grid; color: #4e6689; }
-.desktop-menu-trigger:hover, .desktop-hide-trigger:hover { background: #edf3ff; color: #2259ad; }
-.menu-drawer-trigger { display: inline-grid; color: #253e62; background: #f0f5fc; border: 1px solid #d9e4f4; margin-right: 4px; }
-.menu-drawer-trigger:hover { background: #e1edff; color: #2259ad; }
-.back-button { display: inline-flex; align-items: center; gap: 7px; flex: none; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: #415b7d; font-weight: 750; font-size: 12px; }
+.sidebar-actions { display: flex; align-items: center; flex: none; }
+.menu-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--control-radius, 12px); background: #f8faff; color: #294b78; font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; transition: background .16s ease, border-color .16s ease; }
+.menu-toggle:hover { background: #eaf1ff; border-color: #b8cdef; }
+.menu-drawer-trigger { display: none; }
+.data-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 44px; min-height: 44px; color: #52637a; font: inherit; font-size: 13px; }
+.data-refresh:disabled { opacity: .6; cursor: wait; }
+.back-button { display: inline-flex; align-items: center; gap: 7px; flex: none; padding: 9px 11px; border: 1px solid var(--line); border-radius: var(--control-radius, 12px); background: #fff; color: #415b7d; font-weight: 750; font-size: 12px; }
 .back-button:hover { background: #f3f7ff; border-color: #bad0f2; color: #215ab2; }
 .company-picker { border: 1px solid var(--line); color: #4c5f78; border-radius: 10px; display: flex; align-items: center; gap: 7px; padding: 9px 10px; background: #f9fbff; max-width: 240px; }
 .company-picker select { border: 0; outline: none; background: transparent; color: var(--ink); font-weight: 650; font-family: inherit; font-size: 12px; min-width: 0; max-width: 190px; cursor: pointer; }
@@ -125,7 +125,7 @@
 
 /* E1-A1.1: el estado de escritorio no altera el drawer móvil (hasta 900px). */
 @media (min-width: 901px) {
-  .app-layout.menu-compact .sidebar { flex: 0 0 76px; width: 76px; }
+  .app-layout.menu-compact .sidebar { flex: 0 0 72px; width: 72px; }
   .app-layout.menu-compact .sidebar-head { padding: 18px 9px; justify-content: center; }
   .app-layout.menu-compact .brand { justify-content: center; }
   .app-layout.menu-compact .brand-logo { height: 42px; width: 42px; }
@@ -138,18 +138,18 @@
   .app-layout.menu-compact .sidebar-scroll { padding: 16px 8px 20px; }
   .app-layout.menu-compact .sidebar-group { padding: 6px 0; }
   .app-layout.menu-compact .sidebar-group + .sidebar-group { margin-top: 10px; }
-  .app-layout.menu-compact .side-link { justify-content: center; padding: 11px 8px; }
+  .app-layout.menu-compact .side-link { justify-content: center; padding: 10px; }
   .app-layout.menu-compact .side-link svg { flex: none; }
   .app-layout.menu-compact .sidebar-foot { padding: 12px 8px; }
   .app-layout.menu-compact .sidebar-foot-card { justify-content: center; padding: 8px; }
-  .app-layout.menu-hidden .sidebar { display: none; }
 }
 
 @media (max-width: 900px) {
   .sidebar { width: 258px; flex-basis: auto; position: fixed; left: 0; top: 0; bottom: 0; visibility: hidden; pointer-events: none; transform: translateX(-100%); transition: transform .18s ease, visibility .18s ease; }
   .sidebar.sidebar-open { visibility: visible; pointer-events: auto; transform: translateX(0); transition-property: transform; }
   .sidebar-close { display: inline-grid !important; }
-  .desktop-menu-trigger, .desktop-hide-trigger { display: none; }
+  .desktop-menu-trigger { display: none; }
+  .menu-drawer-trigger { display: inline-flex; }
   .mobile-scrim { display: block; position: fixed; inset: 0; background: rgba(10,25,46,.57); z-index: 35; border: 0; width: 100%; height: 100%; }
   .main-column { width: 100%; }
   .sidebar-head { gap: 5px; }
@@ -157,8 +157,8 @@
 @media (max-width: 610px) {
   .topbar { height: 65px; padding: 0 16px; }
   .topbar-left, .topbar-right { gap: 7px; }
-  .sidebar-actions { gap: 2px; padding-right: 7px; }
-  .menu-drawer-trigger { margin-right: 0; }
+  .menu-toggle { padding: 9px 10px; }
+  .refresh-label { display: none; }
   .back-button { padding: 9px; }
   .back-button span { display: none; }
   .breadcrumbs span, .breadcrumbs svg { display: none; }
@@ -187,8 +187,8 @@
   .stats-grid { grid-template-columns: 1fr; }
 }
 
-/* E1-A1.2 — menú superpuesto: la sombra bloquea el fondo y el drawer es modal.
-   Es independiente del estado de menú fijo (expandido/compacto/oculto). */
+/* El menú móvil siempre abre con nombres y ancho propio. */
+@media (max-width: 900px) {
 .app-layout.menu-drawer-open .mobile-scrim {
   display: block;
   position: fixed;
@@ -217,25 +217,6 @@
   box-shadow: 10px 0 42px rgba(5, 17, 37, .35);
 }
 .app-layout.menu-drawer-open .sidebar-head { padding: 21px 16px; gap: 8px; justify-content: space-between; }
-.app-layout.menu-drawer-open .drawer-context {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 14px 21px 10px;
-  background: rgba(34, 56, 87, .34);
-  border-bottom: 1px solid rgba(203, 218, 242, .1);
-}
-.app-layout.menu-drawer-open .drawer-context span {
-  color: #97b1d5;
-  font-size: 10px;
-  letter-spacing: 1.35px;
-  font-weight: 850;
-}
-.app-layout.menu-drawer-open .drawer-context strong {
-  color: #f0f6ff;
-  font-size: 15px;
-  font-weight: 800;
-}
 
 .app-layout.menu-drawer-open .brand { justify-content: flex-start; min-width: 0; }
 .app-layout.menu-drawer-open .sidebar-close { display: inline-grid !important; color: #f3f7ff; flex: none; }
@@ -251,7 +232,7 @@
 .app-layout.menu-drawer-open .sidebar .sidebar-foot-copy,
 .app-layout.menu-drawer-open .sidebar .sidebar-version { display: block; }
 .app-layout.menu-drawer-open .sidebar .side-dot { display: inline-block; }
-
+}
 
 /* E1-A2 — formularios DEMO y ficha de negocio. */
 .form-layout { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(250px, .9fr); align-items: start; gap: 20px; }

@@ -1,10 +1,10 @@
 /**
  * Preferencia exclusivamente visual, compartida entre todas las empresas.
  * No constituye autenticación ni estado de negocio.
- * v3 muestra nombres por defecto y conserva la elección explícita compacto/expandido.
- * El antiguo hidden de v2 era también el default: se migra a expanded, sin tocar negocio.
+ * Muestra nombres por defecto y conserva la elección compacto/expandido.
+ * Las preferencias hidden anteriores vuelven a expanded, sin tocar negocio.
  */
-export type SidebarMode = 'expanded' | 'compact' | 'hidden'
+export type SidebarMode = 'expanded' | 'compact'
 
 const STORAGE_KEY = 'asistente-pyme.sidebar-mode.v3'
 const LEGACY_STORAGE_KEY = 'asistente-pyme.sidebar-mode.v2'
@@ -12,7 +12,8 @@ const LEGACY_STORAGE_KEY = 'asistente-pyme.sidebar-mode.v2'
 export function loadSidebarMode(): SidebarMode {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored === 'expanded' || stored === 'compact' || stored === 'hidden') return stored
+    if (stored === 'expanded' || stored === 'compact') return stored
+    if (stored === 'hidden') return 'expanded'
     const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY)
     if (legacy === 'compact') return 'compact'
   } catch {

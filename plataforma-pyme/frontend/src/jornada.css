@@ -10,6 +10,7 @@
   --primary: #245fc6;
   --surface: #fff;
   --radius: 10px;
+  --control-radius: 12px;
 }
 body { font-size: 15px; line-height: 1.45; }
 button, a, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
@@ -25,7 +26,7 @@ summary { cursor: pointer; }
 .sidebar-group { padding: 5px 0; }
 .sidebar-group + .sidebar-group { margin-top: 8px; }
 .group-label { margin: 9px 0 6px; font-size: 11px; letter-spacing: .7px; color: #a8bedb; }
-.side-link { min-height: 44px; padding: 9px 10px; gap: 10px; border-radius: 7px; font-size: 14px; }
+.side-link { min-height: 44px; padding: 9px 10px; gap: 10px; border-radius: var(--control-radius); font-size: 14px; }
 .side-link.active { background: #2b5699; }
 .sidebar-foot { padding: 12px; }
 .sidebar-foot-card { padding: 10px; background: #223b59; border-radius: 8px; }
@@ -42,7 +43,7 @@ summary { cursor: pointer; }
 .page-heading h1 { font-size: clamp(24px, 2vw, 28px); letter-spacing: -.6px; margin-bottom: 5px; }
 .page-heading p:not(.eyebrow) { font-size: 14px; line-height: 1.45; max-width: 72ch; }
 .eyebrow { font-size: 11px; margin-bottom: 5px; letter-spacing: .8px; }
-.button { min-height: 44px; padding: 9px 14px; font-size: 13px; border-radius: 8px; line-height: 1.3; }
+.button { min-height: 44px; padding: 9px 14px; font-size: 13px; border-radius: var(--control-radius); line-height: 1.3; }
 .button-primary { background: var(--primary); border-color: var(--primary); }
 .button-primary:hover { background: #1c4da3; }
 .button:disabled { opacity: .6; cursor: not-allowed; }
@@ -160,7 +161,7 @@ summary { cursor: pointer; }
 .sidebar-secondary-options { margin-top: 10px; border-top: 1px solid #35465d; }
 .sidebar-secondary-options > summary { padding: 12px; min-height: 44px; color: #c7d6eb; font-size: 13px; font-weight: 650; }
 .dashboard-heading { margin-bottom: 18px; }
-.dashboard-status { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 24px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+.dashboard-status { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 0 20px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
 .dashboard-status-item { padding: 13px 16px; min-width: 0; }
 .dashboard-status-item + .dashboard-status-item { border-left: 1px solid var(--line); }
 .dashboard-status dt { color: var(--muted); font-size: 13px; font-weight: 500; }
@@ -202,11 +203,6 @@ summary { cursor: pointer; }
 
 @media (min-width: 611px) {
   .sales-payment-row:has(.sales-account-field) { grid-template-columns: minmax(140px, 1fr) minmax(120px, .8fr) minmax(170px, 1.2fr) 44px; }
-}
-@media (min-width: 901px) {
-  .app-layout.menu-expanded .sidebar { flex-basis: 224px; width: 224px; }
-  .app-layout.menu-compact .sidebar { flex-basis: 72px; width: 72px; }
-  .app-layout.menu-compact .side-link { padding: 10px; }
 }
 @media (max-width: 1100px) and (min-width: 901px) {
   .main-content { padding: 20px; }
@@ -325,10 +321,13 @@ summary { cursor: pointer; }
   .api-topbar .company-picker { max-width: 124px; }
   .api-topbar .button { padding: 7px 10px; min-height: 40px; }
 }
-.online-data-status { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; font-size:.8rem; color:var(--muted); }
-.legacy-records { margin-top:24px; }
-.legacy-records details { padding:12px 0; border-top:1px solid #dce3ed; }
-.legacy-records summary { cursor:pointer; font-weight:600; }
+.mode-api .page-heading .eyebrow { display: none; }
+.legacy-records { margin-top:0; }
+.legacy-record { padding:12px 0; border-top:1px solid var(--line); }
+.legacy-record > summary { min-height:44px; align-content:center; font-weight:650; overflow-wrap:anywhere; }
 .legacy-records dl div { display:flex; flex-wrap:wrap; gap:8px 18px; padding:4px 0; }
 .legacy-records dd { margin:0; overflow-wrap:anywhere; }
-@media (max-width:600px) { .online-data-status { align-items:flex-start; flex-direction:column; } }
+.legacy-technical { margin-top:16px; color:var(--muted); font-size:13px; overflow-wrap:anywhere; }
+.legacy-technical summary { min-height:44px; align-content:center; }
+.dashboard-preparation > summary { min-height:44px; align-content:center; color:var(--ink); font-size:16px; font-weight:650; }
+.dashboard-preparation[open] > summary { margin-bottom:14px; }

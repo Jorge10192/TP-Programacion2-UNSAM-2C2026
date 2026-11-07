@@ -97,7 +97,7 @@ export function PurchaseDetailDialog({
       <section className="purchase-detail-section">
         <h3><Icon name="boxes" size={18}/> Paso 2 · Ubicación y recepción de mercadería</h3>
         {purchase.serverStatus === 'ANULADA' ? <p className="form-message error">Compra anulada. La recepción histórica se conserva; esta compra no admite ingreso de stock.</p> : purchase.receipt ? <>
-          <div className="purchase-received-banner"><Icon name="shield" size={20}/><span>Recepción confirmada · {locationName} · {new Date(purchase.receipt.createdAt).toLocaleString('es-AR')}</span></div>
+          <div className="purchase-received-banner"><Icon name="shield" size={20}/><span>Recepción confirmada · {locationName} · {new Date(purchase.receipt.createdAt).toLocaleString('es-AR', { hour12: false })}</span></div>
           <div className="purchase-received-lines">{purchase.receipt.movements.map((movement) => {
             const line = purchase.lines.find((entry) => entry.id === movement.purchaseLineId)
             return <div key={movement.id}><span>{line?.description ?? 'Artículo del catálogo'}</span><strong>+ {quantityText(movement.quantityMilli, movement.unit)}</strong></div>
@@ -136,7 +136,7 @@ export function PurchaseDetailDialog({
         {error && <p className="form-message error purchase-inline-feedback" role="alert">{error}</p>}
       </section>
       <footer className="catalog-detail-footer">
-        <div className="catalog-detail-dates"><span>Empresa: {business.name}</span><span>Registrada en: {new Date(purchase.createdAt).toLocaleString('es-AR')}</span></div>
+        <div className="catalog-detail-dates"><span>Empresa: {business.name}</span><span>Registrada en: {new Date(purchase.createdAt).toLocaleString('es-AR', { hour12: false })}</span></div>
         <button type="button" className="button button-secondary" disabled={busy} onClick={close}>Cerrar detalle</button>
       </footer>
     </div>

@@ -52,13 +52,15 @@ export function renderOnlineFixture(raw: Parameters<typeof mapSnapshot>[0]) {
     supplierDetail: wrap(<SupplierDetailDialog business={business} supplier={suppliers[0]} onClose={none} onEdit={none}/>),
     inventory: wrap(<InventoryPage business={business} catalog={catalog} locations={locations} movements={movements} operations={Object.values(snapshot.inventoryOperationsById)} initialTab="stock"/>),
     picker: wrap(<SaleCatalogPicker business={business} items={catalog} locationId="principal" movements={movements} selectedMilli={new Map()} selectedIds={new Set()} onAdd={none}/>),
-    sales: wrap(<SalesPage business={business} items={catalog} locations={locations} movements={movements} sales={sales} sessions={sessions} accounts={[]} qrIntents={[]}/>),
+    sales: wrap(<SalesPage business={business} items={catalog} locations={locations} movements={movements} sales={sales} sessions={sessions} accounts={[]} qrIntents={[]} navigate={none}/>),
     purchase: wrap(<PurchaseDetailDialog business={business} purchase={Object.values(snapshot.purchasesById)[0]} locations={locations} onClose={none}/>),
     home: wrap(<Welcome businesses={[business]} navigate={none}/>),
     placeholders: wrap(<><DemoPhoto target={{ scope: 'catalog', businessId: 'walos', entityId: catalog[0].id }} alt="Artículo" fallback={<span>Sin foto</span>}/><DemoImagePicker target={{ scope: 'supplier', businessId: 'walos', entityId: suppliers[0].id }} label="Proveedor"/></>),
     supplierForm: wrap(<SupplierForm businessName={business.name} onSave={async () => {}} onCancel={none}/>),
-    purchasesEmpty: wrap(<PurchasesPage business={business} purchases={[]} catalog={catalog} suppliers={suppliers} locations={locations}/>),
-    salesEmpty: wrap(<SalesPage business={business} items={catalog} locations={locations} movements={movements} sales={[]} sessions={sessions} accounts={[]} qrIntents={[]}/>),
+    purchasesEmpty: wrap(<PurchasesPage business={business} purchases={[]} catalog={catalog} suppliers={suppliers} locations={locations} navigate={none}/>),
+    salesEmpty: wrap(<SalesPage business={business} items={catalog} locations={locations} movements={movements} sales={[]} sessions={sessions} accounts={[]} qrIntents={[]} navigate={none}/>),
+    salesNoProducts: wrap(<SalesPage business={business} items={[]} locations={locations} movements={movements} sales={[]} sessions={sessions} accounts={[]} qrIntents={[]} navigate={none}/>),
+    salesNoCash: wrap(<SalesPage business={business} items={catalog} locations={locations} movements={movements} sales={[]} sessions={[]} accounts={[]} qrIntents={[]} navigate={none}/>),
     saleForm: wrap(<SaleForm business={business} items={catalog} locations={locations} movements={movements} sessions={sessions} accounts={[]} onSaved={none} onQrCreated={none} onCancel={none}/>),
     cash: wrap(<CashSessionsPage business={business} locations={locations} sessions={sessions} sales={sales} expenses={Object.values(snapshot.expensesById)}/>),
   }
@@ -67,7 +69,7 @@ export function renderOnlineFixture(raw: Parameters<typeof mapSnapshot>[0]) {
   return { ...rendered,
     demoSupplierDetail: wrap(<SupplierDetailDialog business={business} supplier={suppliers[0]} onClose={none} onEdit={none}/>),
     demoSupplierForm: wrap(<SupplierForm businessName={business.name} onSave={async () => {}} onCancel={none}/>),
-    demoPurchasesEmpty: wrap(<PurchasesPage business={business} purchases={[]} catalog={[]} suppliers={[]} locations={[]}/>),
+    demoPurchasesEmpty: wrap(<PurchasesPage business={business} purchases={[]} catalog={[]} suppliers={[]} locations={[]} navigate={none}/>),
     demoSaleForm: wrap(<SaleForm business={business} items={[]} locations={[]} movements={[]} sessions={[]} accounts={[]} onSaved={none} onQrCreated={none} onCancel={none}/>),
   }
 }

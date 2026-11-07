@@ -17,23 +17,56 @@ test('navegación personal, tenants, placeholder y URL de empresa ajena', async 
   await expect(page.getByRole('heading', { name: 'Empresa no disponible' })).toBeVisible()
 })
 
-test('drawer: Escape cierra y devuelve foco; páginas sin desborde horizontal', async ({ page }) => {
+test('menú único: compacto persiste, móvil abre completo y ampliar libera el fondo', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/b/walos-demo/inicio')
+  const sidebar = page.locator('#app-sidebar')
+  await expect(page.locator('.sidebar-actions button:visible')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Reducir menú', exact: true }).click()
+  await expect(sidebar).toHaveCSS('width', '72px')
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Mostrar nombres', exact: true })).toBeVisible()
+
+  await page.setViewportSize({ width: 375, height: 812 })
   const trigger = page.getByRole('button', { name: 'Abrir menú principal' })
+  await expect(page.locator('.sidebar-actions button:visible')).toHaveCount(1)
+  await expect(trigger).toHaveCSS('border-radius', '12px')
   await trigger.click()
-  await expect(page.getByRole('dialog', { name: 'Menú principal' })).toBeVisible()
+  const drawer = page.getByRole('dialog', { name: 'Menú principal' })
+  await expect(drawer).toBeVisible()
+  expect((await drawer.boundingBox())!.width).toBeGreaterThanOrEqual(280)
+  await expect(drawer.getByRole('link', { name: 'Ventas', exact: true })).toBeVisible()
+  const firstLink = drawer.getByRole('link', { name: 'Ir al inicio personal', exact: true })
+  const lastControl = drawer.locator('summary').last()
+  await firstLink.focus()
+  await page.keyboard.press('Shift+Tab')
+  await expect(lastControl).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(firstLink).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog', { name: 'Menú principal' })).toHaveCount(0)
   await expect(trigger).toBeFocused()
 
-  for (const path of ['/b/walos-demo/catalogo', '/b/walos-demo/ventas', '/b/walos-demo/inventario']) {
-    await page.goto(path)
-    await expect(page.locator('#main-content')).toBeVisible()
-    const overflow = await page.evaluate(() => ({
-      documentWidth: document.documentElement.scrollWidth,
-      viewportWidth: document.documentElement.clientWidth,
-    }))
-    expect(overflow.documentWidth, 'Desborde horizontal en ' + path).toBeLessThanOrEqual(overflow.viewportWidth + 2)
+  await trigger.click()
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await expect(page.getByRole('dialog', { name: 'Menú principal' })).toHaveCount(0)
+  await expect(page.locator('.main-column')).not.toHaveAttribute('inert', '')
+  await expect(page.getByRole('button', { name: 'Mostrar nombres', exact: true })).toBeFocused()
+  await page.getByRole('button', { name: 'Mostrar nombres', exact: true }).click()
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Reducir menú', exact: true })).toBeVisible()
+
+  for (const width of [375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const path of ['/b/walos-demo/catalogo', '/b/walos-demo/ventas', '/b/walos-demo/inventario']) {
+      await page.goto(path)
+      await expect(page.locator('#main-content')).toBeVisible()
+      const overflow = await page.evaluate(() => ({
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: document.documentElement.clientWidth,
+      }))
+      expect(overflow.documentWidth, 'Desborde horizontal en ' + path + ' a ' + width).toBeLessThanOrEqual(overflow.viewportWidth + 2)
+    }
   }
 })
 

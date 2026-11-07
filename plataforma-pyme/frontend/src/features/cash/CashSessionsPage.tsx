@@ -103,7 +103,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
       <div><span className="feature-icon violet"><Icon name="building"/></span><small>Ubicaciones habilitadas para vender</small><strong>{eligibleLocations.length}</strong></div>
     </section>
     <div className="informational-note"><Icon name="shield" size={18}/><span><strong>Caja física.</strong>
-      Abrí antes de vender y cerrá al terminar, contando el efectivo. El arqueo incluye el fondo inicial y los cobros/gastos en efectivo vinculados a esa jornada; excluye compras sin pago y medios digitales.
+      Fondo inicial + ventas en efectivo − gastos en efectivo. Los medios digitales no modifican este saldo.
     </span></div>
     {notice && <p className="form-message success" role="status">{notice}</p>}
     {error && <p className="form-message error" role="alert">{error}</p>}
@@ -142,7 +142,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
       {openSessions.length ? <div className="cash-session-grid">{openSessions.map(session => {
         const summary = totals(session)
         return <article key={session.id} className="cash-session-card">
-          <div className="cash-session-head"><span className="small-pill">ABIERTA</span><small>{new Date(session.openedAt).toLocaleString('es-AR')}</small></div>
+          <div className="cash-session-head"><span className="small-pill">ABIERTA</span><small>{new Date(session.openedAt).toLocaleString('es-AR', { hour12: false })}</small></div>
           <h3>{scopeLabel(session.locationId)}</h3>
           <div className="sales-receipt-totals">
             <span>Fondo inicial</span><strong>{moneyDisplay(session.openingCashCents)}</strong>
@@ -215,7 +215,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
         return <div className="cash-entry" key={session.id}>
           <span className="feature-icon blue"><Icon name="shield"/></span>
           <div><strong>{scopeLabel(session.locationId)}</strong>
-            <small>{new Date(closed.closedAt).toLocaleString('es-AR')} · CERRADA · {closed.saleIds.length} ventas · {closed.expenseIds.length} gastos en efectivo</small>
+            <small>{new Date(closed.closedAt).toLocaleString('es-AR', { hour12: false })} · CERRADA · {closed.saleIds.length} ventas en efectivo · {closed.expenseIds.length} gastos en efectivo</small>
             <small>Diferencia del arqueo: {moneyDisplay(closed.differenceCents)}</small>
           </div>
           <strong>{moneyDisplay(closed.expectedCashCents)}</strong>
@@ -229,7 +229,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
         <div><Icon name="shield" size={21}/><h2>Cierre guardado · {scopeLabel(selectedDetail.locationId)}</h2></div>
         <button className="button button-secondary" type="button" onClick={() => setDetailId(null)}><Icon name="close" size={16}/> Cerrar detalle</button>
       </div>
-      <p className="cash-quiet">{mode === 'api' ? 'Cierre guardado del ' : 'Snapshot inmutable del '}{new Date(selectedDetail.closeSnapshot.closedAt).toLocaleString('es-AR')} · Responsable: {mode === 'api' ? selectedDetail.closeSnapshot.closedBy.replace(/^user:([0-9]+)$/, 'Usuario $1') : selectedDetail.closeSnapshot.closedBy}</p>
+      <p className="cash-quiet">{mode === 'api' ? 'Cierre guardado del ' : 'Snapshot inmutable del '}{new Date(selectedDetail.closeSnapshot.closedAt).toLocaleString('es-AR', { hour12: false })} · Responsable: {mode === 'api' ? selectedDetail.closeSnapshot.closedBy.replace(/^user:([0-9]+)$/, 'Usuario $1') : selectedDetail.closeSnapshot.closedBy}</p>
       <div className="cash-close-preview">
         <div><small>Fondo inicial</small><strong>{moneyDisplay(selectedDetail.closeSnapshot.openingCashCents)}</strong></div>
         <div><small>Ventas en efectivo</small><strong>{moneyDisplay(selectedDetail.closeSnapshot.cashSalesCents)}</strong></div>

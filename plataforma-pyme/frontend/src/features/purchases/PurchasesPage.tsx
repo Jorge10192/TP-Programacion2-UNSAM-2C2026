@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useAppData } from '../../data/dataContext'
 import { Icon } from '../../app/Icon'
+import { AppLink } from '../../app/AppLink'
+import { businessHref } from '../../app/navigation'
+import type { Navigate } from '../../app/types'
 import { useLeaveConfirmation } from '../../app/unsavedChanges'
 import type { Business, CatalogItem, Location, Purchase, Supplier } from '../../data/models'
 import { moneyDisplay } from '../../data/demo/catalogPolicy'
@@ -22,15 +25,19 @@ const purchaseStatusLabels: Record<Exclude<PurchaseFilter, 'TODAS'>, string> = {
 }
 
 export function PurchasesPage({
-  business, purchases, catalog, suppliers, locations,
+  business, purchases, catalog, suppliers, locations, navigate,
 }: {
   business: Business
   purchases: Purchase[]
   catalog: CatalogItem[]
   suppliers: Supplier[]
+  navigate: Navigate
   locations: Location[]
 }) {
   const { mode } = useAppData()
+  const preparation = mode !== 'api' ? null : !catalog.some(item => item.status === 'ACTIVO' && item.kind !== 'SERVICIO' && !item.readonlyReason)
+    ? { segment: 'catalogo', label: 'Preparar catálogo' }
+    : !suppliers.some(supplier => supplier.status === 'ACTIVO') ? { segment: 'proveedores', label: 'Agregar proveedor' } : null
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -62,25 +69,25 @@ export function PurchasesPage({
     <div className="page-heading">
       <div><p className="eyebrow">OPERACIONES · EMPRESA</p><h1>Compras</h1>
         <p>Compras y recepciones de «{business.name}», vinculadas con tu Catálogo y Proveedores.</p></div>
-      <button className="button button-primary" type="button" onClick={() => {
+      {preparation && !creating ? <AppLink navigate={navigate} to={businessHref(business.id, preparation.segment)} className="button button-primary">{preparation.label}<Icon name="arrow" size={17}/></AppLink> : <button className="button button-primary" type="button" onClick={() => {
         if (creating && !requestLeave()) return
         setCreating((x) => !x)
         setNotice('')
       }}>
         <Icon name={creating ? 'close' : 'plus'} size={17}/>
         {creating ? 'Cerrar formulario' : 'Registrar compra'}
-      </button>
+      </button>}
     </div>
 
-    <section className="purchase-summary" aria-label="Indicadores de compras">
+    {purchases.length > 0 && <section className="purchase-summary" aria-label="Indicadores de compras">
       <div><span className="feature-icon blue"><Icon name="receipt"/></span><small>Compras registradas</small><strong>{purchases.length}</strong></div>
       <div><span className="feature-icon orange"><Icon name="clock"/></span><small>Pendientes de recepción</small><strong>{pending}</strong></div>
       <div><span className="feature-icon mint"><Icon name="shield"/></span><small>Con recepción confirmada</small><strong>{received}</strong></div>
-    </section>
+    </section>}
 
     <div className="informational-note purchase-note">
       <Icon name="shield" size={19}/>
-      <span>Guardá la compra y después confirmá la recepción para ingresar stock. <strong>Registrar no equivale a pagar.</strong>{mode === 'demo' && ' Servicios y conceptos libres no generan existencias.'}{mode === 'api' && ' Confirmá la recepción en la ubicación principal.'}</span>
+      <span>Confirmá la recepción para sumar stock. <strong>Registrar la compra no registra un pago.</strong>{mode === 'demo' && ' Servicios y conceptos libres no generan existencias.'}</span>
     </div>
 
     {notice && <p className="form-message success purchase-page-message" role="status">{notice}</p>}

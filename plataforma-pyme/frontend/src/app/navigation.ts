@@ -1,4 +1,4 @@
-export type IconName = 'home' | 'building' | 'pin' | 'users' | 'package' | 'boxes' | 'truck' | 'shopping' | 'wallet' | 'book' | 'chart' | 'clock' | 'credit' | 'user' | 'plus' | 'menu' | 'chevron' | 'arrow' | 'shield' | 'close' | 'search' | 'receipt' | 'briefcase' | 'panel' | 'panel-hide' | 'arrow-left'
+export type IconName = 'home' | 'building' | 'pin' | 'users' | 'package' | 'boxes' | 'truck' | 'shopping' | 'wallet' | 'book' | 'chart' | 'clock' | 'credit' | 'user' | 'plus' | 'menu' | 'chevron' | 'arrow' | 'shield' | 'close' | 'search' | 'receipt' | 'briefcase' | 'panel' | 'panel-hide' | 'arrow-left' | 'refresh'
 
 export type NavigationItem = {
   id: string

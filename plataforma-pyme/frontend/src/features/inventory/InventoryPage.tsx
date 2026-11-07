@@ -125,8 +125,8 @@ export function InventoryPage({
         <p>Existencias y movimientos de «{business.name}».</p>
       </div>
       <div className="inventory-heading-actions">
-        <button type="button" className="button button-secondary" hidden={!capabilities.transfers} disabled={!canAct || !canMove}
-          onClick={() => startAction('TRANSFER')}><Icon name="truck" size={17}/> Trasladar</button>
+        {capabilities.transfers && <button type="button" className="button button-secondary" disabled={!canAct || !canMove}
+          onClick={() => startAction('TRANSFER')}><Icon name="truck" size={17}/> Trasladar</button>}
         <button type="button" className="button button-secondary" disabled={!canAct || !canCount}
           onClick={() => startAction('COUNT')}><Icon name="plus" size={17}/> Ajuste rápido</button>
         <button type="button" className="button button-primary" disabled={!canAct || !canCount}
@@ -143,7 +143,7 @@ export function InventoryPage({
 
     <div className="informational-note inventory-note">
       <Icon name="shield" size={20}/>
-      <span>Stock por ubicación y <strong>unidad del artículo</strong>, recuperado de la fuente de datos. Cargá los productos terminados con un conteo; los insumos no se convierten automáticamente en producción.</span>
+      <span>Las compras recibidas suman stock. Cargá los productos terminados con un conteo.</span>
     </div>
     {!canCount && <div className="inventory-attention">{mode === 'api' ? 'Tu usuario no tiene permiso para registrar conteos.' : 'Para registrar un conteo o traslado, primero configurá al menos una ubicación activa con «Puede almacenar» en Ubicaciones. Para traslados necesitás dos.'}</div>}
     {!canAct && <div className="inventory-attention">Para operar, primero agregá un artículo físico activo (no un servicio) en Catálogo.</div>}
@@ -232,7 +232,7 @@ export function InventoryPage({
                 </div>
                 <div className="inventory-movement-aside">
                   <strong className="transfer-quantity">{quantityText(entry.quantityMilli, entry.unit)}</strong>
-                  <small>Trasladadas · {new Date(entry.createdAt).toLocaleString('es-AR')}</small>
+                  <small>Trasladadas · {new Date(entry.createdAt).toLocaleString('es-AR', { hour12: false })}</small>
                 </div>
               </article>
             ) : entry.kind === 'BATCH_COUNT' ? (
@@ -246,7 +246,7 @@ export function InventoryPage({
                   </div>
                   <div className="inventory-movement-aside">
                     <strong className="transfer-quantity">Una sesión</strong>
-                    <small>{new Date(entry.createdAt).toLocaleString('es-AR')} · Ver detalle ▾</small>
+                    <small>{new Date(entry.createdAt).toLocaleString('es-AR', { hour12: false })} · Ver detalle ▾</small>
                   </div>
                 </summary>
                 <div className="inventory-audit-history-lines">
@@ -275,7 +275,7 @@ export function InventoryPage({
                   <strong className={entry.movement.deltaMilli >= 0 ? 'positive' : 'negative'}>
                     {entry.movement.deltaMilli > 0 ? '+' : '−'} {quantityText(Math.abs(entry.movement.deltaMilli), entry.movement.unit)}
                   </strong>
-                  <small>{new Date(entry.createdAt).toLocaleString('es-AR')}</small>
+                  <small>{new Date(entry.createdAt).toLocaleString('es-AR', { hour12: false })}</small>
                 </div>
               </article>
             ))}

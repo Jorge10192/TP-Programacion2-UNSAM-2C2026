@@ -38,12 +38,14 @@ test('se conservan las elecciones anteriores compacto y expandido', () => {
   }
 })
 
-test('la preferencia v3 recuerda el botón y prima sobre el default oculto anterior', () => {
+test('la preferencia v3 recuerda reducir/ampliar y recupera el antiguo menú oculto', () => {
   withStorage({ [legacyKey]: 'hidden' }, () => {
-    for (const mode of ['compact', 'expanded', 'hidden']) {
+    for (const mode of ['compact', 'expanded']) {
       saveSidebarMode(mode)
       assert.equal(loadSidebarMode(), mode)
     }
+    globalThis.window.localStorage.setItem(key, 'hidden')
+    assert.equal(loadSidebarMode(), 'expanded')
   })
 })
 
