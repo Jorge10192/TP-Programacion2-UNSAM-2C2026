@@ -98,19 +98,30 @@ test('los tipos de cuenta no incorporan saldos, dinero ni secretos', () => {
   assert.equal('password' in fields, false)
 })
 
-test('sólo permite asociar una cuenta activa del canal declarado', () => {
+test('transferencias: admite bancos y billeteras activas con canal declarado', () => {
   const bank = { status: 'ACTIVA', channel: 'TRANSFERENCIA' }
-  const inactive = { status: 'INACTIVA', channel: 'TRANSFERENCIA' }
-  const wallet = { status: 'ACTIVA', channel: 'MERCADO_PAGO_DECLARADO' }
-  assert.equal(accountSupportsDeclaredPayment(bank, 'TRANSFERENCIA'), true)
-  assert.equal(accountSupportsDeclaredPayment(inactive, 'TRANSFERENCIA'), false)
-  assert.equal(accountSupportsDeclaredPayment(wallet, 'MERCADO_PAGO_DECLARADO'), true)
-  assert.equal(accountSupportsDeclaredPayment(wallet, 'TRANSFERENCIA'), false)
-  assert.equal(accountSupportsDeclaredPayment(bank, 'EFECTIVO'), false)
-  assert.equal(accountSupportsDeclaredPayment(bank, 'TARJETA'), false)
+  const walletMp = { status: 'ACTIVA', channel: 'MERCADO_PAGO_DECLARADO' }
+  const walletDni = { status: 'ACTIVA', channel: 'CUENTA_DNI' }
+  const walletOther = { status: 'ACTIVA', channel: 'OTRO_DECLARADO' }
+  for (const account of [bank, walletMp, walletDni, walletOther]) {
+    assert.equal(accountSupportsDeclaredPayment(account, 'TRANSFERENCIA'), true)
+    assert.equal(accountSupportsDeclaredPayment({ ...account, status: 'INACTIVA' }, 'TRANSFERENCIA'), false)
+  }
+  assert.equal(accountSupportsDeclaredPayment({ status: 'ACTIVA', channel: 'INVALIDO' }, 'TRANSFERENCIA'), false)
 })
-test('Cuenta DNI y otros medios requieren compatibilidad explícita', () => {
-  assert.equal(accountSupportsDeclaredPayment({ status: 'ACTIVA', channel: 'CUENTA_DNI' }, 'CUENTA_DNI'), true)
-  assert.equal(accountSupportsDeclaredPayment({ status: 'ACTIVA', channel: 'CUENTA_DNI' }, 'TRANSFERENCIA'), false)
-  assert.equal(accountSupportsDeclaredPayment({ status: 'ACTIVA', channel: 'OTRO_DECLARADO' }, 'OTRO_DECLARADO'), true)
+
+test('Mercado Pago, Cuenta DNI y Otros conservan su canal específico', () => {
+  const bank = { status: 'ACTIVA', channel: 'TRANSFERENCIA' }
+  const walletMp = { status: 'ACTIVA', channel: 'MERCADO_PAGO_DECLARADO' }
+  const walletDni = { status: 'ACTIVA', channel: 'CUENTA_DNI' }
+  const walletOther = { status: 'ACTIVA', channel: 'OTRO_DECLARADO' }
+  assert.equal(accountSupportsDeclaredPayment(walletMp, 'MERCADO_PAGO_DECLARADO'), true)
+  assert.equal(accountSupportsDeclaredPayment(walletDni, 'CUENTA_DNI'), true)
+  assert.equal(accountSupportsDeclaredPayment(walletOther, 'OTRO_DECLARADO'), true)
+  for (const account of [bank, walletDni, walletOther]) {
+    assert.equal(accountSupportsDeclaredPayment(account, 'MERCADO_PAGO_DECLARADO'), false)
+  }
+  assert.equal(accountSupportsDeclaredPayment(walletMp, 'CUENTA_DNI'), false)
+  assert.equal(accountSupportsDeclaredPayment(bank, 'EFECTIVO'), false)
+  assert.equal(accountSupportsDeclaredPayment(walletMp, 'TARJETA'), false)
 })
