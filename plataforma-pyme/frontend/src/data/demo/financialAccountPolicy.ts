@@ -104,10 +104,19 @@ export function financialAccountShareText(account: Pick<DemoFinancialAccount,
   return lines.filter(Boolean).join('\n')
 }
 
-/** Una cuenta de referencia sólo se ofrece para operaciones compatibles. */
+/**
+ * E1-C3.1: el MEDIO de pago no es la CUENTA de origen/destino.
+ * Una transferencia puede entrar o salir tanto de un banco como de una
+ * billetera con alias/CVU declarado. Todas las cuentas guardadas fueron
+ * normalizadas (tienen alias o CBU/CVU de referencia).
+ * Los canales específicos sólo se asocian a su propia billetera declarada.
+ * Esto NO verifica transferencias, saldos ni acreditaciones externas.
+ */
 export function accountSupportsDeclaredPayment(account: Pick<DemoFinancialAccount, 'status' | 'channel'>, method: string): boolean {
   if (account.status !== 'ACTIVA') return false
-  if (method === 'TRANSFERENCIA') return account.channel === 'TRANSFERENCIA'
+  if (method === 'TRANSFERENCIA') {
+    return Object.hasOwn(financialChannelLabels, account.channel)
+  }
   if (method === 'CUENTA_DNI') return account.channel === 'CUENTA_DNI'
   if (method === 'MERCADO_PAGO_DECLARADO') return account.channel === 'MERCADO_PAGO_DECLARADO'
   if (method === 'OTRO_DECLARADO') return account.channel === 'OTRO_DECLARADO'
