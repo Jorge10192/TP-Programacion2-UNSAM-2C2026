@@ -15,7 +15,7 @@ export const navigationItems: NavigationItem[] = [
   { id: 'empresa', label: 'Datos de la empresa', segment: 'empresa', icon: 'building', group: 'Administración', description: 'Información y configuración del negocio.', phase: 'E1-B' },
   { id: 'ubicaciones', label: 'Ubicaciones', segment: 'ubicaciones', icon: 'pin', group: 'Administración', description: 'Sucursales, ferias y espacios de trabajo.', phase: 'E1-B' },
   { id: 'equipo', label: 'Equipo de trabajo', segment: 'equipo', icon: 'users', group: 'Administración', description: 'Colaboradores, roles e invitaciones.', phase: 'E1-B' },
-  { id: 'cuentas', label: 'Cuentas y medios', segment: 'cuentas', icon: 'credit', group: 'Administración', description: 'Cuentas y medios de cobro.', phase: 'E1-B' },
+  { id: 'cuentas', label: 'Cuentas y medios', segment: 'cuentas', icon: 'credit', group: 'Administración', description: 'Cuentas bancarias y billeteras de referencia por empresa (DEMO).', phase: 'E1-C' },
   { id: 'catalogo', label: 'Catálogo', segment: 'catalogo', icon: 'package', group: 'Operaciones', description: 'Bienes y servicios del negocio.', phase: 'E1-B' },
   { id: 'inventario', label: 'Inventario', segment: 'inventario', icon: 'boxes', group: 'Operaciones', description: 'Existencias por ubicación y artículo.', phase: 'E1-B' },
   { id: 'movimientos', label: 'Movimientos', segment: 'movimientos', icon: 'truck', group: 'Operaciones', description: 'Traslados y ajustes con trazabilidad.', phase: 'E1-B' },
