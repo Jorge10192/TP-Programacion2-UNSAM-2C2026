@@ -1,7 +1,9 @@
 """Registro duradero del comando idempotente de alta de Empresa.
 
 El usuario aún no dispone de business_id cuando inicia el comando. Por eso la
-clave única es (actor_user_id, idempotency_key) y se retiene sin TTL arbitrario.
+clave primaria compuesta es (actor_user_id, idempotency_key) y ya garantiza
+unicidad. No agregar UNIQUE redundante: PostgreSQL descarta esa restricción
+duplicada y Alembic la reportaría como cambio pendiente.
 """
 from datetime import datetime
 from uuid import UUID
@@ -17,10 +19,6 @@ from app.infrastructure.models.base import Base
 class BusinessCreationRequest(Base):
     __tablename__ = "business_creation_requests"
     __table_args__ = (
-        UniqueConstraint(
-            "actor_user_id", "idempotency_key",
-            name="uq_business_creation_actor_key",
-        ),
         UniqueConstraint("business_id", name="uq_business_creation_business"),
         CheckConstraint(
             "length(request_sha256) = 64",

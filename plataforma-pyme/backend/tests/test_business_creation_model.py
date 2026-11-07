@@ -19,9 +19,11 @@ def test_idempotency_scope_is_actor_and_key_not_business() -> None:
         if isinstance(c, (CheckConstraint, UniqueConstraint))
     }
     assert {
-        "uq_business_creation_actor_key", "uq_business_creation_business",
+        "uq_business_creation_business",
         "ck_business_creation_request_digest",
     } <= constraints
+    # La PK compuesta ya es UNIQUE, y no debe duplicarse como UniqueConstraint.
+    assert "uq_business_creation_actor_key" not in constraints
     assert {f.target_fullname for col in table.columns for f in col.foreign_keys} == {
         "users.id", "businesses.id"
     }

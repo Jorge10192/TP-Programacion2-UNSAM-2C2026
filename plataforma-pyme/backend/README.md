@@ -406,3 +406,9 @@ La revisión esperada es `e213b_business_creation (head)`. Las pruebas de integr
 Después, desde `plataforma-pyme/`, reconstruí la API Docker con `docker compose --profile api up -d --build api`, comprobá `docker compose ps` y abrí `http://127.0.0.1:18000/docs`. Las rutas nuevas aparecerán bajo `empresas`. La prueba manual de POST desde Swagger **sí guarda la empresa de verdad**, por lo que las pruebas automatizadas son suficientes para este corte.
 
 **Pendiente E2-1.3C:** permisos detallados por rol, invitaciones y aceptación de membresías, verificación de autorizaciones en cada comando comercial. React seguirá en modo DEMO hasta disponer de contratos HTTP probados. Los modelos UML 03A se ajustarán sobre el código confirmado.
+
+### Corrección de comparación Alembic en E2-1.3B
+
+La clave primaria compuesta de `business_creation_requests(actor_user_id, idempotency_key)` **ya garantiza la unicidad del reintento por persona**. La declaración ORM contenía además un `UniqueConstraint` sobre exactamente esas mismas columnas. PostgreSQL 16 descarta el índice duplicado, pero Alembic lo veía en los metadatos y detectaba una supuesta operación pendiente `add_constraint`.
+
+Se eliminó **solamente el UNIQUE redundante del modelo ORM** y se ajustó la prueba del modelo; no se modificó el esquema efectivo, no se alteraron contraseñas ni se generó una nueva migración. La migración histórica E2-1.3B permanece inmutable porque ya fue aplicada. La unicidad real sigue cubierta por la PK `pk_business_creation_requests`, y la referencia `business_id` conserva su UNIQUE independiente. Después de `git pull`, `python -m alembic check` debería indicar `No new upgrade operations detected.`. Si aún falla, inspeccionar `\\d business_creation_requests` antes de modificar la base de datos. No usar `alembic stamp`, `downgrade` ni SQL manual para esta corrección.
