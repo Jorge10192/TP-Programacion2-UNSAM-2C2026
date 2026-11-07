@@ -29,4 +29,4 @@ def test_real_postgres_accepts_queries() -> None:
 def test_real_postgres_has_initial_alembic_revision() -> None:
     with get_engine().connect() as conn:
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "e212b_sessions"
+        assert version == "e213a_business_members"

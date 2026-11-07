@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1.2B: registro Argon2id + login, /me, logout y sesiones personales revocables. Frontend DEMO independiente.
+**Estado:** E2-1.3A (tablas `businesses` y `memberships`, con restricciones multiempresa y pruebas SQL), sobre autenticación E2-1.2B validada. No hay todavía endpoints de empresas ni integración React.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -323,3 +323,49 @@ Remove-Item Env:\RUN_DB_INTEGRATION
 Las pruebas de integración usan PostgreSQL real bajo transacciones exteriores reversibles; no dejan usuarios ni sesiones de prueba. Desde `plataforma-pyme/`, reconstruí solo la API Docker: `docker compose --profile api up -d --build api`. Consultá Swagger en `http://127.0.0.1:18000/docs`. No pegues tokens ni contraseñas reales en el chat, logs o capturas.
 
 **Limitaciones para producción:** falta HTTPS público, límites de intentos antiabuso, protección frente a enumeración, recuperación y confirmación de correo, almacenamiento seguro de credenciales en frontend y estrategia de cookies/CSRF si se adopta después. No exponer públicamente esta API sin resolver estas medidas; el navegador React DEMO permanece sin integración.
+
+## E2-1.3A — Entidades Empresa y Membresía (modelo real)
+
+**Referencias:** Documento 01 RF-02; Documento 02 CU-03 y CU-12; Documento 03 UML 03A y sección 3.1; Documento 04 autorización por tenant.
+
+La revisión Alembic `e213a_business_members` crea:
+
+- `businesses`: UUID, nombre (2–120), rubro/categoría (2–120), actividad `PRODUCTOS/SERVICIOS/MIXTO`, fundador histórico `founder_user_id` (FK a `users`), estado `ACTIVA/SUSPENDIDA` y fechas.
+- `memberships`: UUID, `business_id` (FK), `user_id` (FK), rol `TITULAR_ADMINISTRATIVO/ADMINISTRADOR/ENCARGADO/TRABAJADOR`, estado `ACTIVA/INACTIVA`, puesto opcional y fechas.
+- `UNIQUE (business_id,user_id)`: una única membresía por persona y empresa.
+- Índice único **parcial** `uq_memberships_one_active_owner`: a lo sumo una membresía activa con rol `TITULAR_ADMINISTRATIVO` por empresa. No bloquea a los demás administradores ni a los colaboradores.
+- Índice `ix_memberships_user_id`: consultas eficientes de empresas asociadas a una cuenta.
+
+**Decisión para evitar inconsistencia:** el fundador histórico vive en `businesses.founder_user_id`; el titular administrativo vigente se **deriva de la Membresía activa** con rol `TITULAR_ADMINISTRATIVO`. No hay `administrative_owner_user_id` redundante. No significa titularidad legal ni participación societaria. La transferencia de titularidad se pospone, como los documentos actuales.
+
+**Límite de la base de datos:** el índice parcial garantiza **como máximo uno**; no garantiza que exista al menos uno. E2-1.3B implementará `crearEmpresa` en **una sola transacción**, con empresa y membresía inicial del fundador. Ningún endpoint de este corte crea aún empresas, membresías o invitaciones. No se crea ubicación ni stock por defecto; los roles serán autorizados en backend por permiso y tenant en los siguientes incrementos, no por confiar en el frontend.
+
+### Comprobación en Windows
+
+Desde `plataforma-pyme/`, manteniendo PostgreSQL saludable:
+
+```powershell
+git pull origin main
+cd backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -v
+Remove-Item Env:\RUN_DB_INTEGRATION
+```
+
+Se espera la revisión `e213a_business_members (head)` y ninguna diferencia Alembic. Las pruebas usan transacciones PostgreSQL y SAVEPOINTs que se revierten; **no dejan empresas ni usuarios de demostración**.
+
+Comprobación de tablas desde `plataforma-pyme/`:
+
+```powershell
+cd ..
+docker compose exec -T db psql -U pyme -d asistente_pyme -c "SELECT version_num FROM alembic_version;"
+docker compose exec -T db psql -U pyme -d asistente_pyme -c "\d businesses"
+docker compose exec -T db psql -U pyme -d asistente_pyme -c "\d memberships"
+```
+
+No ejecutar un `downgrade` con datos reales. Este corte **no modifica React, no crea rutas de negocios y no requiere reconstruir la imagen API Docker**: solamente cambia el esquema y los tests de backend. El backend Docker seguirá funcionando con `/health` y `/ready`.
+
+**Próximo incremento E2-1.3B:** comando autenticado de creación de empresa y membresía inicial, en una transacción; listado de empresas propias, sin acceso cruzado. Después E2-1.3C: roles/permisos, invitaciones si se mantienen en alcance; actualización posterior del UML 03A con el código validado.
