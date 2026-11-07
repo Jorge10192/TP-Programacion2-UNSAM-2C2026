@@ -1,0 +1,88 @@
+@startuml
+' 03C v0.3 - Asistente PyME / primera API, modelo conceptual TO-BE.
+' Esta fuente PlantUML conserva todas las relaciones UML del diseño vectorial.
+' PlantUML calcula su propio layout; para reproducir exactamente el diseño
+' editorial de la entrega, usar el SVG o generar_03c_svg.py incluido.
+!theme plain
+skinparam shadowing false
+skinparam backgroundColor #F4F7FB
+skinparam packageStyle rectangle
+skinparam nodesep 55
+skinparam ranksep 48
+skinparam ArrowColor #71869A
+skinparam ActorBorderColor #45667F
+skinparam ActorFontColor #18324E
+skinparam UsecaseBackgroundColor #FFFFFF
+skinparam UsecaseBorderColor #2678C9
+skinparam UsecaseFontColor #18324E
+skinparam PackageBorderColor #BFD1E3
+skinparam PackageFontColor #18324E
+left to right direction
+
+title Asistente PyME | Casos de uso de la primera API (MVP TO-BE)
+
+actor Visitante as V
+actor "Usuario autenticado" as U
+actor "Administrador de empresa" as ADM
+actor "Operador de compras" as COM
+actor "Operador de inventario" as INV
+actor "Operador de ventas" as VEN
+actor "Destinatario de invitación\n(autenticado)" as DEST
+
+rectangle "Asistente PyME / API RESTful" as SYSTEM {
+  package "01 · Acceso" #F0F7FF {
+    usecase "CU-01\nRegistrarse" as UC01
+    usecase "CU-02\nIniciar sesión" as UC02
+  }
+  package "02 · Empresas" #F0F7FF {
+    usecase "CU-03\nCrear empresa" as UC03
+  }
+  package "03 · Administración" #F3EFFF {
+    usecase "CU-04\nRegistrar ubicación" as UC04
+    usecase "CU-05\nRegistrar artículo o servicio" as UC05
+    usecase "CU-12a\nInvitar colaborador" as UC12A
+  }
+  package "04 · Compras y recepción" #FFF5E9 {
+    usecase "CU-06\nRegistrar compra" as UC06
+    usecase "CU-07\nConfirmar recepción" as UC07
+  }
+  package "05 · Inventario" #EAF8F4 {
+    usecase "CU-08\nConsultar existencias" as UC08
+    usecase "CU-09\nTrasladar existencias" as UC09
+    usecase "CU-11\nRegistrar ajuste" as UC11
+  }
+  package "06 · Ventas" #F1EEFF {
+    usecase "CU-10\nRegistrar venta" as UC10
+  }
+  package "07 · Invitaciones" #EDF5FF {
+    usecase "CU-12b\nAceptar invitación" as UC12B
+  }
+}
+
+V -- UC01
+V -- UC02
+U -- UC03
+ADM -- UC04
+ADM -- UC05
+ADM -- UC12A
+COM -- UC06
+COM -- UC07
+INV -- UC08
+INV -- UC09
+INV -- UC11
+VEN -- UC10
+DEST -- UC12B
+
+note bottom of UC12B
+  Si el destinatario aún no tiene una cuenta,
+  ejecuta CU-01 y CU-02 antes de aceptar.
+  La invitación pendiente no concede permisos.
+end note
+
+note bottom of SYSTEM
+  Los perfiles operativos NO son subtipos globales de Usuario.
+  Cada actor de negocio representa una función autorizada por la
+  Membresía activa en la empresa seleccionada.
+  CU-12a y CU-12b describen dos objetivos del CU-12.
+end note
+@enduml

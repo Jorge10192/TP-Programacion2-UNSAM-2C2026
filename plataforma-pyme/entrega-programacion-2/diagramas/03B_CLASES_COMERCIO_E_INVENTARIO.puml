@@ -1,0 +1,201 @@
+@startuml
+' 03B · Asistente PyME · Modelo conceptual MVP TO-BE
+' Fuente PlantUML editable equivalente a la lámina vectorial 03B.
+' El motor de disposición de PlantUML puede ubicar las clases de forma
+' diferente a la lámina SVG maquetada manualmente.
+!theme plain
+skinparam backgroundColor #F5F8FC
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam nodesep 52
+skinparam ranksep 64
+skinparam defaultFontName "DejaVu Sans"
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #9AB1C8
+  ArrowColor #60738B
+  FontColor #142C48
+  AttributeFontColor #273A50
+  FontSize 16
+  AttributeFontSize 13
+}
+skinparam package {
+  BorderColor #CBD7E4
+  FontColor #142C48
+  FontSize 19
+  FontStyle bold
+}
+hide empty methods
+left to right direction
+
+title 03B | Asistente PyME - Compras, recepcion, inventario y ventas (MVP TO-BE)
+
+package "01  COMPRAS Y RECEPCION" #E9F4FF {
+  class Proveedor <<Referencia>> {
+    +id: UUID
+    +businessId: UUID
+    +nombre: String
+    +estado: Estado
+  }
+  class Compra {
+    +id: UUID
+    +businessId: UUID
+    +proveedorId: UUID?
+    +estado: EstadoCompra
+    +fechaCompra: Date
+    +totalCentavos: Long
+    +creadaPor: UUID
+  }
+  class DetalleCompra {
+    +id: UUID
+    +compraId: UUID
+    +articuloId: UUID?
+    +descripcionSnapshot: String
+    +tipoSnapshot: TipoArticulo
+    +unidadSnapshot: UnidadControl
+    +cantidadMilli: Long
+    +costoUnitarioCentavos: Long
+    +totalCentavos: Long
+  }
+  class Recepcion {
+    +id: UUID
+    +compraId: UUID
+    +businessId: UUID
+    +ubicacionId: UUID
+    +confirmadaEn: DateTime
+    +confirmadaPor: UUID
+  }
+  Proveedor "0..1" -- "0..*" Compra
+  Compra "1" *-- "1..*" DetalleCompra
+  Compra "1" *-- "0..1" Recepcion
+  note bottom of Recepcion
+    Una sola recepcion completa por compra,
+    en una ubicacion. Registrar no genera stock.
+  end note
+}
+
+package "02  VENTAS Y PAGOS" #F1EDFF {
+  class Venta {
+    +id: UUID
+    +businessId: UUID
+    +ubicacionId: UUID?
+    +estado: CONFIRMADA
+    +subtotalCentavos: Long
+    +descuentoCentavos: Long
+    +totalCentavos: Long
+    +requestId: UUID
+    +creadaPor: UUID
+    +fechaHora: DateTime
+  }
+  class DetalleVenta {
+    +id: UUID
+    +ventaId: UUID
+    +articuloId: UUID
+    +descripcionSnapshot: String
+    +tipoSnapshot: TipoArticulo
+    +unidadSnapshot: UnidadControl
+    +cantidadMilli: Long
+    +precioUnitarioCentavos: Long
+    +totalCentavos: Long
+  }
+  class AplicacionPago {
+    +id: UUID
+    +ventaId: UUID
+    +medio: MedioPago
+    +importeCentavos: Long
+    +referencia: String?
+  }
+  Venta "1" *-- "1..*" DetalleVenta
+  Venta "1" *-- "1..*" AplicacionPago
+  note bottom of AplicacionPago
+    Subtotal = SUM(lineas redondeadas HALF_UP).
+    Total = subtotal - descuento = SUM(pagos).
+    No equivale a acreditacion externa.
+  end note
+}
+
+package "03  INVENTARIO TRANSACCIONAL" #E7F8F4 {
+  class OperacionInventario {
+    +id: UUID
+    +businessId: UUID
+    +tipo: TRASLADO | AJUSTE
+    +motivo: String
+    +actorId: UUID
+    +fechaHora: DateTime
+    +requestId: UUID
+  }
+  class MovimientoInventario <<Historial inmutable>> {
+    +id: UUID
+    +businessId: UUID
+    +articuloId: UUID
+    +ubicacionId: UUID
+    +tipo: TipoMovimiento
+    +deltaMilli: Long
+    +fechaHora: DateTime
+    +actorId: UUID
+    +motivo: String?
+    +recepcionId: UUID?
+    +ventaId: UUID?
+    +operacionInventarioId: UUID?
+  }
+  class SaldoInventario <<Proyeccion transaccional>> {
+    +businessId: UUID
+    +ubicacionId: UUID
+    +articuloId: UUID
+    +cantidadMilli: Long
+    +version: Long
+  }
+  OperacionInventario "0..1" -- "1..*" MovimientoInventario
+  MovimientoInventario ..> SaldoInventario : misma transaccion
+  note bottom of MovimientoInventario
+    Origen XOR: exactamente uno entre
+    recepcionId, ventaId u operacionInventarioId.
+    No borrar movimientos historicos.
+  end note
+  note bottom of SaldoInventario
+    UNIQUE(empresa, ubicacion, articulo).
+    Saldo >= 0. Sin fila = 0 para una salida.
+    Primer ingreso: UPSERT concurrente seguro.
+  end note
+}
+
+package "04  CONTEXTO Y CONTROL" #FFF5E5 {
+  class SolicitudIdempotente {
+    +id: UUID
+    +businessId: UUID?
+    +actorId: UUID
+    +operacion: String
+    +clave: String
+    +hashSolicitud: String
+    +estado: EstadoSolicitud
+    +statusHttp: Integer?
+    +resultadoJson: JSON?
+    +creadaEn: DateTime
+    +completadaEn: DateTime?
+  }
+  class Empresa <<Referencia>>
+  class Ubicacion <<Referencia>>
+  class ArticuloCatalogo <<Referencia>>
+  class Membresia <<Referencia>>
+  SolicitudIdempotente "0..*" --> "0..1" Empresa
+  note bottom of SolicitudIdempotente
+    Contexto de empresa opcional antes de crearla.
+    La idempotencia no debe duplicar operaciones.
+  end note
+}
+
+' Relaciones transversales principales reflejadas por identificadores en cada
+' clase: todas se validan con claves compuestas y permisos. Se evitan flechas
+' entre grupos para mantener legibilidad en la lámina de presentación.
+' Recepcion y Venta son origenes posibles de MovimientoInventario;
+' DetalleCompra.articuloId es opcional, DetalleVenta.articuloId es obligatorio.
+
+legend bottom
+  **Convenciones de esta vista**
+  *-- : composicion  |  -- : asociacion  |  ..> : dependencia de sincronizacion
+  Se muestran relaciones internas de cada area.
+  Las asociaciones transversales se documentan mediante atributos FK y reglas.
+  Compra no genera stock; servicios no provocan salidas automaticas.
+endlegend
+@enduml

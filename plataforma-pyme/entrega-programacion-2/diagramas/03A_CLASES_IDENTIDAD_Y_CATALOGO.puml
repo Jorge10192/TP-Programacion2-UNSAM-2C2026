@@ -1,0 +1,107 @@
+@startuml
+' 03A v0.3 / Asistente PyME · identidad, empresas y catálogo.
+' La fuente PUML conserva TODAS las asociaciones y multiplicidades.
+' El SVG/PNG corresponde a la composición editorial optimizada: PlantUML
+' aplica su propio motor de distribución y no replica la misma maquetación.
+!theme plain
+skinparam backgroundColor #F4F7FB
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam nodesep 48
+skinparam ranksep 60
+skinparam ArrowColor #7895AC
+skinparam ClassBorderColor #95AFC4
+skinparam ClassFontColor #18324E
+skinparam ClassBackgroundColor #FFFFFF
+skinparam NoteBackgroundColor #EDF4FA
+skinparam NoteBorderColor #C4D4E2
+hide empty methods
+left to right direction
+
+title Asistente PyME | Identidad, empresas y catálogo (MVP TO-BE)
+
+package "Identidad y acceso" #EAF4FD {
+  class Usuario <<Entidad global>> {
+    +id: UUID
+    +emailNormalizado: String
+    +passwordHash: String
+    +estado: EstadoUsuario
+  }
+  class Membresia {
+    +id: UUID
+    +rol: RolEmpresa
+    +estado: EstadoMembresia
+  }
+  class Invitacion <<Soporte propuesto>> {
+    +id: UUID
+    +emailDestinatario: String
+    +rolPropuesto: RolEmpresa
+    +estado: EstadoInvitacion
+    +venceEn: DateTime
+    +tokenHash: String
+  }
+}
+package "Empresa y recursos" #E8F7F3 {
+  class Empresa <<Tenant>> {
+    +id: UUID
+    +nombre: String
+    +tipoActividad: TipoActividad
+    +estado: EstadoEmpresa
+  }
+  class Ubicacion {
+    +id: UUID
+    +nombre: String
+    +tipo: TipoUbicacion
+    +canSell: Boolean
+    +canStore: Boolean
+    +estado: EstadoUbicacion
+  }
+  class ArticuloCatalogo {
+    +id: UUID
+    +nombre: String
+    +tipo: TipoArticulo
+    +skuNormalizado: String?
+    +unidad: UnidadControl
+    +precioCentavos: Long?
+    +costoReferenciaCentavos: Long?
+    +estado: EstadoArticulo
+  }
+  class Proveedor {
+    +id: UUID
+    +nombre: String
+    +estado: EstadoProveedor
+  }
+}
+
+Usuario "1" -- "0..*" Membresia
+Empresa "1" -- "1..*" Membresia
+Usuario "1" -- "0..*" Empresa : fundador histórico
+Usuario "0..1" -- "0..*" Invitacion : destinatario registrado
+Empresa "1" -- "0..*" Invitacion
+Empresa "1" -- "0..*" Ubicacion
+Empresa "1" -- "0..*" ArticuloCatalogo
+Empresa "1" -- "0..*" Proveedor
+
+note bottom of Membresia
+  UNIQUE(empresa, usuario).
+  Rol según membresía activa del tenant.
+  Titular administrativo inicial único.
+end note
+note bottom of Empresa
+  Estado inicial ACTIVA.
+  SUSPENDIDA: prevista, sin endpoint MVP.
+  Fundador histórico: founderUserId en SQL.
+  Empresa nueva: 0 ubicaciones, sin stock ficticio.
+end note
+note bottom of ArticuloCatalogo
+  SKU único por empresa si está informado.
+  Precio NULL => informar precio al vender.
+  Costo de referencia es informativo.
+  Servicio no descuenta stock físico en MVP.
+end note
+note bottom of Invitacion
+  Crear invitación NO concede acceso.
+  Aceptarla requiere identidad autenticada.
+end note
+@enduml
