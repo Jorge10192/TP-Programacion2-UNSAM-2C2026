@@ -15,13 +15,15 @@ import type { InventoryMovement } from '../../data/demo/inventoryPolicy'
 import { SaleCatalogPicker } from './SaleCatalogPicker'
 import { accountSupportsDeclaredPayment } from '../../data/demo/financialAccountPolicy'
 import type { DemoFinancialAccount } from '../../data/demo/financialAccountPolicy'
+import type { DemoQrIntent } from '../../data/demo/qrDemoPolicy'
+import { QrDemoPanel } from './QrDemoPanel'
 
 type DraftLine = { key: string; catalogItemId: string; quantity: string; price: string }
 type DraftPayment = { key: string; method: SalePaymentMethod; amount: string; financialAccountId: string }
 const newLine = (): DraftLine => ({ key: crypto.randomUUID(), catalogItemId: '', quantity: '1', price: '' })
 const newPayment = (): DraftPayment => ({ key: crypto.randomUUID(), method: 'EFECTIVO', amount: '', financialAccountId: '' })
 
-export function SalesPage({ business, items, locations, movements, sales, sessions, accounts }: {
+export function SalesPage({ business, items, locations, movements, sales, sessions, accounts, qrIntents }: {
   business: DemoBusiness
   items: DemoCatalogItem[]
   locations: DemoLocation[]
@@ -29,13 +31,16 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
   sales: DemoSale[]
   sessions: DemoCashSession[]
   accounts: DemoFinancialAccount[]
+  qrIntents: DemoQrIntent[]
 }) {
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [qrDetailId, setQrDetailId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [notice, setNotice] = useState('')
   const [formVersion, setFormVersion] = useState(0)
   const selected = sales.find((sale) => sale.id === detailId)
+  const selectedQr = qrIntents.find((intent) => intent.id === qrDetailId)
   const searchable = query.trim().toLocaleLowerCase('es-AR')
   const shown = sales.filter((sale) => !searchable || [
     sale.id, sale.notes, ...sale.lines.flatMap((line) => [line.name, line.sku]),
@@ -44,9 +49,17 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
 
   function saved(id: string) {
     setCreating(false)
+    setQrDetailId(null)
     setDetailId(id)
     setFormVersion((version) => version + 1)
     setNotice('Venta DEMO registrada. Se actualizaron las existencias de productos físicos; los pagos son declaraciones internas, no acreditaciones externas.')
+  }
+
+  function qrCreated(id: string) {
+    setCreating(false)
+    setDetailId(null)
+    setQrDetailId(id)
+    setNotice('Se creó una intención QR DEMO pendiente: no hay venta registrada, cobro real ni salida de stock.')
   }
 
   return <>
@@ -56,7 +69,7 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
         <h1>Ventas</h1>
         <p>Venta rápida, descuentos, pagos divididos e historial de {business.name}.</p>
       </div>
-      <button type="button" className="button button-primary" onClick={() => { setCreating(!creating); setDetailId(null); setNotice('') }}>
+      <button type="button" className="button button-primary" onClick={() => { setCreating(!creating); setDetailId(null); setQrDetailId(null); setNotice('') }}>
         <Icon name={creating ? 'close' : 'plus'} size={17}/>{creating ? 'Cerrar formulario' : 'Nueva venta'}
       </button>
     </div>
@@ -74,7 +87,38 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
 
     {creating && <SaleForm key={business.id + ':' + formVersion}
       business={business} items={items} locations={locations} movements={movements} sessions={sessions}
-      accounts={accounts} onSaved={saved} onCancel={() => setCreating(false)}/>}
+      accounts={accounts} onSaved={saved} onQrCreated={qrCreated} onCancel={() => setCreating(false)}/>}
+
+    {selectedQr && <QrDemoPanel key={selectedQr.id} intent={selectedQr} business={business}
+      onApproved={(saleId) => {
+        setQrDetailId(null)
+        setDetailId(saleId)
+        setNotice('Aprobación SIMULADA completada. Se creó una sola venta DEMO; ningún dinero real fue recibido.')
+      }}
+      onCanceled={() => {
+        setNotice('Intención QR DEMO cancelada. No se registró venta ni se descontó stock.')
+      }}
+      onClose={() => setQrDetailId(null)}
+    />}
+    {qrIntents.length > 0 && <section className="form-panel qr-demo-list">
+      <div className="business-section-heading">
+        <div><Icon name="credit" size={20}/><h2>Intenciones QR DEMO</h2></div>
+        <span>{qrIntents.filter(intent => intent.status === 'PENDIENTE').length} pendientes</span>
+      </div>
+      <div className="qr-demo-entries">
+        {qrIntents.slice(0, 100).map((intent) => <div className="qr-demo-entry" key={intent.id}>
+          <div>
+            <strong>{moneyDisplay(intent.amountCents)}</strong>
+            <small>{new Date(intent.createdAt).toLocaleString('es-AR')} · {intent.status === 'PENDIENTE' ? 'Pendiente' : intent.status === 'CANCELADO' ? 'Cancelada' : 'Aprobada (simulada)'}</small>
+          </div>
+          <button type="button" className="button button-secondary"
+            onClick={() => { setQrDetailId(intent.id); setDetailId(null); setCreating(false) }}>
+            {intent.status === 'PENDIENTE' ? 'Ver QR DEMO' : 'Ver detalle'}
+          </button>
+        </div>)}
+      </div>
+      <p className="qr-demo-muted">Un QR pendiente o cancelado no aparece como venta ni afecta el inventario.</p>
+    </section>}
 
     <section className="form-panel sales-history">
       <div className="business-section-heading">
@@ -96,7 +140,7 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
             <small>{new Date(sale.createdAt).toLocaleString('es-AR')} · {sale.lines.map((line) => line.name).join(', ')}</small>
           </div>
           <strong>{moneyDisplay(sale.totalCents)}</strong>
-          <button type="button" className="button button-secondary" onClick={() => setDetailId(sale.id)}>Ver comprobante</button>
+          <button type="button" className="button button-secondary" onClick={() => { setQrDetailId(null); setDetailId(sale.id) }}>Ver comprobante</button>
         </article>)}
       </div>}
       {shown.length > 100 && <p className="inventory-limit">Mostrando las primeras 100 ventas. Usá el buscador para refinar.</p>}
@@ -130,14 +174,16 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
   </>
 }
 
-function SaleForm({ business, items, locations, movements, sessions, accounts, onSaved, onCancel }: {
+function SaleForm({ business, items, locations, movements, sessions, accounts, onSaved, onQrCreated, onCancel }: {
   business: DemoBusiness; items: DemoCatalogItem[]; locations: DemoLocation[]
   movements: InventoryMovement[]
   sessions: DemoCashSession[]
   accounts: DemoFinancialAccount[]
-  onSaved: (id: string) => void; onCancel: () => void
+  onSaved: (id: string) => void; onQrCreated: (id: string) => void; onCancel: () => void
 }) {
   const [requestId] = useState(() => 'demo-sale-request-' + crypto.randomUUID())
+  const [qrRequestId] = useState(() => 'demo-qr-request-' + crypto.randomUUID())
+  const [qrSaleRequestId] = useState(() => 'demo-sale-request-' + crypto.randomUUID())
   const [locationId, setLocationId] = useState('')
   const [lines, setLines] = useState<DraftLine[]>([newLine()])
   const [payments, setPayments] = useState<DraftPayment[]>([newPayment()])
@@ -246,16 +292,31 @@ function SaleForm({ business, items, locations, movements, sessions, accounts, o
   function fillPayment() {
     if (!totals || payments.length === 0) return
     try {
-      const others = payments.slice(1).reduce((sum, payment) => {
+      // El último medio recibe sólo el saldo restante: los anteriores no cambian.
+      const previous = payments.slice(0, -1).reduce((sum, payment) => {
         const cents = parseMoneyCents(payment.amount)
-        return sum + (cents ?? 0)
+        if (cents === null || cents <= 0) {
+          throw new Error('Completá primero los importes de los medios anteriores.')
+        }
+        return sum + cents
       }, 0)
-      const difference = totals.totalCents - others
-      if (difference <= 0) throw new Error('Los otros medios ya cubren o superan el total.')
-      patchPayment(payments[0].key, { amount: moneyInput(difference) })
+      const difference = totals.totalCents - previous
+      if (difference <= 0) throw new Error('Los pagos anteriores ya cubren o superan el total.')
+      patchPayment(payments[payments.length - 1].key, { amount: moneyInput(difference) })
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'No se pudo completar el importe.')
+      setError(caught instanceof Error ? caught.message : 'No se pudo completar el saldo.')
     }
+  }
+
+  async function generateQr() {
+    if (busy) return
+    setBusy(true); setError('')
+    try {
+      const intent = await demoGateway.createQrDemoIntent(business.id, makeInput(), qrRequestId, qrSaleRequestId)
+      onQrCreated(intent.id)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'No se pudo crear la intención QR DEMO.')
+    } finally { setBusy(false) }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -345,14 +406,14 @@ function SaleForm({ business, items, locations, movements, sessions, accounts, o
         <button type="button" className="button button-secondary" disabled={payments.length >= 6}
           onClick={() => setPayments((old) => [...old, newPayment()])}><Icon name="plus" size={16}/> Agregar medio</button>
       </div>
-      <div className="informational-note"><Icon name="shield" size={17}/><span>Los importes declarados deben sumar exactamente el total. Transferencia, tarjetas, Cuenta DNI y Mercado Pago no se verifican en esta DEMO. La caja registra únicamente los pagos en efectivo de ventas vinculadas a una jornada abierta.</span></div>
+      <div className="informational-note"><Icon name="shield" size={17}/><span>Los importes declarados deben sumar exactamente el total. Los cobros digitales no se verifican. Para crear un QR visual DEMO elegí un único medio Mercado Pago declarado por el importe total; una intención pendiente no registra ninguna venta ni descuenta stock. La caja sólo registra efectivo asociado a jornada abierta.</span></div>
       {hasCash && <p className={'cash-form-hint ' + (linkedCashSession ? 'linked' : 'unlinked')}>
         <Icon name={linkedCashSession ? 'shield' : 'clock'} size={17}/>
         {linkedCashSession
           ? 'La parte en efectivo de esta venta quedará vinculada a la jornada abierta de la ubicación elegida.'
           : 'No hay una jornada abierta para esta ubicación. Podés registrar la venta, pero el efectivo no ingresará en ningún arqueo de caja.'}
       </p>}
-      {payments.map((payment, index) => <div className="sales-payment-row" key={payment.key}>
+      {payments.map((payment, index) => <div className={'sales-payment-row' + (payment.method !== 'EFECTIVO' && payment.method !== 'TARJETA' ? ' has-account' : '')} key={payment.key}>
         <label className="form-field"><span>Medio de pago {index + 1}</span>
           <select value={payment.method} onChange={(event) => patchPayment(payment.key, { method: event.target.value as SalePaymentMethod, financialAccountId: '' })}>
             {Object.entries(salePaymentLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
@@ -378,8 +439,8 @@ function SaleForm({ business, items, locations, movements, sessions, accounts, o
           <Icon name="close" size={17}/>
         </button>
       </div>)}
-      <button type="button" className="button button-secondary sales-fill" onClick={fillPayment} disabled={!totals}>
-        Completar primer pago con el saldo pendiente
+      <button type="button" className="button button-secondary sales-fill" onClick={fillPayment} disabled={!totals || busy}>
+        Completar último medio con el saldo pendiente
       </button>
       <label className="form-field"><span>Observaciones (opcional)</span>
         <textarea rows={2} value={notes} maxLength={500} onChange={(event) => setNotes(event.target.value)} placeholder="Información interna de la venta…"/>
@@ -387,6 +448,10 @@ function SaleForm({ business, items, locations, movements, sessions, accounts, o
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions">
         <button type="button" className="button button-secondary" disabled={busy} onClick={onCancel}>Cancelar</button>
+        <button type="button" className="button button-secondary" disabled={busy || !totals || (physicalSelected && !locationId)}
+          onClick={() => void generateQr()}>
+          <Icon name="credit" size={17}/> Generar QR DEMO
+        </button>
         <button type="submit" className="button button-primary" disabled={busy || !totals || (physicalSelected && !locationId)}>
           <Icon name="receipt" size={17}/>{busy ? 'Registrando…' : 'Confirmar venta DEMO'}
         </button>
