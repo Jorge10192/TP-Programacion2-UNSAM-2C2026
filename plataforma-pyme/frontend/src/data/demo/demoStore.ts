@@ -1181,6 +1181,79 @@ function requiredText(value: string, label: string, min: number, max: number): s
 }
 
 export const demoGateway = {
+  async createFinancialAccount(businessId: string, input: FinancialAccountInput): Promise<DemoFinancialAccount> {
+    activeBusiness(businessId)
+    if (listDemoFinancialAccounts(state, businessId).length >= 100) {
+      throw new Error('El prototipo admite hasta 100 cuentas de referencia por empresa.')
+    }
+    const fields = normalizeFinancialAccountInput(input)
+    uniqueFinancialAccount(businessId, fields)
+    const now = new Date().toISOString()
+    const firstActive = !listDemoFinancialAccounts(state, businessId)
+      .some((account) => account.status === 'ACTIVA')
+    const account: DemoFinancialAccount = {
+      ...fields, id: 'demo-financial-account-' + crypto.randomUUID(),
+      businessId, status: 'ACTIVA', isPrimary: firstActive,
+      createdAt: now, updatedAt: now,
+    }
+    notify({ ...state, financialAccountsById: {
+      ...state.financialAccountsById, [account.id]: account,
+    } })
+    return account
+  },
+
+  async updateFinancialAccount(
+    businessId: string, accountId: string, input: FinancialAccountInput,
+  ): Promise<DemoFinancialAccount> {
+    const previous = financialAccountOfBusiness(businessId, accountId)
+    const fields = normalizeFinancialAccountInput(input)
+    uniqueFinancialAccount(businessId, fields, accountId)
+    if (previous.status !== 'ACTIVA') {
+      throw new Error('Primero reactivá la cuenta para editar su ficha.')
+    }
+    const updated: DemoFinancialAccount = {
+      ...previous, ...fields, updatedAt: new Date().toISOString(),
+    }
+    notify({ ...state, financialAccountsById: {
+      ...state.financialAccountsById, [accountId]: updated,
+    } })
+    return updated
+  },
+
+  async setFinancialAccountStatus(
+    businessId: string, accountId: string, status: DemoFinancialAccount['status'],
+  ): Promise<DemoFinancialAccount> {
+    const previous = financialAccountOfBusiness(businessId, accountId)
+    if (status !== 'ACTIVA' && status !== 'INACTIVA') throw new Error('Estado de cuenta inválido.')
+    if (status === previous.status) return previous
+    const updated: DemoFinancialAccount = {
+      ...previous, status, isPrimary: status === 'ACTIVA' ? previous.isPrimary : false,
+      updatedAt: new Date().toISOString(),
+    }
+    notify({ ...state, financialAccountsById: {
+      ...state.financialAccountsById, [accountId]: updated,
+    } })
+    return updated
+  },
+
+  async setPrimaryFinancialAccount(
+    businessId: string, accountId: string,
+  ): Promise<DemoFinancialAccount> {
+    const selected = financialAccountOfBusiness(businessId, accountId)
+    if (selected.status !== 'ACTIVA') throw new Error('Sólo una cuenta activa puede marcarse como principal.')
+    if (selected.isPrimary) return selected
+    const accounts = { ...state.financialAccountsById }
+    for (const account of Object.values(accounts)) {
+      if (account.businessId === businessId && account.isPrimary) {
+        accounts[account.id] = { ...account, isPrimary: false, updatedAt: new Date().toISOString() }
+      }
+    }
+    const updated: DemoFinancialAccount = { ...selected, isPrimary: true, updatedAt: new Date().toISOString() }
+    accounts[accountId] = updated
+    notify({ ...state, financialAccountsById: accounts })
+    return updated
+  },
+
   async openCashSession(
     businessId: string, locationId: string | null,
     openingCashCents: number, requestId: string,
