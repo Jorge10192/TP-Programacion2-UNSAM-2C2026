@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1.3A (tablas `businesses` y `memberships`, con restricciones multiempresa y pruebas SQL), sobre autenticación E2-1.2B validada. No hay todavía endpoints de empresas ni integración React.
+**Estado:** E2-1.3B: CU-03 real (crear empresa + titular inicial + registro idempotente + consultar empresas propias); roles operativos e invitaciones pendientes. Frontend DEMO independiente.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -369,3 +369,40 @@ docker compose exec -T db psql -U pyme -d asistente_pyme -c "\d memberships"
 No ejecutar un `downgrade` con datos reales. Este corte **no modifica React, no crea rutas de negocios y no requiere reconstruir la imagen API Docker**: solamente cambia el esquema y los tests de backend. El backend Docker seguirá funcionando con `/health` y `/ready`.
 
 **Próximo incremento E2-1.3B:** comando autenticado de creación de empresa y membresía inicial, en una transacción; listado de empresas propias, sin acceso cruzado. Después E2-1.3C: roles/permisos, invitaciones si se mantienen en alcance; actualización posterior del UML 03A con el código validado.
+
+## E2-1.3B — CU-03: crear empresas y ver únicamente las propias
+
+**Implementado:** tres endpoints protegidos con Bearer en `/api/v1/businesses`:
+
+| Método | Ruta | Respuesta |
+|---|---|---|
+| POST | `/api/v1/businesses` | 201 primera creación; 200 reintento idéntico; 409 misma clave con datos diferentes |
+| GET | `/api/v1/businesses` | 200 con arreglo de empresas donde la sesión tiene membresía activa |
+| GET | `/api/v1/businesses/{business_id}` | 200 si es miembro activo; 404 si es ajena, inexistente o sin membresía activa |
+
+La creación recibe nombre, rubro `category` y tipo de actividad `PRODUCTOS/SERVICIOS/MIXTO`. Debe llevar un encabezado **`Idempotency-Key` con un UUID v4 diferente por comando nuevo**. En reintentos HTTP del *mismo* comando se reutiliza la misma clave y el mismo contenido. No se permite enviar `founder_user_id`, `role` ni `user_id` desde el cliente: el servidor los deriva de la identidad real.
+
+El servicio comprueba nuevamente la cuenta y sesión activas **con bloqueo de filas dentro de la misma transacción** y luego crea la Empresa, la Membresía inicial `TITULAR_ADMINISTRATIVO/ACTIVA` y el registro idempotente; confirma **una sola vez**. Ante falla revierte las tres escrituras. El registro `business_creation_requests` tiene clave primaria compuesta `(actor_user_id, idempotency_key)`, hash canónico de petición y referencia a la empresa creada. No se elimina con TTL: evita duplicación ante reintentos posteriores.
+
+No se generan ubicaciones, catálogo, stock ni socios legales. Los nombres de empresas **no son globalmente únicos**; una razón social y un identificador tributario verificable se definirán más adelante si el negocio lo exige. El listado incluye empresas `SUSPENDIDA` para consulta; el bloqueo de operaciones comerciales se implementará cuando existan servicios empresariales. Para evitar enumeración, el GET por ID retorna **404 tanto para empresa ajena como inexistente**.
+
+### Verificar en tu equipo
+
+Desde `plataforma-pyme/` con Docker PostgreSQL activo:
+
+```powershell
+git pull origin main
+cd backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -v
+Remove-Item Env:\RUN_DB_INTEGRATION
+```
+
+La revisión esperada es `e213b_business_creation (head)`. Las pruebas de integración crean usuarios/empresas dentro de una transacción externa y SAVEPOINTs; **se revierten al finalizar** y no dejan registros persistidos.
+
+Después, desde `plataforma-pyme/`, reconstruí la API Docker con `docker compose --profile api up -d --build api`, comprobá `docker compose ps` y abrí `http://127.0.0.1:18000/docs`. Las rutas nuevas aparecerán bajo `empresas`. La prueba manual de POST desde Swagger **sí guarda la empresa de verdad**, por lo que las pruebas automatizadas son suficientes para este corte.
+
+**Pendiente E2-1.3C:** permisos detallados por rol, invitaciones y aceptación de membresías, verificación de autorizaciones en cada comando comercial. React seguirá en modo DEMO hasta disponer de contratos HTTP probados. Los modelos UML 03A se ajustarán sobre el código confirmado.
