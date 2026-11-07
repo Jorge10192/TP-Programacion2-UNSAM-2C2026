@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
+import { useUnsavedChanges } from '../../app/unsavedChanges'
 import { demoGateway } from '../../data/demo/demoStore'
 import type { DemoBusiness, DemoCatalogItem, DemoSupplier } from '../../data/demo/demoStore'
 import { moneyDisplay, moneyInput, parseMoneyCents } from '../../data/demo/catalogPolicy'
@@ -42,14 +43,16 @@ export function PurchaseForm({
   onSaved: (purchaseId: string, containsPhysicalGoods: boolean) => void
   onCancel: () => void
 }) {
-  const [draft, setDraft] = useState<Draft>(() => ({
+  const [initialDraft] = useState<Draft>(() => ({
     purchasedOn: todayLocal(), supplierId: '', reference: '', notes: '', lines: [newLine()],
   }))
+  const [draft, setDraft] = useState<Draft>(initialDraft)
   // Se conserva un ID de solicitud mientras el formulario está montado:
   // doble clic o reintento de envío no pueden crear una segunda compra DEMO.
   const [requestId] = useState(() => 'demo-request-' + crypto.randomUUID())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const { confirmDiscard, markSaved } = useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(initialDraft), saving)
   const activeCatalog = catalog.filter((item) => item.status === 'ACTIVO')
   const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'ACTIVO')
   const containsPhysicalGoods = draft.lines.some((line) =>
@@ -102,6 +105,7 @@ export function PurchaseForm({
     setError('')
     try {
       const purchase = await demoGateway.registerPurchase(business.id, makeInput(), requestId)
+      markSaved()
       onSaved(purchase.id, containsPhysicalGoods)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar la compra.')
@@ -235,7 +239,7 @@ export function PurchaseForm({
       </p>}
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions">
-        <button type="button" className="button button-secondary" disabled={saving} onClick={onCancel}>Cancelar</button>
+        <button type="button" className="button button-secondary" disabled={saving} onClick={() => { if (confirmDiscard()) onCancel() }}>Cancelar</button>
         <button type="submit" className="button button-primary" disabled={saving}>
           <Icon name="receipt" size={17}/> {saving ? 'Guardando…' : containsPhysicalGoods ? 'Guardar compra y elegir ubicación' : 'Registrar compra DEMO'}
         </button>

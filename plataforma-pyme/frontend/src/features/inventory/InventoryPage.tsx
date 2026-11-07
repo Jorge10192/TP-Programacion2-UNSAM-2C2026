@@ -140,7 +140,7 @@ export function InventoryPage({
 
     <div className="informational-note inventory-note">
       <Icon name="shield" size={20}/>
-      <span>Los saldos se derivan del historial y están expresados en la <strong>unidad de cada artículo</strong>; no se suman cajas con unidades ni kilos con gramos. Esta DEMO no incluye ventas, reservas, lotes, producción ni concurrencia real entre dispositivos.</span>
+      <span>Los saldos se derivan del historial y están expresados en la <strong>unidad de cada artículo</strong>; no se suman cajas con unidades ni kilos con gramos. Esta DEMO no incluye reservas, lotes, producción ni concurrencia real entre dispositivos.</span>
     </div>
     {!canCount && <div className="inventory-attention">Para registrar un conteo o traslado, primero configurá al menos una ubicación activa con «Puede almacenar» en Ubicaciones. Para traslados necesitás dos.</div>}
     {!canAct && <div className="inventory-attention">Para operar, primero agregá un artículo físico activo (no un servicio) en Catálogo.</div>}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Sidebar } from './app/shell/SideMenu'
 import { Topbar } from './app/shell/TopBar'
@@ -21,6 +21,8 @@ import { CashSessionsPage } from './features/cash/CashSessionsPage'
 import { FinancialAccountsPage } from './features/accounts/FinancialAccountsPage'
 import { inventoryHistoryEntries } from './data/demo/inventoryPolicy'
 import type { Navigate } from './app/types'
+import { installHistoryNavigation } from './app/historyNavigation'
+import { NavigationGuardContext, useNavigationGuard } from './app/unsavedChanges'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
 import { ComingSoon, NotFound } from './features/common/Feedback'
 import './App.css'
@@ -31,12 +33,17 @@ function App() {
   const [pathname, setPathname] = useState(() => window.location.pathname || '/')
   const [menuOpen, setMenuOpen] = useState(false)
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(loadSidebarMode)
+  const guard = useNavigationGuard()
+  const historyNavigation = useRef<ReturnType<typeof installHistoryNavigation> | null>(null)
 
   useEffect(() => {
-    const handlePopState = () => { setPathname(window.location.pathname); setMenuOpen(false) }
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
+    const navigation = installHistoryNavigation(window, guard.requestLeave, (nextPathname) => {
+      setPathname(nextPathname)
+      setMenuOpen(false)
+    })
+    historyNavigation.current = navigation
+    return () => { navigation.dispose(); historyNavigation.current = null }
+  }, [guard])
 
   useEffect(() => { saveSidebarMode(sidebarMode) }, [sidebarMode])
 
@@ -62,12 +69,7 @@ function App() {
   }
 
   const navigate: Navigate = (to) => {
-    if (to !== window.location.pathname) {
-      window.history.pushState({ assistantPymeFrom: window.location.pathname }, '', to)
-    }
-    setPathname(to)
-    setMenuOpen(false)
-    window.scrollTo({ top: 0, behavior: 'auto' })
+    if (historyNavigation.current?.navigate(to)) window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const match = /^\/b\/([^/]+)\/([^/]+)$/.exec(pathname)
@@ -85,7 +87,6 @@ function App() {
       && previous !== pathname
       && (business ? previous.startsWith(contextPrefix) : ['/inicio', '/perfil', '/empresas/nueva'].includes(previous))
 
-    setMenuOpen(false)
     if (sameContext) window.history.back()
     else navigate(business ? businessHref(business.id, 'inicio') : '/inicio')
   }
@@ -140,14 +141,14 @@ function App() {
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
-  return <div className={'app-layout menu-' + sidebarMode + (menuOpen ? ' menu-drawer-open' : '')}>
+  return <NavigationGuardContext.Provider value={guard}><div className={'app-layout menu-' + sidebarMode + (menuOpen ? ' menu-drawer-open' : '')}>
     <Sidebar pathname={pathname} business={business} navigate={navigate} mode={sidebarMode} isOpen={menuOpen} onClose={() => setMenuOpen(false)}/>
     <div className="main-column" inert={menuOpen}>
       <Topbar business={business} businesses={businesses} profile={snapshot.profile} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => setSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} />
       <main id="main-content" className="main-content">{content}</main>
       <footer className="app-footer"><span>Asistente PyME · Prototipo E1-A2</span><span>Sin autenticación ni cobros reales · Stock sólo DEMO</span></footer>
     </div>
-  </div>
+  </div></NavigationGuardContext.Provider>
 }
 
 export default App

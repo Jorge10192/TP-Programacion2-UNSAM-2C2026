@@ -172,7 +172,7 @@ export function CatalogPage({
 
     <div className="informational-note catalog-info-note"><Icon name="shield" size={19}/><span>
       Las fichas son exclusivas de esta empresa. Un <strong>servicio no tiene existencias físicas</strong>.
-      Registrar un producto o insumo tampoco crea stock: las cantidades, compras y elaboraciones se incorporarán en otros módulos.
+      Registrar un producto o insumo no crea stock. Las recepciones confirmadas en Compras actualizan el Inventario por ubicación.
       Los precios son de demostración y se expresan en pesos argentinos (ARS).
     </span></div>
 
@@ -285,7 +285,7 @@ export function CatalogPage({
           </div>
           <div className="catalog-card-note">{item.kind === 'SERVICIO'
             ? 'Servicio: sin stock físico propio'
-            : 'Producto o material: stock todavía no integrado'}</div>
+            : 'Producto o material: consultá el stock en Inventario por ubicación'}</div>
           <div className="catalog-card-actions">
             <button type="button" className="button button-secondary" onClick={() => { setDetailId(item.id); setConfirmationId(null) }}>Ver ficha</button>
             <button type="button" className="button button-secondary" onClick={() => startEdit(item)} disabled={busy}>Editar</button>

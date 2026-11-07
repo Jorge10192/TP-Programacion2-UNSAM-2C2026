@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Icon } from '../../app/Icon'
+import { useLeaveConfirmation } from '../../app/unsavedChanges'
 import type { DemoBusiness, DemoCatalogItem, DemoLocation, DemoPurchase, DemoSupplier } from '../../data/demo/demoStore'
 import { moneyDisplay } from '../../data/demo/catalogPolicy'
 import { physicalPurchaseLines, quantityText } from '../../data/demo/purchasePolicy'
@@ -31,6 +32,7 @@ export function PurchasesPage({
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<PurchaseFilter>('TODAS')
   const [notice, setNotice] = useState('')
+  const requestLeave = useLeaveConfirmation()
 
   const pending = purchases.filter((item) => receiptState(item) === 'PENDIENTE').length
   const received = purchases.filter((item) => receiptState(item) === 'RECIBIDA').length
@@ -56,7 +58,11 @@ export function PurchasesPage({
     <div className="page-heading">
       <div><p className="eyebrow">OPERACIONES · EMPRESA DEMO</p><h1>Compras</h1>
         <p>Compras y recepciones de «{business.name}», vinculadas con tu Catálogo y Proveedores.</p></div>
-      <button className="button button-primary" type="button" onClick={() => { setCreating((x) => !x); setNotice('') }}>
+      <button className="button button-primary" type="button" onClick={() => {
+        if (creating && !requestLeave()) return
+        setCreating((x) => !x)
+        setNotice('')
+      }}>
         <Icon name={creating ? 'close' : 'plus'} size={17}/>
         {creating ? 'Cerrar formulario' : 'Registrar compra'}
       </button>
