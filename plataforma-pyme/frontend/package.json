@@ -17,7 +17,8 @@
     "test:images": "node --test tests/image-policy.test.mjs",
     "test:sales": "node --test tests/sale-policy.test.mjs",
     "test:cash": "node --test tests/cash-policy.test.mjs",
-    "test:accounts": "node --test tests/financial-account-policy.test.mjs"
+    "test:accounts": "node --test tests/financial-account-policy.test.mjs",
+    "test:qr": "node --test tests/qr-demo-policy.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
