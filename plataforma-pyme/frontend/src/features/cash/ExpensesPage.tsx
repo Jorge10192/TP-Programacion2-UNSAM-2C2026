@@ -109,7 +109,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
                 <option key={a.id} value={a.id}>{a.label} · {a.kind === 'BANCARIA' ? 'Banco' : 'Billetera'}{a.isPrimary ? ' · Principal' : ''}</option>)}
             </select>
             {paymentMethod === 'TRANSFERENCIA' && <small>También podés declarar una transferencia desde una billetera virtual.</small>}
-          </label>
+          </label>}
           <label className="form-field"><span>Ubicación (opcional, gasto general si se omite)</span>
             <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
               <option value="">Gasto general de la empresa</option>
