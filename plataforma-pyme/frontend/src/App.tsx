@@ -5,7 +5,7 @@ import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
 import { businessHref, navigationItems } from './app/navigation'
-import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoSales, listDemoExpenses, listDemoCashSessions, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
+import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoSales, listDemoExpenses, listDemoCashSessions, listDemoFinancialAccounts, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { CreateBusinessPage } from './features/businesses/BusinessPages'
 import { BusinessDetailsPage } from './features/businesses/BusinessDetailsPage'
@@ -18,6 +18,7 @@ import { InventoryPage } from './features/inventory/InventoryPage'
 import { SalesPage } from './features/sales/SalesPage'
 import { ExpensesPage } from './features/cash/ExpensesPage'
 import { CashSessionsPage } from './features/cash/CashSessionsPage'
+import { FinancialAccountsPage } from './features/accounts/FinancialAccountsPage'
 import { inventoryHistoryEntries } from './data/demo/inventoryPolicy'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
@@ -110,6 +111,9 @@ function App() {
     sales={listDemoSales(snapshot, business.id)}
     sessions={listDemoCashSessions(snapshot, business.id)}
     movements={listDemoInventoryMovements(snapshot, business.id)}
+  />
+  else if (business && section === 'cuentas') content = <FinancialAccountsPage
+    key={business.id} business={business} accounts={listDemoFinancialAccounts(snapshot, business.id)}
   />
   else if (business && section === 'gastos') content = <ExpensesPage
     key={business.id} business={business} snapshot={snapshot}
