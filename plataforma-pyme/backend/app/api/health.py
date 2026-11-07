@@ -1,6 +1,6 @@
-"""Salud del proceso (liveness); no verifica aun la base de datos.
+"""Salud del proceso (liveness); no consulta la base de datos.
 
-Readiness y comprobacion de PostgreSQL se agregaran en E2-0.2/0.3.
+Readiness y conectividad PostgreSQL se consultan mediante GET /ready.
 """
 
 from typing import Literal

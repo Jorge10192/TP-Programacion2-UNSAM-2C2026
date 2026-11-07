@@ -1,0 +1,1 @@
+"""Persistencia y adaptadores externos."""
