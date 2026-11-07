@@ -134,3 +134,14 @@ test('normalización de arqueo: motivo opcional sólo cuando coincide', () => {
     { countedCashCents: 0, notes: 'Sin efectivo' })
   assert.throws(() => normalizeClose({ countedCashCents: -1, notes: '' }), /válido/)
 })
+
+test('gasto conserva cuenta opcional y rechaza referencias con formato inválido', () => {
+  const valid = {
+    paidOn: '2026-11-06', locationId: null, category: 'OTROS',
+    description: 'Prueba DEMO', amountCents: 10000, paymentMethod: 'TRANSFERENCIA',
+    financialAccountId: 'demo-financial-account-11111111-1111-4111-8111-111111111111', notes: '',
+  }
+  assert.equal(normalizeExpense(valid).financialAccountId, 'demo-financial-account-11111111-1111-4111-8111-111111111111')
+  assert.equal(normalizeExpense({ ...valid, financialAccountId: null }).financialAccountId, null)
+  assert.throws(() => normalizeExpense({ ...valid, financialAccountId: 'otro-negocio' }), /cuenta de origen/)
+})
