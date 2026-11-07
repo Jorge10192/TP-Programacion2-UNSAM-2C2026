@@ -362,7 +362,7 @@ function SaleForm({ business, items, locations, movements, sessions, accounts, o
           <input required type="text" inputMode="decimal" placeholder="0,00" value={payment.amount}
             onChange={(event) => patchPayment(payment.key, { amount: event.target.value })}/>
         </label>
-        {payment.method !== 'EFECTIVO' && payment.method !== 'TARJETA' && <label className="form-field">
+        {payment.method !== 'EFECTIVO' && payment.method !== 'TARJETA' && <label className="form-field sales-account-field">
           <span>Cuenta receptora declarada (opcional)</span>
           <select value={payment.financialAccountId}
             onChange={event => patchPayment(payment.key, { financialAccountId: event.target.value })}>

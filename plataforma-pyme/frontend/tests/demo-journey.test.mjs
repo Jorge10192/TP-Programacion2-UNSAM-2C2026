@@ -288,7 +288,8 @@ test('demoGateway real: jornadas consecutivas J1 → J2 → J3, persistencia y r
         assert.equal(sold.notes, sale.label)
         assert.equal(sold.totalCents, sale.totalCents)
         assert.equal(sold.cashSessionId, session.id)
-        assert.deepEqual(sold.payments, [{ method: sale.method, amountCents: sale.totalCents }])
+        assert.deepEqual(sold.payments, [{ method: sale.method, amountCents: sale.totalCents,
+          financialAccountId: null, financialAccountLabelSnapshot: null }])
         const out = ledger().filter((m) => m.operationId === sold.id)
         assert.equal(out.length, 1)
         assert.equal(out[0].type, 'VENTA_SALIDA')

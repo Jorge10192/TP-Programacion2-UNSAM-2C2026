@@ -200,6 +200,9 @@ summary { cursor: pointer; }
 .personal-demo-note { max-width: 85ch; }
 .journey-return { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
 
+@media (min-width: 611px) {
+  .sales-payment-row:has(.sales-account-field) { grid-template-columns: minmax(140px, 1fr) minmax(120px, .8fr) minmax(170px, 1.2fr) 44px; }
+}
 @media (min-width: 901px) {
   .app-layout.menu-expanded .sidebar { flex-basis: 224px; width: 224px; }
   .app-layout.menu-compact .sidebar { flex-basis: 72px; width: 72px; }
@@ -267,6 +270,8 @@ summary { cursor: pointer; }
   .sales-product-footer .button { width: 100%; }
   .sales-payment-row { grid-template-columns: 1fr 44px; }
   .sales-payment-row .form-field:first-child { grid-column: 1 / -1; }
+  .sales-payment-row .sales-account-field { grid-column: 1; }
+  .sales-payment-row .sales-delete { grid-column: 2; }
   .cash-session-grid { grid-template-columns: 1fr; }
   .cash-entry { flex-wrap: wrap; padding: 12px; }
   .cash-entry .feature-icon { display: none; }
