@@ -54,7 +54,7 @@ test('servicio por empresa y QR DEMO: pendiente, persistencia, cancelación y ap
     await page.goto('/b/walos-demo/ventas')
     await page.getByRole('button', { name: 'Nueva venta' }).click()
     await page.getByLabel('Artículo o servicio 1').selectOption({ label: service + ' · Servicio' })
-    await page.getByLabel('Medio de pago 1').selectOption('MERCADO_PAGO_DECLARADO')
+    await page.getByLabel('Medio de pago 1', { exact: true }).selectOption('MERCADO_PAGO_DECLARADO')
     await page.getByLabel('Importe aplicado ARS').fill('1500')
     await page.getByRole('button', { name: 'Generar QR DEMO' }).click()
     await expect(page.getByRole('region', { name: 'Intención de cobro QR de demostración' })).toContainText('Pendiente (sin cobro)')
