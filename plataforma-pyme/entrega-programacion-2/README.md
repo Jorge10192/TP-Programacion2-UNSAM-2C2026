@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión para múltiples empresas y rubros.  
 **Ubicación prevista en el repositorio:** `plataforma-pyme/entrega-programacion-2/`.  
-**Estado de esta copia:** borrador v0.2 para revisión y aprobación. No sustituye la documentación de desarrollo de `../docs/`.
+**Estado de esta carpeta:** Documento 01 en borrador v0.2 y Documento 02 revisado v0.3. No sustituye la documentación de desarrollo de `../docs/`.
 
 ## Propósito
 
@@ -15,7 +15,7 @@ Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»*
 | Documento | Propósito | Estado |
 |---|---|---|
 | `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR v0.2; pendiente de aprobación** |
-| `02_CASOS_DE_USO.md` | Actores, escenarios, flujos principal/alternativo, errores y trazabilidad | Pendiente |
+| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.3 — contratos y permisos definitivos pendientes** |
 | `03_MODELO_DE_DOMINIO_Y_UML.md` | Modelo conceptual, relaciones, cardinalidades y enlaces a diagramas UML | Pendiente |
 | `04_ARQUITECTURA_Y_PATRONES.md` | Arquitectura AS-IS/TO-BE, responsabilidades, patrón(es) de diseño y justificación | Pendiente |
 | `05_MATRIZ_API_Y_TRAZABILIDAD.md` | RF → caso de uso → endpoints reales → pruebas/evidencias | Pendiente |
