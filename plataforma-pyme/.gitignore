@@ -1,7 +1,28 @@
-# Credenciales y configuracion local (Compose)
+# Asistente PyME - archivos que nunca deben subirse al repositorio
+# Las reglas aplican a plataforma-pyme/ y sus subcarpetas.
+
+# Credenciales y variables de entorno reales (Docker, backend y frontend)
 .env
 .env.*
 !.env.example
-
-# Archivos temporales de editores
 *.local
+
+# Claves privadas, certificados personales y otros secretos locales
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Copias de seguridad y volcados de bases de datos
+*.dump
+*.backup
+*.sql.gz
+pgdata/
+postgres-data/
+
+# Archivos temporales locales
+*.log
+.DS_Store
+Thumbs.db
