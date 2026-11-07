@@ -76,7 +76,7 @@ export function PurchasesPage({
 
     <div className="informational-note purchase-note">
       <Icon name="shield" size={19}/>
-      <span>Registrar una compra <strong>no equivale a pagar ni recibir mercadería</strong>. Las entradas de stock requieren una confirmación posterior en una ubicación que permita almacenar; los servicios y conceptos libres nunca generan existencias físicas.</span>
+      <span>Guardá la compra y después confirmá la recepción para ingresar stock. <strong>Registrar no equivale a pagar.</strong> Servicios y conceptos libres no generan existencias.</span>
     </div>
 
     {notice && <p className="form-message success purchase-page-message" role="status">{notice}</p>}

@@ -68,7 +68,7 @@ export function SalesPage({ business, items, locations, movements, sales, sessio
     </section>
     <div className="informational-note">
       <Icon name="shield" size={19}/>
-      <span><strong>Simulación local.</strong> Los pagos se registran como declarados por quien opera, no se verifican en bancos ni en Mercado Pago. Una venta descuenta existencias una sola vez. Los cobros en efectivo se incluyen en una caja sólo cuando existe una jornada abierta para esa ubicación.</span>
+      <span>Una venta descuenta stock. <strong>Abrí caja antes de vender</strong> para incluir el efectivo en su arqueo. Los pagos son declarados, sin verificación bancaria.</span>
     </div>
     {notice && <p className="form-message success" role="status">{notice}</p>}
 
@@ -345,7 +345,7 @@ function SaleForm({ business, items, locations, movements, sessions, accounts, o
         <button type="button" className="button button-secondary" disabled={payments.length >= 6}
           onClick={() => setPayments((old) => [...old, newPayment()])}><Icon name="plus" size={16}/> Agregar medio</button>
       </div>
-      <div className="informational-note"><Icon name="shield" size={17}/><span>Los importes declarados deben sumar exactamente el total. Transferencia, tarjetas, Cuenta DNI y Mercado Pago no se verifican en esta DEMO. La caja registra únicamente los pagos en efectivo de ventas vinculadas a una jornada abierta.</span></div>
+      <div className="informational-note"><Icon name="shield" size={17}/><span>Los pagos deben sumar el total. Sólo el efectivo vinculado a una caja abierta integra el arqueo; los medios digitales son declaraciones internas.</span></div>
       {hasCash && <p className={'cash-form-hint ' + (linkedCashSession ? 'linked' : 'unlinked')}>
         <Icon name={linkedCashSession ? 'shield' : 'clock'} size={17}/>
         {linkedCashSession
@@ -380,9 +380,11 @@ function SaleForm({ business, items, locations, movements, sessions, accounts, o
       <button type="button" className="button button-secondary sales-fill" onClick={fillPayment} disabled={!totals}>
         Completar primer pago con el saldo pendiente
       </button>
+      <details className="optional-fields"><summary>Agregar observaciones (opcional)</summary>
       <label className="form-field"><span>Observaciones (opcional)</span>
         <textarea rows={2} value={notes} maxLength={500} onChange={(event) => setNotes(event.target.value)} placeholder="Información interna de la venta…"/>
       </label>
+      </details>
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions">
         <button type="button" className="button button-secondary" disabled={busy} onClick={onCancel}>Cancelar</button>

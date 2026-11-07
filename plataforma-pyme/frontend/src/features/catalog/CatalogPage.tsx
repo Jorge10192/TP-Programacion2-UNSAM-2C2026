@@ -157,7 +157,7 @@ export function CatalogPage({
 
   return <>
     <div className="page-heading">
-      <div><p className="eyebrow">OPERACIONES · EMPRESA DEMO</p><h1>Catálogo general</h1><p>Productos, insumos y servicios de «{business.name}».</p></div>
+      <div><p className="eyebrow">PREPARACIÓN · EMPRESA DEMO</p><h1>Catálogo</h1><p>Productos, insumos y servicios de «{business.name}».</p></div>
       <button type="button" className="button button-primary" onClick={editingId === null ? startCreate : cancelEdit} disabled={busy}>
         <Icon name={editingId === null ? 'plus' : 'close'} size={18}/>
         {editingId === null ? 'Agregar artículo o servicio' : 'Cerrar formulario'}
@@ -171,9 +171,7 @@ export function CatalogPage({
     </section>
 
     <div className="informational-note catalog-info-note"><Icon name="shield" size={19}/><span>
-      Las fichas son exclusivas de esta empresa. Un <strong>servicio no tiene existencias físicas</strong>.
-      Registrar un producto o insumo no crea stock. Las recepciones confirmadas en Compras actualizan el Inventario por ubicación.
-      Los precios son de demostración y se expresan en pesos argentinos (ARS).
+      Definí qué comprás y vendés, en ARS. Crear una ficha no carga stock: usá una recepción o un conteo en Stock. Los servicios no tienen existencias físicas.
     </span></div>
 
     {error && <p className="form-message error catalog-feedback" role="alert">{error}</p>}

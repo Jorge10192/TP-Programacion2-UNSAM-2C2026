@@ -130,7 +130,7 @@ export function PurchaseForm({
   return <section className="form-panel purchase-editor">
     <div className="form-panel-header">
       <span className="feature-icon blue"><Icon name="shopping" size={24}/></span>
-      <div><h2>Registrar compra</h2><p>Comprobante y conceptos de «{business.name}». No equivale a pagar ni a recibir mercadería.</p></div>
+      <div><h2>Registrar compra</h2><p>Comprobante, artículos y costos de «{business.name}».</p></div>
     </div>
     <div className="purchase-flow-steps" aria-label="Etapas de registro y recepción">
       <div className="purchase-flow-step current"><span className="purchase-flow-number">1</span>
@@ -218,20 +218,20 @@ export function PurchaseForm({
         })}
       </section>
 
-      <section className="purchase-form-section">
-        <h3>3. Observaciones</h3>
+      <details className="optional-fields">
+        <summary>Agregar notas internas (opcional)</summary>
         <label className="form-field"><span>Notas internas (opcional)</span>
-          <textarea maxLength={500} rows={3} value={draft.notes}
+          <textarea maxLength={500} rows={2} value={draft.notes}
             onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
             placeholder="Ej.: Entrega acordada para la próxima semana…"/>
         </label>
-      </section>
+      </details>
 
       <div className="purchase-total-box">
         <div><small>Total de la compra (ARS)</small><strong>{previewTotal === null ? 'Completar costos y cantidades' : moneyDisplay(previewTotal)}</strong></div>
         <p>{containsPhysicalGoods
-          ? 'Paso 1: guardás la compra. A continuación se abrirá el detalle, donde elegirás la ubicación y confirmarás la recepción. El stock no cambia hasta entonces.'
-          : 'Al guardar sólo se registra la compra. Si elegís bienes físicos, la recepción y su ubicación se confirman después. Este registro no representa un pago.'}</p>
+          ? 'Después de guardar, elegí dónde recibiste la mercadería y confirmá su ingreso al stock.'
+          : 'Este registro documenta la compra; no representa un pago.'}</p>
       </div>
       {containsPhysicalGoods && <p className="purchase-location-pending" role="status">
         <Icon name="clock" size={17}/>

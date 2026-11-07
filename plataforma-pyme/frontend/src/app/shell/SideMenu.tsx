@@ -24,6 +24,9 @@ export function Sidebar({
 }) {
   const compact = mode === 'compact' && !isOpen
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const secondaryGroups = navigationGroups.filter((group) => group !== 'Tu jornada' && group !== 'Preparación')
+  const secondaryActive = !!business && navigationItems.some((item) => secondaryGroups.some((group) => group === item.group)
+    && pathname === businessHref(business.id, item.segment))
 
   useEffect(() => {
     if (isOpen) closeButtonRef.current?.focus()
@@ -32,8 +35,8 @@ export function Sidebar({
   // El drawer modal nunca debe dejar que Tab llegue al contenido bloqueado.
   function handleDrawerKeys(event: ReactKeyboardEvent<HTMLElement>) {
     if (!isOpen || event.key !== 'Tab') return
-    const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'))
-      .filter((element) => element.getClientRects().length > 0)
+    const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'))
+      .filter((element) => element.getClientRects().length > 0 && element.checkVisibility())
     if (focusable.length === 0) return
 
     const first = focusable[0]
@@ -47,6 +50,23 @@ export function Sidebar({
     }
   }
 
+  function renderGroup(group: (typeof navigationGroups)[number]) {
+    if (!business) return null
+    return <div key={group} className={'sidebar-group' + (group === 'Tu jornada' ? ' sidebar-group-primary' : group === 'Preparación' ? ' sidebar-group-preparation' : ' sidebar-group-secondary')}>
+      <p className="group-label">{group.toUpperCase()}</p>
+      {navigationItems.filter((item) => item.group === group).map((item) => {
+        const href = businessHref(business.id, item.segment)
+        const active = pathname === href
+        return <AppLink key={item.id} navigate={navigate} to={href} ariaLabel={item.label}
+          ariaCurrent={active ? 'page' : undefined} title={compact ? item.label : undefined}
+          className={'side-link' + (active ? ' active' : '')}>
+          <Icon name={item.icon} size={19}/><span className="side-label">{item.label}</span>
+          {item.phase === 'Posterior' && <span className="side-dot" title="Próximamente"/>}
+        </AppLink>
+      })}
+    </div>
+  }
+
   return (
     <>
       {isOpen && <button type="button" tabIndex={-1} className="mobile-scrim" aria-label="Cerrar menú al tocar fuera" onClick={onClose} />}
@@ -54,7 +74,7 @@ export function Sidebar({
         <div className="sidebar-head">
           <AppLink navigate={navigate} to="/inicio" className="brand" ariaLabel="Ir al inicio personal" title={compact ? 'Asistente PyME · Inicio personal' : undefined}>
             <span className="brand-logo"><Icon name="building" size={25} /></span>
-            <span className="brand-copy"><strong>Asistente PyME</strong><small>Gestión de negocios</small></span>
+            <span className="brand-copy"><strong>Asistente PyME</strong><small>Tu jornada de trabajo</small></span>
           </AppLink>
           <button type="button" ref={closeButtonRef} className="icon-button sidebar-close" aria-label="Cerrar menú" onClick={onClose}><Icon name="close" /></button>
         </div>
@@ -80,21 +100,11 @@ export function Sidebar({
             </nav>
           ) : (
             <nav aria-label="Secciones del negocio">
-              {navigationGroups.map((group) => (
-                <div key={group} className="sidebar-group">
-                  <p className="group-label">{group.toUpperCase()}</p>
-                  {navigationItems.filter((item) => item.group === group).map((item) => {
-                    const href = businessHref(business.id, item.segment)
-                    const active = pathname === href
-                    return (
-                      <AppLink key={item.id} navigate={navigate} to={href} ariaLabel={item.label} ariaCurrent={active ? 'page' : undefined} title={compact ? item.label : undefined} className={'side-link' + (active ? ' active' : '')}>
-                        <Icon name={item.icon} size={19} /><span className="side-label">{item.label}</span>
-                        {item.phase === 'Posterior' && <span className="side-dot" title="Próximamente" />}
-                      </AppLink>
-                    )
-                  })}
-                </div>
-              ))}
+              {navigationGroups.filter((group) => group === 'Tu jornada' || group === 'Preparación').map(renderGroup)}
+              <details className="sidebar-secondary-options" open={compact || secondaryActive}>
+                <summary className="group-label">Más opciones</summary>
+                {secondaryGroups.map(renderGroup)}
+              </details>
             </nav>
           )}
         </div>
@@ -103,7 +113,7 @@ export function Sidebar({
             <div className="sidebar-foot-icon"><Icon name="shield" size={17}/></div>
             <div className="sidebar-foot-copy"><strong>Entorno de demostración</strong><span>Sin operaciones reales ni pagos.</span></div>
           </div>
-          <span className="sidebar-version">Prototipo E1-A1 · v0.2</span>
+          <span className="sidebar-version">Jornada WALOS · Demo local</span>
         </div>
       </aside>
     </>

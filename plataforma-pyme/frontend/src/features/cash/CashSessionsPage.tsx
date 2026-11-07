@@ -74,8 +74,8 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
 
   return <>
     <div className="page-heading"><div>
-      <p className="eyebrow">CAJA · EMPRESA DEMO</p><h1>Apertura y cierre</h1>
-      <p>Controlá el efectivo de las jornadas de {business.name}, por ubicación y con arqueo obligatorio.</p>
+      <p className="eyebrow">JORNADA · EMPRESA DEMO</p><h1>Caja</h1>
+      <p>Abrí la caja de {business.name} antes de vender y cerrala con el efectivo contado.</p>
     </div></div>
     <section className="sales-kpis">
       <div><span className="feature-icon mint"><Icon name="wallet"/></span><small>Jornadas abiertas</small><strong>{openSessions.length}</strong></div>
@@ -83,15 +83,15 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
       <div><span className="feature-icon violet"><Icon name="building"/></span><small>Ubicaciones habilitadas para vender</small><strong>{eligibleLocations.length}</strong></div>
     </section>
     <div className="informational-note"><Icon name="shield" size={18}/><span><strong>Caja física DEMO.</strong>
-      Sólo se incluyen los pagos de ventas en efectivo y los gastos en efectivo registrados mientras esta jornada estaba abierta.
-      Las ventas anteriores a la apertura, las compras sin pago y los medios digitales no son efectivo de caja.
-      Los cierres no mueven inventario ni saldos bancarios.
+      Abrí antes de vender y cerrá al terminar, contando el efectivo. El arqueo incluye el fondo inicial y los cobros/gastos en efectivo vinculados a esa jornada; excluye compras sin pago y medios digitales.
     </span></div>
     {notice && <p className="form-message success" role="status">{notice}</p>}
     {error && <p className="form-message error" role="alert">{error}</p>}
 
+    <details className="cash-opening-options" open={openSessions.length === 0}>
+      <summary>{openSessions.length > 0 ? 'Abrir otra caja (opcional)' : 'Abrir la caja de esta jornada'}</summary>
     <section className="form-panel cash-form">
-      <div className="business-section-heading"><div><Icon name="plus" size={21}/><h2>Abrir una jornada</h2></div>
+      <div className="business-section-heading"><div><Icon name="plus" size={21}/><h2>Fondo inicial</h2></div>
         <span>Una jornada abierta por ubicación</span></div>
       <form className="demo-form" onSubmit={(event) => void openSession(event)}>
         <div className="cash-form-grid">
@@ -114,6 +114,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
         </button></div>
       </form>
     </section>
+    </details>
 
     <section className="form-panel cash-history">
       <div className="business-section-heading"><div><Icon name="wallet" size={21}/><h2>Jornadas abiertas</h2></div>
