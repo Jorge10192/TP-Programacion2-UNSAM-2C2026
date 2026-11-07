@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión para múltiples empresas y rubros.  
 **Ubicación prevista en el repositorio:** `plataforma-pyme/entrega-programacion-2/`.  
-**Estado de esta carpeta:** Documento 01 en borrador v0.2, Documento 02 revisado v0.3 y Documento 03 publicado como modelo conceptual v0.3. No sustituye la documentación de desarrollo de `../docs/`.
+**Estado de esta carpeta:** Documento 01 en borrador v0.2, Documento 02 revisado v0.3 y Documento 03 publicado como modelo conceptual v0.3 y Documento 04 publicado como arquitectura propuesta v0.4. No sustituye la documentación de desarrollo de `../docs/`.
 
 ## Propósito
 
@@ -17,7 +17,7 @@ Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»*
 | `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR v0.2; pendiente de aprobación** |
 | `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.3 — contratos y permisos definitivos pendientes** |
 | [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO — modelo conceptual v0.3 (TO-BE)** |
-| `04_ARQUITECTURA_Y_PATRONES.md` | Arquitectura AS-IS/TO-BE, responsabilidades, patrón(es) de diseño y justificación | Pendiente |
+| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v0.4 — backend pendiente** |
 | `05_MATRIZ_API_Y_TRAZABILIDAD.md` | RF → caso de uso → endpoints reales → pruebas/evidencias | Pendiente |
 | `06_PRUEBAS_Y_DESPLIEGUE.md` | Estrategia de pruebas, GitHub Actions, Docker, despliegue y evidencias | Pendiente |
 | [`diagramas/`](diagramas/) | SVG vectoriales aprobados, fuentes PlantUML editables y tres guías detalladas | **03A / 03B / 03C publicados** |
