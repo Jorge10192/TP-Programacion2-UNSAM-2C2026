@@ -6,6 +6,8 @@ import { inventoryHistoryEntries, inventoryMovementLabels, stockBalances, stockK
 import { quantityText } from '../../data/demo/purchasePolicy'
 import { InventoryActionForm } from './InventoryActionForm'
 import { InventoryBatchCount } from './InventoryBatchCount'
+import { DemoPhoto } from '../common/DemoPhoto'
+import { demoImageKey } from '../../data/demo/imagePolicy'
 
 type Tab = 'stock' | 'movements'
 type Row = { item: DemoCatalogItem; location: DemoLocation; milli: number }
@@ -140,7 +142,7 @@ export function InventoryPage({
 
     <div className="informational-note inventory-note">
       <Icon name="shield" size={20}/>
-      <span>Los saldos se derivan del historial y están expresados en la <strong>unidad de cada artículo</strong>; no se suman cajas con unidades ni kilos con gramos. Esta DEMO no incluye ventas, reservas, lotes, producción ni concurrencia real entre dispositivos.</span>
+      <span>Los saldos se derivan de recepciones, traslados, conteos y ventas registradas, en la <strong>unidad de cada artículo</strong>; no se suman cajas con unidades ni kilos con gramos. Esta DEMO no incluye reservas, lotes, producción ni concurrencia real entre dispositivos.</span>
     </div>
     {!canCount && <div className="inventory-attention">Para registrar un conteo o traslado, primero configurá al menos una ubicación activa con «Puede almacenar» en Ubicaciones. Para traslados necesitás dos.</div>}
     {!canAct && <div className="inventory-attention">Para operar, primero agregá un artículo físico activo (no un servicio) en Catálogo.</div>}
@@ -194,7 +196,10 @@ export function InventoryPage({
         </div> : <>
           <div className="inventory-stock-list">
             {shownRows.map(({ item, location, milli }) => <article className="inventory-stock-row" key={stockKey(location.id, item.id)}>
-              <span className="inventory-stock-icon"><Icon name="package" size={20}/></span>
+              <DemoPhoto imageKey={demoImageKey('catalog', business.id, item.id)}
+                alt={'Imagen de ' + item.name}
+                fallback={<Icon name="package" size={20}/>}
+                className="inventory-stock-photo inventory-stock-icon"/>
               <div className="inventory-stock-description">
                 <strong>{item.name}</strong><small>{item.sku ? 'SKU: ' + item.sku + ' · ' : ''}{item.kind === 'INSUMO' ? 'Insumo' : item.kind === 'ELABORADO' ? 'Elaboración' : 'Reventa'}</small>
               </div>
