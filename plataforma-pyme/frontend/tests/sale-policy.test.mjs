@@ -120,3 +120,16 @@ test('venta de servicios sin ubicación no crea salidas de inventario', () => {
   })
   assert.equal(events.length, 0)
 })
+
+test('cuenta opcional por pago se valida sin modificar el total de venta', () => {
+  const input = { locationId: null, lines: [line(1000)], discountCents: 0,
+    payments: [{ method: 'TRANSFERENCIA', amountCents: 125050, financialAccountId: 'demo-financial-account-11111111-1111-4111-8111-111111111111' }], notes: '' }
+  const normalized = normalizeSaleInput(input)
+  assert.equal(normalized.payments[0].financialAccountId, 'demo-financial-account-11111111-1111-4111-8111-111111111111')
+  assert.throws(() => normalizeSaleInput({ ...input, payments: [
+    { method: 'TRANSFERENCIA', amountCents: 125050, financialAccountId: 'otro-negocio' },
+  ] }), /cuenta DEMO válida/)
+  assert.equal(normalizeSaleInput({ ...input, payments: [
+    { method: 'TRANSFERENCIA', amountCents: 125050 },
+  ] }).payments[0].financialAccountId, null)
+})
