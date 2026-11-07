@@ -57,7 +57,7 @@ export function FinancialAccountsPage({ business, accounts }: {
       const next = account.status === 'ACTIVA' ? 'INACTIVA' : 'ACTIVA'
       await demoGateway.setFinancialAccountStatus(business.id, account.id, next)
       setNotice(next === 'INACTIVA'
-        ? 'Cuenta desactivada. No se eliminó su ficha ni se modificó el efectivo de caja.'
+        ? 'Cuenta desactivada sólo en la plataforma: ya no aparece para nuevos pagos o cobros. Los registros previos permanecen, y el banco externo no se modifica.'
         : 'Cuenta reactivada. Sus datos siguen siendo únicamente de referencia DEMO.')
       setConfirmId(null)
       setStatusFilter('TODAS')
