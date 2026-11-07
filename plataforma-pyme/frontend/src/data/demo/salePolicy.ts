@@ -19,7 +19,7 @@ export type SaleLineInput = {
   unitPriceCents: number
 }
 
-export type SalePayment = { method: SalePaymentMethod; amountCents: number }
+export type SalePayment = { method: SalePaymentMethod; amountCents: number; financialAccountId?: string | null; financialAccountLabelSnapshot?: string | null }
 
 export type SaleInput = {
   locationId: string | null
@@ -131,6 +131,13 @@ export function normalizeSaleInput(input: SaleInput): SaleInput {
         return code <= 8 || code === 11 || code === 12 || (code >= 14 && code <= 31) || code === 127
       })) throw new Error('Las observaciones admiten hasta 500 caracteres sin controles.')
   return { locationId: input.locationId, lines, discountCents: totals.discountCents,
-    payments: input.payments.map(({ method, amountCents }) => ({ method, amountCents })),
+    payments: input.payments.map(({ method, amountCents, financialAccountId }) => {
+      const accountId = financialAccountId ?? null
+      if (accountId !== null && (typeof accountId !== 'string' ||
+          !/^demo-financial-account-[a-f0-9-]{36}$/.test(accountId))) {
+        throw new Error('Seleccioná una cuenta DEMO válida o dejala sin asociar.')
+      }
+      return { method, amountCents, financialAccountId: accountId }
+    }),
     notes: input.notes.trim() }
 }
