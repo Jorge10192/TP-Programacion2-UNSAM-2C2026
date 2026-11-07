@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { AppLink } from '../AppLink'
 import { Icon } from '../Icon'
@@ -32,8 +32,10 @@ export function Sidebar({
   const secondaryActive = !!business && visibleItems.some((item) => secondaryGroups.some((group) => group === item.group)
     && pathname === businessHref(business.id, item.segment))
 
-  useEffect(() => {
-    if (isOpen) closeButtonRef.current?.focus()
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    // Opening visibility is immediate in CSS, so focus can enter before the drawer is painted.
+    closeButtonRef.current?.focus({ preventScroll: true })
   }, [isOpen])
 
   // El drawer modal nunca debe dejar que Tab llegue al contenido bloqueado.

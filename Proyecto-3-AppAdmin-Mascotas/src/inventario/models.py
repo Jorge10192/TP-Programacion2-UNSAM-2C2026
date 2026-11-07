@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, String, Text, false, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database.base import Base
@@ -33,6 +33,8 @@ class MovimientoStock(Base):
     cantidad_micro: Mapped[int] = mapped_column(BigInteger)
     motivo: Mapped[str] = mapped_column(Text)
     fecha: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    # Old TIMESTAMP values have no recorded timezone; never infer it from the host.
+    fecha_es_utc: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     @property
     def cantidad(self) -> Decimal:

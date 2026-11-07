@@ -230,7 +230,8 @@ def count_stock(db, data, user_id):
             movement = None
             if delta:
                 movement = mover_stock(db, item.id, delta, user_id, 'CONTEO',
-                                       f'conteo:{row.id}:{item.id}', data.motivo, fingerprint=digest)
+                                       f'conteo:{row.id}:{item.id}', data.motivo, fingerprint=digest,
+                                       fecha_utc=row.creada_en)
                 db.flush()
             row.items.append(ItemConteoStock(insumo_id=item.id, orden=order,
                 cantidad_anterior_micro=before, cantidad_contada_micro=counted,
@@ -311,7 +312,8 @@ def create_sale(db, data, user_id):
         db.flush()
         for item in sorted(row.items, key=lambda line: line.insumo_id):
             mover_stock(db, item.insumo_id, -item.cantidad_micro, user_id, 'VENTA',
-                        f'venta:{row.id}:{item.insumo_id}', 'Venta declarada', item_venta_id=item.id)
+                        f'venta:{row.id}:{item.insumo_id}', 'Venta declarada', item_venta_id=item.id,
+                        fecha_utc=row.creada_en)
         db.flush()
         cash_totals(db, session)
         return row

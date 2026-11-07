@@ -12,7 +12,7 @@ Gestión de una jornada para un emprendimiento de bocaditos y tortas para mascot
 | 04 | Consultar existencias/movimientos; administrador registra un conteo absoluto de varios artículos. | `GET /api/v1/stock`, `GET /api/v1/stock/movimientos`, `POST /api/v1/stock/conteos` |
 | 05 | Abrir caja, registrar ventas y gastos, y cerrar con efectivo contado y diferencia. | `GET/POST /api/v1/jornadas`, `POST /api/v1/ventas`, `POST /api/v1/gastos`, `POST /api/v1/jornadas/{identifier}/cerrar` |
 
-`GET /api/v1/snapshot` devuelve una vista consistente para la interfaz. Los endpoints anteriores de compras, stock y comprobantes se conservan. Contratos completos: `/docs`.
+`GET /api/v1/snapshot` devuelve una vista consistente para la interfaz. Los endpoints anteriores de compras, stock y comprobantes se conservan. Entradas y ejecución interactiva: `/docs`.
 
 ## 2. Reglas
 

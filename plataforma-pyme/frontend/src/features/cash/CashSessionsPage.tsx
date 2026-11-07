@@ -1,5 +1,5 @@
 import { useOnlineDraft } from '../common/useOnlineDraft'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { useAppData } from '../../data/dataContext'
@@ -25,6 +25,10 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
   const [closeNotes, setCloseNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [closeError, setCloseError] = useState('')
+  const [closeReasonInvalid, setCloseReasonInvalid] = useState(false)
+  const closeNotesRef = useRef<HTMLTextAreaElement>(null)
+  const closeErrorRef = useRef<HTMLParagraphElement>(null)
   const [notice, setNotice] = useState('')
   const [detailId, setDetailId] = useState<string | null>(null)
 
@@ -35,6 +39,13 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
   const openAtSelected = openSessions.find(session => session.locationId === (scope || null))
   const closing = openSessions.find(session => session.id === toCloseId)
   const selectedDetail = sessions.find(session => session.id === detailId)
+
+  useEffect(() => {
+    if (!closeError) return
+    const target = closeReasonInvalid ? closeNotesRef.current : closeErrorRef.current
+    target?.focus()
+    target?.scrollIntoView({ block: closeReasonInvalid ? 'center' : 'nearest' })
+  }, [closeError, closeReasonInvalid])
 
   function scopeLabel(locationId: string | null) {
     return locations.find(location => location.id === locationId)?.name ?? 'Caja general · sin ubicación física'
@@ -62,7 +73,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
   async function closeSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy || !closing) return
-    setBusy(true); setError(''); setNotice('')
+    setBusy(true); setError(''); setCloseError(''); setCloseReasonInvalid(false); setNotice('')
     try {
       const value = parseMoneyCents(countedAmount)
       if (value === null) throw new Error('Ingresá el efectivo contado.')
@@ -74,7 +85,10 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
       setToCloseId(null); setDetailId(closed.id); setCountedAmount(''); setCloseNotes('')
       setCloseId('demo-cash-close-' + crypto.randomUUID())
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'No se pudo cerrar la jornada.')
+      const message = caught instanceof Error ? caught.message : 'No se pudo cerrar la jornada.'
+      setCloseError(message)
+      // Classify the existing server/demo rejection for field feedback; the gateway still owns validation.
+      setCloseReasonInvalid(message.startsWith('Explicá la diferencia entre el efectivo esperado y el contado'))
     } finally { setBusy(false) }
   }
 
@@ -138,7 +152,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
           </div>
           <p className="cash-quiet">{summary.saleIds.length} ventas en efectivo · {summary.expenseIds.length} gastos en efectivo vinculados</p>
           <button type="button" className="button button-primary" disabled={mode === 'api' && snapshot?.apiCapabilities?.cash !== true} onClick={() => {
-            setToCloseId(session.id); setCountedAmount(''); setCloseNotes(''); setError(''); setNotice('');
+            setToCloseId(session.id); setCountedAmount(''); setCloseNotes(''); setError(''); setCloseError(''); setCloseReasonInvalid(false); setNotice('');
             setCloseId('demo-cash-close-' + crypto.randomUUID())
           }}>Realizar arqueo y cerrar</button>
         </article>
@@ -150,7 +164,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
     {closing && <section className="form-panel cash-close-panel" aria-label="Arqueo y cierre de jornada">
       <div className="business-section-heading">
         <div><Icon name="wallet" size={21}/><h2>Arqueo · {scopeLabel(closing.locationId)}</h2></div>
-        <button type="button" className="button button-secondary" onClick={() => { setToCloseId(null); setError('') }}>
+        <button type="button" className="button button-secondary" onClick={() => { setToCloseId(null); setError(''); setCloseError(''); setCloseReasonInvalid(false) }}>
           <Icon name="close" size={16}/> Cancelar arqueo
         </button>
       </div>
@@ -161,15 +175,16 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
         <div><small>Egresos en efectivo</small><strong>{moneyDisplay(totals(closing).cashExpensesCents)}</strong></div>
         <div><small>Esperado</small><strong>{moneyDisplay(totals(closing).expectedCashCents)}</strong></div>
       </div>
-      <form className="demo-form" onSubmit={(event) => void closeSession(event)}>
+      <form className="demo-form" aria-describedby={closeError && !closeReasonInvalid ? 'cash-close-error' : undefined} onSubmit={(event) => void closeSession(event)}>
         <div className="cash-form-grid">
           <label className="form-field"><span>Efectivo contado físicamente (ARS) *</span>
-            <input required type="text" inputMode="decimal" value={countedAmount} onChange={event => setCountedAmount(event.target.value)}
+            <input required type="text" inputMode="decimal" value={countedAmount} onChange={event => { setCountedAmount(event.target.value); setCloseError(''); setCloseReasonInvalid(false) }}
               placeholder="Ingresá el importe contado, incluso si es 0"/>
           </label>
-          <label className="form-field"><span>Observación del cierre</span>
-            <textarea rows={2} maxLength={500} value={closeNotes} onChange={event => setCloseNotes(event.target.value)}
+          <label className="form-field"><span id="cash-close-notes-label">Observación del cierre</span>
+            <textarea ref={closeNotesRef} rows={2} maxLength={500} value={closeNotes} aria-labelledby="cash-close-notes-label" aria-invalid={closeReasonInvalid || undefined} aria-describedby={closeReasonInvalid ? 'cash-close-error' : undefined} onChange={event => { setCloseNotes(event.target.value); setCloseError(''); setCloseReasonInvalid(false) }}
               placeholder="Obligatoria si hay diferencia entre esperado y contado"/>
+            {closeError && closeReasonInvalid && <span id="cash-close-error" className="form-message error" role="alert">{closeError}</span>}
           </label>
         </div>
         {(() => {
@@ -185,6 +200,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
             return <p className="cash-form-hint unlinked">Revisá el importe contado: no uses separadores de miles.</p>
           }
         })()}
+        {closeError && !closeReasonInvalid && <p id="cash-close-error" ref={closeErrorRef} tabIndex={-1} className="form-message error" role="alert">{closeError}</p>}
         <div className="form-actions"><button type="submit" className="button button-primary" disabled={busy || (mode === 'api' && snapshot?.apiCapabilities?.cash !== true)}>
           <Icon name="shield" size={17}/>{busy ? 'Cerrando…' : 'Confirmar cierre y guardar arqueo'}
         </button></div>

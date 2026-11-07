@@ -83,6 +83,25 @@ function harness(handler) {
   const api = createApiGateway(session, { snapshot: value => updates.push(value), recovery: value => recoveries.push(value) })
   return { api, calls, updates, recoveries }
 }
+
+test('fecha SQL sin zona se conserva literal y visible en histórico; UTC por evento no se modifica', () => {
+  const raw = JSON.parse(readFileSync(new URL('../../../tests/fixtures/online-timestamp-legacy.http.json', import.meta.url), 'utf8').replace(/^\uFEFF/, ''))
+  const owner = { id: 'user:' + raw.contexto.user.id, name: raw.contexto.user.nombre, role: raw.contexto.user.rol }
+  const state = mapSnapshot(raw, owner)
+  const unknown = raw.movimientos.filter(row => row.fecha_fuente === 'LEGACY_SIN_ZONA')
+  assert.equal(unknown.length, 2)
+  for (const row of unknown) {
+    const record = state.apiLegacyRecords.find(value => value.id === 'Movimiento:' + row.id)
+    assert.ok(record)
+    assert.equal(record.fields.find(field => field.label === 'Fecha original (zona horaria no registrada)').value, row.fecha_registrada_sin_zona)
+    assert.ok(record.reasons.some(reason => reason.includes('Zona horaria no registrada.')))
+    assert.ok(record.reasons.every(reason => !reason.includes('FECHA_ZONA_DESCONOCIDA')))
+    assert.equal(state.apiInventoryMovements.some(value => value.id === 'movimiento:' + row.id), false)
+  }
+  for (const row of raw.movimientos.filter(value => !value.legacy_readonly)) {
+    assert.equal(state.apiInventoryMovements.find(value => value.id === 'movimiento:' + row.id).createdAt, row.creada_en)
+  }
+})
 const saleInput = state => {
   const original = Object.values(state.salesById)[0]
   return { locationId: 'principal', lines: original.lines.map(line => ({ catalogItemId: line.catalogItemId, quantityMilli: line.quantityMilli, unitPriceCents: line.unitPriceCents })),

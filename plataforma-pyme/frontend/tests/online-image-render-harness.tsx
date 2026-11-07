@@ -18,8 +18,16 @@ import { CashSessionsPage } from '../src/features/cash/CashSessionsPage'
 import { PurchaseDetailDialog } from '../src/features/purchases/PurchaseDetailDialog'
 import { Welcome } from '../src/features/dashboard/Dashboards'
 import { DemoPhoto, DemoImagePicker } from '../src/features/common/DemoPhoto'
+import { LegacyRecords } from '../src/features/common/LegacyRecords'
 import type { AppRuntime, AppState } from '../src/data/appRuntime'
 import type { ReactNode } from 'react'
+
+export function renderReadonlyFixture(raw: Parameters<typeof mapSnapshot>[0]) {
+  const dto = raw as { contexto: { user: { id: number; nombre: string; rol: 'administrador' } } }
+  const snapshot = mapSnapshot(raw, { id: 'user:' + dto.contexto.user.id, name: dto.contexto.user.nombre, role: dto.contexto.user.rol })
+  const runtime = { getSnapshot: () => ({ mode: 'api', snapshot }), subscribe: () => () => {} } as AppRuntime
+  return renderToStaticMarkup(<DataContext.Provider value={runtime}><LegacyRecords/></DataContext.Provider>)
+}
 
 export function renderOnlineFixture(raw: Parameters<typeof mapSnapshot>[0]) {
   const dto = raw as { contexto: { user: { id: number; nombre: string; rol: 'administrador' } } }

@@ -25,6 +25,11 @@ def utc(value):
     return value.isoformat(timespec='microseconds') + 'Z' if value is not None else None
 
 
+def recorded_time(value, source, raw=None):
+    return {'creada_en': utc(value), 'fecha_fuente': source,
+            'fecha_registrada_sin_zona': raw.isoformat(timespec='microseconds') if raw is not None else None}
+
+
 def legacy(reasons):
     return {'legacy_readonly': bool(reasons), 'legacy_reasons': sorted(set(reasons))}
 
@@ -112,8 +117,12 @@ class Projection:
             return None
         first = min(movements, key=lambda m: m.id)
         items = {line.insumo_id: line for line in row.items}
+        if row.fecha_recepcion is not None:
+            recorded = recorded_time(row.fecha_recepcion, 'RECEPCION_UTC')
+        else:
+            recorded = self.movement_time(first)
         return {'id': f'recepcion:{row.id}', 'compra_id': row.id, 'ubicacion_id': 'principal',
-                'creada_en': utc(row.fecha_recepcion or first.fecha),
+                **recorded,
                 'actor_id': row.recibida_por_id if row.recibida_por_id is not None else first.usuario_id,
                 'movimientos': [{'id': m.id, 'item_compra_id': items[m.insumo_id].id,
                     'insumo_id': m.insumo_id, 'cantidad': micro_text(m.cantidad_micro),
@@ -158,6 +167,23 @@ class Projection:
                 'unidad_nombre': unit.nombre, 'cantidad': micro_text(row.cantidad_micro),
                 'version': row.version, **legacy(reasons)}
 
+    def movement_time(self, row):
+        if row.fecha_es_utc:
+            return recorded_time(row.fecha, 'MOVIMIENTO_UTC')
+        # These immutable event fields were explicitly written in UTC from their
+        # introduction. Use only their actual FK relation, never a guessed offset.
+        if row.item_venta_id in self.sale_lines:
+            sale, _ = self.sale_lines[row.item_venta_id]
+            return recorded_time(sale.creada_en, 'VENTA_UTC', row.fecha)
+        if row.id in self.count_lines:
+            count, _ = self.count_lines[row.id]
+            return recorded_time(count.creada_en, 'CONTEO_UTC', row.fecha)
+        if row.tipo == 'COMPRA' and row.compra_id in self.purchases:
+            purchase = self.purchases[row.compra_id]
+            if purchase.fecha_recepcion is not None:
+                return recorded_time(purchase.fecha_recepcion, 'RECEPCION_UTC', row.fecha)
+        return recorded_time(None, 'LEGACY_SIN_ZONA', row.fecha)
+
     def movement(self, row):
         item = self.catalog[row.insumo_id]
         unit = self.units[item.unidad_stock_id]
@@ -182,10 +208,13 @@ class Projection:
             reasons.append('UNIDAD_NO_MAPEADA')
         if row.cantidad_micro % 1000:
             reasons.append('PRECISION_HISTORICA')
+        recorded = self.movement_time(row)
+        if recorded['creada_en'] is None:
+            reasons.append('FECHA_ZONA_DESCONOCIDA')
         return {'id': row.id, 'tipo': origin['tipo'], 'origen': origin, 'insumo_id': item.id,
                 'ubicacion_id': 'principal', 'cantidad': micro_text(row.cantidad_micro), 'unidad': code,
                 'unidad_nombre': unit.nombre, 'nombre_snapshot': name, 'nombre_actual': item.nombre,
-                'sku_snapshot': sku, 'usuario_id': row.usuario_id, 'creada_en': utc(row.fecha),
+                'sku_snapshot': sku, 'usuario_id': row.usuario_id, **recorded,
                 'motivo': row.motivo, **legacy(reasons)}
 
     def count(self, row):

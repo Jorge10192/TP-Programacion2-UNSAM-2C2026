@@ -72,8 +72,9 @@ def crear_compra(db: Session, datos: CompraCreate, usuario_id: int, *, commit=Tr
 
 
 def confirmar_compra(db: Session, compra: Compra, usuario_id: int, *, commit=True) -> Compra:
+    received_at = ahora()
     changed = db.execute(update(Compra).where(Compra.id == compra.id, Compra.estado == "BORRADOR")
-                         .values(estado="CONFIRMADA", fecha_recepcion=ahora(), recibida_por_id=usuario_id),
+                         .values(estado="CONFIRMADA", fecha_recepcion=received_at, recibida_por_id=usuario_id),
                          execution_options={"synchronize_session": False}).rowcount
     if not changed:
         db.refresh(compra)
@@ -88,7 +89,8 @@ def confirmar_compra(db: Session, compra: Compra, usuario_id: int, *, commit=Tru
         if item.unidad_contenido_id:
             habilitado(db, UnidadMedida, item.unidad_contenido_id)
         mover_stock(db, item.insumo_id, item.cantidad_micro, usuario_id, "COMPRA",
-                    f"compra:{compra.id}:{item.insumo_id}", "Recepción confirmada", compra.id)
+                    f"compra:{compra.id}:{item.insumo_id}", "Recepción confirmada", compra.id,
+                    fecha_utc=received_at)
     if commit:
         guardar(db)
     else:
@@ -98,8 +100,9 @@ def confirmar_compra(db: Session, compra: Compra, usuario_id: int, *, commit=Tru
 
 
 def anular_compra(db: Session, compra: Compra, usuario_id: int, motivo: str) -> Compra:
+    cancelled_at = ahora()
     changed = db.execute(update(Compra).where(Compra.id == compra.id, Compra.estado.in_(["BORRADOR", "CONFIRMADA"]))
-                         .values(estado="ANULADA", motivo_anulacion=motivo, anulada_por_id=usuario_id, fecha_anulacion=ahora()),
+                         .values(estado="ANULADA", motivo_anulacion=motivo, anulada_por_id=usuario_id, fecha_anulacion=cancelled_at),
                          execution_options={"synchronize_session": False}).rowcount
     if not changed:
         db.refresh(compra)
@@ -109,7 +112,7 @@ def anular_compra(db: Session, compra: Compra, usuario_id: int, motivo: str) -> 
     if db.query(MovimientoStock.id).filter_by(compra_id=compra.id, tipo="COMPRA").first():
         for item in sorted(compra.items, key=lambda i: i.insumo_id):
             mover_stock(db, item.insumo_id, -item.cantidad_micro, usuario_id, "ANULACION",
-                        f"anulacion:{compra.id}:{item.insumo_id}", motivo, compra.id)
+                        f"anulacion:{compra.id}:{item.insumo_id}", motivo, compra.id, fecha_utc=cancelled_at)
     guardar(db)
     db.refresh(compra)
     return compra

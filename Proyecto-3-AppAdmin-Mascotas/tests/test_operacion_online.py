@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
@@ -11,16 +12,16 @@ from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 
 from src.auth.models import Usuario
 from src.auth.routes import router as auth_router
-from src.compras.models import Insumo
+from src.compras.models import Compra, Insumo
 from src.compras.routes import router as purchases_router
 from src.database import session as database
 from src.database.session import get_db
-from src.inventario.models import Existencia
+from src.inventario.models import Existencia, MovimientoStock
 from src.inventario.routes import router as inventory_router
 from src.inventario.services import mover_stock
 from src.operacion.routes import router
@@ -430,6 +431,86 @@ def test_snapshot_completo_y_consistente(online):
     assert finished.is_set() and not failures
     assert snapshot['stock'] == before['stock'] and snapshot['movimientos'] == before['movimientos']
     assert case.stock(case.bags)['cantidad'] == '2.000000'
+
+
+def test_cronologia_utc_independiente_de_zona_postgresql_y_legado_sin_zona(online):
+    case = online
+    original_engine = case.sessions.kw['bind']
+    zoned = None
+    if original_engine.dialect.name == 'postgresql':
+        # Per-connection setting on this disposable test DB only; no ALTER/host TZ.
+        zoned = create_engine(original_engine.url, connect_args={
+            'options': '-c timezone=America/Buenos_Aires'})
+        case.sessions.configure(bind=zoned)
+        with case.sessions() as db:
+            assert db.scalar(text("SELECT current_setting('TimeZone')")) == 'America/Buenos_Aires'
+            local, utc_clock = db.execute(text("SELECT now()::timestamp, now() AT TIME ZONE 'UTC'")).one()
+            assert utc_clock - local == timedelta(hours=3)
+    try:
+        before = datetime.now(timezone.utc)
+        purchase = case.purchase('Cronología UTC QA', '1')
+        receipt = case.post(f"/api/v1/compras/{purchase['id']}/recibir", {'ubicacion_id': 'principal'}, True)
+        count = case.count('2')
+        session = case.open(0)
+        sale = case.post('/api/v1/ventas', case.sale_body(session['id'], '1', 250050), True)
+        case.reload_and_replay()
+        adjustment = case.post('/stock/ajustes', {'referencia': 'ajuste-utc-qa', 'insumo_id': case.flour,
+                                               'cantidad': '0.125', 'motivo': 'Ajuste QA con UTC'})
+        case.post(f"/compras/{purchase['id']}/anular", {'motivo': 'Anulación QA con UTC'})
+        after = datetime.now(timezone.utc)
+        current = case.snapshot()
+        movement_rows = {row['id']: row for row in current['movimientos']}
+        related_times = {
+            receipt['movimientos'][0]['id']: receipt['creada_en'],
+            count['items'][0]['movimiento_id']: count['creada_en'],
+            next(row['id'] for row in current['movimientos'] if row['tipo'] == 'VENTA'): sale['creada_en'],
+        }
+        assert receipt['fecha_fuente'] == 'RECEPCION_UTC'
+        assert receipt['fecha_registrada_sin_zona'] is None
+        for identifier, timestamp in related_times.items():
+            assert movement_rows[identifier]['creada_en'] == timestamp
+        with case.sessions() as db:
+            cancellation = next(row for row in current['movimientos'] if row['tipo'] == 'ANULACION')
+            assert cancellation['creada_en'] == db.get(Compra, purchase['id']).fecha_anulacion.isoformat(timespec='microseconds') + 'Z'
+            assert db.get(MovimientoStock, adjustment['id']).fecha_es_utc is True
+            for row in db.query(MovimientoStock).all():
+                assert row.fecha_es_utc is True
+                assert before <= row.fecha.replace(tzinfo=timezone.utc) <= after
+                assert movement_rows[row.id]['fecha_fuente'] == 'MOVIMIENTO_UTC'
+                assert movement_rows[row.id]['fecha_registrada_sin_zona'] is None
+        target = os.getenv('WALOS_TEST_TIMESTAMP_FIXTURE')
+        if target and zoned is not None:
+            Path(target + '-new.json').write_text(json.dumps(case.client.get('/api/v1/snapshot').json(), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+        # Simulate pre-fix d91 rows from a local -03 session, with no provenance
+        # flag. These are synthetic disposable rows, not an adjustment of history.
+        with case.sessions() as db:
+            for row in db.query(MovimientoStock).all():
+                row.fecha_es_utc = False
+                row.fecha -= timedelta(hours=3)
+            db.commit()
+            raw_before = {row.id: row.fecha for row in db.query(MovimientoStock).all()}
+        legacy = case.snapshot()
+        legacy_rows = {row['id']: row for row in legacy['movimientos']}
+        sources = ['RECEPCION_UTC', 'CONTEO_UTC', 'VENTA_UTC']
+        for (identifier, timestamp), source in zip(related_times.items(), sources):
+            assert legacy_rows[identifier]['creada_en'] == timestamp
+            assert legacy_rows[identifier]['fecha_fuente'] == source
+            assert legacy_rows[identifier]['fecha_registrada_sin_zona'] == raw_before[identifier].isoformat(timespec='microseconds')
+            assert 'FECHA_ZONA_DESCONOCIDA' not in legacy_rows[identifier]['legacy_reasons']
+        for identifier in (adjustment['id'], cancellation['id']):
+            row = legacy_rows[identifier]
+            assert row['creada_en'] is None and row['fecha_fuente'] == 'LEGACY_SIN_ZONA'
+            assert row['fecha_registrada_sin_zona'] == raw_before[identifier].isoformat(timespec='microseconds')
+            assert row['legacy_readonly'] and 'FECHA_ZONA_DESCONOCIDA' in row['legacy_reasons']
+        with case.sessions() as db:
+            assert {row.id: row.fecha for row in db.query(MovimientoStock).all()} == raw_before
+        if target and zoned is not None:
+            Path(target + '-legacy.json').write_text(json.dumps(case.client.get('/api/v1/snapshot').json(), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    finally:
+        if zoned is not None:
+            case.sessions.configure(bind=original_engine)
+            zoned.dispose()
 
 
 def test_router_montado_en_aplicacion_real(api):

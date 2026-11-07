@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import hashlib
 import json
 import os
@@ -93,6 +93,7 @@ def test_upgrade_online_conserva_datos_precision_y_login(backend, tmp_path, monk
                tipo='AJUSTE', cantidad_micro=1, motivo='Precisión histórica')
         insert('comprobantes', compra_id=purchase, usuario_id=user, tipo='application/pdf',
                huella='a' * 64, contenido=b'%PDF-1.7 QA anterior')
+        original_dates = dict(connection.execute(text('SELECT id, fecha FROM movimientos_stock')).all())
     command.upgrade(config, 'head')
     command.check(config)
     if backend == 'sqlite':
@@ -132,6 +133,20 @@ def test_upgrade_online_conserva_datos_precision_y_login(backend, tmp_path, monk
             assert line['unidad_compra']['id'] == bag and line['unidad_stock']['id'] == kg
             assert line['nombre_snapshot'] is None and line['costo_unitario_centavos'] is None
             assert line['total_centavos'] == 200050 and original['legacy_readonly']
+            assert original['recepcion']['creada_en'] is None
+            assert original['recepcion']['fecha_fuente'] == 'LEGACY_SIN_ZONA'
+            for movement in snapshot['movimientos']:
+                assert movement['creada_en'] is None
+                assert movement['fecha_fuente'] == 'LEGACY_SIN_ZONA'
+                assert 'FECHA_ZONA_DESCONOCIDA' in movement['legacy_reasons']
+                # SQLite text SQL returns raw strings; PostgreSQL datetimes.
+                source_date = original_dates[movement['id']]
+                if isinstance(source_date, str):
+                    source_date = datetime.fromisoformat(source_date)
+                assert movement['fecha_registrada_sin_zona'] == source_date.isoformat(timespec='microseconds')
+            with engine.connect() as connection:
+                assert dict(connection.execute(text('SELECT id, fecha FROM movimientos_stock')).all()) == original_dates
+                assert not any(connection.execute(text('SELECT fecha_es_utc FROM movimientos_stock')).scalars())
             retry = client.post('/compras', json=payload)
             assert retry.status_code == 201 and retry.json()['id'] == purchase
             assert client.post(f'/compras/{purchase}/confirmar').status_code == 200

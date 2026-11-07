@@ -5,6 +5,19 @@ import { fileURLToPath } from 'node:url'
 import { runnerImport } from 'vite'
 import { demoImageKey } from '../src/data/demo/imagePolicy.ts'
 
+test('histórico renderiza la fecha original sin zona ni conversión y conserva ambas filas', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/online-timestamp-legacy.http.json', import.meta.url), 'utf8').replace(/^\uFEFF/, ''))
+  const { module } = await runnerImport(fileURLToPath(new URL('./online-image-render-harness.tsx', import.meta.url)), { configFile: false })
+  const html = module.renderReadonlyFixture(fixture)
+  assert.match(html, /Histórico de sólo lectura/)
+  assert.match(html, /Zona horaria no registrada\./)
+  assert.doesNotMatch(html, /FECHA_ZONA_DESCONOCIDA/)
+  for (const row of fixture.movimientos.filter(value => value.fecha_fuente === 'LEGACY_SIN_ZONA')) {
+    assert.ok(html.includes('Movimiento:' + row.id))
+    assert.ok(html.includes('<dt>Fecha original (zona horaria no registrada)</dt><dd>' + row.fecha_registrada_sin_zona + '</dd>'))
+  }
+})
+
 test('render online con IDs SQL conserva catálogo, proveedores, stock, venta y detalles sin validar imágenes demo', async () => {
   const fixture = JSON.parse(readFileSync(new URL('./fixtures/online-snapshot.http.json', import.meta.url), 'utf8').replace(/^\uFEFF/, ''))
   assert.throws(() => demoImageKey('catalog', 'walos', 'insumo:' + fixture.catalogo[0].id), /ficha existente/)

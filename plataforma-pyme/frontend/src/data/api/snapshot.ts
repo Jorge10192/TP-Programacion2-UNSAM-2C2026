@@ -80,6 +80,7 @@ function rawUnit(value: unknown): string {
 function readonlyRecord(kind: string, row: Row, reason: string): LegacyRecord {
   const label = [row.nombre, row.referencia_comercial, row.nombre_snapshot].find((value) => typeof value === 'string')
   const fields: LegacyRecord['fields'] = []
+  if (typeof row.fecha_registrada_sin_zona === 'string') fields.push({ label: 'Fecha original (zona horaria no registrada)', value: row.fecha_registrada_sin_zona })
   if (typeof row.cantidad === 'string') fields.push({ label: 'Cantidad original', value: row.cantidad + ' ' + rawUnit(row.unidad ?? row.unidad_nombre) })
   if (Array.isArray(row.items)) row.items.forEach((value, index) => {
     const line = object(value)
@@ -90,7 +91,7 @@ function readonlyRecord(kind: string, row: Row, reason: string): LegacyRecord {
     if (line.costo_unitario_centavos === null) fields.push({ label: 'Costo unitario', value: 'No registrado en el histórico' })
     if (Number.isSafeInteger(line.total_centavos)) fields.push({ label: 'Total original ARS', value: (Number(line.total_centavos) / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 }) })
   })
-  return { id: kind + ':' + integer(row.id ?? row.insumo_id), kind, label: typeof label === 'string' ? label : kind + ' #' + (row.id ?? row.insumo_id), reasons: [reason], fields }
+  return { id: kind + ':' + integer(row.id ?? row.insumo_id), kind, label: typeof label === 'string' ? label : kind + ' #' + (row.id ?? row.insumo_id), reasons: [reason.replaceAll('FECHA_ZONA_DESCONOCIDA', 'Zona horaria no registrada.')], fields }
 }
 
 export function mapReceipt(value: unknown): PurchaseReceipt {
