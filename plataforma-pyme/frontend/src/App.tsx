@@ -5,7 +5,7 @@ import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
 import { businessHref, navigationItems } from './app/navigation'
-import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoSales, listDemoExpenses, listDemoCashSessions, listDemoFinancialAccounts, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
+import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoSales, listDemoExpenses, listDemoCashSessions, listDemoFinancialAccounts, listDemoQrIntents, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { CreateBusinessPage } from './features/businesses/BusinessPages'
 import { BusinessDetailsPage } from './features/businesses/BusinessDetailsPage'
@@ -110,6 +110,7 @@ function App() {
     locations={listDemoLocations(snapshot, business.id)}
     sales={listDemoSales(snapshot, business.id)}
     accounts={listDemoFinancialAccounts(snapshot, business.id)}
+    qrIntents={listDemoQrIntents(snapshot, business.id)}
     sessions={listDemoCashSessions(snapshot, business.id)}
     movements={listDemoInventoryMovements(snapshot, business.id)}
   />
