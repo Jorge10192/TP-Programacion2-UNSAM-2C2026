@@ -120,8 +120,8 @@ export function InventoryPage({
     <div className="page-heading">
       <div>
         <p className="eyebrow">OPERACIONES · EMPRESA DEMO</p>
-        <h1>{initialTab === 'movements' ? 'Movimientos de inventario' : 'Inventario'}</h1>
-        <p>Existencias por ubicación derivadas de recepciones, traslados, conteos y ventas en «{business.name}».</p>
+        <h1>{initialTab === 'movements' ? 'Movimientos de stock' : 'Stock'}</h1>
+        <p>Existencias por ubicación calculadas a partir de recepciones, traslados, conteos y ventas en «{business.name}».</p>
       </div>
       <div className="inventory-heading-actions">
         <button type="button" className="button button-secondary" disabled={!canAct || !canMove}
@@ -142,7 +142,7 @@ export function InventoryPage({
 
     <div className="informational-note inventory-note">
       <Icon name="shield" size={20}/>
-      <span>Los saldos se derivan de recepciones, traslados, conteos y ventas registradas, en la <strong>unidad de cada artículo</strong>; no se suman cajas con unidades ni kilos con gramos. Esta DEMO no incluye reservas, lotes, producción ni concurrencia real entre dispositivos.</span>
+      <span>Stock por ubicación y <strong>unidad del artículo</strong>, calculado desde el historial. Cargá los productos terminados con un conteo; los insumos no se convierten automáticamente en producción.</span>
     </div>
     {!canCount && <div className="inventory-attention">Para registrar un conteo o traslado, primero configurá al menos una ubicación activa con «Puede almacenar» en Ubicaciones. Para traslados necesitás dos.</div>}
     {!canAct && <div className="inventory-attention">Para operar, primero agregá un artículo físico activo (no un servicio) en Catálogo.</div>}

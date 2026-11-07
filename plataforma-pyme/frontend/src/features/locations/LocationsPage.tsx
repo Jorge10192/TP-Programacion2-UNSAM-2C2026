@@ -180,7 +180,7 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
         <fieldset className="location-capabilities">
           <legend>¿Para qué se utiliza este espacio?</legend>
           <label><input type="checkbox" checked={draft.canSell} onChange={(event) => setDraft((x) => ({ ...x, canSell: event.target.checked }))}/><span><strong>Permite vender</strong><small>Punto de atención, venta o prestación de servicios</small></span></label>
-          <label><input type="checkbox" checked={draft.canStore} onChange={(event) => setDraft((x) => ({ ...x, canStore: event.target.checked }))}/><span><strong>Permite almacenar</strong><small>Se puede asociar inventario cuando exista ese módulo</small></span></label>
+          <label><input type="checkbox" checked={draft.canStore} onChange={(event) => setDraft((x) => ({ ...x, canStore: event.target.checked }))}/><span><strong>Permite almacenar</strong><small>Habilita recepciones y control de stock en esta ubicación</small></span></label>
         </fieldset>
         <p className="form-hint">Una ubicación puede tener ambas capacidades o ninguna. No se crea stock ni caja automáticamente.</p>
         <div className="form-actions">
@@ -238,7 +238,7 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
         </div>
         {pendingStatusId === location.id && <div className="location-confirm">
           <p>{location.status === 'ACTIVA'
-            ? '¿Pausar esta ubicación? No se eliminará. En esta DEMO todavía no hay operaciones de stock o caja que revisar.'
+            ? '¿Pausar esta ubicación? Se conserva el historial. Revisá las existencias y jornadas abiertas antes de pausarla.'
             : '¿Reactivar esta ubicación para seguir utilizándola?'}</p>
           {location.isPrimary && <p>Atención: dejará de ser la ubicación principal.</p>}
           <div>

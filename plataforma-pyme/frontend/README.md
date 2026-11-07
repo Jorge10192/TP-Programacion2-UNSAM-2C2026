@@ -11,6 +11,7 @@ Desde la **raíz del repositorio**:
 ~~~powershell
 cd plataforma-pyme/frontend
 npm.cmd install
+npm.cmd test
 npm.cmd run build
 npm.cmd run lint
 npm.cmd run dev
@@ -20,13 +21,15 @@ Si **ya estás ubicado** dentro de plataforma-pyme/frontend, **no vuelvas a hace
 
 Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado Pago para esta DEMO. Detené Vite con Ctrl+C o q y Enter.
 
+Pruebas verificadas con Node 22.17 y 24.22. `npm.cmd test` ejecuta toda la suite; los comandos `test:*` permiten repetir un módulo e incluyen el soporte TypeScript requerido por Node 22.
+
 ## Qué funciona en la DEMO
 
-- **Inicio personal:** tres fixtures y empresas que creás en este navegador.
+- **Inicio personal:** entrada destacada a WALOS; otros negocios y creación de empresas en opciones secundarias.
 - **Mi perfil:** nombre visible, correo DEMO, iniciales de avatar y teléfono DEMO opcionales. El perfil es global. La función laboral se edita por empresa, sobre la membresía DEMO, sin confundirla con el rol o los permisos.
 - **Crear empresa:** nombre, actividad Productos / Servicios / Mixto, rubro y descripción opcionales. Crea una membresía DEMO activa y registra fundador/titular administrativo inicial.
 - **Selector superior:** todas las empresas de este entorno local, incluyendo las nuevas.
-- **Inicio empresarial:** resumen y accesos a módulos (operaciones aún pendientes).
+- **Inicio empresarial:** guía de compra/recepción → stock → apertura de caja → ventas → gastos → cierre, con estado registrado y preparación inicial.
 - **Datos de la empresa:** ficha comercial con edición inmediata por campo de nombre, rubro, eslogan, presentación y CUIT ficticio opcional. Conserva los cambios de cada empresa tras F5 si localStorage está disponible.
 - **Ubicaciones:** alta, edición, lista, principal, pausa y reactivación. Tipos local/feria/depósito/oficina/otro; venta y almacenamiento separados, sin ubicación obligatoria para servicios ni creación de stock/caja. Enlaces de Google Maps opcionales: buscá dirección, pegá el link de un punto y copialo voluntariamente para compartir; sin Maps API ni pin seleccionado dentro de la plataforma.
 - **Google Maps y compartir:** campo opcional para pegar enlace compartido de Maps, búsqueda por dirección y botón para copiar nombre/dirección/enlace. No es mapa integrado ni geocodificación automática.
@@ -43,7 +46,7 @@ Abrí http://localhost:5173/inicio. No hace falta PostgreSQL, FastAPI ni Mercado
 - **Gastos DEMO (E1-C2):** egresos operativos por categoría, ubicación y medio declarado. Sólo un gasto en efectivo de una caja ABIERTA se proyecta al efectivo esperado de esa jornada. Registrar compra no constituye pagarla.
 - **Apertura y cierre de Caja (E1-C2):** jornadas por ubicación o caja general con fondo inicial, ventas y egresos en efectivo vinculados explícitamente, arqueo contado, diferencia explicada y snapshot de cierre persistido e inmutable. No representa balances bancarios ni mueve inventario. Ventas sin jornada previa siguen funcionando pero no entran en arqueos retroactivamente.
 - **Menú de tres líneas:** drawer modal; bloquea el fondo y se cierra desde el fondo, Escape, X o al elegir una sección.
-- **Menú fijo opcional:** expandido, compacto u oculto en escritorio, con preferencia local.
+- **Navegación:** accesos horizontales a la jornada y menú con nombres por defecto; botones para compactar u ocultar, con preferencia local. Preparación y otras herramientas se agrupan aparte.
 - **Volver:** contextual dentro de la misma empresa o a su Inicio.
 - **Módulos aún sin desarrollar:** pantalla clara de «Próximamente».
 

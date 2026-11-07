@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
+import { AppLink } from '../../app/AppLink'
+import { businessHref } from '../../app/navigation'
+import type { Navigate } from '../../app/types'
 import { demoGateway, activeCashSession } from '../../data/demo/demoStore'
 import type { DemoBusiness, DemoLocation, DemoSnapshot } from '../../data/demo/demoStore'
 import { moneyDisplay, parseMoneyCents } from '../../data/demo/catalogPolicy'
@@ -14,8 +17,8 @@ const today = () => {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 }
 
-export function ExpensesPage({ business, locations, expenses, snapshot }: {
-  business: DemoBusiness; locations: DemoLocation[]; expenses: DemoExpense[]; snapshot: DemoSnapshot
+export function ExpensesPage({ business, locations, expenses, snapshot, navigate }: {
+  business: DemoBusiness; locations: DemoLocation[]; expenses: DemoExpense[]; snapshot: DemoSnapshot; navigate: Navigate
 }) {
   const [formOpen, setFormOpen] = useState(false)
   const [requestId, setRequestId] = useState(() => 'demo-expense-request-' + crypto.randomUUID())
@@ -81,8 +84,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
       <div><span className="feature-icon mint"><Icon name="credit"/></span><small>Pagos en efectivo declarados</small><strong>{moneyDisplay(cash)}</strong></div>
     </section>
     <div className="informational-note"><Icon name="shield" size={18}/><span>
-      <strong>Registro DEMO, no conciliación bancaria.</strong> Una compra en Compras no representa automáticamente un gasto pagado.
-      Los egresos se registran una sola vez aquí; sólo los gastos en efectivo asociados a una jornada abierta integran el arqueo de esa caja.
+      Registrá sólo egresos pagados. Para descontar efectivo de caja, elegí su ubicación con jornada abierta. Una compra registrada no cuenta automáticamente como gasto.
     </span></div>
     {notice && <p className="form-message success" role="status">{notice}</p>}
     {formOpen && <section className="form-panel cash-form">
@@ -125,9 +127,11 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
         {paymentMethod !== 'EFECTIVO' && <p className="cash-form-hint">
           <Icon name="credit" size={17}/> El medio digital se registra como declaración interna. Podés asociar una cuenta declarada de esta empresa. No se transfiere dinero ni se verifica el saldo bancario.
         </p>}
+        <details className="optional-fields"><summary>Agregar observaciones (opcional)</summary>
         <label className="form-field"><span>Observaciones (opcional)</span>
           <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500}/>
         </label>
+        </details>
         {error && <p className="form-message error" role="alert">{error}</p>}
         <div className="form-actions"><button type="button" disabled={busy} className="button button-secondary"
           onClick={() => setFormOpen(false)}>Cancelar</button>
@@ -162,5 +166,9 @@ export function ExpensesPage({ business, locations, expenses, snapshot }: {
       </div>}
       {filtered.length > 100 && <p className="inventory-limit">Mostrando 100. Utilizá el buscador.</p>}
     </section>
+    <div className="journey-return">
+      <span>Al terminar la jornada, contá el efectivo y guardá el arqueo.</span>
+      <AppLink to={businessHref(business.id, 'jornadas')} navigate={navigate} className="button button-secondary">Ir a Caja para cerrar <Icon name="arrow" size={16}/></AppLink>
+    </div>
   </>
 }

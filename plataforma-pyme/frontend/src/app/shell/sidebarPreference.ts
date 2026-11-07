@@ -1,20 +1,24 @@
 /**
  * Preferencia exclusivamente visual, compartida entre todas las empresas.
  * No constituye autenticación ni estado de negocio.
- * El modo inicial del nuevo menú hamburguesa es oculto; el usuario puede fijarlo.
+ * v3 muestra nombres por defecto y conserva la elección explícita compacto/expandido.
+ * El antiguo hidden de v2 era también el default: se migra a expanded, sin tocar negocio.
  */
 export type SidebarMode = 'expanded' | 'compact' | 'hidden'
 
-const STORAGE_KEY = 'asistente-pyme.sidebar-mode.v2'
+const STORAGE_KEY = 'asistente-pyme.sidebar-mode.v3'
+const LEGACY_STORAGE_KEY = 'asistente-pyme.sidebar-mode.v2'
 
 export function loadSidebarMode(): SidebarMode {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
     if (stored === 'expanded' || stored === 'compact' || stored === 'hidden') return stored
+    const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY)
+    if (legacy === 'compact') return 'compact'
   } catch {
     // Navegación privada o storage deshabilitado: usar el valor predeterminado.
   }
-  return 'hidden'
+  return 'expanded'
 }
 
 export function saveSidebarMode(mode: SidebarMode): void {

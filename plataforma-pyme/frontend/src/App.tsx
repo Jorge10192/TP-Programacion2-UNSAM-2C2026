@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Sidebar } from './app/shell/SideMenu'
 import { Topbar } from './app/shell/TopBar'
@@ -19,11 +19,16 @@ import { SalesPage } from './features/sales/SalesPage'
 import { ExpensesPage } from './features/cash/ExpensesPage'
 import { CashSessionsPage } from './features/cash/CashSessionsPage'
 import { FinancialAccountsPage } from './features/accounts/FinancialAccountsPage'
-import { inventoryHistoryEntries } from './data/demo/inventoryPolicy'
+import { inventoryHistoryEntries, stockBalances } from './data/demo/inventoryPolicy'
+import { physicalPurchaseLines } from './data/demo/purchasePolicy'
 import type { Navigate } from './app/types'
+import { installHistoryNavigation } from './app/historyNavigation'
+import { NavigationGuardContext, useNavigationGuard } from './app/unsavedChanges'
+import { JourneyNavigation } from './app/JourneyNavigation'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
 import { ComingSoon, NotFound } from './features/common/Feedback'
 import './App.css'
+import './jornada.css'
 
 function App() {
   const snapshot = useDemoSnapshot()
@@ -31,14 +36,17 @@ function App() {
   const [pathname, setPathname] = useState(() => window.location.pathname || '/')
   const [menuOpen, setMenuOpen] = useState(false)
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(loadSidebarMode)
+  const guard = useNavigationGuard()
+  const historyNavigation = useRef<ReturnType<typeof installHistoryNavigation> | null>(null)
 
   useEffect(() => {
-    const handlePopState = () => { setPathname(window.location.pathname); setMenuOpen(false) }
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
-
-  useEffect(() => { saveSidebarMode(sidebarMode) }, [sidebarMode])
+    const navigation = installHistoryNavigation(window, guard.requestLeave, (nextPathname) => {
+      setPathname(nextPathname)
+      setMenuOpen(false)
+    })
+    historyNavigation.current = navigation
+    return () => { navigation.dispose(); historyNavigation.current = null }
+  }, [guard])
 
   // Drawer modal en escritorio y móvil: bloquea el contenido, permite Escape.
   useEffect(() => {
@@ -57,17 +65,17 @@ function App() {
     }
   }, [menuOpen])
 
+  const changeSidebarMode = (mode: SidebarMode) => {
+    setSidebarMode(mode)
+    saveSidebarMode(mode)
+  }
+
   const toggleDesktopSidebar = () => {
-    setSidebarMode((current) => current === 'expanded' ? 'compact' : 'expanded')
+    changeSidebarMode(sidebarMode === 'expanded' ? 'compact' : 'expanded')
   }
 
   const navigate: Navigate = (to) => {
-    if (to !== window.location.pathname) {
-      window.history.pushState({ assistantPymeFrom: window.location.pathname }, '', to)
-    }
-    setPathname(to)
-    setMenuOpen(false)
-    window.scrollTo({ top: 0, behavior: 'auto' })
+    if (historyNavigation.current?.navigate(to)) window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const match = /^\/b\/([^/]+)\/([^/]+)$/.exec(pathname)
@@ -85,7 +93,6 @@ function App() {
       && previous !== pathname
       && (business ? previous.startsWith(contextPrefix) : ['/inicio', '/perfil', '/empresas/nueva'].includes(previous))
 
-    setMenuOpen(false)
     if (sameContext) window.history.back()
     else navigate(business ? businessHref(business.id, 'inicio') : '/inicio')
   }
@@ -98,7 +105,20 @@ function App() {
   else if (pathname === '/perfil') content = <ProfilePage profile={snapshot.profile} businesses={businesses} memberships={snapshot.membershipsByBusinessId} />
   else if (pathname === '/empresas/nueva') content = <CreateBusinessPage navigate={navigate} profile={snapshot.profile} />
   else if (hasBusinessPath && !business) content = <NotFound navigate={navigate} accessDenied />
-  else if (business && section === 'inicio') content = <BusinessDashboard business={business} navigate={navigate} catalogCount={listDemoCatalog(snapshot, business.id).filter((item) => item.status === 'ACTIVO').length} saleCount={listDemoSales(snapshot, business.id).length} openCashCount={listDemoCashSessions(snapshot, business.id).filter((session) => session.status === 'ABIERTA').length} movementCount={inventoryHistoryEntries(listDemoInventoryMovements(snapshot, business.id), listDemoInventoryOperations(snapshot, business.id)).length} />
+  else if (business && section === 'inicio') {
+    const catalog = listDemoCatalog(snapshot, business.id).filter((item) => item.status === 'ACTIVO')
+    const movements = listDemoInventoryMovements(snapshot, business.id)
+    content = <BusinessDashboard business={business} navigate={navigate}
+      catalogCount={catalog.length}
+      physicalItemCount={catalog.filter((item) => item.kind !== 'SERVICIO').length}
+      storageLocationCount={listDemoLocations(snapshot, business.id).filter((location) => location.status === 'ACTIVA' && location.canStore).length}
+      pendingPurchaseCount={listDemoPurchases(snapshot, business.id).filter((purchase) => !purchase.receipt && physicalPurchaseLines(purchase.lines).length > 0).length}
+      hasStock={Array.from(stockBalances(movements).values()).some((quantity) => quantity > 0)}
+      saleCount={listDemoSales(snapshot, business.id).length}
+      openCashCount={listDemoCashSessions(snapshot, business.id).filter((session) => session.status === 'ABIERTA').length}
+      movementCount={inventoryHistoryEntries(movements, listDemoInventoryOperations(snapshot, business.id)).length}
+    />
+  }
   else if (business && section === 'empresa') content = <BusinessDetailsPage key={business.id} business={business} profile={snapshot.profile} jobTitle={snapshot.membershipsByBusinessId[business.id]?.jobTitle ?? ''} navigate={navigate} />
   else if (business && section === 'ubicaciones') content = <LocationsPage key={business.id} business={business} locations={listDemoLocations(snapshot, business.id)} />
   else if (business && section === 'equipo') content = <TeamPage key={business.id} business={business} profile={snapshot.profile} owner={snapshot.membershipsByBusinessId[business.id]} members={listDemoTeamMembers(snapshot, business.id)} invitations={listDemoInvitations(snapshot, business.id)} />
@@ -118,7 +138,7 @@ function App() {
     key={business.id} business={business} accounts={listDemoFinancialAccounts(snapshot, business.id)}
   />
   else if (business && section === 'gastos') content = <ExpensesPage
-    key={business.id} business={business} snapshot={snapshot}
+    key={business.id} business={business} snapshot={snapshot} navigate={navigate}
     locations={listDemoLocations(snapshot, business.id)}
     expenses={listDemoExpenses(snapshot, business.id)}
   />
@@ -141,14 +161,15 @@ function App() {
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
-  return <div className={'app-layout menu-' + sidebarMode + (menuOpen ? ' menu-drawer-open' : '')}>
+  return <NavigationGuardContext.Provider value={guard}><div className={'app-layout menu-' + sidebarMode + (menuOpen ? ' menu-drawer-open' : '')}>
     <Sidebar pathname={pathname} business={business} navigate={navigate} mode={sidebarMode} isOpen={menuOpen} onClose={() => setMenuOpen(false)}/>
     <div className="main-column" inert={menuOpen}>
-      <Topbar business={business} businesses={businesses} profile={snapshot.profile} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => setSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} />
+      <Topbar business={business} businesses={businesses} profile={snapshot.profile} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => changeSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} />
+      {business && <JourneyNavigation businessId={business.id} pathname={pathname} navigate={navigate}/>}
       <main id="main-content" className="main-content">{content}</main>
       <footer className="app-footer"><span>Asistente PyME · Prototipo E1-D2</span><span>Sin autenticación ni pagos reales · Datos locales DEMO</span></footer>
     </div>
-  </div>
+  </div></NavigationGuardContext.Provider>
 }
 
 export default App

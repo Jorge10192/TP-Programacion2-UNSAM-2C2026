@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
+import { useUnsavedChanges } from '../../app/unsavedChanges'
 import { demoGateway } from '../../data/demo/demoStore'
 import type { DemoBusiness, DemoCatalogItem, DemoSupplier } from '../../data/demo/demoStore'
 import { moneyDisplay, moneyInput, parseMoneyCents } from '../../data/demo/catalogPolicy'
@@ -42,14 +43,16 @@ export function PurchaseForm({
   onSaved: (purchaseId: string, containsPhysicalGoods: boolean) => void
   onCancel: () => void
 }) {
-  const [draft, setDraft] = useState<Draft>(() => ({
+  const [initialDraft] = useState<Draft>(() => ({
     purchasedOn: todayLocal(), supplierId: '', reference: '', notes: '', lines: [newLine()],
   }))
+  const [draft, setDraft] = useState<Draft>(initialDraft)
   // Se conserva un ID de solicitud mientras el formulario está montado:
   // doble clic o reintento de envío no pueden crear una segunda compra DEMO.
   const [requestId] = useState(() => 'demo-request-' + crypto.randomUUID())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const { confirmDiscard, markSaved } = useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(initialDraft), saving)
   const activeCatalog = catalog.filter((item) => item.status === 'ACTIVO')
   const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'ACTIVO')
   const containsPhysicalGoods = draft.lines.some((line) =>
@@ -102,6 +105,7 @@ export function PurchaseForm({
     setError('')
     try {
       const purchase = await demoGateway.registerPurchase(business.id, makeInput(), requestId)
+      markSaved()
       onSaved(purchase.id, containsPhysicalGoods)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar la compra.')
@@ -126,7 +130,7 @@ export function PurchaseForm({
   return <section className="form-panel purchase-editor">
     <div className="form-panel-header">
       <span className="feature-icon blue"><Icon name="shopping" size={24}/></span>
-      <div><h2>Registrar compra</h2><p>Comprobante y conceptos de «{business.name}». No equivale a pagar ni a recibir mercadería.</p></div>
+      <div><h2>Registrar compra</h2><p>Comprobante, artículos y costos de «{business.name}».</p></div>
     </div>
     <div className="purchase-flow-steps" aria-label="Etapas de registro y recepción">
       <div className="purchase-flow-step current"><span className="purchase-flow-number">1</span>
@@ -214,20 +218,20 @@ export function PurchaseForm({
         })}
       </section>
 
-      <section className="purchase-form-section">
-        <h3>3. Observaciones</h3>
+      <details className="optional-fields">
+        <summary>Agregar notas internas (opcional)</summary>
         <label className="form-field"><span>Notas internas (opcional)</span>
-          <textarea maxLength={500} rows={3} value={draft.notes}
+          <textarea maxLength={500} rows={2} value={draft.notes}
             onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
             placeholder="Ej.: Entrega acordada para la próxima semana…"/>
         </label>
-      </section>
+      </details>
 
       <div className="purchase-total-box">
         <div><small>Total de la compra (ARS)</small><strong>{previewTotal === null ? 'Completar costos y cantidades' : moneyDisplay(previewTotal)}</strong></div>
         <p>{containsPhysicalGoods
-          ? 'Paso 1: guardás la compra. A continuación se abrirá el detalle, donde elegirás la ubicación y confirmarás la recepción. El stock no cambia hasta entonces.'
-          : 'Al guardar sólo se registra la compra. Si elegís bienes físicos, la recepción y su ubicación se confirman después. Este registro no representa un pago.'}</p>
+          ? 'Después de guardar, elegí dónde recibiste la mercadería y confirmá su ingreso al stock.'
+          : 'Este registro documenta la compra; no representa un pago.'}</p>
       </div>
       {containsPhysicalGoods && <p className="purchase-location-pending" role="status">
         <Icon name="clock" size={17}/>
@@ -235,7 +239,7 @@ export function PurchaseForm({
       </p>}
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions">
-        <button type="button" className="button button-secondary" disabled={saving} onClick={onCancel}>Cancelar</button>
+        <button type="button" className="button button-secondary" disabled={saving} onClick={() => { if (confirmDiscard()) onCancel() }}>Cancelar</button>
         <button type="submit" className="button button-primary" disabled={saving}>
           <Icon name="receipt" size={17}/> {saving ? 'Guardando…' : containsPhysicalGoods ? 'Guardar compra y elegir ubicación' : 'Registrar compra DEMO'}
         </button>
