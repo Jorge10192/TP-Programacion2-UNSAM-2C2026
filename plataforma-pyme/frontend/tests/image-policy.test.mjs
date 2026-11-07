@@ -48,3 +48,16 @@ test('dimensiona fotos horizontales y verticales sin estirarlas', () => {
   assert.throws(() => scaledImageSize(0, 500), /dimensiones inválidas/)
   assert.throws(() => scaledImageSize(40_000, 10), /dimensiones inválidas/)
 })
+
+
+// Una ficha conserva una sola imagen de Catálogo aunque tenga stock en múltiples ubicaciones.
+test('la clave de foto de un artículo es la misma para Catálogo, Ventas e Inventario', () => {
+  const businessId = 'walos-demo'
+  const articleId = 'demo-catalog-11111111-1111-4111-8111-111111111111'
+  const catalogPhoto = demoImageKey('catalog', businessId, articleId)
+  const inventoryAtHome = demoImageKey('catalog', businessId, articleId)
+  const inventoryAtFair = demoImageKey('catalog', businessId, articleId)
+  assert.equal(catalogPhoto, inventoryAtHome)
+  assert.equal(inventoryAtHome, inventoryAtFair)
+  assert.notEqual(catalogPhoto, demoImageKey('catalog', 'comercio-demo', articleId))
+})
