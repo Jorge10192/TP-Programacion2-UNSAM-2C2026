@@ -2,12 +2,12 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { DemoPhoto, DemoImagePicker } from '../common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
 import { businessHref } from '../../app/navigation'
 import type { IconName } from '../../app/navigation'
 import type { Navigate } from '../../app/types'
-import { demoGateway, kindLabels } from '../../data/demo/demoStore'
-import type { BusinessDetailsPatch, DemoBusiness, DemoProfile, EditableBusinessField } from '../../data/demo/demoStore'
+import { kindLabels } from '../../data/models'
+import { useAppData } from '../../data/dataContext'
+import type { BusinessDetailsPatch, Business, Profile, EditableBusinessField } from '../../data/models'
 
 type FieldDefinition = {
   key: EditableBusinessField
@@ -32,11 +32,12 @@ export function BusinessDetailsPage({
   jobTitle,
   navigate,
 }: {
-  business: DemoBusiness
-  profile: DemoProfile
+  business: Business
+  profile: Profile
   jobTitle: string
   navigate: Navigate
 }) {
+  const { gateway } = useAppData()
   const [editing, setEditing] = useState<EditableBusinessField | null>(null)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
@@ -64,7 +65,7 @@ export function BusinessDetailsPage({
     setNotice('')
     try {
       const patch = { [editing]: draft } as BusinessDetailsPatch
-      await demoGateway.updateBusinessDetails(business.id, patch)
+      await gateway.updateBusinessDetails(business.id, patch)
       setEditing(null)
       setDraft('')
       setNotice('Cambio guardado en la empresa DEMO seleccionada. Se mantiene al recargar si el navegador permite almacenamiento local.')
@@ -81,7 +82,7 @@ export function BusinessDetailsPage({
     </div>
 
     <section className="company-summary">
-      <DemoPhoto imageKey={demoImageKey('business', business.id, 'logo')} alt={'Logo de ' + business.name}
+      <DemoPhoto target={{ scope: 'business', businessId: business.id, entityId: 'logo' }} alt={'Logo de ' + business.name}
         fallback={business.initials} className={'company-emblem ' + business.accent}/>
       <div className="company-summary-copy">
         <div className="company-summary-title"><h2>{business.name}</h2><span className="small-pill">{business.source === 'created' ? 'Creada en DEMO' : 'Empresa de ejemplo'}</span></div>
@@ -98,12 +99,12 @@ export function BusinessDetailsPage({
         </div>
 
         <div className="brand-identity-row">
-          <DemoPhoto imageKey={demoImageKey('business', business.id, 'logo')} alt={'Imagen de ' + business.name}
+          <DemoPhoto target={{ scope: 'business', businessId: business.id, entityId: 'logo' }} alt={'Imagen de ' + business.name}
             fallback={business.initials} className={'company-emblem company-emblem-small ' + business.accent}/>
           <div><strong>Imagen de la empresa</strong><p>Podés usar un logo o fotografía desde tu computadora. Si no hay foto, se muestran las iniciales.</p></div>
         </div>
 
-        <DemoImagePicker imageKey={demoImageKey('business', business.id, 'logo')} label="Logo o imagen comercial de la empresa"/>
+        <DemoImagePicker target={{ scope: 'business', businessId: business.id, entityId: 'logo' }} label="Logo o imagen comercial de la empresa"/>
         {notice && <p className="form-message success" role="status">{notice}</p>}
 
         <div className="business-fields-grid">

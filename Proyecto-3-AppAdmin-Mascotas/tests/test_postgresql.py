@@ -12,6 +12,7 @@ from src.auth.models import Usuario
 from src.database import session as database
 from src.database.session import get_db
 from src.main import app
+from postgres_support import reset_postgres
 
 
 def test_flujo_postgresql_ci(monkeypatch, password_hash):
@@ -21,6 +22,7 @@ def test_flujo_postgresql_ci(monkeypatch, password_hash):
     # Only the disposable database provisioned by this project's CI is accepted.
     if not url.endswith("/walos_ci_test"):
         raise ValueError("La prueba requiere la base temporal walos_ci_test")
+    reset_postgres(url)
     monkeypatch.setattr(database, "DATABASE_URL", url)
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(config, "head")

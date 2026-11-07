@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, LargeBinary, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, LargeBinary, Numeric, String, Text, UniqueConstraint, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.base import Base
@@ -9,6 +9,9 @@ from src.database.base import Base
 
 class Proveedor(Base):
     __tablename__ = "proveedores"
+
+    request_id: Mapped[str | None] = mapped_column(String(36), unique=True, nullable=True)
+    request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     id: Mapped[int] = mapped_column(
         primary_key=True
@@ -52,6 +55,7 @@ class UnidadMedida(Base):
     dimension: Mapped[str] = mapped_column(String(30))
     factor: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     activo: Mapped[bool] = mapped_column(default=True)
+    codigo_ui: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
 
 
 class Insumo(Base):
@@ -61,6 +65,17 @@ class Insumo(Base):
     categoria_id: Mapped[int] = mapped_column(ForeignKey("categorias_insumo.id"))
     unidad_stock_id: Mapped[int] = mapped_column(ForeignKey("unidades_medida.id"))
     activo: Mapped[bool] = mapped_column(default=True)
+    request_id: Mapped[str | None] = mapped_column(String(36), unique=True, nullable=True)
+    request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    tipo: Mapped[str] = mapped_column(String(20), default="INSUMO", server_default="INSUMO")
+    sku: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    vendible: Mapped[bool] = mapped_column(default=False, server_default=false())
+    precio_centavos: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    costo_referencia_centavos: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
+    creada_en: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    actualizada_en: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class Compra(Base):
@@ -78,6 +93,12 @@ class Compra(Base):
     anulada_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
     fecha_anulacion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    request_id: Mapped[str | None] = mapped_column(String(36), unique=True, nullable=True)
+    request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    referencia_comercial: Mapped[str | None] = mapped_column(String(70), nullable=True)
+    nombre_proveedor_snapshot: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    fecha_recepcion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    recibida_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
     items: Mapped[list["ItemCompra"]] = relationship(cascade="all, delete-orphan", lazy="selectin")
 
     @property
@@ -104,6 +125,10 @@ class ItemCompra(Base):
     precio_centavos: Mapped[int] = mapped_column(BigInteger)
     lote: Mapped[str | None] = mapped_column(String(100), nullable=True)
     vencimiento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    costo_unitario_centavos: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    nombre_snapshot: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    sku_snapshot: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    tipo_snapshot: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     @property
     def cantidad_incorporada(self) -> Decimal:

@@ -1,0 +1,21 @@
+**
+!Proyecto-3-AppAdmin-Mascotas/
+!Proyecto-3-AppAdmin-Mascotas/**
+!plataforma-pyme/
+!plataforma-pyme/frontend/
+!plataforma-pyme/frontend/**
+!Dockerfile.walos
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/*.pyc
+**/*.db
+**/*.sqlite*
+**/*.dump
+**/tests
+**/e2e
+**/Ingenieria de Software

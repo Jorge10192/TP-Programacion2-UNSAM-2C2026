@@ -1,20 +1,22 @@
+import { useOnlineDraft } from '../common/useOnlineDraft'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
-import { demoGateway } from '../../data/demo/demoStore'
-import type { DemoBusiness, DemoLocation, DemoSale } from '../../data/demo/demoStore'
+import { useAppData } from '../../data/dataContext'
+import type { Business, Location, Sale } from '../../data/models'
 import { moneyDisplay, parseMoneyCents } from '../../data/demo/catalogPolicy'
 import { cashSessionTotals } from '../../data/demo/cashPolicy'
-import type { DemoCashSession, DemoExpense } from '../../data/demo/cashPolicy'
+import type { CashSession, Expense } from '../../data/demo/cashPolicy'
 
 export function CashSessionsPage({ business, locations, sessions, sales, expenses }: {
-  business: DemoBusiness
-  locations: DemoLocation[]
-  sessions: DemoCashSession[]
-  sales: DemoSale[]
-  expenses: DemoExpense[]
+  business: Business
+  locations: Location[]
+  sessions: CashSession[]
+  sales: Sale[]
+  expenses: Expense[]
 }) {
-  const [scope, setScope] = useState('')
+  const { gateway, mode, snapshot } = useAppData()
+  const [scope, setScope] = useState(mode === 'api' ? 'principal' : '')
   const [openingAmount, setOpeningAmount] = useState('0')
   const [openId, setOpenId] = useState(() => 'demo-cash-open-' + crypto.randomUUID())
   const [closeId, setCloseId] = useState(() => 'demo-cash-close-' + crypto.randomUUID())
@@ -26,6 +28,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
   const [notice, setNotice] = useState('')
   const [detailId, setDetailId] = useState<string | null>(null)
 
+  const { markSaved } = useOnlineDraft(Boolean(toCloseId && (countedAmount || closeNotes)) || openingAmount !== '0', busy)
   const openSessions = sessions.filter(s => s.status === 'ABIERTA')
   const closedSessions = sessions.filter(s => s.status === 'CERRADA')
   const eligibleLocations = locations.filter(loc => loc.status === 'ACTIVA' && loc.canSell)
@@ -36,7 +39,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
   function scopeLabel(locationId: string | null) {
     return locations.find(location => location.id === locationId)?.name ?? 'Caja general · sin ubicación física'
   }
-  function totals(session: DemoCashSession) {
+  function totals(session: CashSession) {
     return session.status === 'CERRADA' && session.closeSnapshot ?
       session.closeSnapshot : cashSessionTotals(session, sales, expenses)
   }
@@ -47,9 +50,11 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
     try {
       const value = parseMoneyCents(openingAmount)
       if (value === null) throw new Error('Ingresá un fondo inicial en pesos. Podés usar 0.')
-      const session = await demoGateway.openCashSession(business.id, scope || null, value, openId)
+      const session = await gateway.openCashSession(business.id, scope || null, value, openId)
       setOpenId('demo-cash-open-' + crypto.randomUUID())
-      setNotice('Jornada DEMO abierta para ' + scopeLabel(session.locationId) + '. Los cobros y gastos en efectivo nuevos se asociarán a esta caja.')
+      setOpeningAmount('0')
+      markSaved()
+      setNotice('Jornada abierta para ' + scopeLabel(session.locationId) + '. Los cobros y gastos en efectivo nuevos se asociarán a esta caja.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo abrir la caja.')
     } finally { setBusy(false) }
@@ -61,10 +66,11 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
     try {
       const value = parseMoneyCents(countedAmount)
       if (value === null) throw new Error('Ingresá el efectivo contado.')
-      const closed = await demoGateway.closeCashSession(business.id, closing.id, {
+      const closed = await gateway.closeCashSession(business.id, closing.id, {
         countedCashCents: value, notes: closeNotes,
       }, closeId)
-      setNotice('Cierre DEMO guardado con snapshot inmutable: ' + scopeLabel(closed.locationId) + '.')
+      markSaved()
+      setNotice((mode === 'api' ? 'Cierre guardado: ' : 'Cierre guardado con snapshot inmutable: ') + scopeLabel(closed.locationId) + '.')
       setToCloseId(null); setDetailId(closed.id); setCountedAmount(''); setCloseNotes('')
       setCloseId('demo-cash-close-' + crypto.randomUUID())
     } catch (caught) {
@@ -74,7 +80,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
 
   return <>
     <div className="page-heading"><div>
-      <p className="eyebrow">JORNADA · EMPRESA DEMO</p><h1>Caja</h1>
+      <p className="eyebrow">JORNADA · EMPRESA</p><h1>Caja</h1>
       <p>Abrí la caja de {business.name} antes de vender y cerrala con el efectivo contado.</p>
     </div></div>
     <section className="sales-kpis">
@@ -82,13 +88,13 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
       <div><span className="feature-icon blue"><Icon name="receipt"/></span><small>Cierres guardados</small><strong>{closedSessions.length}</strong></div>
       <div><span className="feature-icon violet"><Icon name="building"/></span><small>Ubicaciones habilitadas para vender</small><strong>{eligibleLocations.length}</strong></div>
     </section>
-    <div className="informational-note"><Icon name="shield" size={18}/><span><strong>Caja física DEMO.</strong>
+    <div className="informational-note"><Icon name="shield" size={18}/><span><strong>Caja física.</strong>
       Abrí antes de vender y cerrá al terminar, contando el efectivo. El arqueo incluye el fondo inicial y los cobros/gastos en efectivo vinculados a esa jornada; excluye compras sin pago y medios digitales.
     </span></div>
     {notice && <p className="form-message success" role="status">{notice}</p>}
     {error && <p className="form-message error" role="alert">{error}</p>}
 
-    <details className="cash-opening-options" open={openSessions.length === 0}>
+    {(mode === 'demo' || openSessions.length === 0) && <details className="cash-opening-options" open={openSessions.length === 0}>
       <summary>{openSessions.length > 0 ? 'Abrir otra caja (opcional)' : 'Abrir la caja de esta jornada'}</summary>
     <section className="form-panel cash-form">
       <div className="business-section-heading"><div><Icon name="plus" size={21}/><h2>Fondo inicial</h2></div>
@@ -97,7 +103,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
         <div className="cash-form-grid">
           <label className="form-field"><span>Ubicación / caja *</span><select value={scope}
             onChange={event => { setScope(event.target.value); setError('') }}>
-            <option value="">Caja general (sin ubicación física)</option>
+            {mode === 'demo' && <option value="">Caja general (sin ubicación física)</option>}
             {eligibleLocations.map(location => <option value={location.id} key={location.id}>{location.name}</option>)}
           </select></label>
           <label className="form-field"><span>Fondo inicial contado (ARS) *</span>
@@ -109,12 +115,12 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
             ? 'Ya existe una jornada abierta para esta caja. Primero cerrala con su arqueo para iniciar otra.'
             : 'La apertura registra el fondo físico inicial. Los medios digitales son independientes.'}
         </p>
-        <div className="form-actions"><button type="submit" disabled={busy || Boolean(openAtSelected)} className="button button-primary">
-          <Icon name="plus" size={17}/>{busy ? 'Guardando…' : 'Abrir caja DEMO'}
+        <div className="form-actions"><button type="submit" disabled={busy || Boolean(openAtSelected) || (mode === 'api' && snapshot?.apiCapabilities?.cash !== true)} className="button button-primary">
+          <Icon name="plus" size={17}/>{busy ? 'Guardando…' : 'Abrir caja'}
         </button></div>
       </form>
     </section>
-    </details>
+    </details>}
 
     <section className="form-panel cash-history">
       <div className="business-section-heading"><div><Icon name="wallet" size={21}/><h2>Jornadas abiertas</h2></div>
@@ -131,7 +137,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
             <span>Efectivo esperado</span><strong>{moneyDisplay(summary.expectedCashCents)}</strong>
           </div>
           <p className="cash-quiet">{summary.saleIds.length} ventas en efectivo · {summary.expenseIds.length} gastos en efectivo vinculados</p>
-          <button type="button" className="button button-primary" onClick={() => {
+          <button type="button" className="button button-primary" disabled={mode === 'api' && snapshot?.apiCapabilities?.cash !== true} onClick={() => {
             setToCloseId(session.id); setCountedAmount(''); setCloseNotes(''); setError(''); setNotice('');
             setCloseId('demo-cash-close-' + crypto.randomUUID())
           }}>Realizar arqueo y cerrar</button>
@@ -148,7 +154,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
           <Icon name="close" size={16}/> Cancelar arqueo
         </button>
       </div>
-      <p className="cash-quiet">Revisar el arqueo no bloquea las ventas. Al confirmar, se fija el corte y se guarda un snapshot inmutable con los movimientos de esta caja.</p>
+      <p className="cash-quiet">Revisar el arqueo no bloquea las ventas. {mode === 'api' ? 'Al confirmar, se fija el corte y se guarda el cierre con los movimientos de esta caja.' : 'Al confirmar, se fija el corte y se guarda un snapshot inmutable con los movimientos de esta caja.'}</p>
       <div className="cash-close-preview">
         <div><small>Fondo inicial</small><strong>{moneyDisplay(closing.openingCashCents)}</strong></div>
         <div><small>Ingresos en efectivo</small><strong>{moneyDisplay(totals(closing).cashSalesCents)}</strong></div>
@@ -179,15 +185,15 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
             return <p className="cash-form-hint unlinked">Revisá el importe contado: no uses separadores de miles.</p>
           }
         })()}
-        <div className="form-actions"><button type="submit" className="button button-primary" disabled={busy}>
-          <Icon name="shield" size={17}/>{busy ? 'Cerrando…' : 'Confirmar cierre y guardar arqueo DEMO'}
+        <div className="form-actions"><button type="submit" className="button button-primary" disabled={busy || (mode === 'api' && snapshot?.apiCapabilities?.cash !== true)}>
+          <Icon name="shield" size={17}/>{busy ? 'Cerrando…' : 'Confirmar cierre y guardar arqueo'}
         </button></div>
       </form>
     </section>}
 
     <section className="form-panel cash-history">
       <div className="business-section-heading"><div><Icon name="receipt" size={21}/><h2>Historial de cierres</h2></div>
-        <span>{closedSessions.length} snapshots</span></div>
+        <span>{closedSessions.length} {mode === 'api' ? 'cierres' : 'snapshots'}</span></div>
       {closedSessions.length ? <div className="cash-entry-list">{closedSessions.slice(0, 100).map(session => {
         const closed = session.closeSnapshot!
         return <div className="cash-entry" key={session.id}>
@@ -199,15 +205,15 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
           <strong>{moneyDisplay(closed.expectedCashCents)}</strong>
           <button type="button" className="button button-secondary" onClick={() => setDetailId(session.id)}>Ver cierre</button>
         </div>
-      })}</div> : <div className="sales-empty"><Icon name="receipt" size={30}/><h3>Sin cierres registrados</h3><p>Cuando confirmes un arqueo, el snapshot quedará disponible aquí.</p></div>}
+      })}</div> : <div className="sales-empty"><Icon name="receipt" size={30}/><h3>Sin cierres registrados</h3><p>{mode === 'api' ? 'Cuando confirmes un arqueo, el cierre guardado quedará disponible aquí.' : 'Cuando confirmes un arqueo, el snapshot quedará disponible aquí.'}</p></div>}
     </section>
 
-    {selectedDetail && selectedDetail.closeSnapshot && <section className="form-panel cash-close-panel" aria-label="Snapshot del cierre histórico">
+    {selectedDetail && selectedDetail.closeSnapshot && <section className="form-panel cash-close-panel" aria-label={mode === 'api' ? 'Detalle del cierre histórico' : 'Snapshot del cierre histórico'}>
       <div className="business-section-heading">
         <div><Icon name="shield" size={21}/><h2>Cierre guardado · {scopeLabel(selectedDetail.locationId)}</h2></div>
         <button className="button button-secondary" type="button" onClick={() => setDetailId(null)}><Icon name="close" size={16}/> Cerrar detalle</button>
       </div>
-      <p className="cash-quiet">Snapshot inmutable del {new Date(selectedDetail.closeSnapshot.closedAt).toLocaleString('es-AR')} · Responsable: Usuario DEMO</p>
+      <p className="cash-quiet">{mode === 'api' ? 'Cierre guardado del ' : 'Snapshot inmutable del '}{new Date(selectedDetail.closeSnapshot.closedAt).toLocaleString('es-AR')} · Responsable: {mode === 'api' ? selectedDetail.closeSnapshot.closedBy.replace(/^user:([0-9]+)$/, 'Usuario $1') : selectedDetail.closeSnapshot.closedBy}</p>
       <div className="cash-close-preview">
         <div><small>Fondo inicial</small><strong>{moneyDisplay(selectedDetail.closeSnapshot.openingCashCents)}</strong></div>
         <div><small>Ventas en efectivo</small><strong>{moneyDisplay(selectedDetail.closeSnapshot.cashSalesCents)}</strong></div>
@@ -223,7 +229,7 @@ export function CashSessionsPage({ business, locations, sessions, sales, expense
         <strong>Gastos: {selectedDetail.closeSnapshot.expenseIds.length}</strong>
         <div>{selectedDetail.closeSnapshot.expenseIds.length ? selectedDetail.closeSnapshot.expenseIds.map(id => <code key={id}>{id} </code>) : 'Sin gastos en efectivo'}</div>
       </details>
-      <div className="informational-note"><Icon name="shield" size={18}/><span>Este cierre no puede reabrirse ni editarse desde la DEMO. No implica depósitos ni transferencias a cuentas bancarias.</span></div>
+      <div className="informational-note"><Icon name="shield" size={18}/><span>Este cierre no puede reabrirse ni editarse. No implica depósitos ni transferencias a cuentas bancarias.</span></div>
     </section>}
   </>
 }

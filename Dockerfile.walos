@@ -1,0 +1,19 @@
+FROM node:24-bookworm-slim AS frontend
+WORKDIR /ui
+COPY plataforma-pyme/frontend/package.json plataforma-pyme/frontend/package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY plataforma-pyme/frontend/ ./
+ENV VITE_APP_MODE=api
+RUN npm run build
+
+FROM python:3.12-slim
+WORKDIR /app
+COPY Proyecto-3-AppAdmin-Mascotas/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt && useradd --create-home walos && mkdir /data && chown walos /data
+COPY Proyecto-3-AppAdmin-Mascotas/ ./
+COPY --from=frontend /ui/dist ./static
+USER walos
+ENV DATABASE_URL=sqlite:////data/walos.db
+ENV WALOS_FRONTEND_DIR=/app/static
+EXPOSE 8000
+CMD ["sh", "-c", "python -m alembic upgrade head && exec python -m uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

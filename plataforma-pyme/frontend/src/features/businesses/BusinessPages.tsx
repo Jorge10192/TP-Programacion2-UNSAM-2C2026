@@ -3,10 +3,12 @@ import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { businessHref } from '../../app/navigation'
 import type { Navigate } from '../../app/types'
-import { demoGateway, kindLabels } from '../../data/demo/demoStore'
-import type { BusinessKind, DemoProfile } from '../../data/demo/demoStore'
+import { kindLabels } from '../../data/models'
+import { useAppData } from '../../data/dataContext'
+import type { BusinessKind, Profile } from '../../data/models'
 
-export function CreateBusinessPage({ navigate, profile }: { navigate: Navigate; profile: DemoProfile }) {
+export function CreateBusinessPage({ navigate, profile }: { navigate: Navigate; profile: Profile }) {
+  const { gateway } = useAppData()
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
   const [kind, setKind] = useState<BusinessKind>('PRODUCTOS')
@@ -20,7 +22,7 @@ export function CreateBusinessPage({ navigate, profile }: { navigate: Navigate; 
     setBusy(true)
     setError('')
     try {
-      const business = await demoGateway.createBusiness({ name, category, kind, description })
+      const business = await gateway.createBusiness({ name, category, kind, description })
       navigate(businessHref(business.id, 'inicio'))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear la empresa DEMO.')

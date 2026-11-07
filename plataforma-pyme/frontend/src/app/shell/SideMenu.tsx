@@ -3,9 +3,10 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { AppLink } from '../AppLink'
 import { Icon } from '../Icon'
 import { businessHref, navigationGroups, navigationItems } from '../navigation'
-import type { DemoBusiness } from '../navigation'
+import type { Business } from '../navigation'
 import type { Navigate } from '../types'
 import type { SidebarMode } from './sidebarPreference'
+import { useAppData } from '../../data/dataContext'
 
 export function Sidebar({
   business,
@@ -15,17 +16,20 @@ export function Sidebar({
   isOpen,
   onClose,
 }: {
-  business: DemoBusiness | undefined
+  business: Business | undefined
   pathname: string
   navigate: Navigate
   mode: SidebarMode
   isOpen: boolean
   onClose: () => void
 }) {
+  const { mode: appMode } = useAppData()
+  const visibleItems = appMode === 'demo' ? navigationItems : navigationItems.filter((item) =>
+    ['inicio', 'compras', 'inventario', 'jornadas', 'ventas', 'gastos', 'catalogo', 'proveedores', 'ubicaciones', 'movimientos'].includes(item.id))
   const compact = mode === 'compact' && !isOpen
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const secondaryGroups = navigationGroups.filter((group) => group !== 'Tu jornada' && group !== 'Preparación')
-  const secondaryActive = !!business && navigationItems.some((item) => secondaryGroups.some((group) => group === item.group)
+  const secondaryActive = !!business && visibleItems.some((item) => secondaryGroups.some((group) => group === item.group)
     && pathname === businessHref(business.id, item.segment))
 
   useEffect(() => {
@@ -54,7 +58,7 @@ export function Sidebar({
     if (!business) return null
     return <div key={group} className={'sidebar-group' + (group === 'Tu jornada' ? ' sidebar-group-primary' : group === 'Preparación' ? ' sidebar-group-preparation' : ' sidebar-group-secondary')}>
       <p className="group-label">{group.toUpperCase()}</p>
-      {navigationItems.filter((item) => item.group === group).map((item) => {
+      {visibleItems.filter((item) => item.group === group).map((item) => {
         const href = businessHref(business.id, item.segment)
         const active = pathname === href
         return <AppLink key={item.id} navigate={navigate} to={href} ariaLabel={item.label}
@@ -91,12 +95,12 @@ export function Sidebar({
               <AppLink to="/inicio" navigate={navigate} ariaLabel="Inicio" ariaCurrent={pathname === '/inicio' || pathname === '/' ? 'page' : undefined} title={compact ? 'Inicio' : undefined} className={'side-link' + (pathname === '/inicio' || pathname === '/' ? ' active' : '')}>
                 <Icon name="home" /><span className="side-label">Inicio</span>
               </AppLink>
-              <AppLink to="/perfil" navigate={navigate} ariaLabel="Mi perfil" ariaCurrent={pathname === '/perfil' ? 'page' : undefined} title={compact ? 'Mi perfil' : undefined} className={'side-link' + (pathname === '/perfil' ? ' active' : '')}>
+              {appMode === 'demo' && <><AppLink to="/perfil" navigate={navigate} ariaLabel="Mi perfil" ariaCurrent={pathname === '/perfil' ? 'page' : undefined} title={compact ? 'Mi perfil' : undefined} className={'side-link' + (pathname === '/perfil' ? ' active' : '')}>
                 <Icon name="user" /><span className="side-label">Mi perfil</span>
               </AppLink>
               <AppLink to="/empresas/nueva" navigate={navigate} ariaLabel="Crear empresa" ariaCurrent={pathname === '/empresas/nueva' ? 'page' : undefined} title={compact ? 'Crear empresa' : undefined} className={'side-link' + (pathname === '/empresas/nueva' ? ' active' : '')}>
                 <Icon name="plus" /><span className="side-label">Crear empresa</span>
-              </AppLink>
+              </AppLink></>}
             </nav>
           ) : (
             <nav aria-label="Secciones del negocio">
@@ -111,9 +115,9 @@ export function Sidebar({
         <div className="sidebar-foot">
           <div className="sidebar-foot-card" title={compact ? 'Entorno de demostración. Sin operaciones ni pagos reales.' : undefined}>
             <div className="sidebar-foot-icon"><Icon name="shield" size={17}/></div>
-            <div className="sidebar-foot-copy"><strong>Entorno de demostración</strong><span>Sin operaciones reales ni pagos.</span></div>
+            <div className="sidebar-foot-copy"><strong>{appMode === 'demo' ? 'Entorno de demostración' : 'WALOS conectado'}</strong><span>{appMode === 'demo' ? 'Sin operaciones reales ni pagos.' : 'Datos en servidor. Pagos declarados.'}</span></div>
           </div>
-          <span className="sidebar-version">Jornada WALOS · Demo local</span>
+          <span className="sidebar-version">Jornada WALOS · {appMode === 'demo' ? 'Demo local' : 'Servidor'}</span>
         </div>
       </aside>
     </>

@@ -33,7 +33,7 @@ def guardar(db: Session):
         raise HTTPException(409, "Registro duplicado o incompatible con los datos existentes")
 
 
-def crear_compra(db: Session, datos: CompraCreate, usuario_id: int) -> Compra:
+def crear_compra(db: Session, datos: CompraCreate, usuario_id: int, *, commit=True) -> Compra:
     fingerprint = huella(datos)
     existing = db.query(Compra).filter_by(usuario_id=usuario_id, referencia=datos.referencia).first()
     if existing:
@@ -53,8 +53,12 @@ def crear_compra(db: Session, datos: CompraCreate, usuario_id: int) -> Compra:
             raise HTTPException(422, str(error))
         fields = item.model_dump(exclude={"precio_total"})
         items.append(ItemCompra(**fields, unidad_stock_id=stock.id, cantidad_micro=micro, precio_centavos=int(item.precio_total * 100)))
-    compra = Compra(**datos.model_dump(exclude={"items"}), usuario_id=usuario_id, huella=fingerprint, items=items)
+    compra = Compra(**datos.model_dump(exclude={"items"}), usuario_id=usuario_id, huella=fingerprint,
+                    fecha_creacion=ahora(), items=items)
     db.add(compra)
+    if not commit:
+        db.flush()
+        return compra
     try:
         db.commit()
     except IntegrityError:
@@ -67,9 +71,10 @@ def crear_compra(db: Session, datos: CompraCreate, usuario_id: int) -> Compra:
     return compra
 
 
-def confirmar_compra(db: Session, compra: Compra, usuario_id: int) -> Compra:
+def confirmar_compra(db: Session, compra: Compra, usuario_id: int, *, commit=True) -> Compra:
     changed = db.execute(update(Compra).where(Compra.id == compra.id, Compra.estado == "BORRADOR")
-                         .values(estado="CONFIRMADA")).rowcount
+                         .values(estado="CONFIRMADA", fecha_recepcion=ahora(), recibida_por_id=usuario_id),
+                         execution_options={"synchronize_session": False}).rowcount
     if not changed:
         db.refresh(compra)
         if compra.estado == "CONFIRMADA":
@@ -84,7 +89,10 @@ def confirmar_compra(db: Session, compra: Compra, usuario_id: int) -> Compra:
             habilitado(db, UnidadMedida, item.unidad_contenido_id)
         mover_stock(db, item.insumo_id, item.cantidad_micro, usuario_id, "COMPRA",
                     f"compra:{compra.id}:{item.insumo_id}", "Recepción confirmada", compra.id)
-    guardar(db)
+    if commit:
+        guardar(db)
+    else:
+        db.flush()
     db.refresh(compra)
     return compra
 

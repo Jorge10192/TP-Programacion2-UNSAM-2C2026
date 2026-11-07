@@ -1,16 +1,18 @@
+import { useOnlineDraft } from '../common/useOnlineDraft'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { AppLink } from '../../app/AppLink'
 import { businessHref } from '../../app/navigation'
 import type { Navigate } from '../../app/types'
-import { demoGateway, activeCashSession } from '../../data/demo/demoStore'
-import type { DemoBusiness, DemoLocation, DemoSnapshot } from '../../data/demo/demoStore'
+import { activeCashSession } from '../../data/selectors'
+import { useAppData } from '../../data/dataContext'
+import type { Business, Location, Snapshot } from '../../data/models'
 import { moneyDisplay, parseMoneyCents } from '../../data/demo/catalogPolicy'
 import { expenseCategories, expensePaymentLabels } from '../../data/demo/cashPolicy'
-import type { DemoExpense, ExpenseCategory, ExpensePaymentMethod } from '../../data/demo/cashPolicy'
+import type { Expense, ExpenseCategory, ExpensePaymentMethod } from '../../data/demo/cashPolicy'
 import { accountSupportsDeclaredPayment } from '../../data/demo/financialAccountPolicy'
-import { listDemoFinancialAccounts } from '../../data/demo/demoStore'
+import { listFinancialAccounts } from '../../data/selectors'
 
 const today = () => {
   const now = new Date()
@@ -18,8 +20,9 @@ const today = () => {
 }
 
 export function ExpensesPage({ business, locations, expenses, snapshot, navigate }: {
-  business: DemoBusiness; locations: DemoLocation[]; expenses: DemoExpense[]; snapshot: DemoSnapshot; navigate: Navigate
+  business: Business; locations: Location[]; expenses: Expense[]; snapshot: Snapshot; navigate: Navigate
 }) {
+  const { gateway, mode, capabilities } = useAppData()
   const [formOpen, setFormOpen] = useState(false)
   const [requestId, setRequestId] = useState(() => 'demo-expense-request-' + crypto.randomUUID())
   const [paidOn, setPaidOn] = useState(today)
@@ -28,14 +31,15 @@ export function ExpensesPage({ business, locations, expenses, snapshot, navigate
   const [amount, setAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<ExpensePaymentMethod>('EFECTIVO')
   const [financialAccountId, setFinancialAccountId] = useState('')
-  const [locationId, setLocationId] = useState('')
+  const [locationId, setLocationId] = useState(mode === 'api' ? 'principal' : '')
   const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [query, setQuery] = useState('')
   const [methodFilter, setMethodFilter] = useState('TODOS')
-  const accounts = listDemoFinancialAccounts(snapshot, business.id)
+  const { markSaved } = useOnlineDraft(formOpen && Boolean(description || amount || notes), busy)
+  const accounts = listFinancialAccounts(snapshot, business.id)
   const sum = expenses.reduce((total, entry) => total + entry.amountCents, 0)
   const cash = expenses.filter(entry => entry.paymentMethod === 'EFECTIVO')
     .reduce((total, entry) => total + entry.amountCents, 0)
@@ -53,13 +57,14 @@ export function ExpensesPage({ business, locations, expenses, snapshot, navigate
     try {
       const cents = parseMoneyCents(amount)
       if (cents === null) throw new Error('Ingresá un importe válido en pesos.')
-      const record = await demoGateway.registerExpense(business.id, {
+      const record = await gateway.registerExpense(business.id, {
         paidOn, category, description, amountCents: cents, paymentMethod,
         financialAccountId: financialAccountId || null,
         locationId: locationId || null, notes,
       }, requestId)
-      setNotice('Gasto DEMO registrado: ' + record.description +
-        (record.cashSessionId ? '. Efectivo vinculado a la jornada abierta.' :
+      markSaved()
+      setNotice('Gasto registrado: ' + record.description +
+        (record.cashSessionId ? '. Vinculado a la jornada abierta; sólo el efectivo modifica el arqueo.' :
           '. No se actualizó ninguna cuenta bancaria ni saldo de caja fuera de jornada.'))
       setFormOpen(false)
       setRequestId('demo-expense-request-' + crypto.randomUUID())
@@ -71,7 +76,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot, navigate
 
   return <>
     <div className="page-heading">
-      <div><p className="eyebrow">FINANZAS · EMPRESA DEMO</p><h1>Gastos</h1>
+      <div><p className="eyebrow">FINANZAS · EMPRESA</p><h1>Gastos</h1>
         <p>Registrá egresos operativos de {business.name} y su medio de pago declarado.</p>
       </div>
       <button className="button button-primary" type="button" onClick={() => { setFormOpen((open) => !open); setError(''); setNotice('') }}>
@@ -103,7 +108,7 @@ export function ExpensesPage({ business, locations, expenses, snapshot, navigate
             onChange={(e) => { setPaymentMethod(e.target.value as ExpensePaymentMethod); setFinancialAccountId('') }}>
             {Object.entries(expensePaymentLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
           </select></label>
-          {paymentMethod !== 'EFECTIVO' && paymentMethod !== 'TARJETA' && <label className="form-field">
+          {capabilities.financialAccounts && paymentMethod !== 'EFECTIVO' && paymentMethod !== 'TARJETA' && <label className="form-field">
             <span>Cuenta de origen declarada (opcional)</span>
             <select value={financialAccountId} onChange={event => setFinancialAccountId(event.target.value)}>
               <option value="">Sin asociar a cuenta</option>
@@ -112,20 +117,20 @@ export function ExpensesPage({ business, locations, expenses, snapshot, navigate
             </select>
             {paymentMethod === 'TRANSFERENCIA' && <small>También podés declarar una transferencia desde una billetera virtual.</small>}
           </label>}
-          <label className="form-field"><span>Ubicación (opcional, gasto general si se omite)</span>
+          <label className="form-field"><span>Ubicación del gasto</span>
             <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-              <option value="">Gasto general de la empresa</option>
+              {mode === 'demo' && <option value="">Gasto general de la empresa</option>}
               {locations.filter(l => l.status === 'ACTIVA').map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select></label>
         </div>
-        {paymentMethod === 'EFECTIVO' && <p className={'cash-form-hint ' + (selectedSession ? 'linked' : 'unlinked')}>
+        {(paymentMethod === 'EFECTIVO' || capabilities.cashRequired) && <p className={'cash-form-hint ' + (selectedSession ? 'linked' : 'unlinked')}>
           <Icon name={selectedSession ? 'shield' : 'clock'} size={17}/>
           {selectedSession
-            ? 'Este efectivo se asociará a la jornada abierta de esta ubicación y descontará del saldo esperado de caja.'
-            : 'No hay jornada abierta para este destino. El gasto quedará registrado fuera de caja y no modificará ningún arqueo.'}
+            ? paymentMethod === 'EFECTIVO' ? 'Este efectivo se asociará a la jornada abierta de esta ubicación y descontará del saldo esperado de caja.' : 'El gasto quedará vinculado a la jornada abierta. El medio digital no modifica el efectivo de caja.'
+            : 'No hay jornada abierta para este destino. En modo conectado debés abrirla antes de registrar cualquier gasto.'}
         </p>}
         {paymentMethod !== 'EFECTIVO' && <p className="cash-form-hint">
-          <Icon name="credit" size={17}/> El medio digital se registra como declaración interna. Podés asociar una cuenta declarada de esta empresa. No se transfiere dinero ni se verifica el saldo bancario.
+          <Icon name="credit" size={17}/> El medio digital se registra como declaración interna. No se transfiere dinero ni se verifica el saldo bancario.
         </p>}
         <details className="optional-fields"><summary>Agregar observaciones (opcional)</summary>
         <label className="form-field"><span>Observaciones (opcional)</span>
@@ -135,8 +140,8 @@ export function ExpensesPage({ business, locations, expenses, snapshot, navigate
         {error && <p className="form-message error" role="alert">{error}</p>}
         <div className="form-actions"><button type="button" disabled={busy} className="button button-secondary"
           onClick={() => setFormOpen(false)}>Cancelar</button>
-          <button type="submit" className="button button-primary" disabled={busy}>
-            <Icon name="receipt" size={17}/>{busy ? 'Guardando…' : 'Registrar gasto DEMO'}
+          <button type="submit" className="button button-primary" disabled={busy || (mode === 'api' && !selectedSession)}>
+            <Icon name="receipt" size={17}/>{busy ? 'Guardando…' : 'Registrar gasto'}
           </button>
         </div>
       </form>

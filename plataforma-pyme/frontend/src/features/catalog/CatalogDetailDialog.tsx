@@ -1,12 +1,12 @@
+import { useAppData } from '../../data/dataContext'
 import { useEffect, useRef } from 'react'
 import { Icon } from '../../app/Icon'
 import { DemoPhoto } from '../common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
 import type { IconName } from '../../app/navigation'
-import type { DemoCatalogItem } from '../../data/demo/demoStore'
+import type { CatalogItem } from '../../data/models'
 import { catalogKindLabels, catalogUnitLabels, moneyDisplay } from '../../data/demo/catalogPolicy'
 
-const kindIcon: Record<DemoCatalogItem['kind'], IconName> = {
+const kindIcon: Record<CatalogItem['kind'], IconName> = {
   ELABORADO: 'package',
   REVENTA: 'shopping',
   INSUMO: 'boxes',
@@ -24,15 +24,16 @@ const formatDate = (value: string) => {
 
 /**
  * Modal nativo: foco modal, Escape y bloqueo del contenido de fondo.
- * Es una vista del catálogo DEMO; no simula inventario, proveedores ni permisos.
+ * Es una vista del catálogo; no simula inventario, proveedores ni permisos.
  */
 export function CatalogDetailDialog({
   item, onClose, onEdit,
 }: {
-  item: DemoCatalogItem
+  item: CatalogItem
   onClose: () => void
-  onEdit: (item: DemoCatalogItem) => void
+  onEdit: (item: CatalogItem) => void
 }) {
+  const { mode } = useAppData()
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -61,14 +62,14 @@ export function CatalogDetailDialog({
   >
     <div className="catalog-detail-body">
       <header className="catalog-detail-topline">
-        <div className="catalog-detail-return"><span className="eyebrow">FICHA DEL CATÁLOGO · DEMO</span></div>
+        <div className="catalog-detail-return"><span className="eyebrow">FICHA DEL CATÁLOGO ·</span></div>
         <button type="button" className="icon-button" aria-label="Cerrar ficha del artículo" onClick={onClose}>
           <Icon name="close" size={21} />
         </button>
       </header>
 
       <div className="catalog-detail-hero">
-        <DemoPhoto imageKey={demoImageKey('catalog', item.businessId, item.id)} alt={'Foto de ' + item.name}
+        <DemoPhoto target={{ scope: 'catalog', businessId: item.businessId, entityId: item.id }} alt={'Foto de ' + item.name}
           fallback={<Icon name={kindIcon[item.kind]} size={30}/>} className="catalog-detail-symbol demo-photo-detail"/>
         <div className="catalog-detail-main">
           <div className="catalog-detail-name-row">
@@ -82,7 +83,7 @@ export function CatalogDetailDialog({
             {item.sku && <span>SKU: {item.sku}</span>}
           </div>
         </div>
-        <button type="button" className="button button-primary catalog-detail-edit" onClick={() => onEdit(item)}>
+        <button type="button" className="button button-primary catalog-detail-edit" disabled={mode === 'api'} onClick={() => onEdit(item)}>
           <Icon name="arrow" size={17} /> Editar ficha
         </button>
       </div>
@@ -103,7 +104,7 @@ export function CatalogDetailDialog({
         <section className="catalog-detail-section catalog-detail-private">
           <h3><Icon name="receipt" size={18}/> Observaciones internas</h3>
           <p>{item.observations || 'Sin observaciones internas.'}</p>
-          <small>Campo de uso interno en esta DEMO local. Los permisos de lectura se validarán desde el backend.</small>
+          <small>Campo de uso interno, visible para los usuarios de esta instalación.</small>
         </section>
 
         <section className="catalog-detail-section">
@@ -123,7 +124,7 @@ export function CatalogDetailDialog({
       <footer className="catalog-detail-footer">
         <div className="catalog-detail-dates">
           <span>Creado: {formatDate(item.createdAt)}</span>
-          <span>Última edición DEMO: {formatDate(item.updatedAt)}</span>
+          <span>Última edición: {formatDate(item.updatedAt)}</span>
         </div>
         <button type="button" className="button button-secondary" onClick={onClose}>Cerrar ficha</button>
       </footer>

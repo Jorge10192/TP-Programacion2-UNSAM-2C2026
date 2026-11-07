@@ -1,0 +1,459 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-11-07T14:42:30.604701Z",
+  "complete": true,
+  "contexto": {
+    "businessId": "walos",
+    "locationId": "principal",
+    "currency": "ARS",
+    "user": {
+      "id": 1,
+      "nombre": "admin",
+      "rol": "administrador",
+      "activo": true
+    },
+    "business": {
+      "id": "walos",
+      "name": "WALOS",
+      "source": "server"
+    },
+    "location": {
+      "id": "principal",
+      "businessId": "walos",
+      "name": "Principal",
+      "canSell": true,
+      "canStore": true,
+      "status": "ACTIVA"
+    },
+    "capabilities": {
+      "purchase": true,
+      "receipt": true,
+      "count": true,
+      "sale": true,
+      "expense": true,
+      "cash": true,
+      "multiBusiness": false,
+      "multiLocation": false,
+      "services": false,
+      "splitPayments": true,
+      "discounts": true,
+      "batchCount": true,
+      "qr": false,
+      "financialAccounts": false
+    }
+  },
+  "unidades": [
+    {
+      "id": 1,
+      "nombre": "Unidad WALOS",
+      "dimension": "conteo",
+      "factor": "1.000000",
+      "codigo_ui": "UNIDAD",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    },
+    {
+      "id": 2,
+      "nombre": "Kilogramo WALOS",
+      "dimension": "masa",
+      "factor": "1000.000000",
+      "codigo_ui": "KILOGRAMO",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    }
+  ],
+  "categorias": [
+    {
+      "id": 1,
+      "nombre": "General",
+      "activo": true
+    },
+    {
+      "id": 2,
+      "nombre": "QA",
+      "activo": true
+    }
+  ],
+  "catalogo": [
+    {
+      "id": 1,
+      "nombre": "Harina QA",
+      "tipo": "INSUMO",
+      "sku": "QA-HAR",
+      "categoria_id": 2,
+      "categoria_nombre": "QA",
+      "unidad_stock_id": 2,
+      "unidad": {
+        "id": 2,
+        "nombre": "Kilogramo WALOS",
+        "dimension": "masa",
+        "factor": "1000.000000",
+        "codigo_ui": "KILOGRAMO",
+        "legacy_readonly": false,
+        "legacy_reasons": []
+      },
+      "vendible": false,
+      "precio_centavos": null,
+      "costo_referencia_centavos": 120000,
+      "descripcion": "",
+      "observaciones": "",
+      "activo": true,
+      "creada_en": "2026-11-07T14:42:30.372680Z",
+      "actualizada_en": "2026-11-07T14:42:30.372680Z",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    },
+    {
+      "id": 2,
+      "nombre": "Bocaditos QA",
+      "tipo": "ELABORADO",
+      "sku": "QA-BOC",
+      "categoria_id": 2,
+      "categoria_nombre": "QA",
+      "unidad_stock_id": 1,
+      "unidad": {
+        "id": 1,
+        "nombre": "Unidad WALOS",
+        "dimension": "conteo",
+        "factor": "1.000000",
+        "codigo_ui": "UNIDAD",
+        "legacy_readonly": false,
+        "legacy_reasons": []
+      },
+      "vendible": true,
+      "precio_centavos": 250050,
+      "costo_referencia_centavos": 120000,
+      "descripcion": "",
+      "observaciones": "",
+      "activo": true,
+      "creada_en": "2026-11-07T14:42:30.380684Z",
+      "actualizada_en": "2026-11-07T14:42:30.380684Z",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    }
+  ],
+  "proveedores": [
+    {
+      "id": 1,
+      "nombre": "Proveedor QA",
+      "observaciones": "",
+      "activo": true,
+      "creada_en": "2026-11-07T14:42:30.359173Z",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    }
+  ],
+  "compras": [
+    {
+      "id": 1,
+      "request_id": "6d9f5e13-be02-4fee-a50e-9cbe0eb76e38",
+      "referencia_comercial": "QA-C01",
+      "referencia_legacy": "online:6d9f5e13-be02-4fee-a50e-9cbe0eb76e38",
+      "proveedor_id": 1,
+      "nombre_proveedor_snapshot": "Proveedor QA",
+      "fecha": "2026-11-07",
+      "creada_en": "2026-11-07T14:42:30.389683Z",
+      "observaciones": "",
+      "estado": "CONFIRMADA",
+      "total_centavos": 600000,
+      "items": [
+        {
+          "id": 1,
+          "insumo_id": 1,
+          "nombre_snapshot": "Harina QA",
+          "sku_snapshot": "QA-HAR",
+          "tipo_snapshot": "BIEN",
+          "cantidad": "5.000000",
+          "unidad_compra": {
+            "id": 2,
+            "nombre": "Kilogramo WALOS",
+            "dimension": "masa",
+            "factor": "1000.000000",
+            "codigo_ui": "KILOGRAMO",
+            "legacy_readonly": false,
+            "legacy_reasons": []
+          },
+          "cantidad_stock": "5.000000",
+          "unidad_stock": {
+            "id": 2,
+            "nombre": "Kilogramo WALOS",
+            "dimension": "masa",
+            "factor": "1000.000000",
+            "codigo_ui": "KILOGRAMO",
+            "legacy_readonly": false,
+            "legacy_reasons": []
+          },
+          "costo_unitario_centavos": 120000,
+          "total_centavos": 600000,
+          "lote": null,
+          "vencimiento": null
+        }
+      ],
+      "recepcion": {
+        "id": "recepcion:1",
+        "compra_id": 1,
+        "ubicacion_id": "principal",
+        "creada_en": "2026-11-07T14:42:30.399194Z",
+        "actor_id": 1,
+        "movimientos": [
+          {
+            "id": 1,
+            "item_compra_id": 1,
+            "insumo_id": 1,
+            "cantidad": "5.000000",
+            "unidad": "KILOGRAMO"
+          }
+        ]
+      },
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    }
+  ],
+  "stock": [
+    {
+      "insumo_id": 1,
+      "ubicacion_id": "principal",
+      "unidad": "KILOGRAMO",
+      "unidad_nombre": "Kilogramo WALOS",
+      "cantidad": "5.000000",
+      "version": 1,
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    },
+    {
+      "insumo_id": 2,
+      "ubicacion_id": "principal",
+      "unidad": "UNIDAD",
+      "unidad_nombre": "Unidad WALOS",
+      "cantidad": "9.000000",
+      "version": 2,
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    }
+  ],
+  "movimientos": [
+    {
+      "id": 1,
+      "tipo": "COMPRA",
+      "origen": {
+        "tipo": "COMPRA",
+        "id": 1
+      },
+      "insumo_id": 1,
+      "ubicacion_id": "principal",
+      "cantidad": "5.000000",
+      "unidad": "KILOGRAMO",
+      "unidad_nombre": "Kilogramo WALOS",
+      "nombre_snapshot": "Harina QA",
+      "nombre_actual": "Harina QA",
+      "sku_snapshot": "QA-HAR",
+      "usuario_id": 1,
+      "creada_en": "2026-11-07T14:42:30.000000Z",
+      "motivo": "Recepción confirmada",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    },
+    {
+      "id": 2,
+      "tipo": "CONTEO",
+      "origen": {
+        "tipo": "CONTEO",
+        "id": 1
+      },
+      "insumo_id": 2,
+      "ubicacion_id": "principal",
+      "cantidad": "12.000000",
+      "unidad": "UNIDAD",
+      "unidad_nombre": "Unidad WALOS",
+      "nombre_snapshot": "Bocaditos QA",
+      "nombre_actual": "Bocaditos QA",
+      "sku_snapshot": null,
+      "usuario_id": 1,
+      "creada_en": "2026-11-07T14:42:30.000000Z",
+      "motivo": "Carga QA de producto terminado",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    },
+    {
+      "id": 3,
+      "tipo": "VENTA",
+      "origen": {
+        "tipo": "VENTA",
+        "id": 1
+      },
+      "insumo_id": 2,
+      "ubicacion_id": "principal",
+      "cantidad": "-3.000000",
+      "unidad": "UNIDAD",
+      "unidad_nombre": "Unidad WALOS",
+      "nombre_snapshot": "Bocaditos QA",
+      "nombre_actual": "Bocaditos QA",
+      "sku_snapshot": "QA-BOC",
+      "usuario_id": 1,
+      "creada_en": "2026-11-07T14:42:30.000000Z",
+      "motivo": "Venta declarada",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    }
+  ],
+  "conteos": [
+    {
+      "id": 1,
+      "request_id": "4cdcb81a-a2f8-40d9-b712-f997987b5534",
+      "ubicacion_id": "principal",
+      "motivo": "Carga QA de producto terminado",
+      "usuario_id": 1,
+      "creada_en": "2026-11-07T14:42:30.422745Z",
+      "items": [
+        {
+          "id": 1,
+          "insumo_id": 2,
+          "nombre_snapshot": "Bocaditos QA",
+          "unidad": "UNIDAD",
+          "cantidad_anterior": "0.000000",
+          "cantidad_contada": "12.000000",
+          "delta": "12.000000",
+          "version_anterior": 0,
+          "version": 1,
+          "movimiento_id": 2
+        },
+        {
+          "id": 2,
+          "insumo_id": 1,
+          "nombre_snapshot": "Harina QA",
+          "unidad": "KILOGRAMO",
+          "cantidad_anterior": "5.000000",
+          "cantidad_contada": "5.000000",
+          "delta": "0.000000",
+          "version_anterior": 1,
+          "version": 1,
+          "movimiento_id": null
+        }
+      ]
+    }
+  ],
+  "ventas": [
+    {
+      "id": 1,
+      "request_id": "f9ab09f6-a7a4-4f88-bd10-82ba568ef1ba",
+      "jornada_id": 1,
+      "ubicacion_id": "principal",
+      "usuario_id": 1,
+      "creada_en": "2026-11-07T14:42:30.446113Z",
+      "estado": "REGISTRADA",
+      "observaciones": "",
+      "subtotal_centavos": 750150,
+      "descuento_centavos": 150,
+      "total_centavos": 750000,
+      "items": [
+        {
+          "id": 1,
+          "insumo_id": 2,
+          "cantidad": "3.000000",
+          "unidad": "UNIDAD",
+          "nombre_snapshot": "Bocaditos QA",
+          "sku_snapshot": "QA-BOC",
+          "tipo_snapshot": "BIEN",
+          "precio_unitario_centavos": 250050,
+          "total_centavos": 750150
+        }
+      ],
+      "pagos": [
+        {
+          "id": 1,
+          "orden": 0,
+          "medio": "EFECTIVO",
+          "importe_centavos": 250000,
+          "cuenta_financiera_id": null,
+          "cuenta_nombre_snapshot": null
+        },
+        {
+          "id": 2,
+          "orden": 1,
+          "medio": "TRANSFERENCIA",
+          "importe_centavos": 500000,
+          "cuenta_financiera_id": null,
+          "cuenta_nombre_snapshot": null
+        }
+      ]
+    }
+  ],
+  "gastos": [
+    {
+      "id": 1,
+      "request_id": "2441ae83-75e8-48a7-b5ed-6cecdde4ab56",
+      "jornada_id": 1,
+      "ubicacion_id": "principal",
+      "usuario_id": 1,
+      "fecha": "2026-11-07",
+      "creada_en": "2026-11-07T14:42:30.464123Z",
+      "categoria": "TRANSPORTE",
+      "concepto": "Gasto QA",
+      "importe_centavos": 150000,
+      "medio": "EFECTIVO",
+      "observaciones": "",
+      "cuenta_financiera_id": null,
+      "cuenta_nombre_snapshot": null
+    }
+  ],
+  "jornadas": [
+    {
+      "id": 1,
+      "request_id": "84e7e732-7e16-42b5-b29a-b1d9b9198a31",
+      "close_request_id": "b121ba15-84e7-496d-a39f-2d44807641f2",
+      "ubicacion_id": "principal",
+      "estado": "CERRADA",
+      "version": 3,
+      "fondo_centavos": 1000000,
+      "abierta_por_id": 1,
+      "abierta_en": "2026-11-07T14:42:30.437587Z",
+      "totales": {
+        "ventas_efectivo_centavos": 250000,
+        "gastos_efectivo_centavos": 150000,
+        "esperado_centavos": 1100000,
+        "venta_ids": [
+          1
+        ],
+        "gasto_ids": [
+          1
+        ]
+      },
+      "cierre": {
+        "ventas_efectivo_centavos": 250000,
+        "gastos_efectivo_centavos": 150000,
+        "esperado_centavos": 1100000,
+        "venta_ids": [
+          1
+        ],
+        "gasto_ids": [
+          1
+        ],
+        "fondo_centavos": 1000000,
+        "contado_centavos": 1100000,
+        "diferencia_centavos": 0,
+        "cerrada_por_id": 1,
+        "cerrada_en": "2026-11-07T14:42:30.477188Z",
+        "motivo": ""
+      }
+    },
+    {
+      "id": 2,
+      "request_id": "d5957f63-d55e-4734-8923-adb5c79b4894",
+      "close_request_id": null,
+      "ubicacion_id": "principal",
+      "estado": "ABIERTA",
+      "version": 0,
+      "fondo_centavos": 500000,
+      "abierta_por_id": 1,
+      "abierta_en": "2026-11-07T14:42:30.484189Z",
+      "totales": {
+        "ventas_efectivo_centavos": 0,
+        "gastos_efectivo_centavos": 0,
+        "esperado_centavos": 500000,
+        "venta_ids": [],
+        "gasto_ids": []
+      },
+      "cierre": null
+    }
+  ]
+}

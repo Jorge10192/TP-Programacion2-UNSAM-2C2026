@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { useUnsavedChanges } from '../../app/unsavedChanges'
-import { demoGateway } from '../../data/demo/demoStore'
-import type { DemoBusiness, DemoCatalogItem, DemoSupplier } from '../../data/demo/demoStore'
+import { useAppData } from '../../data/dataContext'
+import type { Business, CatalogItem, Supplier } from '../../data/models'
 import { moneyDisplay, moneyInput, parseMoneyCents } from '../../data/demo/catalogPolicy'
 import {
   lineTotalCents, parseQuantityMilli, quantityText, sumLineTotals,
@@ -37,23 +37,24 @@ function todayLocal(): string {
 export function PurchaseForm({
   business, catalog, suppliers, onSaved, onCancel,
 }: {
-  business: DemoBusiness
-  catalog: DemoCatalogItem[]
-  suppliers: DemoSupplier[]
+  business: Business
+  catalog: CatalogItem[]
+  suppliers: Supplier[]
   onSaved: (purchaseId: string, containsPhysicalGoods: boolean) => void
   onCancel: () => void
 }) {
+  const { gateway, mode, capabilities } = useAppData()
   const [initialDraft] = useState<Draft>(() => ({
     purchasedOn: todayLocal(), supplierId: '', reference: '', notes: '', lines: [newLine()],
   }))
   const [draft, setDraft] = useState<Draft>(initialDraft)
   // Se conserva un ID de solicitud mientras el formulario está montado:
-  // doble clic o reintento de envío no pueden crear una segunda compra DEMO.
+  // doble clic o reintento de envío no pueden crear una segunda compra.
   const [requestId] = useState(() => 'demo-request-' + crypto.randomUUID())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const { confirmDiscard, markSaved } = useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(initialDraft), saving)
-  const activeCatalog = catalog.filter((item) => item.status === 'ACTIVO')
+  const activeCatalog = catalog.filter((item) => item.status === 'ACTIVO' && !item.readonlyReason && (capabilities.services || item.kind !== 'SERVICIO'))
   const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'ACTIVO')
   const containsPhysicalGoods = draft.lines.some((line) =>
     catalog.some((item) => item.id === line.catalogId && item.kind !== 'SERVICIO'))
@@ -104,7 +105,7 @@ export function PurchaseForm({
     setSaving(true)
     setError('')
     try {
-      const purchase = await demoGateway.registerPurchase(business.id, makeInput(), requestId)
+      const purchase = await gateway.registerPurchase(business.id, makeInput(), requestId)
       markSaved()
       onSaved(purchase.id, containsPhysicalGoods)
     } catch (err) {
@@ -148,22 +149,22 @@ export function PurchaseForm({
             <input required type="date" min="2000-01-01" max="2100-12-31"
               value={draft.purchasedOn} onChange={(e) => setDraft((d) => ({ ...d, purchasedOn: e.target.value }))}/>
           </label>
-          <label className="form-field"><span>Proveedor (opcional)</span>
-            <select value={draft.supplierId} onChange={(e) => setDraft((d) => ({ ...d, supplierId: e.target.value }))}>
-              <option value="">Sin proveedor asignado</option>
+          <label className="form-field"><span>{capabilities.supplierRequired ? 'Proveedor *' : 'Proveedor (opcional)'}</span>
+            <select required={capabilities.supplierRequired} value={draft.supplierId} onChange={(e) => setDraft((d) => ({ ...d, supplierId: e.target.value }))}>
+              <option value="">Seleccionar proveedor…</option>
               {activeSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
             </select>
           </label>
           <label className="form-field"><span>Número de comprobante o referencia (opcional)</span>
             <input maxLength={70} value={draft.reference} onChange={(e) => setDraft((d) => ({ ...d, reference: e.target.value }))} placeholder="Ej.: FACT-A-001 / ticket"/>
           </label>
-          <label className="form-field"><span>Moneda</span><input readOnly value="ARS · Pesos argentinos (DEMO)"/></label>
+          <label className="form-field"><span>Moneda</span><input readOnly value={mode === 'api' ? 'ARS · Pesos argentinos' : 'ARS · Pesos argentinos (DEMO)'}/></label>
         </div>
       </section>
 
       <section className="purchase-form-section">
         <div className="purchase-section-title">
-          <div><h3>2. Productos, servicios y conceptos</h3><small>Hasta 30 renglones. Cada concepto libre es informativo y no generará existencias.</small></div>
+          <div><h3>2. Artículos de la compra</h3><small>Hasta 30 renglones. Verificá cantidades, unidad y costo antes de guardar.</small></div>
           <button type="button" className="button button-secondary" disabled={draft.lines.length >= 30 || saving}
             onClick={() => setDraft((d) => ({ ...d, lines: [...d.lines, newLine()] }))}>
             <Icon name="plus" size={16}/> Agregar renglón
@@ -185,8 +186,8 @@ export function PurchaseForm({
             </div>
             <div className="purchase-line-grid">
               <label className="form-field purchase-line-selector"><span>Origen del concepto *</span>
-                <select value={line.catalogId} onChange={(e) => selectCatalog(line.id, e.target.value)}>
-                  <option value="">Concepto libre (sin stock)</option>
+                <select required={mode === 'api'} value={line.catalogId} onChange={(e) => selectCatalog(line.id, e.target.value)}>
+                  <option value="">{mode === 'api' ? 'Seleccionar artículo…' : 'Concepto libre (sin stock)'}</option>
                   {activeCatalog.map((entry) => <option key={entry.id} value={entry.id}>{entry.name} · {entry.kind === 'SERVICIO' ? 'Servicio' : 'Artículo físico'}</option>)}
                 </select>
               </label>
@@ -241,7 +242,7 @@ export function PurchaseForm({
       <div className="form-actions">
         <button type="button" className="button button-secondary" disabled={saving} onClick={() => { if (confirmDiscard()) onCancel() }}>Cancelar</button>
         <button type="submit" className="button button-primary" disabled={saving}>
-          <Icon name="receipt" size={17}/> {saving ? 'Guardando…' : containsPhysicalGoods ? 'Guardar compra y elegir ubicación' : 'Registrar compra DEMO'}
+          <Icon name="receipt" size={17}/> {saving ? 'Guardando…' : containsPhysicalGoods ? 'Guardar compra y elegir ubicación' : 'Registrar compra'}
         </button>
       </div>
     </form>

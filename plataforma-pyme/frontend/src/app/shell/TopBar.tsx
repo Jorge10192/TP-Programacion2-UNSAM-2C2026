@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react'
-import { profileInitials } from '../../data/demo/demoStore'
+import { profileInitials } from '../../data/models'
 import { DemoPhoto } from '../../features/common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
 import { AppLink } from '../AppLink'
 import { Icon } from '../Icon'
 import { businessHref } from '../navigation'
-import type { DemoBusiness, DemoProfile } from '../../data/demo/demoStore'
+import type { Business, Profile } from '../../data/models'
 import type { Navigate } from '../types'
 import type { SidebarMode } from './sidebarPreference'
+import { useAppData } from '../../data/dataContext'
 
 export function Topbar({
   business,
@@ -22,10 +22,11 @@ export function Topbar({
   onToggleSidebar,
   onHideSidebar,
   onToggleMenu,
+  onLogout,
 }: {
-  business: DemoBusiness | undefined
-  businesses: DemoBusiness[]
-  profile: DemoProfile
+  business: Business | undefined
+  businesses: Business[]
+  profile: Profile
   title: string
   navigate: Navigate
   sidebarMode: SidebarMode
@@ -35,7 +36,9 @@ export function Topbar({
   onToggleSidebar: () => void
   onHideSidebar: () => void
   onToggleMenu: () => void
+  onLogout?: () => void
 }) {
+  const { mode, session, loadState } = useAppData()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const wasOpen = useRef(menuOpen)
 
@@ -51,7 +54,7 @@ export function Topbar({
       ? 'Mostrar iconos y nombres'
       : 'Mostrar menú con nombres'
 
-  return <header className="topbar">
+  return <header className={'topbar' + (mode === 'api' ? ' api-topbar' : '')}>
     <div className="topbar-left">
       <div className="sidebar-actions">
         <button
@@ -102,15 +105,15 @@ export function Topbar({
       <label className="company-picker">
         <span className="sr-only">Empresa activa</span>
         <Icon name="building" size={16} />
-        <select aria-label="Cambiar de empresa" value={business?.id ?? ''} onChange={(event) => navigate(event.target.value ? businessHref(event.target.value, 'inicio') : '/inicio')}>
-          <option value="">Mi espacio personal</option>
-          {businesses.map((item) => <option key={item.id} value={item.id}>{item.name} · DEMO</option>)}
+        <select aria-label="Cambiar de empresa" disabled={mode === 'api'} value={business?.id ?? (mode === 'api' ? businesses[0]?.id ?? '' : '')} onChange={(event) => navigate(event.target.value ? businessHref(event.target.value, 'inicio') : '/inicio')}>
+          {mode === 'demo' && <option value="">Mi espacio personal</option>}
+          {businesses.map((item) => <option key={item.id} value={item.id}>{item.name}{mode === 'demo' ? ' · DEMO' : ''}</option>)}
         </select>
       </label>
-      <span className="demo-chip">DEMO</span>
-      <AppLink navigate={navigate} to="/perfil" className="user-avatar" ariaLabel="Ir a mi perfil">
-        <DemoPhoto imageKey={demoImageKey('profile')} alt="Foto de perfil" fallback={profileInitials(profile)} className="demo-photo-avatar"/>
-      </AppLink>
+      <span className="demo-chip">{mode === 'demo' ? 'DEMO' : loadState === 'error' ? 'Sin conexión' : 'Conectado'}</span>
+      {mode === 'api' ? <><span className="session-user">{session?.user?.name}</span><button type="button" className="button button-secondary" aria-label={'Cerrar sesión de ' + session?.user?.name} onClick={onLogout}>Salir</button></> : <AppLink navigate={navigate} to="/perfil" className="user-avatar" ariaLabel="Ir a mi perfil">
+        <DemoPhoto target={{ scope: 'profile' }} alt="Foto de perfil" fallback={profileInitials(profile)} className="demo-photo-avatar"/>
+      </AppLink>}
     </div>
   </header>
 }

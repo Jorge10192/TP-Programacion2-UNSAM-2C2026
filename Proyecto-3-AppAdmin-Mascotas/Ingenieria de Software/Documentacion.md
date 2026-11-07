@@ -1,54 +1,56 @@
-# WALOS API
+# WALOS
 
-Gestión de compras e inventario de insumos para un emprendimiento de bocaditos y tortas para mascotas. Esta entrega corresponde a la API; `plataforma-pyme/frontend` es una demo independiente con datos locales.
+Gestión de una jornada para un emprendimiento de bocaditos y tortas para mascotas: compra → recepción → stock → venta → gasto → cierre. Una empresa, una ubicación y ARS. React en modo API usa PostgreSQL; la demo independiente conserva datos locales.
 
-## 1. Requisitos y casos de uso
+## 1. Requisitos y endpoints
 
-Todas las operaciones comerciales requieren sesión. El administrador crea usuarios, edita/desactiva proveedores, desactiva catálogos, anula compras y ajusta stock. El operador consulta y registra catálogos, proveedores y compras.
-
-| RF | Caso de uso y resultado | Endpoints |
+| RF | Resultado | Endpoints principales |
 |---|---|---|
-| 01 | Administrador registra un usuario; el usuario inicia/cierra sesión y consulta su identidad. | `POST /auth/usuarios`, `POST /auth/login`, `GET /auth/me`, `POST /auth/logout` |
-| 02 | Registrar y consultar proveedores; el administrador modifica sus datos o aplica baja lógica. | `POST /proveedores`, `GET /proveedores`, `PUT /proveedores/{id}`, `PATCH /proveedores/{id}/desactivar` |
-| 03 | Crear/consultar categorías, unidades e insumos. Cada insumo conserva su unidad de stock y comienza con existencia cero. | `POST /categorias`, `GET /categorias`, `POST /unidades`, `GET /unidades`, `POST /insumos`, `GET /insumos`; baja lógica con `PATCH /categorias/{id}/desactivar`, `PATCH /unidades/{id}/desactivar`, `PATCH /insumos/{id}/desactivar` |
-| 04 | Registrar una compra en borrador, consultar su detalle, adjuntar comprobantes y confirmar la recepción o anularla conservando el historial. | `POST /compras`, `GET /compras`, `GET /compras/{id}`, `POST /compras/{id}/confirmar`, `POST /compras/{id}/anular`, `POST /compras/{id}/comprobantes`, `GET /compras/{id}/comprobantes`, `GET /compras/{id}/comprobantes/{comprobante_id}` |
-| 05 | Consultar existencias y movimientos; el administrador registra ajustes con referencia y motivo. | `GET /stock`, `GET /stock/movimientos`, `POST /stock/ajustes` |
+| 01 | Administrador registra usuarios; cada usuario inicia/cierra sesión y consulta su identidad. | `POST /auth/usuarios`, `POST /auth/login`, `GET /auth/me`, `POST /auth/logout` |
+| 02 | Registrar y consultar proveedores y artículos con categoría, unidad y precio. | `GET/POST /api/v1/proveedores`, `GET/POST /api/v1/catalogo`, `GET /api/v1/unidades` |
+| 03 | Registrar compra en borrador y recibirla una sola vez. | `GET/POST /api/v1/compras`, `GET /api/v1/compras/{identifier}`, `POST /api/v1/compras/{identifier}/recibir` |
+| 04 | Consultar existencias/movimientos; administrador registra un conteo absoluto de varios artículos. | `GET /api/v1/stock`, `GET /api/v1/stock/movimientos`, `POST /api/v1/stock/conteos` |
+| 05 | Abrir caja, registrar ventas y gastos, y cerrar con efectivo contado y diferencia. | `GET/POST /api/v1/jornadas`, `POST /api/v1/ventas`, `POST /api/v1/gastos`, `POST /api/v1/jornadas/{identifier}/cerrar` |
+
+`GET /api/v1/snapshot` devuelve una vista consistente para la interfaz. Los endpoints anteriores de compras, stock y comprobantes se conservan. Contratos completos: `/docs`.
 
 ## 2. Reglas
 
-- Confirmar significa mercadería recibida: estado, existencias y movimientos se guardan en una transacción. No hay recepción parcial.
-- Repetir una solicitud con el mismo usuario, referencia y contenido no duplica la compra. Confirmar/anular tampoco repite movimientos. Reutilizar la referencia con otro contenido devuelve `409`.
-- Las cantidades son positivas y tienen hasta seis decimales. Strategy calcula la cantidad en la unidad de stock; cantidades e importes históricos quedan guardados. Los importes se almacenan en centavos.
-- No se permite stock negativo. Anular conserva compra y comprobantes; si no puede revertirse la existencia, devuelve `409`. Una compra no registra un pago.
-- Contraseñas con hash, sesiones de 8 horas y bloqueo de 15 minutos tras cinco fallos. Errores: `401` sin sesión, `403` sin permiso, `404` inexistente, `409` conflicto, `422` validación y `503` base no disponible/sin migrar.
+- Registrar una compra no mueve stock ni dinero; recibirla exige proveedor activo y actualiza compra, existencias e historial en una transacción. Sin recepción parcial ni stock negativo.
+- Las cantidades conservan hasta seis decimales; los importes se guardan en centavos. Los datos históricos desconocidos quedan vacíos; la UI muestra como sólo lectura unidades o precisiones que no puede editar exactamente.
+- Venta y gasto requieren jornada abierta. La venta admite descuento y varios pagos declarados; sólo efectivo modifica la caja. Transferencias y billeteras no se verifican. Un cierre con diferencia exige motivo.
+- Cada comando conserva su identificador y contenido para reintentos: repetirlo no duplica movimientos; cambiar el contenido devuelve `409`. Conteos, ventas y cierres validan versiones y se confirman completos o se rechazan.
+- El servidor valida permisos. Administrador: usuarios, conteos y apertura/cierre; usuarios activos: consultas y operaciones autorizadas. Contraseñas con hash, sesiones de 8 horas; cinco fallos bloquean 15 minutos. Errores: `401`, `403`, `404`, `409`, `422`, `503` según sesión, permiso, existencia, conflicto, validación o disponibilidad.
 
 ## 3. Arquitectura
 
 ```mermaid
 flowchart LR
-    U[Operador / Administrador] --> A[FastAPI: rutas, validación y acceso]
-    A --> C[Servicios de compras]
-    C --> I[Inventario y conversiones]
-    A --> D[(SQLAlchemy: SQLite / PostgreSQL)]
-    C --> D
-    I --> D
+    U[React: jornada y formularios] --> A[FastAPI: sesión y validación]
+    A --> S[Servicios: compras, stock y operación]
+    S --> D[(SQLAlchemy / PostgreSQL)]
+    A --> D
 ```
 
-## 4. UML y Strategy
+Un mismo contenedor sirve React y API. Alembic versiona el esquema; SQLite permite ejecución local. La interfaz no guarda operaciones comerciales como respaldo local del servidor.
 
-Modelo principal:
+## 4. UML y Strategy
 
 ```mermaid
 classDiagram
     Proveedor "1" --> "*" Compra
-    Usuario "1" --> "*" Compra : registra
     Compra "1" *-- "1..*" ItemCompra
     ItemCompra "*" --> "1" Insumo
     Insumo "1" --> "1" Existencia
     Insumo "1" --> "*" MovimientoStock
+    JornadaCaja "1" --> "*" Venta
+    Venta "1" *-- "1..*" ItemVenta
+    ItemVenta "*" --> "1" Insumo
+    Venta "1" *-- "1..*" PagoVenta
+    JornadaCaja "1" --> "*" Gasto
 ```
 
-Strategy en [`src/compras/conversiones.py`](../src/compras/conversiones.py): `cantidad_micro()` elige `CantidadDirecta` para unidades compatibles o `CantidadPorContenido` para presentaciones comerciales. Ambas implementan `EstrategiaCantidad.calcular()`. Separa las dos reglas y permite agregar otra conversión sin cambiar el servicio de compras.
+Strategy en [`src/compras/conversiones.py`](../src/compras/conversiones.py): `cantidad_micro()` selecciona `CantidadDirecta` o `CantidadPorContenido`. Ambas implementan `EstrategiaCantidad.calcular()`, separando las reglas de conversión del servicio de compras.
 
 ```mermaid
 classDiagram
@@ -56,22 +58,14 @@ classDiagram
         <<abstract>>
         +calcular() Decimal
     }
-    class CantidadDirecta {
-        +calcular() Decimal
-    }
-    class CantidadPorContenido {
-        +calcular() Decimal
-    }
     EstrategiaCantidad <|-- CantidadDirecta
     EstrategiaCantidad <|-- CantidadPorContenido
 ```
 
-Ejemplo: `2 bolsas x 250 g = 0,5 kg` de stock. Comprar `500 g` directamente produce la misma cantidad.
+Ejemplo: `2 bolsas × 250 g = 0,5 kg`; la compra directa de `500 g` produce el mismo stock.
 
-## 5. Verificación y entrega
+## 5. Ejecución y entrega
 
-[`tests/test_api.py`](../tests/test_api.py) comprueba acceso, validaciones, compras y stock. [`tests/test_conversiones.py`](../tests/test_conversiones.py) cubre 18 casos unitarios de conversión. También se prueban migraciones y el flujo con PostgreSQL. La Action [`walos-tests.yml`](../../.github/workflows/walos-tests.yml) ejecuta tests y verifica el arranque Docker.
+[README](../README.md) · [Deploy](../DEPLOY.md) · [Presentación](Presentacion-WALOS.pptx). Los tests cubren conversiones, autenticación, compras, stock y jornadas; GitHub Actions ejecuta pruebas y comprueba Docker.
 
-Ejecución y dependencias: [README](../README.md). Publicación y comprobación: [DEPLOY](../DEPLOY.md). Presentación: [Presentacion-WALOS.pptx](Presentacion-WALOS.pptx).
-
-Fuera de esta API: producción, ventas/caja, pedidos web, reservas con seña, promociones y costos mensuales. Su planificación no implica implementación ni integración con la demo React.
+Fuera del piloto: recetas/producción automática, reservas, pagos reales y expansión multiempresa. Los documentos de la demo general describen su propio alcance.

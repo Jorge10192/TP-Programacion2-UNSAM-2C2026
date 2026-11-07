@@ -1,18 +1,21 @@
 import { useState } from 'react'
+import { useAppData } from '../../data/dataContext'
 import { Icon } from '../../app/Icon'
 import { useLeaveConfirmation } from '../../app/unsavedChanges'
-import type { DemoBusiness, DemoCatalogItem, DemoLocation, DemoPurchase, DemoSupplier } from '../../data/demo/demoStore'
+import type { Business, CatalogItem, Location, Purchase, Supplier } from '../../data/models'
 import { moneyDisplay } from '../../data/demo/catalogPolicy'
 import { physicalPurchaseLines, quantityText } from '../../data/demo/purchasePolicy'
 import { PurchaseForm } from './PurchaseForm'
 import { PurchaseDetailDialog } from './PurchaseDetailDialog'
 
-type PurchaseFilter = 'TODAS' | 'PENDIENTE' | 'RECIBIDA' | 'INFORMATIVA'
-function receiptState(purchase: DemoPurchase): Exclude<PurchaseFilter, 'TODAS'> {
+type PurchaseFilter = 'TODAS' | 'PENDIENTE' | 'RECIBIDA' | 'INFORMATIVA' | 'ANULADA'
+function receiptState(purchase: Purchase): Exclude<PurchaseFilter, 'TODAS'> {
+  if (purchase.serverStatus === 'ANULADA') return 'ANULADA'
   if (purchase.receipt) return 'RECIBIDA'
   return physicalPurchaseLines(purchase.lines).length ? 'PENDIENTE' : 'INFORMATIVA'
 }
 const purchaseStatusLabels: Record<Exclude<PurchaseFilter, 'TODAS'>, string> = {
+  ANULADA: 'Anulada',
   PENDIENTE: 'Pendiente de recepción',
   RECIBIDA: 'Recepción confirmada',
   INFORMATIVA: 'Sin recepción física',
@@ -21,12 +24,13 @@ const purchaseStatusLabels: Record<Exclude<PurchaseFilter, 'TODAS'>, string> = {
 export function PurchasesPage({
   business, purchases, catalog, suppliers, locations,
 }: {
-  business: DemoBusiness
-  purchases: DemoPurchase[]
-  catalog: DemoCatalogItem[]
-  suppliers: DemoSupplier[]
-  locations: DemoLocation[]
+  business: Business
+  purchases: Purchase[]
+  catalog: CatalogItem[]
+  suppliers: Supplier[]
+  locations: Location[]
 }) {
+  const { mode } = useAppData()
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -56,7 +60,7 @@ export function PurchasesPage({
 
   return <>
     <div className="page-heading">
-      <div><p className="eyebrow">OPERACIONES · EMPRESA DEMO</p><h1>Compras</h1>
+      <div><p className="eyebrow">OPERACIONES · EMPRESA</p><h1>Compras</h1>
         <p>Compras y recepciones de «{business.name}», vinculadas con tu Catálogo y Proveedores.</p></div>
       <button className="button button-primary" type="button" onClick={() => {
         if (creating && !requestLeave()) return
@@ -68,7 +72,7 @@ export function PurchasesPage({
       </button>
     </div>
 
-    <section className="purchase-summary" aria-label="Indicadores de compras DEMO">
+    <section className="purchase-summary" aria-label="Indicadores de compras">
       <div><span className="feature-icon blue"><Icon name="receipt"/></span><small>Compras registradas</small><strong>{purchases.length}</strong></div>
       <div><span className="feature-icon orange"><Icon name="clock"/></span><small>Pendientes de recepción</small><strong>{pending}</strong></div>
       <div><span className="feature-icon mint"><Icon name="shield"/></span><small>Con recepción confirmada</small><strong>{received}</strong></div>
@@ -76,7 +80,7 @@ export function PurchasesPage({
 
     <div className="informational-note purchase-note">
       <Icon name="shield" size={19}/>
-      <span>Guardá la compra y después confirmá la recepción para ingresar stock. <strong>Registrar no equivale a pagar.</strong> Servicios y conceptos libres no generan existencias.</span>
+      <span>Guardá la compra y después confirmá la recepción para ingresar stock. <strong>Registrar no equivale a pagar.</strong>{mode === 'demo' && ' Servicios y conceptos libres no generan existencias.'}{mode === 'api' && ' Confirmá la recepción en la ubicación principal.'}</span>
     </div>
 
     {notice && <p className="form-message success purchase-page-message" role="status">{notice}</p>}
@@ -102,6 +106,7 @@ export function PurchasesPage({
             <option value="TODAS">Todas las compras</option>
             <option value="PENDIENTE">Pendiente de recepción</option>
             <option value="RECIBIDA">Recepción confirmada</option>
+            <option value="ANULADA">Anulada</option>
             <option value="INFORMATIVA">Sin recepción física</option>
           </select>
         </label>
@@ -110,8 +115,8 @@ export function PurchasesPage({
       {purchases.length === 0 && <div className="catalog-empty">
         <span className="feature-icon blue"><Icon name="shopping" size={25}/></span>
         <h3>Todavía no registraste compras</h3>
-        <p>Podés empezar con un proveedor del directorio o con un concepto libre. Para ingresar artículos físicos, primero deben existir en Catálogo y una ubicación apta para almacenar.</p>
-        {!creating && <button type="button" className="button button-primary" onClick={() => setCreating(true)}><Icon name="plus" size={16}/> Primera compra DEMO</button>}
+        <p>{mode === 'api' ? 'Registrá un proveedor y artículos físicos en Catálogo antes de crear una compra. Confirmá la recepción en la ubicación principal.' : 'Podés empezar con un proveedor del directorio o con un concepto libre. Para ingresar artículos físicos, primero deben existir en Catálogo y una ubicación apta para almacenar.'}</p>
+        {!creating && <button type="button" className="button button-primary" onClick={() => setCreating(true)}><Icon name="plus" size={16}/> Primera compra</button>}
       </div>}
 
       {purchases.length > 0 && filtered.length === 0 && <div className="catalog-empty">

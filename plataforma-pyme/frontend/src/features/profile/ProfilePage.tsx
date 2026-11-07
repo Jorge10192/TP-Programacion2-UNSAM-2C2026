@@ -2,19 +2,20 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { DemoPhoto, DemoImagePicker } from '../common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
-import { demoGateway, profileInitials } from '../../data/demo/demoStore'
-import type { DemoBusiness, DemoMembership, DemoProfile } from '../../data/demo/demoStore'
+import { profileInitials } from '../../data/models'
+import { useAppData } from '../../data/dataContext'
+import type { Business, Membership, Profile } from '../../data/models'
 
 export function ProfilePage({
   profile,
   businesses,
   memberships,
 }: {
-  profile: DemoProfile
-  businesses: DemoBusiness[]
-  memberships: Record<string, DemoMembership>
+  profile: Profile
+  businesses: Business[]
+  memberships: Record<string, Membership>
 }) {
+  const { gateway } = useAppData()
   const [name, setName] = useState(profile.displayName)
   const [email, setEmail] = useState(profile.email)
   const [avatarInitials, setAvatarInitials] = useState(profile.avatarInitials)
@@ -43,7 +44,7 @@ export function ProfilePage({
     setNotice('')
     setBusy(true)
     try {
-      await demoGateway.saveProfile({ displayName: name, email, avatarInitials, contactPhone })
+      await gateway.saveProfile({ displayName: name, email, avatarInitials, contactPhone })
       setNotice('Perfil DEMO actualizado en este navegador.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el perfil.')
@@ -59,7 +60,7 @@ export function ProfilePage({
     setJobError('')
     setJobNotice('')
     try {
-      await demoGateway.saveMemberJobTitle(selectedBusinessId, jobDraft)
+      await gateway.saveMemberJobTitle(selectedBusinessId, jobDraft)
       setJobNotice('Función DEMO guardada únicamente para la empresa seleccionada.')
     } catch (err) {
       setJobError(err instanceof Error ? err.message : 'No se pudo guardar la función.')
@@ -79,7 +80,7 @@ export function ProfilePage({
           <div className="form-panel-header"><span className="feature-icon blue"><Icon name="user" /></span><div><h2>Datos personales DEMO</h2><p>Podés modificar tu nombre, avatar y medios de contacto de prueba.</p></div></div>
           <form onSubmit={savePersonalData} className="demo-form">
             <div className="profile-avatar-editor">
-              <DemoPhoto imageKey={demoImageKey('profile')} alt="Imagen de tu perfil DEMO" fallback={previewInitials}
+              <DemoPhoto target={{ scope: 'profile' }} alt="Imagen de tu perfil DEMO" fallback={previewInitials}
                 className="profile-avatar profile-avatar-preview"/>
               <div className="profile-avatar-editor-fields">
                 <label className="form-field">
@@ -89,7 +90,7 @@ export function ProfilePage({
                 <p className="form-hint">Hasta 4 letras. Si no elegís foto, usaremos las iniciales del nombre visible.</p>
               </div>
             </div>
-            <DemoImagePicker imageKey={demoImageKey('profile')} label="Foto del perfil personal DEMO"/>
+            <DemoImagePicker target={{ scope: 'profile' }} label="Foto del perfil personal DEMO"/>
             <label className="form-field">
               <span>Nombre visible <strong>*</strong></span>
               <input required minLength={2} maxLength={70} autoComplete="off" value={name} onChange={(event) => { setName(event.target.value); setNotice('') }} placeholder="Ej.: Usuario DEMO" />
@@ -131,7 +132,7 @@ export function ProfilePage({
       </div>
 
       <aside className="form-aside">
-        <DemoPhoto imageKey={demoImageKey('profile')} alt="Foto de tu perfil DEMO"
+        <DemoPhoto target={{ scope: 'profile' }} alt="Foto de tu perfil DEMO"
           fallback={profileInitials(profile)} className="profile-avatar"/>
         <h2>{profile.displayName}</h2>
         <p>Perfil único · Usuario DEMO</p>

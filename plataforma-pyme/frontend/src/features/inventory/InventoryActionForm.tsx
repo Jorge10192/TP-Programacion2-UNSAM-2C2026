@@ -1,35 +1,39 @@
+import { useOnlineDraft } from '../common/useOnlineDraft'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
-import { demoGateway } from '../../data/demo/demoStore'
-import type { DemoBusiness, DemoCatalogItem, DemoLocation } from '../../data/demo/demoStore'
+import { useAppData, useStockBalances } from '../../data/dataContext'
+import type { Business, CatalogItem, Location } from '../../data/models'
 import type { InventoryMovement } from '../../data/demo/inventoryPolicy'
-import { parseCountedMilli, stockBalance } from '../../data/demo/inventoryPolicy'
+import { parseCountedMilli, stockKey } from '../../data/demo/inventoryPolicy'
 import { parseQuantityMilli, quantityText } from '../../data/demo/purchasePolicy'
 
 export function InventoryActionForm({
   business, catalog, locations, movements, kind, onDone, onCancel,
 }: {
-  business: DemoBusiness
-  catalog: DemoCatalogItem[]
-  locations: DemoLocation[]
+  business: Business
+  catalog: CatalogItem[]
+  locations: Location[]
   movements: InventoryMovement[]
   kind: 'TRANSFER' | 'COUNT'
   onDone: (message: string) => void
   onCancel: () => void
 }) {
+  const { gateway, mode, snapshot } = useAppData()
+  const balances = useStockBalances(movements)
   const [requestId] = useState(() => 'demo-inventory-request-' + crypto.randomUUID())
   const [itemId, setItemId] = useState('')
-  const [sourceId, setSourceId] = useState('')
+  const [sourceId, setSourceId] = useState(mode === 'api' ? 'principal' : '')
   const [destinationId, setDestinationId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const physical = catalog.filter((item) => item.status === 'ACTIVO' && item.kind !== 'SERVICIO')
+  const { confirmDiscard, markSaved } = useOnlineDraft(Boolean(itemId || quantity || reason), busy)
+  const physical = catalog.filter((item) => item.status === 'ACTIVO' && item.kind !== 'SERVICIO' && !item.readonlyReason)
   const allowedLocations = locations.filter((location) => location.status === 'ACTIVA' && location.canStore)
   const item = physical.find((entry) => entry.id === itemId)
-  const current = item && sourceId ? stockBalance(movements, sourceId, itemId) : null
+  const current = item && sourceId ? (balances.get(stockKey(sourceId, itemId)) ?? 0) : null
   let preview: string | null = null
   try {
     if (item && quantity.trim()) {
@@ -59,13 +63,14 @@ export function InventoryActionForm({
         ? parseCountedMilli(quantity, item.unit)
         : parseQuantityMilli(quantity, item.unit)
       if (kind === 'TRANSFER') {
-        await demoGateway.transferInventory(
+        await gateway.transferInventory(
           business.id, item.id, sourceId, destinationId, amount, reason, requestId,
         )
-        onDone('Traslado DEMO registrado. La salida y la entrada se reflejan juntas, sin alterar el total entre ubicaciones.')
+        onDone('Traslado registrado. La salida y la entrada se reflejan juntas, sin alterar el total entre ubicaciones.')
       } else {
-        await demoGateway.countInventory(business.id, item.id, sourceId, amount, reason, requestId)
-        onDone('Conteo DEMO registrado: el saldo de esa ubicación se ajustó al valor contado.')
+        await (mode === 'api' ? gateway.countInventoryBatch(business.id, sourceId, [{ catalogItemId: item.id, expectedMilli: current ?? 0, countedMilli: amount, expectedVersion: snapshot?.apiStockVersions?.[item.id] ?? 0 }], reason, requestId) : gateway.countInventory(business.id, item.id, sourceId, amount, reason, requestId))
+        markSaved()
+        onDone('Conteo registrado: el saldo de esa ubicación se ajustó al valor contado.')
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo registrar el movimiento.')
@@ -122,13 +127,13 @@ export function InventoryActionForm({
           placeholder={kind === 'TRANSFER' ? 'Ej.: Reposición del local desde depósito' : 'Ej.: Conteo semanal, diferencia detectada en estante'}
           onChange={(event) => setReason(event.target.value)}/>
       </label>
-      <p className="form-hint">Esta operación se guardará en el historial DEMO. Los movimientos no se editan ni se eliminan; las correcciones se realizan con un nuevo conteo.</p>
+      <p className="form-hint">Esta operación se guardará en el historial. Los movimientos no se editan ni se eliminan; las correcciones se realizan con un nuevo conteo.</p>
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions">
-        <button type="button" className="button button-secondary" onClick={onCancel} disabled={busy}>Cancelar</button>
+        <button type="button" className="button button-secondary" onClick={() => { if (confirmDiscard()) onCancel() }} disabled={busy}>Cancelar</button>
         <button type="submit" className="button button-primary" disabled={busy || physical.length === 0 || allowedLocations.length < (kind === 'TRANSFER' ? 2 : 1)}>
           <Icon name="shield" size={16}/>
-          {busy ? 'Registrando…' : kind === 'TRANSFER' ? 'Registrar traslado DEMO' : 'Guardar conteo DEMO'}
+          {busy ? 'Registrando…' : kind === 'TRANSFER' ? 'Registrar traslado' : 'Guardar conteo'}
         </button>
       </div>
     </form>

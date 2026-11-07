@@ -5,7 +5,12 @@ import { Topbar } from './app/shell/TopBar'
 import { loadSidebarMode, saveSidebarMode } from './app/shell/sidebarPreference'
 import type { SidebarMode } from './app/shell/sidebarPreference'
 import { businessHref, navigationItems } from './app/navigation'
-import { findDemoBusiness, listDemoBusinesses, listDemoCatalog, listDemoSuppliers, listDemoPurchases, listDemoInventoryMovements, listDemoInventoryOperations, listDemoSales, listDemoExpenses, listDemoCashSessions, listDemoFinancialAccounts, listDemoQrIntents, listDemoInvitations, listDemoLocations, listDemoTeamMembers, useDemoSnapshot } from './data/demo/demoStore'
+import { findBusiness, listBusinesses, listCatalog, listSuppliers, listPurchases, listInventoryMovements, listInventoryOperations, listSales, listExpenses, listCashSessions, listFinancialAccounts, listQrIntents, listInvitations, listLocations, listTeamMembers } from './data/selectors'
+import { useAppData } from './data/dataContext'
+import { emptySnapshot } from './data/models'
+import { SessionPanel } from './app/auth/SessionPanel'
+import { OperationRecovery } from './app/auth/OperationRecovery'
+import { LegacyRecords } from './features/common/LegacyRecords'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { CreateBusinessPage } from './features/businesses/BusinessPages'
 import { BusinessDetailsPage } from './features/businesses/BusinessDetailsPage'
@@ -31,12 +36,19 @@ import './App.css'
 import './jornada.css'
 
 function App() {
-  const snapshot = useDemoSnapshot()
-  const businesses = listDemoBusinesses(snapshot)
+  const data = useAppData()
+  const snapshot = data.snapshot ?? emptySnapshot
+  const businesses = listBusinesses(snapshot)
   const [pathname, setPathname] = useState(() => window.location.pathname || '/')
   const [menuOpen, setMenuOpen] = useState(false)
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(loadSidebarMode)
   const guard = useNavigationGuard()
+  useEffect(() => {
+    if (!data.recovery) return
+    const prevent = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', prevent)
+    return () => window.removeEventListener('beforeunload', prevent)
+  }, [data.recovery])
   const historyNavigation = useRef<ReturnType<typeof installHistoryNavigation> | null>(null)
 
   useEffect(() => {
@@ -80,7 +92,7 @@ function App() {
 
   const match = /^\/b\/([^/]+)\/([^/]+)$/.exec(pathname)
   const hasBusinessPath = pathname.startsWith('/b/')
-  const business = match ? findDemoBusiness(snapshot, match[1]) : undefined
+  const business = match ? findBusiness(snapshot, match[1]) : undefined
   const section = match?.[2]
   const selectedPage = navigationItems.find((item) => item.segment === section)
   const personal = pathname === '/' || pathname === '/inicio'
@@ -98,78 +110,92 @@ function App() {
   }
   const pageTitle = business ? (selectedPage?.label ?? 'Sección desconocida') : pathname === '/perfil' ? 'Mi perfil' : pathname === '/empresas/nueva' ? 'Crear empresa' : 'Inicio'
 
-  useEffect(() => { document.title = pageTitle + ' · Asistente PyME DEMO' }, [pageTitle])
+  useEffect(() => { document.title = pageTitle + ' · Asistente PyME' + (data.mode === 'demo' ? ' DEMO' : '') }, [pageTitle, data.mode])
+
+  const logout = () => { if (guard.requestLeave()) void data.runtime.logout() }
+  const sessionLocked = data.mode === 'api' && data.session?.status !== 'authenticated'
+  if (!data.snapshot) return data.mode === 'api' ? <SessionPanel onLogout={logout}/>
+    : <main className="session-page"><section className="form-panel"><h1>Asistente PyME</h1><p role="status">{data.error ?? 'Cargando demo…'}</p></section></main>
 
   let content: ReactNode
-  if (personal) content = <Welcome navigate={navigate} businesses={businesses} />
+  if (data.mode === 'api' && (pathname === '/perfil' || pathname === '/empresas/nueva'
+    || ['empresa', 'equipo', 'cuentas', 'historial', 'guias', 'pedidos', 'analisis'].includes(section ?? ''))) {
+    content = <section className="form-panel"><h1>{pageTitle}</h1><p>Esta herramienta no está habilitada en el piloto conectado. No se guardan cambios en este navegador.</p></section>
+  }
+  else if (data.mode === 'api' && business && section === 'ubicaciones') {
+    const location = listLocations(snapshot, business.id)[0]
+    content = <section className="form-panel"><h1>Ubicación del piloto</h1><p>{location?.name ?? 'Ubicación no informada por el servidor.'}</p><p>Esta instalación usa una sola ubicación, definida por el servidor.</p></section>
+  }
+  else if (personal) content = <Welcome navigate={navigate} businesses={businesses} />
   else if (pathname === '/perfil') content = <ProfilePage profile={snapshot.profile} businesses={businesses} memberships={snapshot.membershipsByBusinessId} />
   else if (pathname === '/empresas/nueva') content = <CreateBusinessPage navigate={navigate} profile={snapshot.profile} />
   else if (hasBusinessPath && !business) content = <NotFound navigate={navigate} accessDenied />
   else if (business && section === 'inicio') {
-    const catalog = listDemoCatalog(snapshot, business.id).filter((item) => item.status === 'ACTIVO')
-    const movements = listDemoInventoryMovements(snapshot, business.id)
+    const catalog = listCatalog(snapshot, business.id).filter((item) => item.status === 'ACTIVO')
+    const movements = listInventoryMovements(snapshot, business.id)
     content = <BusinessDashboard business={business} navigate={navigate}
       catalogCount={catalog.length}
       physicalItemCount={catalog.filter((item) => item.kind !== 'SERVICIO').length}
-      storageLocationCount={listDemoLocations(snapshot, business.id).filter((location) => location.status === 'ACTIVA' && location.canStore).length}
-      pendingPurchaseCount={listDemoPurchases(snapshot, business.id).filter((purchase) => !purchase.receipt && physicalPurchaseLines(purchase.lines).length > 0).length}
-      hasStock={Array.from(stockBalances(movements).values()).some((quantity) => quantity > 0)}
-      saleCount={listDemoSales(snapshot, business.id).length}
-      openCashCount={listDemoCashSessions(snapshot, business.id).filter((session) => session.status === 'ABIERTA').length}
-      movementCount={inventoryHistoryEntries(movements, listDemoInventoryOperations(snapshot, business.id)).length}
+      storageLocationCount={listLocations(snapshot, business.id).filter((location) => location.status === 'ACTIVA' && location.canStore).length}
+      pendingPurchaseCount={listPurchases(snapshot, business.id).filter((purchase) => purchase.serverStatus !== 'ANULADA' && !purchase.receipt && physicalPurchaseLines(purchase.lines).length > 0).length}
+      hasStock={Array.from(data.mode === 'api' ? Object.values(snapshot.apiStockBalances ?? {}) : stockBalances(movements).values()).some((quantity) => quantity > 0)}
+      saleCount={listSales(snapshot, business.id).length}
+      openCashCount={listCashSessions(snapshot, business.id).filter((session) => session.status === 'ABIERTA').length}
+      movementCount={inventoryHistoryEntries(movements, listInventoryOperations(snapshot, business.id)).length}
     />
   }
   else if (business && section === 'empresa') content = <BusinessDetailsPage key={business.id} business={business} profile={snapshot.profile} jobTitle={snapshot.membershipsByBusinessId[business.id]?.jobTitle ?? ''} navigate={navigate} />
-  else if (business && section === 'ubicaciones') content = <LocationsPage key={business.id} business={business} locations={listDemoLocations(snapshot, business.id)} />
-  else if (business && section === 'equipo') content = <TeamPage key={business.id} business={business} profile={snapshot.profile} owner={snapshot.membershipsByBusinessId[business.id]} members={listDemoTeamMembers(snapshot, business.id)} invitations={listDemoInvitations(snapshot, business.id)} />
-  else if (business && section === 'catalogo') content = <CatalogPage key={business.id} business={business} items={listDemoCatalog(snapshot, business.id)} />
-  else if (business && section === 'proveedores') content = <SuppliersPage key={business.id} business={business} suppliers={listDemoSuppliers(snapshot, business.id)} />
+  else if (business && section === 'ubicaciones') content = <LocationsPage key={business.id} business={business} locations={listLocations(snapshot, business.id)} />
+  else if (business && section === 'equipo') content = <TeamPage key={business.id} business={business} profile={snapshot.profile} owner={snapshot.membershipsByBusinessId[business.id]} members={listTeamMembers(snapshot, business.id)} invitations={listInvitations(snapshot, business.id)} />
+  else if (business && section === 'catalogo') content = <CatalogPage key={business.id} business={business} items={listCatalog(snapshot, business.id)} />
+  else if (business && section === 'proveedores') content = <SuppliersPage key={business.id} business={business} suppliers={listSuppliers(snapshot, business.id)} />
   else if (business && section === 'ventas') content = <SalesPage
     key={business.id} business={business}
-    items={listDemoCatalog(snapshot, business.id)}
-    locations={listDemoLocations(snapshot, business.id)}
-    sales={listDemoSales(snapshot, business.id)}
-    accounts={listDemoFinancialAccounts(snapshot, business.id)}
-    qrIntents={listDemoQrIntents(snapshot, business.id)}
-    sessions={listDemoCashSessions(snapshot, business.id)}
-    movements={listDemoInventoryMovements(snapshot, business.id)}
+    items={listCatalog(snapshot, business.id)}
+    locations={listLocations(snapshot, business.id)}
+    sales={listSales(snapshot, business.id)}
+    accounts={listFinancialAccounts(snapshot, business.id)}
+    qrIntents={listQrIntents(snapshot, business.id)}
+    sessions={listCashSessions(snapshot, business.id)}
+    movements={listInventoryMovements(snapshot, business.id)}
   />
   else if (business && section === 'cuentas') content = <FinancialAccountsPage
-    key={business.id} business={business} accounts={listDemoFinancialAccounts(snapshot, business.id)}
+    key={business.id} business={business} accounts={listFinancialAccounts(snapshot, business.id)}
   />
   else if (business && section === 'gastos') content = <ExpensesPage
     key={business.id} business={business} snapshot={snapshot} navigate={navigate}
-    locations={listDemoLocations(snapshot, business.id)}
-    expenses={listDemoExpenses(snapshot, business.id)}
+    locations={listLocations(snapshot, business.id)}
+    expenses={listExpenses(snapshot, business.id)}
   />
   else if (business && section === 'jornadas') content = <CashSessionsPage
     key={business.id} business={business}
-    locations={listDemoLocations(snapshot, business.id)}
-    sessions={listDemoCashSessions(snapshot, business.id)}
-    sales={listDemoSales(snapshot, business.id)}
-    expenses={listDemoExpenses(snapshot, business.id)}
+    locations={listLocations(snapshot, business.id)}
+    sessions={listCashSessions(snapshot, business.id)}
+    sales={listSales(snapshot, business.id)}
+    expenses={listExpenses(snapshot, business.id)}
   />
-  else if (business && section === 'compras') content = <PurchasesPage key={business.id} business={business} purchases={listDemoPurchases(snapshot, business.id)} catalog={listDemoCatalog(snapshot, business.id)} suppliers={listDemoSuppliers(snapshot, business.id)} locations={listDemoLocations(snapshot, business.id)} />
+  else if (business && section === 'compras') content = <PurchasesPage key={business.id} business={business} purchases={listPurchases(snapshot, business.id)} catalog={listCatalog(snapshot, business.id)} suppliers={listSuppliers(snapshot, business.id)} locations={listLocations(snapshot, business.id)} />
   else if (business && (section === 'inventario' || section === 'movimientos')) content = <InventoryPage
     key={business.id + '-' + section}
-    business={business} catalog={listDemoCatalog(snapshot, business.id)}
-    locations={listDemoLocations(snapshot, business.id)}
-    movements={listDemoInventoryMovements(snapshot, business.id)}
-    operations={listDemoInventoryOperations(snapshot, business.id)}
+    business={business} catalog={listCatalog(snapshot, business.id)}
+    locations={listLocations(snapshot, business.id)}
+    movements={listInventoryMovements(snapshot, business.id)}
+    operations={listInventoryOperations(snapshot, business.id)}
     initialTab={section === 'movimientos' ? 'movements' : 'stock'}
   />
   else if (business && selectedPage) content = <ComingSoon title={selectedPage.label} description={selectedPage.description} business={business} navigate={navigate} />
   else content = <NotFound navigate={navigate} />
 
-  return <NavigationGuardContext.Provider value={guard}><div className={'app-layout menu-' + sidebarMode + (menuOpen ? ' menu-drawer-open' : '')}>
+  return <NavigationGuardContext.Provider value={guard}><div inert={sessionLocked} className={'app-layout menu-' + sidebarMode + (menuOpen ? ' menu-drawer-open' : '')}>
     <Sidebar pathname={pathname} business={business} navigate={navigate} mode={sidebarMode} isOpen={menuOpen} onClose={() => setMenuOpen(false)}/>
     <div className="main-column" inert={menuOpen}>
-      <Topbar business={business} businesses={businesses} profile={snapshot.profile} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => changeSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} />
+      <Topbar business={business} businesses={businesses} profile={snapshot.profile} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => changeSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} onLogout={logout}/>
       {business && <JourneyNavigation businessId={business.id} pathname={pathname} navigate={navigate}/>}
-      <main id="main-content" className="main-content">{content}</main>
-      <footer className="app-footer"><span>Asistente PyME · Prototipo E1-D2</span><span>Sin autenticación ni pagos reales · Datos locales DEMO</span></footer>
+      {data.mode === 'api' && data.error && <div className="form-message error app-data-warning" role="alert">{data.error} <button type="button" className="button button-secondary" onClick={() => void data.runtime.refresh()}>Actualizar datos</button></div>}
+      <main id="main-content" className="main-content">{data.mode === 'api' && <div className="online-data-status"><span>Datos del servidor · {snapshot.apiAsOf ? new Date(snapshot.apiAsOf).toLocaleString('es-AR') : 'Fecha no informada'}</span><button type="button" className="button button-secondary" disabled={data.loadState === 'refreshing' || Boolean(data.recovery)} onClick={() => void data.runtime.refresh()}>{data.loadState === 'refreshing' ? 'Actualizando…' : 'Actualizar datos'}</button></div>}{content}<LegacyRecords/></main>
+      <footer className="app-footer"><span>Asistente PyME · {data.mode === 'demo' ? 'Demo local' : 'Conectado al servidor'}</span><span>{data.mode === 'demo' ? 'Sin autenticación ni pagos reales · Datos locales DEMO' : 'Sesión autenticada · Pagos declarados, no acreditados por un banco'}</span></footer>
     </div>
-  </div></NavigationGuardContext.Provider>
+  </div>{sessionLocked && <SessionPanel modal onLogout={logout}/>}{!sessionLocked && data.recovery && <OperationRecovery operation={data.recovery}/>}</NavigationGuardContext.Provider>
 }
 
 export default App

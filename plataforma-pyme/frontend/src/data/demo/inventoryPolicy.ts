@@ -7,6 +7,7 @@ import { isDiscreteUnit, parseQuantityMilli } from './purchasePolicy.ts'
 
 export type InventoryMovementType =
   | 'RECEPCION_COMPRA' | 'TRASLADO_SALIDA' | 'TRASLADO_ENTRADA' | 'AJUSTE_CONTEO' | 'VENTA_SALIDA'
+  | 'AJUSTE_MANUAL' | 'ANULACION_COMPRA'
 
 export type InventoryMovement = {
   id: string
@@ -33,7 +34,7 @@ export type InventoryCountLine = {
   deltaMilli: number
 }
 
-export type InventoryCountInput = Pick<InventoryCountLine, 'catalogItemId' | 'expectedMilli' | 'countedMilli'>
+export type InventoryCountInput = Pick<InventoryCountLine, 'catalogItemId' | 'expectedMilli' | 'countedMilli'> & { expectedVersion?: number }
 
 export type InventoryOperation =
   | {
@@ -81,6 +82,8 @@ export const inventoryMovementLabels: Record<InventoryMovementType, string> = {
   TRASLADO_ENTRADA: 'Traslado · entrada',
   AJUSTE_CONTEO: 'Ajuste por conteo',
   VENTA_SALIDA: 'Venta · salida de stock',
+  AJUSTE_MANUAL: 'Ajuste manual',
+  ANULACION_COMPRA: 'Anulación de compra',
 }
 
 export function stockKey(locationId: string, catalogItemId: string): string {

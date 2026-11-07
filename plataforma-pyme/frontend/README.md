@@ -1,4 +1,25 @@
-# Asistente PyME — Frontend (DEMO)
+# Asistente PyME — Frontend
+
+## Modo conectado WALOS
+
+`VITE_APP_MODE` se evalúa al iniciar Vite o **al construir** el frontend. `api` usa el servidor del mismo origen; `demo`, una variable ausente o vacía usan la demo local. Un valor distinto muestra un error de configuración. Cambiar la variable después del build requiere volver a construir.
+
+```powershell
+$env:VITE_APP_MODE = 'api'
+npm.cmd run build
+```
+
+El servidor debe servir `dist`, `/auth/*` y `/api/v1/*` en el mismo origen. La ejecución combinada y la preparación de la base están documentadas en el README del backend. Se requiere un usuario activo provisionado en el servidor.
+
+El piloto conectado usa una empresa, una ubicación y ARS. Compras requieren proveedor; ventas y gastos requieren jornada abierta, incluso por transferencia. Conserva pagos divididos, descuento ARS y conteo múltiple atómico. Las altas de catálogo usan categorías y unidades configuradas en el servidor. Edición de catálogo/proveedores, servicios, traslados, fotos, equipo, QR y cuentas financieras quedan fuera de este piloto.
+
+Sólo el token y su vencimiento se conservan en `sessionStorage` de la pestaña. Los datos operativos se recuperan del servidor; los borradores y envíos pendientes viven en memoria. Un error de conexión mantiene el modo conectado. Si el resultado de un envío es incierto, «Comprobar y continuar» reintenta su mismo cuerpo y clave; si ya se confirmó, repite únicamente la lectura. No hay cola offline ni reintentos automáticos. Cerrar sesión descarta el estado de la pestaña.
+
+`npm.cmd test`, `npm.cmd run build` y `npm.cmd run lint` validan las reglas, el adaptador y la compilación. El fixture de pruebas `tests/fixtures/online-snapshot.http.json` procede de una prueba HTTP del backend con datos ficticios en una base aislada; nunca se carga en la aplicación.
+
+## Demo generalista — documentación original
+
+Las secciones siguientes describen el prototipo local y su historial previo. Sus menciones a falta de autenticación o backend se refieren exclusivamente al modo demo.
 
 Plataforma generalista de gestión para múltiples empresas y rubros, desarrollada dentro del TP de Programación 2. WALOS es sólo un negocio de ejemplo, **no** el producto ni su rubro obligatorio.
 

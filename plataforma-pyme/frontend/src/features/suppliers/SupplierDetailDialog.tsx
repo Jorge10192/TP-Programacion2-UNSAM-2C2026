@@ -1,8 +1,8 @@
+import { useAppData } from '../../data/dataContext'
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../app/Icon'
 import { DemoPhoto } from '../common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
-import type { DemoBusiness, DemoSupplier } from '../../data/demo/demoStore'
+import type { Business, Supplier } from '../../data/models'
 import {
   supplierPaymentLabels, weekdays,
   emailUrl, phoneUrl, whatsappUrl, instagramUrl, supplierShareText,
@@ -12,11 +12,12 @@ import { getLocationMapsLink } from '../../data/demo/mapsLinks'
 export function SupplierDetailDialog({
   supplier, business, onClose, onEdit,
 }: {
-  supplier: DemoSupplier
-  business: DemoBusiness
+  supplier: Supplier
+  business: Business
   onClose: () => void
-  onEdit: (supplier: DemoSupplier) => void
+  onEdit: (supplier: Supplier) => void
 }) {
+  const { mode } = useAppData()
   const ref = useRef<HTMLDialogElement>(null)
   const [shareFallback, setShareFallback] = useState('')
   const [copyNotice, setCopyNotice] = useState('')
@@ -55,23 +56,23 @@ export function SupplierDetailDialog({
   >
     <div className="catalog-detail-body">
       <div className="catalog-detail-topline">
-        <p className="eyebrow">FICHA DE PROVEEDOR · DEMO</p>
+        <p className="eyebrow">FICHA DE PROVEEDOR ·</p>
         <button type="button" className="icon-button" onClick={onClose} aria-label="Cerrar proveedor"><Icon name="close" size={20}/></button>
       </div>
       <header className="supplier-detail-header">
-        <DemoPhoto imageKey={demoImageKey('supplier', business.id, supplier.id)} alt={'Foto de ' + supplier.name}
+        <DemoPhoto target={{ scope: 'supplier', businessId: business.id, entityId: supplier.id }} alt={'Foto de ' + supplier.name}
           fallback={supplier.name.slice(0, 1).toUpperCase()} className="supplier-monogram"/>
         <div>
           <div className="supplier-title-row">
             <h2 id="supplier-detail-title">{supplier.name}</h2>
             <span className={'catalog-state '+(supplier.status === 'ACTIVO' ? 'is-active' : 'is-inactive')}>{supplier.status === 'ACTIVO' ? 'Activo' : 'Inactivo'}</span>
           </div>
-          <p>{supplier.offerings || 'Sin productos o servicios especificados'}</p>
+          {mode === 'demo' && <p>{supplier.offerings || 'Sin productos o servicios especificados'}</p>}
         </div>
-        <button type="button" className="button button-primary" onClick={() => onEdit(supplier)}>Editar ficha</button>
+        <button type="button" className="button button-primary" disabled={mode === 'api'} onClick={() => onEdit(supplier)}>Editar ficha</button>
       </header>
 
-      <div className="supplier-detail-sections">
+      {mode === 'demo' && <div className="supplier-detail-sections">
         <section className="supplier-detail-box">
           <h3><Icon name="user" size={19}/> Datos comerciales y contacto</h3>
           <dl className="supplier-detail-fields">
@@ -115,19 +116,19 @@ export function SupplierDetailDialog({
           </div>)}
           <p className="supplier-help-note">Las promociones son declaradas por el proveedor, no están verificadas ni se aplican automáticamente en Compras.</p>
         </section>
-      </div>
+      </div>}
 
       <section className="supplier-detail-box supplier-detail-notes">
         <h3><Icon name="book" size={19}/> Observaciones comerciales</h3>
         <p>{supplier.notes || 'Sin observaciones.'}</p>
-        <small>Información interna guardada sólo en este navegador de demostración.</small>
+        <small>{mode === 'api' ? 'Información interna guardada en el servidor de esta instalación.' : 'Información interna guardada sólo en este navegador de demostración.'}</small>
       </section>
       <section className="supplier-detail-box supplier-detail-related">
         <h3><Icon name="shopping" size={19}/> Compras y productos vinculados</h3>
-        <p>Todavía no hay compras ni relaciones con artículos implementadas. No se muestran montos ni transacciones ficticias.</p>
+        <p>{mode === 'api' ? 'El historial se consulta en Compras.' : 'Todavía no hay compras ni relaciones con artículos implementadas. No se muestran montos ni transacciones ficticias.'}</p>
       </section>
       <footer className="catalog-detail-footer">
-        <div className="catalog-detail-dates"><span>Creado: {new Date(supplier.createdAt).toLocaleDateString('es-AR')}</span><span>Última edición: {new Date(supplier.updatedAt).toLocaleDateString('es-AR')}</span></div>
+        <div className="catalog-detail-dates"><span>Creado: {new Date(supplier.createdAt).toLocaleDateString('es-AR')}</span>{supplier.updatedAt && <span>Última edición: {new Date(supplier.updatedAt).toLocaleDateString('es-AR')}</span>}</div>
         <button type="button" className="button button-secondary" onClick={onClose}>Cerrar ficha</button>
       </footer>
     </div>

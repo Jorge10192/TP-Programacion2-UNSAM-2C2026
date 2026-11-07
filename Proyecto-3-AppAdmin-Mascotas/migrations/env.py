@@ -10,6 +10,7 @@ from src.database.session import DATABASE_URL
 from src.compras.models import Proveedor
 from src.auth import models as auth_models
 from src.inventario import models as stock_models
+from src.operacion import models as operation_models
 
 # Objeto de configuración de Alembic
 config = context.config
@@ -41,6 +42,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        render_as_batch=True,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -67,6 +69,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            render_as_batch=True,
         )
 
         with context.begin_transaction():

@@ -1,19 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, ReactNode } from 'react'
 import { Icon } from '../../app/Icon'
+import { useAppData } from '../../data/dataContext'
+import { demoImageKey } from '../../data/demo/imagePolicy'
+import type { DemoImageScope } from '../../data/demo/imagePolicy'
 import {
   DEMO_IMAGE_CHANGED, optimizeDemoImage, readDemoImage, removeDemoImage, writeDemoImage,
 } from '../../data/demo/imageStorage'
 
-function usePhoto(imageKey: string): string | null {
+type ImageTarget = { scope: DemoImageScope; businessId?: string; entityId?: string }
+type ImageSource = { target?: ImageTarget; imageKey?: string | null }
+
+function usePhoto(imageKey: string | null): string | null {
+  const { capabilities } = useAppData()
   const [src, setSrc] = useState<string | null>(null)
   useEffect(() => {
+    if (!capabilities.photos || !imageKey) return
+    const key = imageKey
     let cancelled = false
     let version = 0
     let currentUrl: string | null = null
     function refresh() {
       const thisVersion = ++version
-      void readDemoImage(imageKey).then((blob) => {
+      void readDemoImage(key).then((blob) => {
         if (cancelled || thisVersion !== version) return
         const next = blob ? URL.createObjectURL(blob) : null
         const prior = currentUrl
@@ -37,20 +46,24 @@ function usePhoto(imageKey: string): string | null {
       window.removeEventListener(DEMO_IMAGE_CHANGED, onChange)
       if (currentUrl) URL.revokeObjectURL(currentUrl)
     }
-  }, [imageKey])
-  return src
+  }, [imageKey, capabilities.photos])
+  return capabilities.photos ? src : null
 }
 
-export function DemoPhoto({ imageKey, alt, fallback, className = '' }: {
-  imageKey: string; alt: string; fallback: ReactNode; className?: string
+export function DemoPhoto({ target, imageKey: suppliedKey, alt, fallback, className = '' }: ImageSource & {
+  alt: string; fallback: ReactNode; className?: string
 }) {
+  const { capabilities } = useAppData()
+  const imageKey = capabilities.photos ? suppliedKey ?? (target ? demoImageKey(target.scope, target.businessId, target.entityId) : null) : null
   const src = usePhoto(imageKey)
   return <span className={'demo-photo ' + className}>
     {src ? <img src={src} alt={alt} loading="lazy" /> : fallback}
   </span>
 }
 
-export function DemoImagePicker({ imageKey, label }: { imageKey: string; label: string }) {
+export function DemoImagePicker({ target, imageKey: suppliedKey, label }: ImageSource & { label: string }) {
+  const { capabilities } = useAppData()
+  const imageKey = capabilities.photos ? suppliedKey ?? (target ? demoImageKey(target.scope, target.businessId, target.entityId) : null) : null
   const fileRef = useRef<HTMLInputElement>(null)
   const src = usePhoto(imageKey)
   const [busy, setBusy] = useState(false)
@@ -60,7 +73,7 @@ export function DemoImagePicker({ imageKey, label }: { imageKey: string; label: 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file || busy) return
+    if (!file || busy || !capabilities.photos || !imageKey) return
     setError('')
     setNotice('')
     setBusy(true)
@@ -76,7 +89,7 @@ export function DemoImagePicker({ imageKey, label }: { imageKey: string; label: 
   }
 
   async function remove() {
-    if (busy) return
+    if (busy || !capabilities.photos || !imageKey) return
     setBusy(true)
     setError('')
     setNotice('')
@@ -90,6 +103,7 @@ export function DemoImagePicker({ imageKey, label }: { imageKey: string; label: 
     }
   }
 
+  if (!capabilities.photos) return <p className="form-hint">Las fotos locales no están habilitadas en el modo conectado.</p>
   return <div className="demo-image-picker">
     <DemoPhoto imageKey={imageKey} alt={'Foto de ' + label}
       fallback={<Icon name="user" size={26}/>} className="demo-image-picker-preview"/>

@@ -12,6 +12,7 @@ class Existencia(Base):
     __table_args__ = (CheckConstraint("cantidad_micro >= 0", name="stock_no_negativo"),)
     insumo_id: Mapped[int] = mapped_column(ForeignKey("insumos.id"), primary_key=True)
     cantidad_micro: Mapped[int] = mapped_column(BigInteger, default=0)
+    version: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
 
     @property
     def cantidad(self) -> Decimal:
@@ -25,6 +26,7 @@ class MovimientoStock(Base):
     insumo_id: Mapped[int] = mapped_column(ForeignKey("insumos.id"))
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
     compra_id: Mapped[int | None] = mapped_column(ForeignKey("compras.id"), nullable=True)
+    item_venta_id: Mapped[int | None] = mapped_column(ForeignKey("items_venta.id"), unique=True, nullable=True)
     clave: Mapped[str] = mapped_column(String(150), unique=True)
     huella: Mapped[str | None] = mapped_column(String(64), nullable=True)
     tipo: Mapped[str] = mapped_column(String(20))

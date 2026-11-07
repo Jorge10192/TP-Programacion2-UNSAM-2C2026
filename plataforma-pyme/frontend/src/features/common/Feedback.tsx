@@ -1,9 +1,9 @@
 import { Icon } from '../../app/Icon'
 import { businessHref } from '../../app/navigation'
-import type { DemoBusiness } from '../../app/navigation'
+import type { Business } from '../../app/navigation'
 import type { Navigate } from '../../app/types'
 
-export function ComingSoon({ title, description, navigate, business }: { title: string; description: string; navigate: Navigate; business?: DemoBusiness }) {
+export function ComingSoon({ title, description, navigate, business }: { title: string; description: string; navigate: Navigate; business?: Business }) {
   return <>
     <div className="page-heading"><div><p className="eyebrow">PLATAFORMA PYME · DEMO</p><h1>{title}</h1><p>{description}</p></div></div>
     <section className="empty-state">

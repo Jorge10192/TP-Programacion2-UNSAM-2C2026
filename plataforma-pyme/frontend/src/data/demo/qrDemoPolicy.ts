@@ -6,7 +6,7 @@ import { normalizeSaleInput, saleAmounts } from './salePolicy.ts'
 import type { SaleInput } from './salePolicy.ts'
 
 export type QrDemoStatus = 'PENDIENTE' | 'SIMULADO_APROBADO' | 'CANCELADO'
-export type DemoQrIntent = {
+export type QrIntent = {
   id: string
   requestId: string
   saleRequestId: string
@@ -34,7 +34,7 @@ export function normalizeQrSaleInput(input: SaleInput): SaleInput {
 }
 
 /** Recuperación defensiva del almacenamiento local; no confundir con una prueba de acreditación. */
-export function validQrDemoIntent(value: unknown): value is DemoQrIntent {
+export function validQrDemoIntent(value: unknown): value is QrIntent {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const raw = value as Record<string, unknown>
   if (typeof raw.id !== 'string' || !/^demo-qr-intent-[a-f0-9-]{36}$/.test(raw.id) ||

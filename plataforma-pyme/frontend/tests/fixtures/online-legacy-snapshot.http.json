@@ -1,0 +1,290 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-11-07T14:45:16.424654Z",
+  "complete": true,
+  "contexto": {
+    "businessId": "walos",
+    "locationId": "principal",
+    "currency": "ARS",
+    "user": {
+      "id": 1,
+      "nombre": "legacy",
+      "rol": "administrador",
+      "activo": true
+    },
+    "business": {
+      "id": "walos",
+      "name": "WALOS",
+      "source": "server"
+    },
+    "location": {
+      "id": "principal",
+      "businessId": "walos",
+      "name": "Principal",
+      "canSell": true,
+      "canStore": true,
+      "status": "ACTIVA"
+    },
+    "capabilities": {
+      "purchase": true,
+      "receipt": true,
+      "count": true,
+      "sale": true,
+      "expense": true,
+      "cash": true,
+      "multiBusiness": false,
+      "multiLocation": false,
+      "services": false,
+      "splitPayments": true,
+      "discounts": true,
+      "batchCount": true,
+      "qr": false,
+      "financialAccounts": false
+    }
+  },
+  "unidades": [
+    {
+      "id": 1,
+      "nombre": "Kilogramo anterior",
+      "dimension": "masa",
+      "factor": "1000.000000",
+      "codigo_ui": null,
+      "legacy_readonly": true,
+      "legacy_reasons": [
+        "UNIDAD_NO_MAPEADA"
+      ]
+    },
+    {
+      "id": 2,
+      "nombre": "Bolsa anterior",
+      "dimension": "comercial",
+      "factor": "1.000000",
+      "codigo_ui": null,
+      "legacy_readonly": true,
+      "legacy_reasons": [
+        "UNIDAD_NO_MAPEADA"
+      ]
+    },
+    {
+      "id": 3,
+      "nombre": "Unidad WALOS",
+      "dimension": "conteo",
+      "factor": "1.000000",
+      "codigo_ui": "UNIDAD",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    },
+    {
+      "id": 4,
+      "nombre": "Kilogramo WALOS",
+      "dimension": "masa",
+      "factor": "1000.000000",
+      "codigo_ui": "KILOGRAMO",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    }
+  ],
+  "categorias": [
+    {
+      "id": 1,
+      "nombre": "Materia anterior",
+      "activo": true
+    },
+    {
+      "id": 2,
+      "nombre": "General",
+      "activo": true
+    }
+  ],
+  "catalogo": [
+    {
+      "id": 1,
+      "nombre": "Harina anterior",
+      "tipo": "INSUMO",
+      "sku": null,
+      "categoria_id": 1,
+      "categoria_nombre": "Materia anterior",
+      "unidad_stock_id": 1,
+      "unidad": {
+        "id": 1,
+        "nombre": "Kilogramo anterior",
+        "dimension": "masa",
+        "factor": "1000.000000",
+        "codigo_ui": null,
+        "legacy_readonly": true,
+        "legacy_reasons": [
+          "UNIDAD_NO_MAPEADA"
+        ]
+      },
+      "vendible": false,
+      "precio_centavos": null,
+      "costo_referencia_centavos": null,
+      "descripcion": null,
+      "observaciones": null,
+      "activo": true,
+      "creada_en": null,
+      "actualizada_en": null,
+      "legacy_readonly": true,
+      "legacy_reasons": [
+        "PRECISION_HISTORICA",
+        "UNIDAD_NO_MAPEADA"
+      ]
+    }
+  ],
+  "proveedores": [
+    {
+      "id": 1,
+      "nombre": "Proveedor anterior",
+      "observaciones": null,
+      "activo": true,
+      "creada_en": "2026-11-07T14:45:16.000000Z",
+      "legacy_readonly": false,
+      "legacy_reasons": []
+    }
+  ],
+  "compras": [
+    {
+      "id": 1,
+      "request_id": null,
+      "referencia_comercial": null,
+      "referencia_legacy": "legacy-00001",
+      "proveedor_id": 1,
+      "nombre_proveedor_snapshot": null,
+      "fecha": "2026-10-12",
+      "creada_en": "2026-11-07T14:45:16.000000Z",
+      "observaciones": null,
+      "estado": "CONFIRMADA",
+      "total_centavos": 200050,
+      "items": [
+        {
+          "id": 1,
+          "insumo_id": 1,
+          "nombre_snapshot": null,
+          "sku_snapshot": null,
+          "tipo_snapshot": null,
+          "cantidad": "2.000000",
+          "unidad_compra": {
+            "id": 2,
+            "nombre": "Bolsa anterior",
+            "dimension": "comercial",
+            "factor": "1.000000",
+            "codigo_ui": null,
+            "legacy_readonly": true,
+            "legacy_reasons": [
+              "UNIDAD_NO_MAPEADA"
+            ]
+          },
+          "cantidad_stock": "10.000000",
+          "unidad_stock": {
+            "id": 1,
+            "nombre": "Kilogramo anterior",
+            "dimension": "masa",
+            "factor": "1000.000000",
+            "codigo_ui": null,
+            "legacy_readonly": true,
+            "legacy_reasons": [
+              "UNIDAD_NO_MAPEADA"
+            ]
+          },
+          "costo_unitario_centavos": null,
+          "total_centavos": 200050,
+          "lote": null,
+          "vencimiento": null
+        }
+      ],
+      "recepcion": {
+        "id": "recepcion:1",
+        "compra_id": 1,
+        "ubicacion_id": "principal",
+        "creada_en": "2026-11-07T14:45:16.000000Z",
+        "actor_id": 1,
+        "movimientos": [
+          {
+            "id": 1,
+            "item_compra_id": 1,
+            "insumo_id": 1,
+            "cantidad": "10.000000",
+            "unidad": null
+          }
+        ]
+      },
+      "legacy_readonly": true,
+      "legacy_reasons": [
+        "CONVERSION_HISTORICA",
+        "COSTO_UNITARIO_DESCONOCIDO",
+        "SNAPSHOT_HISTORICO_DESCONOCIDO",
+        "UNIDAD_NO_MAPEADA"
+      ]
+    }
+  ],
+  "stock": [
+    {
+      "insumo_id": 1,
+      "ubicacion_id": "principal",
+      "unidad": null,
+      "unidad_nombre": "Kilogramo anterior",
+      "cantidad": "10.000001",
+      "version": 0,
+      "legacy_readonly": true,
+      "legacy_reasons": [
+        "PRECISION_HISTORICA",
+        "UNIDAD_NO_MAPEADA"
+      ]
+    }
+  ],
+  "movimientos": [
+    {
+      "id": 1,
+      "tipo": "COMPRA",
+      "origen": {
+        "tipo": "COMPRA",
+        "id": 1
+      },
+      "insumo_id": 1,
+      "ubicacion_id": "principal",
+      "cantidad": "10.000000",
+      "unidad": null,
+      "unidad_nombre": "Kilogramo anterior",
+      "nombre_snapshot": null,
+      "nombre_actual": "Harina anterior",
+      "sku_snapshot": null,
+      "usuario_id": 1,
+      "creada_en": "2026-11-07T14:45:16.000000Z",
+      "motivo": "Recepción anterior",
+      "legacy_readonly": true,
+      "legacy_reasons": [
+        "SNAPSHOT_HISTORICO_DESCONOCIDO",
+        "UNIDAD_NO_MAPEADA"
+      ]
+    },
+    {
+      "id": 2,
+      "tipo": "AJUSTE_MANUAL",
+      "origen": {
+        "tipo": "AJUSTE_MANUAL",
+        "id": 2
+      },
+      "insumo_id": 1,
+      "ubicacion_id": "principal",
+      "cantidad": "0.000001",
+      "unidad": null,
+      "unidad_nombre": "Kilogramo anterior",
+      "nombre_snapshot": null,
+      "nombre_actual": "Harina anterior",
+      "sku_snapshot": null,
+      "usuario_id": 1,
+      "creada_en": "2026-11-07T14:45:16.000000Z",
+      "motivo": "Precisión histórica",
+      "legacy_readonly": true,
+      "legacy_reasons": [
+        "PRECISION_HISTORICA",
+        "SNAPSHOT_HISTORICO_DESCONOCIDO",
+        "UNIDAD_NO_MAPEADA"
+      ]
+    }
+  ],
+  "conteos": [],
+  "ventas": [],
+  "gastos": [],
+  "jornadas": []
+}

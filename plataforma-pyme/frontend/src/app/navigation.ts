@@ -37,4 +37,4 @@ export function businessHref(businessId: string, segment: string) {
   return '/b/' + encodeURIComponent(businessId) + '/' + segment
 }
 
-export type { DemoBusiness } from '../data/demo/demoStore'
+export type { Business } from '../data/models'

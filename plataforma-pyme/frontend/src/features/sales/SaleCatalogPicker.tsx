@@ -1,12 +1,12 @@
+import { useAppData, useStockBalances } from '../../data/dataContext'
 import { useState } from 'react'
 import { Icon } from '../../app/Icon'
-import type { DemoBusiness, DemoCatalogItem } from '../../data/demo/demoStore'
+import type { Business, CatalogItem } from '../../data/models'
 import type { InventoryMovement } from '../../data/demo/inventoryPolicy'
-import { stockBalances, stockKey } from '../../data/demo/inventoryPolicy'
+import { stockKey } from '../../data/demo/inventoryPolicy'
 import { moneyDisplay } from '../../data/demo/catalogPolicy'
 import { quantityText } from '../../data/demo/purchasePolicy'
 import { DemoPhoto } from '../common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
 
 function normalizeSearch(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-AR').trim()
@@ -19,17 +19,18 @@ function normalizeSearch(value: string): string {
 export function SaleCatalogPicker({
   business, items, locationId, movements, selectedMilli, selectedIds, onAdd,
 }: {
-  business: DemoBusiness
-  items: DemoCatalogItem[]
+  business: Business
+  items: CatalogItem[]
   locationId: string
   movements: InventoryMovement[]
   selectedMilli: ReadonlyMap<string, number>
   selectedIds: ReadonlySet<string>
   onAdd: (id: string) => void
 }) {
+  const { capabilities } = useAppData()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
-  const balances = stockBalances(movements)
+  const balances = useStockBalances(movements)
   const categories = Array.from(new Set(items.map((item) => item.category))).sort((a, b) => a.localeCompare(b, 'es'))
   const search = normalizeSearch(query)
   const visible = items.filter((item) =>
@@ -38,12 +39,12 @@ export function SaleCatalogPicker({
 
   return <section className="sales-picker" aria-label="Selector visual de artículos">
     <div className="sales-subheading">
-      <div><h3>Seleccionar artículos</h3><p>Elegí productos o servicios del catálogo. También podés cargarlos desde el formulario de abajo.</p></div>
+      <div><h3>Seleccionar artículos</h3><p>{capabilities.services ? 'Elegí productos o servicios del catálogo.' : 'Elegí artículos del catálogo.'} También podés cargarlos desde el formulario de abajo.</p></div>
       <span className="small-pill">{visible.length} artículos</span>
     </div>
     <div className="sales-picker-filters">
       <label className="form-field"><span>Buscar por nombre, SKU o descripción</span>
-        <input type="search" value={query} placeholder="Buscar productos o servicios…" onChange={(event) => setQuery(event.target.value)}/>
+        <input type="search" value={query} placeholder={capabilities.services ? 'Buscar productos o servicios…' : 'Buscar artículos…'} onChange={(event) => setQuery(event.target.value)}/>
       </label>
       <label className="form-field"><span>Categoría</span>
         <select value={category} onChange={(event) => setCategory(event.target.value)}>
@@ -63,7 +64,7 @@ export function SaleCatalogPicker({
           const atLimit = !selectedIds.has(item.id) && selectedIds.size >= 30
           return <article key={item.id} className={'sales-product-card' + (outOfStock ? ' is-out' : '')}>
             <div className="sales-product-card-top">
-              <DemoPhoto imageKey={demoImageKey('catalog', business.id, item.id)} alt={'Imagen de ' + item.name}
+              <DemoPhoto target={{ scope: 'catalog', businessId: business.id, entityId: item.id }} alt={'Imagen de ' + item.name}
                 fallback={<Icon name={service ? 'briefcase' : 'package'} size={23}/>} className="sales-product-photo feature-icon blue"/>
               <span className="sales-product-category">{item.category}</span>
             </div>

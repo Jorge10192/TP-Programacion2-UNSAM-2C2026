@@ -1,26 +1,29 @@
+import { useOnlineDraft } from '../common/useOnlineDraft'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
-import { demoGateway } from '../../data/demo/demoStore'
-import type { DemoBusiness, DemoCatalogItem, DemoLocation } from '../../data/demo/demoStore'
+import { useAppData, useStockBalances } from '../../data/dataContext'
+import type { Business, CatalogItem, Location } from '../../data/models'
 import type { InventoryCountInput, InventoryMovement } from '../../data/demo/inventoryPolicy'
-import { parseCountedMilli, stockBalance } from '../../data/demo/inventoryPolicy'
+import { parseCountedMilli, stockKey } from '../../data/demo/inventoryPolicy'
 import { quantityText } from '../../data/demo/purchasePolicy'
 
-type PreviewLine = InventoryCountInput & { item: DemoCatalogItem; deltaMilli: number }
+type PreviewLine = InventoryCountInput & { item: CatalogItem; deltaMilli: number }
 
 export function InventoryBatchCount({
   business, catalog, locations, movements, onDone, onCancel,
 }: {
-  business: DemoBusiness
-  catalog: DemoCatalogItem[]
-  locations: DemoLocation[]
+  business: Business
+  catalog: CatalogItem[]
+  locations: Location[]
   movements: InventoryMovement[]
   onDone: (message: string) => void
   onCancel: () => void
 }) {
+  const { gateway, mode, snapshot } = useAppData()
+  const balances = useStockBalances(movements)
   const [requestId] = useState(() => 'demo-inventory-request-' + crypto.randomUUID())
-  const [locationId, setLocationId] = useState('')
+  const [locationId, setLocationId] = useState(mode === 'api' ? 'principal' : '')
   const [values, setValues] = useState<Record<string, string>>({})
   const [search, setSearch] = useState('')
   const [reason, setReason] = useState('')
@@ -29,8 +32,9 @@ export function InventoryBatchCount({
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  const { confirmDiscard, markSaved } = useOnlineDraft(Object.values(values).some(value => value.trim() !== '') || Boolean(reason), busy)
   const locationsAllowed = locations.filter((location) => location.status === 'ACTIVA' && location.canStore)
-  const physical = catalog.filter((item) => item.status === 'ACTIVO' && item.kind !== 'SERVICIO')
+  const physical = catalog.filter((item) => item.status === 'ACTIVO' && item.kind !== 'SERVICIO' && !item.readonlyReason)
     .sort((a, b) => a.name.localeCompare(b.name, 'es'))
   const term = search.trim().toLocaleLowerCase('es-AR')
   const visible = physical.filter((item) =>
@@ -44,7 +48,7 @@ export function InventoryBatchCount({
     setValues((previous) => ({ ...previous, [id]: next }))
     setError('')
   }
-  function stepValue(item: DemoCatalogItem, direction: 1 | -1) {
+  function stepValue(item: CatalogItem, direction: 1 | -1) {
     const oldValue = values[item.id]
     if ((!oldValue || !oldValue.trim()) && direction === -1) {
       setError('El artículo sigue sin contar. Usá «Marcar 0» si verificaste que no hay existencias.')
@@ -73,9 +77,9 @@ export function InventoryBatchCount({
       }
       const lines = counted.map((item) => {
         const countedMilli = parseCountedMilli(values[item.id], item.unit)
-        const expectedMilli = stockBalance(movements, locationId, item.id)
+        const expectedMilli = (balances.get(stockKey(locationId, item.id)) ?? 0)
         return {
-          catalogItemId: item.id, item, expectedMilli, countedMilli,
+          catalogItemId: item.id, item, expectedMilli, countedMilli, expectedVersion: snapshot?.apiStockVersions?.[item.id],
           deltaMilli: countedMilli - expectedMilli,
         }
       })
@@ -91,14 +95,15 @@ export function InventoryBatchCount({
     setBusy(true)
     setError('')
     try {
-      const operation = await demoGateway.countInventoryBatch(
+      const operation = await gateway.countInventoryBatch(
         business.id, locationId,
-        review.map(({ catalogItemId, expectedMilli, countedMilli }) => ({ catalogItemId, expectedMilli, countedMilli })),
+        review.map(({ catalogItemId, expectedMilli, countedMilli, expectedVersion }) => ({ catalogItemId, expectedMilli, countedMilli, expectedVersion })),
         reason, requestId,
       )
       if (operation.kind !== 'BATCH_COUNT') throw new Error('Respuesta de conteo no esperada.')
       const modified = operation.lines.filter((line) => line.deltaMilli !== 0).length
-      onDone('Control DEMO guardado: ' + operation.lines.length + ' artículos revisados y ' + modified +
+      markSaved()
+      onDone('Control guardado: ' + operation.lines.length + ' artículos revisados y ' + modified +
         ' ajustes de stock. Los artículos sin contar no se modificaron.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo confirmar la sesión.')
@@ -113,7 +118,7 @@ export function InventoryBatchCount({
       <span className="feature-icon blue"><Icon name="boxes" size={24}/></span>
       <div>
         <h2>Control de stock · Conteo por ubicación</h2>
-        <p>Contá varios artículos, revisá las diferencias y aplicá todos los ajustes en una sola operación DEMO.</p>
+        <p>Contá varios artículos, revisá las diferencias y aplicá todos los ajustes en una sola operación.</p>
       </div>
     </div>
     <div className="informational-note inventory-note">
@@ -140,7 +145,7 @@ export function InventoryBatchCount({
         !chosenLocation ? <p className="inventory-attention">Seleccioná una ubicación para cargar las cantidades.</p> :
         <div className="inventory-audit-list" aria-label="Artículos para contar">
           {visible.map((item) => {
-            const oldMilli = stockBalance(movements, locationId, item.id)
+            const oldMilli = (balances.get(stockKey(locationId, item.id)) ?? 0)
             const input = values[item.id] ?? ''
             let delta: number | null = null
             if (input.trim()) {
@@ -180,7 +185,7 @@ export function InventoryBatchCount({
       </label>
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions">
-        <button type="button" className="button button-secondary" onClick={onCancel}>Cancelar</button>
+        <button type="button" className="button button-secondary" onClick={() => { if (confirmDiscard()) onCancel() }}>Cancelar</button>
         <button className="button button-primary" type="submit" disabled={!chosenLocation || counted.length === 0}>
           Revisar diferencias <Icon name="arrow" size={17}/>
         </button>
@@ -206,7 +211,7 @@ export function InventoryBatchCount({
       <div className="form-actions">
         <button type="button" className="button button-secondary" disabled={busy} onClick={() => setStage('count')}>Volver a modificar</button>
         <button type="button" className="button button-primary" disabled={busy} onClick={() => void confirm()}>
-          <Icon name="shield" size={17}/>{busy ? 'Confirmando…' : 'Confirmar control DEMO'}
+          <Icon name="shield" size={17}/>{busy ? 'Confirmando…' : 'Confirmar control'}
         </button>
       </div>
     </div>}

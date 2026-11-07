@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
-import { demoGateway } from '../../data/demo/demoStore'
-import type { DemoBusiness } from '../../data/demo/demoStore'
+import { useAppData } from '../../data/dataContext'
+import type { Business } from '../../data/models'
 import { blankFinancialAccount, financialAccountShareText, financialChannelLabels, financialKindLabels, maskedAccountIdentifier } from '../../data/demo/financialAccountPolicy'
-import type { DemoFinancialAccount, FinancialAccountChannel, FinancialAccountInput, FinancialAccountKind } from '../../data/demo/financialAccountPolicy'
+import type { FinancialAccount, FinancialAccountChannel, FinancialAccountInput, FinancialAccountKind } from '../../data/demo/financialAccountPolicy'
 
-type StatusFilter = 'TODAS' | DemoFinancialAccount['status']
+type StatusFilter = 'TODAS' | FinancialAccount['status']
 type KindFilter = 'TODAS' | FinancialAccountKind
 
 export function FinancialAccountsPage({ business, accounts }: {
-  business: DemoBusiness; accounts: DemoFinancialAccount[]
+  business: Business; accounts: FinancialAccount[]
 }) {
+  const { gateway } = useAppData()
   const [editingId, setEditingId] = useState<string | 'nueva' | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -41,21 +42,21 @@ export function FinancialAccountsPage({ business, accounts }: {
   async function save(input: FinancialAccountInput) {
     if (!editingId) return
     if (editingId === 'nueva') {
-      const created = await demoGateway.createFinancialAccount(business.id, input)
+      const created = await gateway.createFinancialAccount(business.id, input)
       setNotice('Cuenta DEMO «' + created.label + '» registrada para ' + business.name + '. No se vinculó a ningún banco real.')
     } else {
-      await demoGateway.updateFinancialAccount(business.id, editingId, input)
+      await gateway.updateFinancialAccount(business.id, editingId, input)
       setNotice('Datos de referencia actualizados. No se alteraron ventas, gastos ni arqueos anteriores.')
     }
     setEditingId(null)
     setStatusFilter('TODAS')
   }
-  async function changeStatus(account: DemoFinancialAccount) {
+  async function changeStatus(account: FinancialAccount) {
     if (busy) return
     setBusy(true); setError(''); setNotice('')
     try {
       const next = account.status === 'ACTIVA' ? 'INACTIVA' : 'ACTIVA'
-      await demoGateway.setFinancialAccountStatus(business.id, account.id, next)
+      await gateway.setFinancialAccountStatus(business.id, account.id, next)
       setNotice(next === 'INACTIVA'
         ? 'Cuenta desactivada sólo en la plataforma: ya no aparece para nuevos pagos o cobros. Los registros previos permanecen, y el banco externo no se modifica.'
         : 'Cuenta reactivada. Sus datos siguen siendo únicamente de referencia DEMO.')
@@ -65,17 +66,17 @@ export function FinancialAccountsPage({ business, accounts }: {
       setError(caught instanceof Error ? caught.message : 'No se pudo cambiar el estado.')
     } finally { setBusy(false) }
   }
-  async function setMain(account: DemoFinancialAccount) {
+  async function setMain(account: FinancialAccount) {
     if (busy) return
     setBusy(true); setError(''); setNotice('')
     try {
-      await demoGateway.setPrimaryFinancialAccount(business.id, account.id)
+      await gateway.setPrimaryFinancialAccount(business.id, account.id)
       setNotice('«' + account.label + '» marcada como cuenta principal de referencia. No redirige cobros ni transferencias.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo cambiar la cuenta principal.')
     } finally { setBusy(false) }
   }
-  async function copy(account: DemoFinancialAccount) {
+  async function copy(account: FinancialAccount) {
     setError(''); setNotice('')
     try {
       await navigator.clipboard.writeText(financialAccountShareText(account))
@@ -203,7 +204,7 @@ export function FinancialAccountsPage({ business, accounts }: {
 }
 
 function FinancialAccountForm({ account, onSave, onCancel }: {
-  account?: DemoFinancialAccount
+  account?: FinancialAccount
   onSave: (input: FinancialAccountInput) => Promise<void>
   onCancel: () => void
 }) {

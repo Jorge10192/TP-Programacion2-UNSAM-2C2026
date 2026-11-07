@@ -1,26 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../app/Icon'
 import { useUnsavedChanges } from '../../app/unsavedChanges'
-import { demoGateway } from '../../data/demo/demoStore'
-import type { DemoPurchase, DemoBusiness, DemoLocation } from '../../data/demo/demoStore'
+import { useAppData } from '../../data/dataContext'
+import type { Purchase, Business, Location } from '../../data/models'
 import { moneyDisplay } from '../../data/demo/catalogPolicy'
 import { physicalPurchaseLines, quantityText } from '../../data/demo/purchasePolicy'
 
 export function PurchaseDetailDialog({
   purchase, business, locations, onClose,
 }: {
-  purchase: DemoPurchase
-  business: DemoBusiness
-  locations: DemoLocation[]
+  purchase: Purchase
+  business: Business
+  locations: Location[]
   onClose: () => void
 }) {
+  const { gateway, mode, snapshot } = useAppData()
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const [locationId, setLocationId] = useState('')
+  const [locationId, setLocationId] = useState(mode === 'api' ? 'principal' : '')
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const { confirmDiscard, markSaved } = useUnsavedChanges(!purchase.receipt && locationId !== '', busy)
+  const { confirmDiscard, markSaved } = useUnsavedChanges(!purchase.receipt && (mode === 'demo' ? locationId !== '' : confirming), busy)
   const physical = physicalPurchaseLines(purchase.lines)
   const availableLocations = locations.filter((location) => location.status === 'ACTIVA' && location.canStore)
 
@@ -41,9 +42,9 @@ export function PurchaseDetailDialog({
     setError('')
     setNotice('')
     try {
-      await demoGateway.receivePurchase(business.id, purchase.id, locationId)
+      await gateway.receivePurchase(business.id, purchase.id, locationId)
       markSaved()
-      setNotice('Recepción DEMO confirmada una única vez. El Inventario de la ubicación ya está actualizado y los movimientos quedaron guardados.')
+      setNotice('Recepción confirmada una única vez. El Inventario de la ubicación ya está actualizado y los movimientos quedaron guardados.')
       setConfirming(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No fue posible confirmar la recepción.')
@@ -65,7 +66,7 @@ export function PurchaseDetailDialog({
   >
     <div className="catalog-detail-body">
       <div className="catalog-detail-topline">
-        <p className="eyebrow">COMPRA REGISTRADA · DEMO</p>
+        <p className="eyebrow">COMPRA REGISTRADA ·</p>
         <button type="button" className="icon-button" disabled={busy} onClick={close} aria-label="Cerrar detalle de compra"><Icon name="close" size={20}/></button>
       </div>
       <header className="purchase-detail-head">
@@ -95,7 +96,7 @@ export function PurchaseDetailDialog({
 
       <section className="purchase-detail-section">
         <h3><Icon name="boxes" size={18}/> Paso 2 · Ubicación y recepción de mercadería</h3>
-        {purchase.receipt ? <>
+        {purchase.serverStatus === 'ANULADA' ? <p className="form-message error">Compra anulada. La recepción histórica se conserva; esta compra no admite ingreso de stock.</p> : purchase.receipt ? <>
           <div className="purchase-received-banner"><Icon name="shield" size={20}/><span>Recepción confirmada · {locationName} · {new Date(purchase.receipt.createdAt).toLocaleString('es-AR')}</span></div>
           <div className="purchase-received-lines">{purchase.receipt.movements.map((movement) => {
             const line = purchase.lines.find((entry) => entry.id === movement.purchaseLineId)
@@ -118,7 +119,7 @@ export function PurchaseDetailDialog({
                   {availableLocations.map((location) => <option key={location.id} value={location.id}>{location.name} · {location.kind}</option>)}
                 </select>
               </label>
-              {!confirming && <button type="button" className="button button-primary" disabled={!locationId || busy} onClick={() => setConfirming(true)}>
+              {!confirming && <button type="button" className="button button-primary" disabled={!locationId || busy || (mode === 'api' && snapshot?.apiCapabilities?.receipt !== true)} onClick={() => setConfirming(true)}>
                 <Icon name="truck" size={17}/> Revisar ubicación y mercadería
               </button>}
               {confirming && <div className="purchase-confirm-receipt">
@@ -135,7 +136,7 @@ export function PurchaseDetailDialog({
         {error && <p className="form-message error purchase-inline-feedback" role="alert">{error}</p>}
       </section>
       <footer className="catalog-detail-footer">
-        <div className="catalog-detail-dates"><span>Empresa: {business.name}</span><span>Registrada en DEMO: {new Date(purchase.createdAt).toLocaleString('es-AR')}</span></div>
+        <div className="catalog-detail-dates"><span>Empresa: {business.name}</span><span>Registrada en: {new Date(purchase.createdAt).toLocaleString('es-AR')}</span></div>
         <button type="button" className="button button-secondary" disabled={busy} onClick={close}>Cerrar detalle</button>
       </footer>
     </div>
