@@ -6,7 +6,7 @@ import type { DemoBusiness, DemoCatalogItem, DemoLocation, DemoSale } from '../.
 import type { DemoCashSession } from '../../data/demo/cashPolicy'
 import { moneyDisplay, moneyInput, parseMoneyCents } from '../../data/demo/catalogPolicy'
 import { lineTotalCents, parseQuantityMilli, quantityText } from '../../data/demo/purchasePolicy'
-import { saleAmounts, salePaymentLabels } from '../../data/demo/salePolicy'
+import { remainingLastSalePaymentCents, saleAmounts, salePaymentLabels } from '../../data/demo/salePolicy'
 import type { SaleInput, SalePaymentMethod } from '../../data/demo/salePolicy'
 import { DemoPhoto } from '../common/DemoPhoto'
 import { demoImageKey } from '../../data/demo/imagePolicy'
@@ -292,17 +292,9 @@ function SaleForm({ business, items, locations, movements, sessions, accounts, o
   function fillPayment() {
     if (!totals || payments.length === 0) return
     try {
-      // El último medio recibe sólo el saldo restante: los anteriores no cambian.
-      const previous = payments.slice(0, -1).reduce((sum, payment) => {
-        const cents = parseMoneyCents(payment.amount)
-        if (cents === null || cents <= 0) {
-          throw new Error('Completá primero los importes de los medios anteriores.')
-        }
-        return sum + cents
-      }, 0)
-      const difference = totals.totalCents - previous
-      if (difference <= 0) throw new Error('Los pagos anteriores ya cubren o superan el total.')
-      patchPayment(payments[payments.length - 1].key, { amount: moneyInput(difference) })
+      const amounts = payments.map(payment => parseMoneyCents(payment.amount))
+      const remainder = remainingLastSalePaymentCents(totals.totalCents, amounts)
+      patchPayment(payments[payments.length - 1].key, { amount: moneyInput(remainder) })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo completar el saldo.')
     }
