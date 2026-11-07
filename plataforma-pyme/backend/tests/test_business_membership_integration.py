@@ -126,18 +126,20 @@ def test_database_enforces_valid_states_and_roles(
             user = _make_user(conn)
             business = _make_business(conn, user)
             if table == "business":
-                query = insert(Business).values(
-                    id=uuid4(), name="Empresa inválida",
-                    category="Servicios", activity_kind="SERVICIOS",
-                    founder_user_id=user, status="ACTIVA",
-                    **{column: invalid},
-                )
+                values = {
+                    "id": uuid4(), "name": "Empresa inválida",
+                    "category": "Servicios", "activity_kind": "SERVICIOS",
+                    "founder_user_id": user, "status": "ACTIVA",
+                }
+                values[column] = invalid
+                query = insert(Business).values(**values)
             else:
-                query = insert(Membership).values(
-                    id=uuid4(), business_id=business, user_id=user,
-                    role="TRABAJADOR", status="ACTIVA",
-                    **{column: invalid},
-                )
+                values = {
+                    "id": uuid4(), "business_id": business, "user_id": user,
+                    "role": "TRABAJADOR", "status": "ACTIVA",
+                }
+                values[column] = invalid
+                query = insert(Membership).values(**values)
             _check_rejected(conn, query)
         finally:
             transaction.rollback()
