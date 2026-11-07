@@ -72,9 +72,7 @@ test('DEMO: conserva el borrador al cancelar cierre, navegación y recarga; desc
   await expectDraftPreserved()
 
   const unloadEvent = page.waitForEvent('dialog')
-  const reloadAttempt = page.reload().catch((error: unknown) => {
-    if (!(error instanceof Error) || !error.message.includes('net::ERR_ABORTED')) throw error
-  })
+  const reloadAttempt = page.evaluate(() => window.location.reload())
   const unloadDialog = await unloadEvent
   expect(unloadDialog.type()).toBe('beforeunload')
   // Ambos proyectos usan Chromium: el aviso nativo no expone el mensaje personalizado.
