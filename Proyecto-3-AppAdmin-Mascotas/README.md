@@ -2,6 +2,7 @@
 
 FastAPI, SQLAlchemy y Alembic · Python 3.12.
 [Documentación del sistema](Ingenieria%20de%20Software/Documentacion.md).
+[Presentación](Ingenieria%20de%20Software/Presentacion-WALOS.pptx) · [Deploy](DEPLOY.md).
 
 ## Ejecutar (PowerShell)
 
@@ -30,4 +31,4 @@ docker compose exec api python -m src.auth.bootstrap admin
 
 Docker aplica migraciones y conserva SQLite en el volumen `datos`. Fuera de Docker, `walos.db` queda junto al proyecto, independientemente de la carpeta de ejecución.
 
-Para desplegar, usar este Dockerfile con HTTPS y `DATABASE_URL` de PostgreSQL; el puerto se toma de `PORT`. Ver `.env.example`. Mantener respaldo diario durante 7 días y comprobar su restauración. `/health` devuelve 503 si la base no está disponible o faltan migraciones.
+Para publicar la API, seguir [DEPLOY.md](DEPLOY.md). La raíz incluye `render.yaml` con despliegue manual, `/health` y `DATABASE_URL` privada. El puerto se toma de `PORT`; ver `.env.example`. `/health` devuelve 503 si la base no está disponible o faltan migraciones.
