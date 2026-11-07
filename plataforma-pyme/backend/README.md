@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-0.3 (FastAPI + PostgreSQL 16 Compose + SQLAlchemy 2.x + migraciones Alembic). /ready consulta PostgreSQL; no hay tablas comerciales ni autenticacion. React DEMO permanece independiente.
+**Estado:** E2-1.1 (infraestructura E2-0 validada + primera tabla de identidad global `users`, migración y pruebas). Todavía no hay endpoints de registro/login ni empresas; el frontend React DEMO permanece independiente.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -215,3 +215,60 @@ El workflow `.github/workflows/plataforma-pyme-backend.yml` es independiente del
 Las credenciales de CI son **ficticias y efímeras** (no las del equipo). El pipeline del frontend sigue independiente. Verificar resultados en la pestaña **Actions** antes de afirmar que CI está aprobado.
 
 El backend dockerizado todavía no está desplegado públicamente. Una imagen construida y un pipeline exitoso **no sustituyen el despliegue requerido por el TP**.
+
+## E2-1.1 — Primera tabla: identidad global de usuario
+
+**Fuente funcional:** RF-01, CU-01 y CU-02; Documento 03, sección 3.1 y UML 03A.
+
+Se incorpora la entidad `User` con la tabla PostgreSQL `users`, sin usuarios DEMO persistidos, sin empresa obligatoria y sin roles globales. La migración `e2101_users` incluye:
+
+- `id`: UUID único como clave primaria.
+- `email_normalizado`: correo único, no nulo, en minúsculas y sin espacios exteriores, hasta 254 caracteres. E2-1.2 completará la validación semántica del correo.
+- `password_hash`: no nulo, espacio para un hash de contraseña moderno. **El almacenamiento por sí solo no garantiza que sea un hash Argon2id**; E2-1.2 hará el hash y su verificación.
+- `display_name`: nombre de 2 a 70 caracteres; `contact_phone` opcional de máximo 30, según el perfil del frontend.
+- `status`: `ACTIVO` o `DESHABILITADO`, valor inicial `ACTIVO`.
+- `created_at` y `updated_at`: fechas con zona horaria. El ORM actualiza `updated_at` al modificar registros desde SQLAlchemy; aún no existe un trigger para modificaciones SQL externas.
+
+Las iniciales del avatar pueden derivarse en la UI. Roles y permisos pertenecerán a la tabla `memberships` en un incremento posterior, nunca a `users`.
+
+### Aplicar y verificar la migración
+
+Desde `plataforma-pyme/`, con PostgreSQL Docker saludable:
+
+```powershell
+git pull origin main
+docker compose ps
+cd backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+```
+
+Resultado esperado: `e2101_users (head)` y `No new upgrade operations detected.`
+
+Las pruebas de integración realizan inserciones con correos aleatorios dentro de transacciones PostgreSQL que **siempre se revierten**. No dejan usuarios de prueba en la base:
+
+```powershell
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -v
+Remove-Item Env:\RUN_DB_INTEGRATION
+```
+
+Para comprobar la revisión y la tabla, desde `plataforma-pyme/`:
+
+```powershell
+cd ..
+docker compose exec -T db psql -U pyme -d asistente_pyme -c "SELECT version_num FROM alembic_version;"
+docker compose exec -T db psql -U pyme -d asistente_pyme -c "\d users"
+```
+
+`\d users` es una orden interna de `psql`, no SQL ordinario; muestra columnas, restricciones e índices. Esperado: revisión `e2101_users`, tabla `users` y constraint `uq_users_email_normalizado`.
+
+**No ejecutes `alembic downgrade` sobre datos reales**, porque revertir esta migración borra la tabla de usuarios.
+
+### Alcance y siguiente paso
+
+- **Hecho en código:** modelo, tabla, migración y pruebas de unicidad/normalización/estado y rollback.
+- **Pendiente de validar en el equipo:** aplicación de migración y tests de integración.
+- **E2-1.2 (después):** normalización de correo, Argon2id, registro y login reales, DTOs seguros y tests HTTP. La política concreta de credenciales se cerrará antes de programarla.
+- **E2-1.3:** empresa, rol por membresía y controles multiempresa. El UML 03A seguirá siendo conceptual hasta integrar estas entidades y sus relaciones.
