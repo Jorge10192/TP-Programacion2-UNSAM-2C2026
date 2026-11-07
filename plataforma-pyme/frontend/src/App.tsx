@@ -109,6 +109,7 @@ function App() {
     items={listDemoCatalog(snapshot, business.id)}
     locations={listDemoLocations(snapshot, business.id)}
     sales={listDemoSales(snapshot, business.id)}
+    accounts={listDemoFinancialAccounts(snapshot, business.id)}
     sessions={listDemoCashSessions(snapshot, business.id)}
     movements={listDemoInventoryMovements(snapshot, business.id)}
   />
