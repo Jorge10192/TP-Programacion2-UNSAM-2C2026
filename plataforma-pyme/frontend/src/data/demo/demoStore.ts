@@ -19,7 +19,7 @@ import { normalizeSaleInput, saleAmounts, saleInventoryMovements, validateSalePa
 import type { SaleInput, SaleLineSnapshot, SalePayment } from './salePolicy'
 import { cashCents, cashSessionTotals, cashText, makeCloseSnapshot, normalizeExpense } from './cashPolicy'
 import type { CashCloseInput, DemoCashSession, DemoExpense, ExpenseInput } from './cashPolicy'
-import { financialAccountKey, normalizeFinancialAccountInput } from './financialAccountPolicy'
+import { accountSupportsDeclaredPayment, financialAccountKey, normalizeFinancialAccountInput } from './financialAccountPolicy'
 import type { DemoFinancialAccount, FinancialAccountInput } from './financialAccountPolicy'
 
 export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
@@ -435,6 +435,15 @@ function financialAccountOfBusiness(businessId: string, accountId: string): Demo
   const account = state.financialAccountsById[accountId]
   if (!account || account.businessId !== businessId) {
     throw new Error('La cuenta DEMO no pertenece a la empresa seleccionada.')
+  }
+  return account
+}
+
+function accountForDeclaredPayment(businessId: string, method: string, accountId?: string | null): DemoFinancialAccount | null {
+  if (!accountId) return null
+  const account = financialAccountOfBusiness(businessId, accountId)
+  if (!accountSupportsDeclaredPayment(account, method)) {
+    throw new Error('La cuenta está desactivada o no admite ese medio de pago declarado.')
   }
   return account
 }
@@ -1040,7 +1049,15 @@ function load(): DemoSnapshot {
           lines: rawSale.lines.map((line) => ({ ...line })),
           subtotalCents: rawSale.subtotalCents, discountCents: rawSale.discountCents,
           totalCents: rawSale.totalCents,
-          payments: rawSale.payments.map((payment) => ({ ...payment })),
+          payments: rawSale.payments.map((payment) => ({
+             method: payment.method, amountCents: payment.amountCents,
+             financialAccountId: typeof payment.financialAccountId === 'string' &&
+               state.financialAccountsById[payment.financialAccountId]?.businessId === rawSale.businessId
+                 ? payment.financialAccountId : null,
+             financialAccountLabelSnapshot: typeof payment.financialAccountLabelSnapshot === 'string' &&
+               payment.financialAccountLabelSnapshot.length <= 80
+                 ? payment.financialAccountLabelSnapshot : null,
+           })),
           notes: rawSale.notes, createdAt: rawSale.createdAt, status: 'REGISTRADA_DEMO',
           cashSessionId: (() => {
             const session = typeof rawSale.cashSessionId === 'string'
@@ -1068,6 +1085,12 @@ function load(): DemoSnapshot {
           paidOn: rawExpense.paidOn, category: rawExpense.category,
           description: rawExpense.description, amountCents: rawExpense.amountCents,
           paymentMethod: rawExpense.paymentMethod, notes: rawExpense.notes,
+           financialAccountId: typeof rawExpense.financialAccountId === 'string' &&
+             state.financialAccountsById[rawExpense.financialAccountId]?.businessId === rawExpense.businessId
+               ? rawExpense.financialAccountId : null,
+           financialAccountLabelSnapshot: typeof rawExpense.financialAccountLabelSnapshot === 'string' &&
+             rawExpense.financialAccountLabelSnapshot.length <= 80
+               ? rawExpense.financialAccountLabelSnapshot : null,
           locationId: rawExpense.locationId, cashSessionId: (() => {
             const session = rawExpense.cashSessionId ? state.cashSessionsById[rawExpense.cashSessionId] : undefined
             return session?.businessId === rawExpense.businessId && session.locationId === rawExpense.locationId
@@ -1296,6 +1319,7 @@ export const demoGateway = {
     }
     if (listDemoExpenses(state, businessId).length >= 500) throw new Error('Límite de gastos DEMO alcanzado.')
     const fields = normalizeExpense(input)
+    const linkedAccount = accountForDeclaredPayment(businessId, fields.paymentMethod, fields.financialAccountId)
     if (fields.locationId !== null) {
       const loc = locationOfBusiness(businessId, fields.locationId)
       if (loc.status !== 'ACTIVA') throw new Error('Elegí una ubicación activa o dejá el gasto general.')
@@ -1311,6 +1335,8 @@ export const demoGateway = {
     }
     const expense: DemoExpense = {
       ...fields, id: 'demo-expense-' + crypto.randomUUID(),
+      financialAccountId: linkedAccount?.id ?? null,
+      financialAccountLabelSnapshot: linkedAccount?.label ?? null,
       requestId, businessId, cashSessionId: session?.id ?? null,
       createdAt: new Date().toISOString(),
     }
@@ -1493,7 +1519,11 @@ export const demoGateway = {
     const sale: DemoSale = {
       id: 'demo-sale-' + crypto.randomUUID(), requestId, businessId,
       locationId: location?.id ?? null, lines,
-      ...amounts, payments: fields.payments.map((payment) => ({ ...payment })),
+      ...amounts, payments: fields.payments.map((payment) => {
+         const account = accountForDeclaredPayment(businessId, payment.method, payment.financialAccountId)
+         return { ...payment, financialAccountId: account?.id ?? null,
+           financialAccountLabelSnapshot: account?.label ?? null }
+       }),
       notes: fields.notes, createdAt: new Date().toISOString(), status: 'REGISTRADA_DEMO',
       cashSessionId: activeCashSession(state, businessId, location?.id ?? null)?.id ?? null,
     }
