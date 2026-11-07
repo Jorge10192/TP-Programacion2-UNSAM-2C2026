@@ -368,8 +368,9 @@ function SaleForm({ business, items, locations, movements, sessions, accounts, o
             onChange={event => patchPayment(payment.key, { financialAccountId: event.target.value })}>
             <option value="">Sin asociar a cuenta</option>
             {accounts.filter(a => accountSupportsDeclaredPayment(a, payment.method)).map(a =>
-              <option key={a.id} value={a.id}>{a.label}{a.isPrimary ? ' · Principal' : ''}</option>)}
+              <option key={a.id} value={a.id}>{a.label} · {a.kind === 'BANCARIA' ? 'Banco' : 'Billetera'}{a.isPrimary ? ' · Principal' : ''}</option>)}
           </select>
+          {payment.method === 'TRANSFERENCIA' && <small>Podés elegir una cuenta bancaria o una billetera virtual con alias/CVU declarado.</small>}
         </label>}
         <button type="button" className="button button-secondary sales-delete" disabled={payments.length === 1}
           aria-label={'Quitar medio de pago ' + (index + 1)}
