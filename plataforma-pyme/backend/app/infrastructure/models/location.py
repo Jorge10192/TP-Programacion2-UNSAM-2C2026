@@ -7,7 +7,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, Uuid, func, text,
+    Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, UniqueConstraint, Uuid, func, text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,7 @@ class Location(Base):
             "NOT is_primary OR status = 'ACTIVA'",
             name="ck_locations_primary_active",
         ),
+        UniqueConstraint("business_id", "id", name="uq_locations_business_id_id"),
         Index("ix_locations_business_id", "business_id"),
         Index(
             "uq_locations_one_active_primary",
