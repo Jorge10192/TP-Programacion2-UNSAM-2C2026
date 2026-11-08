@@ -139,11 +139,11 @@ def test_member_of_two_companies_does_not_mix_records(isolated) -> None:
     client, _ = isolated
     user, _ = actor(client)
     a, b = business(client, user), business(client, user)
-    first = client.post(endpoint(a), headers=user, json=data("A")).json()
-    second = client.post(endpoint(b), headers=user, json=data("B")).json()
+    first = client.post(endpoint(a), headers=user, json=data("Sede A")).json()
+    second = client.post(endpoint(b), headers=user, json=data("Sede B")).json()
     assert first["is_primary"] is True and second["is_primary"] is True
-    assert [item["name"] for item in client.get(endpoint(a), headers=user).json()] == ["A"]
-    assert [item["name"] for item in client.get(endpoint(b), headers=user).json()] == ["B"]
+    assert [item["name"] for item in client.get(endpoint(a), headers=user).json()] == ["Sede A"]
+    assert [item["name"] for item in client.get(endpoint(b), headers=user).json()] == ["Sede B"]
     assert client.get(endpoint(b, UUID(first["id"])), headers=user).status_code == 404
 
 
