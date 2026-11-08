@@ -18,6 +18,8 @@
 - \`GET /api/v1/businesses/{business_id}/inventory/balances\`: saldos actuales paginados con filtros opcionales \`location_id\`, \`catalog_item_id\`.
 - \`GET /api/v1/businesses/{business_id}/inventory/movements\`: ledger paginado de entradas físicas. GET propios exigen membresía activa y admiten empresa suspendida solo para lectura. Se prohíbe edición o borrado de movimientos y saldos desde API.
 
+**Integridad de Catálogo:** una vez que existe una línea histórica de compra (o un saldo), su artículo no puede cambiar de \`kind\` ni \`unit\` por PATCH (409); nombre, SKU y datos descriptivos siguen siendo editables sin alterar snapshots. La recepción revalida de todos modos la ficha actual para fallar en forma segura ante cambios hechos por SQL fuera de la API.
+
 ## Migración y compatibilidad
 
 Migración aditiva \`e24e_receipt_stock\` sobre \`e24d_purchase_hash\`: crea exclusivamente \`purchase_receipts\`, \`stock_balances\`, \`stock_movements\`, índices/UNIQUE/CHECK/FK compuestas. No modifica ni borra compras, catálogos, ubicaciones o proveedores ya registrados. La compra física de QA \`3e50aff2-c895-49d9-8fe5-d5843438f109\` permanece \`REGISTRADA\` hasta que el usuario decida recibirla desde Swagger.
