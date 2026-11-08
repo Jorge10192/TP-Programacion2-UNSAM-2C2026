@@ -8,10 +8,12 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
 from app.modules.auth.dependencies import current_auth, unauthorized
 from app.modules.auth.session_service import AuthContext
-from app.modules.businesses.schemas import BusinessView, CreateBusinessRequest
+from app.modules.businesses.schemas import (
+    BusinessView, CreateBusinessRequest, UpdateBusinessProfileRequest,
+)
 from app.modules.businesses.service import (
-    BusinessService, BusinessUnavailable, CreationSessionInvalid,
-    IdempotencyConflict,
+    BusinessService, BusinessUnavailable, BusinessPermissionDenied,
+    BusinessSuspended, CreationSessionInvalid, IdempotencyConflict,
 )
 
 router = APIRouter(prefix="/businesses", tags=["empresas"])
@@ -73,3 +75,37 @@ def get_business(
         return BusinessService(db).get_mine(context.user.id, business_id)
     except BusinessUnavailable:
         raise HTTPException(status_code=404, detail="Empresa no disponible") from None
+
+
+@router.patch(
+    "/{business_id}",
+    response_model=BusinessView,
+    responses={
+        401: {"description": "Sesión inválida o revocada"},
+        403: {"description": "Miembro activo sin permiso de edición"},
+        404: {"description": "Empresa inexistente, ajena o sin membresía activa"},
+        409: {"description": "Empresa suspendida: edición no disponible"},
+        422: {"description": "Sin cambios o campos inválidos"},
+    },
+    summary="Editar perfil empresarial con autorización real por tenant y rol",
+)
+def update_business_profile(
+    business_id: UUID,
+    changes: UpdateBusinessProfileRequest,
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> BusinessView:
+    try:
+        return BusinessService(db).update_profile(
+            context.user.id, context.auth_session.id, business_id, changes,
+        )
+    except CreationSessionInvalid:
+        raise unauthorized() from None
+    except BusinessUnavailable:
+        raise HTTPException(status_code=404, detail="Empresa no disponible") from None
+    except BusinessPermissionDenied:
+        raise HTTPException(status_code=403, detail="Operacion no permitida") from None
+    except BusinessSuspended:
+        raise HTTPException(
+            status_code=409, detail="Empresa suspendida: no se puede editar"
+        ) from None

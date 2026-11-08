@@ -16,8 +16,13 @@ from app.infrastructure.models import (
     AuthSession, Business, BusinessCreationRequest, Membership, User,
 )
 from app.modules.auth.tokens import now_utc
+from app.modules.businesses.permissions import (
+    BusinessPermission, has_business_permission,
+)
 from app.modules.businesses.repository import BusinessRepository
-from app.modules.businesses.schemas import BusinessView, CreateBusinessRequest
+from app.modules.businesses.schemas import (
+    BusinessView, CreateBusinessRequest, UpdateBusinessProfileRequest,
+)
 
 
 class CreationSessionInvalid(Exception):
@@ -30,6 +35,16 @@ class IdempotencyConflict(Exception):
 
 class BusinessUnavailable(Exception):
     """La membresía ya no habilita consultar ese negocio."""
+
+
+
+
+class BusinessPermissionDenied(Exception):
+    """Membresía vigente sin permiso para esta operación."""
+
+
+class BusinessSuspended(Exception):
+    """Empresa visible para el actor, pero no editable en su estado actual."""
 
 
 @dataclass(frozen=True)
@@ -135,6 +150,49 @@ class BusinessService:
             except Exception:
                 self.db.rollback()
                 raise
+        except Exception:
+            self.db.rollback()
+            raise
+
+
+    def update_profile(
+        self, actor_id: UUID, auth_session_id: UUID,
+        business_id: UUID, changes: UpdateBusinessProfileRequest,
+    ) -> BusinessView:
+        """CU-03 extensión: editar solo perfil corporativo, con RBAC real.
+
+        Un mismo límite transaccional protege identidad, sesión, membresía,
+        empresa y escritura. No se aceptan user_id/role/status del cliente.
+        """
+        try:
+            self._revalidate_actor(actor_id, auth_session_id)
+            pair = self.repository.lock_active_member_business(actor_id, business_id)
+            if pair is None:
+                raise BusinessUnavailable()
+            company, member = pair
+
+            permission = BusinessPermission.EDIT_PROFILE
+            permitted = has_business_permission(
+                role=member.role, membership_status=member.status,
+                business_status=company.status, permission=permission,
+            )
+            if not permitted:
+                # Distinguir rol sin facultad (403) de un estado empresarial
+                # suspendido (409), sin exponer nada a usuarios ajenos.
+                capable_if_active = has_business_permission(
+                    role=member.role, membership_status=member.status,
+                    business_status="ACTIVA", permission=permission,
+                )
+                if company.status == "SUSPENDIDA" and capable_if_active:
+                    raise BusinessSuspended()
+                raise BusinessPermissionDenied()
+
+            for field, value in changes.model_dump(exclude_unset=True).items():
+                setattr(company, field, value)
+            self.db.flush()
+            response = BusinessView.from_records(company, member)
+            self.db.commit()
+            return response
         except Exception:
             self.db.rollback()
             raise

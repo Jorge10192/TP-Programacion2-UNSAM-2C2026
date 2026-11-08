@@ -1,9 +1,9 @@
 """DTOs públicos de CU-03. Sin rol global ni contexto DEMO."""
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class CreateBusinessRequest(BaseModel):
@@ -57,3 +57,35 @@ class BusinessView(BaseModel):
             created_at=company.created_at,
             membership=MembershipView.from_record(member),
         )
+
+
+class UpdateBusinessProfileRequest(BaseModel):
+    """PATCH de perfil: al menos un campo, sin null explícitos.
+
+    Prohibido actualizar founder_user_id, status, membresía o titularidad.
+    Los campos omitidos se conservan y los espacios exteriores se recortan.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    category: str | None = Field(default=None, min_length=2, max_length=120)
+    activity_kind: Literal["PRODUCTOS", "SERVICIOS", "MIXTO"] | None = None
+
+    @field_validator("name", "category")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        result = value.strip()
+        if len(result) < 2:
+            raise ValueError("Se necesitan al menos dos caracteres")
+        return result
+
+    @model_validator(mode="after")
+    def require_explicit_non_null_change(self) -> Self:
+        if not self.model_fields_set:
+            raise ValueError("Se requiere al menos un campo para actualizar")
+        for field in self.model_fields_set:
+            if getattr(self, field) is None:
+                raise ValueError("No se permiten valores null en la edición")
+        return self

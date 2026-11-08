@@ -50,3 +50,27 @@ class BusinessRepository:
         if result is None:
             return None
         return result[0], result[1]
+
+    def lock_active_member_business(
+        self, user_id: UUID, business_id: UUID
+    ) -> tuple[Business, Membership] | None:
+        """Bloquea empresa y membresía del MISMO tenant dentro de la transacción.
+
+        La unión filtra el usuario activo antes de conceder cualquier permiso.
+        populate_existing impide reutilizar valores de identidad cacheados.
+        """
+        statement = (
+            select(Business, Membership)
+            .join(Membership, Membership.business_id == Business.id)
+            .where(
+                Business.id == business_id,
+                Membership.user_id == user_id,
+                Membership.status == "ACTIVA",
+            )
+            .with_for_update(of=[Business, Membership])
+            .execution_options(populate_existing=True)
+        )
+        row = self.db.execute(statement).first()
+        if row is None:
+            return None
+        return row[0], row[1]
