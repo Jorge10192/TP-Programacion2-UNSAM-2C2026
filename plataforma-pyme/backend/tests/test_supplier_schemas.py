@@ -22,7 +22,6 @@ def promotion(**changes):
 def test_minimal_supplier_requires_only_name():
     item = CreateSupplierRequest.model_validate({"name": " Distribuidora  Norte "})
     assert item.name == "Distribuidora Norte"
-    assert item.status if False else True
     assert item.payment_methods == []
     assert item.promotions == []
     assert item.model_dump()["website"] == ""
