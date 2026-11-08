@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.9 — cierre y sincronización documental C.5
+**Versión:** undefined — E2-2 B, rutas reales de Ubicaciones (parcial RF-03)
 **Estado:** **REVISADO PARA ENTREGA — especificación TO-BE, con decisiones de E2 todavía abiertas**  
 **Fecha:** 8 de noviembre de 2026  
 **Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.8)  
@@ -155,7 +155,7 @@ Los flujos de autenticación y autorización aquí descritos son **objetivo de b
 **Excepciones:** empresa ajena, nombre o capacidad inválidos; en una operación posterior, se rechaza una ubicación pausada/inactiva si se exige actividad.  
 **Criterios de aceptación:** no existe uso cruzado entre empresas; una recepción requiere ubicación apta para almacenamiento; un servicio no exige stock físico.
 
-**Estado CU-04 en E2-2 A:** ya existen tabla/migración y restricciones PostgreSQL para ubicaciones, pero aún **no** se puede registrar por API. Crear/editar/listar/pausar y designar principal, validar membresías y empresas suspendidas y comprobar permisos por ubicación corresponden a E2-2 B/C. Las futuras recepciones y ventas de bienes deben consultar `can_store`/`can_sell` vigentes; nada de eso se ejecuta en este corte.
+**Estado histórico CU-04 en E2-2 A:** en ese corte solo existían tabla/migración y restricciones PostgreSQL para ubicaciones, sin poder registrar por API. **Actualización:** E2-2 B sí permite crear, listar y consultar ubicaciones reales; editar, pausar y cambiar principal quedan pendientes. Crear/editar/listar/pausar y designar principal, validar membresías y empresas suspendidas y comprobar permisos por ubicación corresponden a E2-2 B/C. Las futuras recepciones y ventas de bienes deben consultar `can_store`/`can_sell` vigentes; nada de eso se ejecuta en este corte.
 
 ### CU-05 — Registrar un artículo o servicio
 
@@ -518,3 +518,11 @@ CU-01/CU-02 (identidad) y los flujos concretados de CU-03/CU-12 (empresa, invita
 ### E2-2 A.1 — Nuevo tipo CASA (08/11/2026)
 
 Se incorporó `CASA` como sexto tipo de ubicación, sin cambiar el contrato de capacidades independientes `can_sell` y `can_store`, ni los estados `ACTIVA`/`PAUSADA`. Una casa puede vender, almacenar, ambas actividades o ninguna (domicilio administrativo). **No se crean direcciones ni ubicaciones automáticamente** y no se presupone habilitación comercial. La migración nueva `e22b_location_casa`, descendiente de `e22a_locations`, amplía `ck_locations_kind` sin reescribir la migración anterior ni alterar filas existentes; impide su reversión mientras queden filas CASA. La DEMO React admite CASA en el selector y en validación/lectura del almacenamiento local, pero sigue separada de la API. CI del código `b50bf200`: **backend 217/217 pruebas, Alembic sin deriva y Docker 3/3** ([run backend](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492475011)); **frontend 2/2, incluido E2E de escritorio y móvil** ([run frontend](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492474999)). Resultado Windows anterior de E2-2 A: 212 pruebas; **validación local de A.1 pendiente**. CRUD HTTP y permisos por ubicación siguen para E2-2 B/C. E2-1/03B/03C no se alteran.
+
+## 17. E2-2 B — CU-04 parcialmente implementado con autorización
+
+**Estado E2-2 B (08/11/2026):** se publicaron tres rutas reales para ubicaciones bajo `/api/v1/businesses/{business_id}/locations` (`POST` 201, `GET` lista 200, `GET /{location_id}` 200). La creación valida DTO sin campos protegidos, revalida identidad/sesión, bloquea la empresa y membresía del actor, exige tenant `ACTIVA` y rol `TITULAR_ADMINISTRATIVO` o `ADMINISTRADOR`, y confirma una única transacción. Una primera ubicación recibe `is_primary=true`; las posteriores no la reemplazan. Los miembros activos de cualquier rol reconocido pueden consultar las ubicaciones propias, incluso con empresa suspendida; una empresa suspendida no permite crear. Empresa ajena o membresía inactiva devuelve 404; rol sin permiso 403; sesión inválida 401; empresa suspendida al crear 409; cuerpo incorrecto 422. `CASA` y Google Maps HTTPS validado están incluidos. **No hay PATCH/DELETE, ni pausa/reactivación, cambio de principal, asignación individual de personal o consumo comercial de ubicaciones todavía.** La DEMO permanece independiente. Backend sin migración nueva respecto de `e22b_location_casa`.
+
+Se prueban la ausencia de ubicaciones al dar de alta una empresa, la elección automática de la primera ubicación principal, los tipos (incluido CASA), los booleanos independientes, el filtrado SQL por `business_id`, la consulta de detalle, los roles, la cuenta global, la suspensión empresarial, la prohibición de sobreescribir atributos protegidos y rollback de errores. **CU-04 todavía no está completo** por faltar edición, pausa/reactivación y modificación de principal; esos casos se definirán con pruebas de concurrencia y restricciones propias en E2-2 C.
+
+**Evidencia de CI:** commit funcional `bdd2c84653dafb976c8cd6b49d8c2d577cc345de`; [GitHub Actions E2-2 B](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42493624747) **3/3** (Python 3.12 y 3.14 con PostgreSQL, Docker), **277 pruebas aprobadas**, `e22b_location_casa (head)` y Alembic sin deriva. La salida local de Windows aportada previamente para **E2-2 A.1** fue **217 passed in 23.90s**. El nuevo corte E2-2 B **todavía requiere validación local Windows** y no se atribuyen sus 277 pruebas de CI a una ejecución local. La revisión de E2-1 por el compañero sigue anclada en el commit entregado.
