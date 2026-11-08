@@ -8,5 +8,6 @@ from app.infrastructure.models.business_invitation import BusinessInvitation
 from app.infrastructure.models.location import Location
 from app.infrastructure.models.location_assignment import LocationAssignment
 from app.infrastructure.models.catalog_item import CatalogItem
+from app.infrastructure.models.supplier import Supplier
 
-__all__ = ["User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem"]
+__all__ = ["User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem", "Supplier"]
