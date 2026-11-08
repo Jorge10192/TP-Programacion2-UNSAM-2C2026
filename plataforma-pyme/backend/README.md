@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1 C.4a: aceptación de invitaciones implementada y aprobada por CI, pendiente de migración/pruebas locales. C.3 validado localmente con 147 pruebas; React permanece DEMO independiente.
+**Estado:** E2-1 C.4b: consulta/administración del equipo publicadas y CI aprobado, pendientes de pruebas locales. C.4a validado localmente con 171 pruebas y Docker saludable. React permanece DEMO independiente.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -514,3 +514,32 @@ Invoke-RestMethod http://127.0.0.1:18000/ready
 Esperamos `e213c4_acceptance (head)`, sin operaciones nuevas de Alembic y todas las pruebas aprobadas; **no declarar cifra exacta hasta verificarla**. Una consulta a `/ready` inmediatamente después de reconstruir puede fallar mientras el contenedor muestra `health: starting`; repetir tras arrancar. No es necesario emitir invitaciones reales desde Swagger, porque las pruebas PostgreSQL crean y revierten los datos. La administración de miembros, cancelación/rechazo, validación de email y la entrega segura para producción permanecen pendientes del próximo corte C.4b y futuras etapas.
 
 **Documentos actualizados:** 01 v0.6, 02 v0.7, 03 v0.7, 04 v0.8 y 05 v0.4; UML 03A se revisará al concluir E2-1 completo. Sin cambios de frontend.
+
+## E2-1 C.4b — Directorio de miembros y administración por titular
+
+Se publicaron dos rutas de equipo:
+
+- **GET `/api/v1/businesses/{business_id}/memberships`**: titular/administrador activo (permiso `members.read`) obtienen miembros del mismo tenant con identidad profesional mínima (`id`, `user_id`, `email`, `display_name`, `role`, `status`, `job_title`), incluidos los INACTIVOS. Encargado/trabajador no pueden leer ese directorio.
+- **PATCH `/api/v1/businesses/{business_id}/memberships/{membership_id}`**: solo titular administrativo vigente (permiso `members.manage`) puede cambiar `role` (`ADMINISTRADOR`, `ENCARGADO`, `TRABAJADOR`) y/o `status` (`ACTIVA`, `INACTIVA`). Solo membresías operativas de ese tenant. No permite cambiar al titular activo ni a un titular histórico inactivo, ni transferir titularidad, ni actualizar user_id o job_title.
+
+Ambas operaciones revalidan usuario, token, empresa y membresía del actor en la DB. La edición bloquea también la membresía objetivo y confirma una transacción única; no afecta otros negocios ni el perfil personal global. Errores: 401 auth, 403 rol insuficiente, 404 tenant/target ajeno, 409 empresa suspendida o titular protegido, 422 body de PATCH inválido. **No hay migración nueva**; Alembic sigue en `e213c4_acceptance`.
+
+**Pruebas nuevas:** `test_business_team_schemas.py` (DTOs, OpenAPI y auth) y `test_business_team_integration.py` (RBAC, aislamiento, cambios de rol/estado, autodegradación imposible y rollback), más ampliación de `test_business_permissions.py`. CI aprobó Pytest con PostgreSQL Python 3.12/3.14 y Docker. Ejecutar las comprobaciones locales antes de dar por cerrado C.4b.
+
+Desde `plataforma-pyme/`:
+
+```powershell
+git pull origin main
+cd backend
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -q
+Remove-Item Env:\RUN_DB_INTEGRATION
+cd ..
+docker compose --profile api up -d --build --wait api
+docker compose ps
+Invoke-RestMethod http://127.0.0.1:18000/ready
+```
+
+No se alteró React ni ningún proyecto hermano. El siguiente corte C.5 consolidará el UML 03A y la trazabilidad del bloque E2-1 antes de preparar su hoja de auditoría con IA para el compañero.

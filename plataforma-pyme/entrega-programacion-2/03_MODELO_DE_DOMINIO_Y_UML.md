@@ -2,14 +2,14 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.7 — aceptación de invitaciones y auditoría C.4a  
+**Versión:** 0.8 — invariantes de equipo y titularidad empresarial C.4b  
 **Estado:** **MODELO CONCEPTUAL REVISADO + ANEXO AS-IMPLEMENTED E2** — 03A/03B/03C no se rehicieron; subsistemas comerciales pendientes  
 **Fecha:** 7 de noviembre de 2026  
-**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.6), `02_CASOS_DE_USO.md` (v0.7), políticas del frontend DEMO E1-D2.  
+**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.7), `02_CASOS_DE_USO.md` (v0.8), políticas del frontend DEMO E1-D2.  
 
 > **Criterio de lectura:** AS-IS describe el modelo DEMO ya construido; TO-BE propone el dominio de la futura API FastAPI/SQLAlchemy/PostgreSQL. El diagrama conceptual **no es todavía el esquema SQL implementado**. Las extensiones posteriores aparecen separadas y no se incluyen en el núcleo evaluable.
 
-> **Estado E2 al 8/11/2026:** backend FastAPI/PostgreSQL y autenticación reales. **C.1:** 98 pruebas locales aprobadas; **C.2:** 125 aprobadas, API/DB saludables; **C.3:** 147 pruebas locales aprobadas, migración `e213c3_invitations` sin deriva y API/DB saludables con `/ready`. **C.4a:** aceptación autenticada de invitaciones, membresía única/reactivada, auditoría de aceptación y nueva migración `e213c4_acceptance` implementadas; **CI aprobado en Python 3.12/3.14 y Docker, validación local pendiente**. **C.4b (administración del equipo), cierre UML 03A, módulos comerciales e integración React siguen pendientes.** Los apartados TO-BE antiguos son propuestas históricas, no funciones implementadas. Para contratos reales consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
+> **Estado del backend E2 al 8/11/2026:** C.1 (98 pruebas), C.2 (125), C.3 (147) y **C.4a (171 pruebas)** validados en PostgreSQL local; `e213c4_acceptance (head)`, Alembic sin diferencias, API/DB Docker `healthy` y `/ready` correcto. **C.4b:** consulta y gestión de membresías implementadas y verificadas en GitHub Actions (Python 3.12/3.14 con PostgreSQL y Docker), **pendientes de comprobación local**. No hubo nuevas migraciones en C.4b. Transferencia de titularidad, eliminación física de miembros, edición de puestos, frontend/API y funcionalidades comerciales continúan fuera de este corte. El diseño conceptual TO-BE original no debe confundirse con funciones ya implementadas. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
 
 ## 1. Finalidad y alcance
 
@@ -347,3 +347,11 @@ La tabla real `business_invitations` implementa la **entidad Invitación ya prev
 La invitación conceptual de 03A incorpora dos atributos técnicos de auditoría en la entidad real: `accepted_by_user_id` (FK opcional a Usuario) y `accepted_at` (fecha de aceptación). La migración aditiva `e213c4_acceptance` añade ambas columnas, FK y restricción de coherencia con `status=ACEPTADA`. **Relaciones:** Invitación sigue perteneciendo a una Empresa, fue emitida por un Usuario y, si está aceptada, conserva la identidad global de quien la consumió; la cuenta destinataria se identifica por correo normalizado. Una Membresía conecta exactamente un Usuario con una Empresa. Ninguna invitación pendiente concede acceso; el estado ACEPTADA y la membresía ACTIVA se confirman conjuntamente.
 
 Al aceptar se crea una nueva Membresía si no existía, o se reactiva la misma fila INACTIVA con rol operativo de la invitación. La PK/UNIQUE por empresa y usuario impide duplicados; se protege la titularidad administrativa histórica en una membresía inactiva. **No se modifica la cardinalidad conceptual, las relaciones de inventario ni 03B.** Al cerrar E2-1 se revisará la fuente editable/diagrama 03A, no se rehacen gráficas intermedias. La revisión local de C.4a todavía está pendiente; el CI del código sí aprobó.
+
+## 17. C.4b — Administración de Membresía sin modificar UML estructural
+
+Los métodos de lista y edición de equipo **reutilizan** `Membership` y `User` con los atributos existentes: `business_id`, `user_id`, `role`, `status`, `job_title`, `created_at`, `updated_at`. La relación conceptual Usuario–Membresía–Empresa y su UNIQUE `(business_id,user_id)` permanece intacta, así como el índice parcial de único titular administrativo activo. La prohibición de cambiar una Membresía de rol TITULAR (activa o inactiva) es **invariante de aplicación adicional**, no una nueva tabla o asociación UML.
+
+`members.read` autoriza a titular/administrador a consultar la composición del equipo; `members.manage` autoriza solo al titular a actualizar **roles operativos** y estado de colaboradores. No se concede capacidad de convertir a otro usuario en titular ni de eliminar el único titular activo. El fundador es un hecho histórico, no la fuente de autorización. No se regeneran los SVG/PlantUML 03A y 03B en este corte, porque no cambia cardinalidad; el cierre E2-1 revisará el 03A contra las tablas reales y dejará toda modificación estructural posterior trazada.
+
+**Evidencia:** CI de C.4b aprobó los tests de equipo en PostgreSQL y el backend Docker; validación local aún pendiente. Sin migración nueva: Alembic debe permanecer en `e213c4_acceptance`.

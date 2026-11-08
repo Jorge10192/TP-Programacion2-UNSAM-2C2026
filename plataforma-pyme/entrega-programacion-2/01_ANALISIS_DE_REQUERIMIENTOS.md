@@ -2,13 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.6 — requisitos originales y aceptación de invitaciones C.4a  
+**Versión:** 0.7 — RF-02 administración de membresías con control de titularidad C.4b  
 **Estado:** **BORRADOR FUNCIONAL — RF-01 validado; RF-02 parcialmente implementado y en ampliación**  
 **Fecha:** 7 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
 **Alcance de este documento:** análisis de producto y requisitos objetivo. **No equivale a afirmar que la API esté implementada.**
 
-> **Estado E2 al 8/11/2026:** backend FastAPI/PostgreSQL y autenticación reales. **C.1:** 98 pruebas locales aprobadas; **C.2:** 125 aprobadas, API/DB saludables; **C.3:** 147 pruebas locales aprobadas, migración `e213c3_invitations` sin deriva y API/DB saludables con `/ready`. **C.4a:** aceptación autenticada de invitaciones, membresía única/reactivada, auditoría de aceptación y nueva migración `e213c4_acceptance` implementadas; **CI aprobado en Python 3.12/3.14 y Docker, validación local pendiente**. **C.4b (administración del equipo), cierre UML 03A, módulos comerciales e integración React siguen pendientes.** Los apartados TO-BE antiguos son propuestas históricas, no funciones implementadas. Para contratos reales consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
+> **Estado del backend E2 al 8/11/2026:** C.1 (98 pruebas), C.2 (125), C.3 (147) y **C.4a (171 pruebas)** validados en PostgreSQL local; `e213c4_acceptance (head)`, Alembic sin diferencias, API/DB Docker `healthy` y `/ready` correcto. **C.4b:** consulta y gestión de membresías implementadas y verificadas en GitHub Actions (Python 3.12/3.14 con PostgreSQL y Docker), **pendientes de comprobación local**. No hubo nuevas migraciones en C.4b. Transferencia de titularidad, eliminación física de miembros, edición de puestos, frontend/API y funcionalidades comerciales continúan fuera de este corte. El diseño conceptual TO-BE original no debe confundirse con funciones ya implementadas. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
 
 ## 1. Presentación del proyecto
 
@@ -195,7 +195,7 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 | RF | Código y evidencia verificada | Pendiente |
 |---|---|---|
 | RF-01 | `POST /api/v1/auth/register`, `login`, `GET /me`, `POST /logout`; Argon2id, sesiones persistentes y pruebas PostgreSQL | Endurecimiento público, recuperación de cuenta e integración de React |
-| RF-02 | Crear, consultar y editar empresa con RBAC; **C.3 emisión validada localmente (147 tests)**; **C.4a aceptación publicada y CI aprobado**; migraciones hasta `e213c4_acceptance` | Validación local C.4a, administración de miembros C.4b, integración con React y controles públicos adicionales |
+| RF-02 | Crear/consultar/editar empresa, invitación/aceptación (C.4a, **171 pruebas locales**) y **consulta/administración de membresías C.4b implementadas, CI aprobado**; última migración `e213c4_acceptance` | Validación local C.4b, cierre UML 03A, interfaz React, verificación de email y endurecimiento público |
 | RF-03–RF-07 | Reglas planificadas, algunos comportamientos DEMO | Endpoints reales, tablas, transacciones y tests de negocio |
 | RF-08–RF-10 | Frontend DEMO o diseños diferidos | No comprometidos como backend del primer MVP |
 
@@ -220,3 +220,11 @@ El token opaco aleatorio se entrega **una única vez en la respuesta 201** y sol
 El destinatario puede aceptar exclusivamente una invitación cuyo correo normalizado coincida con el de su cuenta global autenticada. El token opaco se presenta mediante `POST /api/v1/invitations/accept`; la API usa únicamente `Authorization: Bearer` para obtener la identidad (no acepta `user_id`, rol o empresa enviados por el cliente). Se verifica por hash SHA-256 en PostgreSQL, estado `PENDIENTE`, vencimiento vigente y empresa `ACTIVA`. La operación crea una sola membresía o reactiva la anterior `INACTIVA` sin duplicar `(business_id,user_id)`; la nueva membresía utiliza el rol `ENCARGADO` o `TRABAJADOR` que fijó la invitación, nunca titularidad ni privilegios globales. La invitación pasa a `ACEPTADA` y registra `accepted_by_user_id` y `accepted_at` en el mismo commit. Repetir la aceptación no produce efectos.
 
 **Limitación funcional:** no hay aún pantalla de aceptación, envío de correo, gestión de equipo, cancelación/rechazo ni cambio de roles. En C.4b se definirá la administración del equipo. **Seguridad previa a producción:** la autenticación global todavía no incluye verificación del correo y deben diseñarse rate limits, entrega segura del token y protección de secretos; no describir esta funcionalidad como lista para internet público. Las pruebas del nuevo corte aprobaron CI, pero aún faltan las pruebas locales del desarrollador.
+
+### 13.4 C.4b — RF-02: consultar y administrar las membresías del equipo
+
+Se incorporan `GET /api/v1/businesses/{business_id}/memberships` y `PATCH /api/v1/businesses/{business_id}/memberships/{membership_id}`. El primero permite al titular administrativo y al administrador consultar **únicamente el equipo de su empresa** (miembros activos e inactivos) con id, usuario, email, nombre visible, rol, estado y puesto de trabajo existente. No expone contraseña, teléfonos ni tokens. Encargado/trabajador no pueden acceder a ese directorio. La segunda operación está reservada al **titular administrativo activo** y cambia, parcialmente, `role` entre `ADMINISTRADOR/ENCARGADO/TRABAJADOR` o `status` entre `ACTIVA/INACTIVA`. No admite el cambio de `user_id`, empresa ni titularidad.
+
+Se protege tanto la membresía del titular vigente como cualquier membresía histórica con rol `TITULAR_ADMINISTRATIVO`: ni la desactivación, ni la degradación ni la transferencia se implementan aquí. Las modificaciones se autorizan con el rol vigente **consultado en PostgreSQL dentro de la transacción** y se bloquean empresa, miembro actor y membresía objetivo. Una empresa suspendida no admite lectura de directorio sensible ni mutaciones; la lectura informativa del perfil de empresa sigue disponible.
+
+**Estado:** código publicado y tres trabajos de CI aprobados, falta prueba local de este corte. Sin migración nueva y sin cambios del UML conceptual 03A/03B. Las decisiones legales de titularidad y la administración avanzada del puesto/traspasos siguen pendientes; no deducirlas del endpoint operativo.
