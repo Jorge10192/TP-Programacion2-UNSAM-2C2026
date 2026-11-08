@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1.3B: CU-03 real (crear empresa + titular inicial + registro idempotente + consultar empresas propias); roles operativos e invitaciones pendientes. Frontend DEMO independiente.
+**Estado:** E2-1.3C.1 (matriz RBAC pura y pruebas, todavía sin nuevos endpoints autorizados por rol), sobre E2-1.3B verificado con 80 pruebas locales. Frontend DEMO independiente.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -412,3 +412,25 @@ Después, desde `plataforma-pyme/`, reconstruí la API Docker con `docker compos
 La clave primaria compuesta de `business_creation_requests(actor_user_id, idempotency_key)` **ya garantiza la unicidad del reintento por persona**. La declaración ORM contenía además un `UniqueConstraint` sobre exactamente esas mismas columnas. PostgreSQL 16 descarta el índice duplicado, pero Alembic lo veía en los metadatos y detectaba una supuesta operación pendiente `add_constraint`.
 
 Se eliminó **solamente el UNIQUE redundante del modelo ORM** y se ajustó la prueba del modelo; no se modificó el esquema efectivo, no se alteraron contraseñas ni se generó una nueva migración. La migración histórica E2-1.3B permanece inmutable porque ya fue aplicada. La unicidad real sigue cubierta por la PK `pk_business_creation_requests`, y la referencia `business_id` conserva su UNIQUE independiente. Después de `git pull`, `python -m alembic check` debería indicar `No new upgrade operations detected.`. Si aún falla, inspeccionar `\\d business_creation_requests` antes de modificar la base de datos. No usar `alembic stamp`, `downgrade` ni SQL manual para esta corrección.
+
+## E2-1.3C.1 — Matriz inicial de permisos y actualización documental
+
+`app/modules/businesses/permissions.py` define las capacidades `business.view`, `business.profile.edit`, `members.invite` y `members.manage`. La decisión depende de **rol de la membresía, estado de la membresía, estado de la empresa y permiso solicitado**. Los roles inexistentes y estados desconocidos se deniegan; empresa suspendida es de solo lectura para miembros activos. Esta política es pura y cuenta con tests; **todavía NO se invoca desde nuevos endpoints de edición o invitación**.
+
+Se corrigió también la recuperación de carreras de idempotencia en `BusinessService.create`: PostgreSQL puede informar la violación de **`pk_business_creation_requests`**, no la restricción `uq_business_creation_actor_key` que se eliminó por ser redundante. La ruta conserva reintentos sin duplicar empresas y se incorporó un test unitario específico.
+
+Documentos académicos actualizados: 01 v0.3, 02 v0.4, 03 v0.4 y 04 v0.5; nuevo Documento 05 v0.1 con trazabilidad real y matriz de permisos. **No hay migración en este corte**, no se altera el frontend ni se modifican datos reales.
+
+Desde `plataforma-pyme/`:
+
+```powershell
+git pull origin main
+cd backend
+.\\.venv\\Scripts\\python.exe -m alembic current
+.\\.venv\\Scripts\\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+.\\.venv\\Scripts\\python.exe -m pytest -v
+Remove-Item Env:\\RUN_DB_INTEGRATION
+```
+
+La versión sigue siendo `e213b_business_creation (head)`; Alembic no debe detectar operaciones pendientes. Se espera conservar los **80 tests existentes** y aprobar además los nuevos casos de matriz RBAC y recuperación de idempotencia. No hace falta reconstruir Docker porque no hay un cambio HTTP efectivo en C.1. **E2-1.3C.2** conectará esta política a una operación real autorizada por rol, con pruebas de 401/403/404/409 y pertenencia a la empresa.

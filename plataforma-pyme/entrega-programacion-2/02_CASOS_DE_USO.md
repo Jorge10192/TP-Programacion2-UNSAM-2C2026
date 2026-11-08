@@ -2,11 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.3  
+**Versión:** 0.4 — casos de uso originales + trazabilidad de implementación E2  
 **Estado:** **REVISADO PARA ENTREGA — especificación TO-BE, con decisiones de E2 todavía abiertas**  
 **Fecha:** 7 de noviembre de 2026  
-**Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.2)  
+**Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.3)  
 **Alcance:** casos de uso del **núcleo propuesto** del backend RESTful (TO-BE), contrastados con los comportamientos del frontend DEMO (AS-IS). Las operaciones previstas NO implican endpoints implementados. La lista definitiva de permisos, campos y códigos HTTP se formalizará posteriormente. Esta revisión incorpora CU-12 como soporte para membresías reales, sin ampliar el alcance a envíos de correo o acceso público por QR.
+
+> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
 
 ## 1. Finalidad y metodología
 
@@ -28,7 +30,7 @@ Los flujos de autenticación y autorización aquí descritos son **objetivo de b
 - **Moneda:** los importes de esta API se acuerdan y validan en **centavos enteros de ARS** (por ejemplo, ARS 10,50 = `1050` centavos), o se convierten sin pérdida desde un decimal textual en el límite de entrada. No se utilizan números de punto flotante para almacenar dinero. Cantidades físicas se representan según la escala de la unidad aprobada.
 - **Atomicidad:** las validaciones de negocio que dependen de datos cambiantes (stock disponible, estado activo y recepción pendiente) se ejecutan con el control transaccional necesario para que entre la verificación y la escritura no se produzcan decisiones incompatibles.
 - **Respuesta de error:** la futura API emitirá errores estructurados sin trazas internas. Se propone **Problem Details, RFC 9457** (actualización de RFC 7807), con códigos HTTP y `type`, `title`, `status`, `detail` e `instance` según corresponda; el contrato final se define en Documento 05.
-- **Estado implementado:** las reglas descritas aquí son especificaciones **TO-BE**. Los recorridos locales demostrados no prueban por sí solos simultaneidad multiusuario, autenticación ni transacciones SQL.
+- **Estado implementado:** los flujos CU-01, CU-02 y CU-03 tienen ya endpoints parciales o completos respaldados por pruebas SQL; los CU restantes permanecen TO-BE. La evidencia técnica específica figura en el Documento 05.
 - **Datos persistidos:** cada operación exitosa confirma todas sus escrituras o ninguna; los resultados relevantes conservan identificadores, empresa, actor, fecha/hora y referencias de origen. Los detalles exactos de campos se definirán en Documento 03 y Documento 05.
 - **Reintentos:** la idempotencia exige delimitar empresa, operación, actor/ámbito y clave; una clave repetida con carga equivalente debe devolver el resultado de esa operación y con carga distinta producir conflicto. Debe persistirse en la **misma transacción** que el efecto comercial o implementarse una garantía equivalente. La expiración/retención de claves queda para los contratos.
 - **Concurrencia de stock:** si el stock es una proyección de movimientos, no basta con bloquear filas históricas del ledger. El backend deberá serializar operaciones sobre la **misma pareja empresa–ubicación–artículo** mediante saldo bloqueable, actualización condicional, aislamiento serializable con reintento controlado u otra estrategia probada en PostgreSQL. Las operaciones sobre varios saldos deben mantener un orden estable de bloqueo. El ledger sigue siendo la fuente auditable de movimientos.
@@ -449,3 +451,15 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 **Estado:** versión 0.3 revisada para entrega como especificación **TO-BE**. Los contratos HTTP, permisos y esquemas SQL definitivos deberán concordar con los documentos siguientes; cualquier cambio de alcance exige actualizar los RF y CU relacionados.
 
 **Referencia técnica externa consultada para el formato de errores:** RFC 9457 — *Problem Details for HTTP APIs* (IETF, 2023), que reemplaza a RFC 7807: https://www.rfc-editor.org/rfc/rfc9457.html. Se documenta como preferencia arquitectónica, no como obligación expresa de la consigna.
+
+## 10. Estado de los casos de uso y próxima política de autorización
+
+| CU | Estado API | Endpoint o comprobación |
+|---|---|---|
+| CU-01 Registro | Implementado y probado localmente | `POST /api/v1/auth/register` |
+| CU-02 Login/perfil/salida | Implementado y probado localmente | `POST /login`, `GET /me`, `POST /logout` bajo `/api/v1/auth` |
+| CU-03 Crear empresa | Implementado y probado localmente | `POST /api/v1/businesses`; empresa + titular inicial + idempotencia atómica; `GET` filtra membresía activa |
+| CU-04–CU-11 | Pendiente backend | Plan conceptual y experiencia frontend DEMO; todavía no hay endpoint real |
+| CU-12 Invitaciones | Pendiente backend | Invitación, aceptación y gestión de membresías previstas para E2-1.3C.2/C.3 |
+
+**Política E2-1.3C.1:** se implementa la **matriz RBAC pura** con cuatro roles de membresía; para consulta empresarial todos los miembros activos pueden leer, mientras que la configuración se reserva al titular y administrador. `ENCARGADO` y `TRABAJADOR` no reciben facultad general para editar empresa, invitar ni administrar miembros. **Esta primera entrega define y prueba la política; la aplicación efectiva a la primera mutación protegida es el siguiente corte.** Identificador empresarial ajeno o membresía inactiva no deben otorgar acceso. Para un miembro activo de una empresa suspendida se prevé lectura informativa, no cambios. Véase Documento 05 para el detalle y los errores HTTP previstos.

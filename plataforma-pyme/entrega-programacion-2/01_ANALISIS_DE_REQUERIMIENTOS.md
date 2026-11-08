@@ -2,11 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.2  
-**Estado:** **BORRADOR — ajustes de alcance propuestos, pendiente de aprobación del equipo**  
+**Versión:** 0.3 — requisitos originales + seguimiento de implementación E2  
+**Estado:** **BORRADOR FUNCIONAL — con implementación parcial de RF-01/RF-02 verificada**  
 **Fecha:** 7 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
 **Alcance de este documento:** análisis de producto y requisitos objetivo. **No equivale a afirmar que la API esté implementada.**
+
+> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
 
 ## 1. Presentación del proyecto
 
@@ -16,7 +18,7 @@ El sistema permite organizar empresas, ubicaciones, artículos y servicios, prov
 
 **WALOS** se utiliza como ejemplo de negocio durante las pruebas y demostraciones. La plataforma **no está limitada** al sector de productos para mascotas.
 
-Actualmente existe un frontend de demostración en React y TypeScript que almacena datos localmente en el navegador. La etapa pendiente consiste en construir una API RESTful con FastAPI y persistencia en base de datos, con autenticación y autorización efectivas.
+El frontend React/TypeScript sigue en modo DEMO con almacenamiento local. En paralelo ya se implementó una API FastAPI con PostgreSQL y autenticación real, más las primeras operaciones de empresa. **La autorización específica por rol y los módulos comerciales del MVP siguen en desarrollo**; aún no existe integración frontend/API.
 
 ## 2. Problema que se busca resolver
 
@@ -40,14 +42,14 @@ Desarrollar una plataforma de gestión comercial y operativa multiempresa, acces
 - Mantener existencias consistentes mediante movimientos de inventario.
 - Registrar ventas con importes y pagos declarados exactos.
 - Gestionar gastos y jornadas de caja con registros históricos verificables.
-- Incorporar usuarios autenticados y permisos por empresa cuando se implemente el backend.
+- Consolidar el backend autenticado ya iniciado e incorporar controles de permisos por empresa en cada operación real.
 - Ofrecer pruebas automatizadas y documentación suficientes para verificar el funcionamiento de la API.
 
 ## 4. Actores e interesados
 
 | Actor/interesado | Relación con el sistema | Observación |
 |---|---|---|
-| Usuario de la plataforma | Accede a su espacio personal y puede pertenecer a una o varias empresas | La autenticación real pertenece al backend pendiente |
+| Usuario de la plataforma | Accede a su espacio personal y puede pertenecer a una o varias empresas | Registro, login y sesiones reales disponibles en la API; frontend aún DEMO |
 | Fundador o titular administrativo | Crea una empresa y gestiona su configuración inicial | La titularidad y transferencia futura requieren definición formal |
 | Administrador de empresa | Administra información y operaciones según permisos | Roles y permisos definitivos se concretarán en E2 |
 | Colaborador | Opera únicamente las funciones autorizadas en la empresa | Los roles actuales del frontend son de demostración |
@@ -187,3 +189,14 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 5. Fijar contratos monetarios y límites de cantidades antes del modelo SQL y schemas Pydantic.
 
 **Este documento permanece en borrador hasta su aprobación.**
+
+## 11. Seguimiento de RF implementados y trazabilidad E2
+
+| RF | Código y evidencia verificada | Pendiente |
+|---|---|---|
+| RF-01 | `POST /api/v1/auth/register`, `login`, `GET /me`, `POST /logout`; Argon2id, sesiones persistentes y pruebas PostgreSQL | Endurecimiento público, recuperación de cuenta e integración de React |
+| RF-02 | `businesses`, `memberships`, alta idempotente y listados filtrados por miembro activo; migración `e213b_business_creation` | Autorización por rol en mutaciones, invitaciones y gestión de miembros |
+| RF-03–RF-07 | Reglas planificadas, algunos comportamientos DEMO | Endpoints reales, tablas, transacciones y tests de negocio |
+| RF-08–RF-10 | Frontend DEMO o diseños diferidos | No comprometidos como backend del primer MVP |
+
+**Política documental:** cada entrega E2 grande debe revisar sus RF y RNF, el caso de uso, las entidades UML si cambiaron, la arquitectura, el Documento 05 y la evidencia de pruebas. `03B` no se regenera por cambios de permisos de identidad; se conserva su trabajo conceptual. La matriz de permisos de E2-1.3C.1 es código de política testeable, **no equivale aún a un endpoint protegido por rol**.

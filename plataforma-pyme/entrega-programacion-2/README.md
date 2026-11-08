@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión para múltiples empresas y rubros.  
 **Ubicación prevista en el repositorio:** `plataforma-pyme/entrega-programacion-2/`.  
-**Estado de esta carpeta:** Documento 01 en borrador v0.2, Documento 02 revisado v0.3 y Documento 03 publicado como modelo conceptual v0.3 y Documento 04 publicado como arquitectura propuesta v0.4. No sustituye la documentación de desarrollo de `../docs/`.
+**Estado de esta carpeta:** 01 v0.3, 02 v0.4, 03 v0.4 y 04 v0.5; todos conservan el diseño conceptual y añaden estado E2. 05 v0.1 registra la trazabilidad de código/API. 06 pruebas/despliegue aún pendiente. No sustituye `../docs/`.
 
 ## Propósito
 
@@ -14,11 +14,11 @@ Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»*
 
 | Documento | Propósito | Estado |
 |---|---|---|
-| `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR v0.2; pendiente de aprobación** |
-| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.3 — contratos y permisos definitivos pendientes** |
-| [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO — modelo conceptual v0.3 (TO-BE)** |
-| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v0.4 — backend pendiente** |
-| `05_MATRIZ_API_Y_TRAZABILIDAD.md` | RF → caso de uso → endpoints reales → pruebas/evidencias | Pendiente |
+| `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR funcional v0.3, con anexo E2** |
+| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.4 — E2 implementado + pendientes** |
+| [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO v0.4 — conceptual + correspondencia E2** |
+| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v0.5 — histórico TO-BE + anexo E2** |
+| [`05_MATRIZ_API_Y_TRAZABILIDAD.md`](05_MATRIZ_API_Y_TRAZABILIDAD.md) | RF → CU → endpoints AS-IS → pruebas/roles/evidencia/pendientes | **PUBLICADO v0.1 — E2-1.3C.1** |
 | `06_PRUEBAS_Y_DESPLIEGUE.md` | Estrategia de pruebas, GitHub Actions, Docker, despliegue y evidencias | Pendiente |
 | [`diagramas/`](diagramas/) | SVG vectoriales aprobados, fuentes PlantUML editables y tres guías detalladas | **03A / 03B / 03C publicados** |
 | `presentacion/` | Diapositivas de defensa final | A crear |
@@ -28,7 +28,7 @@ Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»*
 ## Convenciones
 
 1. **AS-IS / Implementado DEMO:** evidencia disponible en el frontend React, con persistencia local y sin seguridad de servidor.
-2. **TO-BE / Planificado:** backend FastAPI, PostgreSQL, SQLAlchemy, Docker, autenticación, permisos y API; no presentarlo como implementado hasta verificarlo.
+2. **AS-IMPLEMENTED / Backend comprobado:** FastAPI, PostgreSQL, SQLAlchemy, Docker, auth y empresas; contrastar rutas y pruebas con 05. **TO-BE / Pendiente:** autorizaciones efectivas por rol, invitaciones, catálogo, compras, stock, ventas e integración con React.
 3. **Diferido:** fuera del alcance del MVP; por ejemplo, pagos reales de Mercado Pago, QR parcial real, conciliación bancaria y automatizaciones no comprometidas.
 4. Requerimientos identificados como `RF-xx`, no funcionales como `RNF-xx` y reglas de negocio como `RN-xx`. Conservan sus identificadores entre documentos. La etiqueta **NÚCLEO MVP**, **SOPORTE MVP** o **POST-MVP** expresa el alcance propuesto del backend, no una funcionalidad implementada.
 5. Cada documento pasa por `BORRADOR` → `APROBADO` → `ACTUALIZADO PARA ENTREGA`, registrando versión/fecha. La aprobación corresponde al equipo. **No se debe marcar un backend como implementado ni una prueba como aprobada sin evidencia.**
@@ -54,3 +54,9 @@ Se aprueba un documento por vez antes de incorporarlo a `main`. No subir captura
 - **[03C — Casos de uso de la primera API](diagramas/03C_EXPLICACION_CASOS_DE_USO.md):** actores, CU-01 a CU-12, flujos ejemplificativos y trazabilidad a requerimientos.
 
 Cada explicación enlaza la **lámina SVG vectorial** (visualización de presentación) y el archivo **PlantUML** (fuente UML editable). Las láminas muestran el diseño conceptual TO-BE, no la implementación ya existente de FastAPI. Para la defensa, usar los SVG; para mantener o revisar asociaciones y cardinalidades, consultar el PUML y el Documento 03.
+
+## Política de actualización por incrementos E2
+
+**Regla operativa:** ninguna entrega mayor se considera cerrada solo por compilar. La misma entrega debe enlazar código, contratos HTTP, pruebas, versión Alembic si corresponde y documentos académicos. En cada corte se revisa 05 y `../backend/README.md`; 01/02 cambian al concretar RF/CU, 03 y el UML 03A al modificar entidades/reglas/cardinalidades, y 04 al modificar arquitectura/seguridad/patrones. El 03B no se regenera por cambios de identidad o autorización.
+
+**Orden acordado:** E2-1.3C.1 política RBAC pura → E2-1.3C.2 autorización efectiva de perfil empresarial → E2-1.3C.3 emisión de invitaciones → E2-1.3C.4 aceptación y administración de membresías → revisión final de 03A y contratos de 05 → RF-03 ubicaciones. Cada paso exige tests locales y CI verificables antes de avanzar; un código publicado no equivale por sí solo a etapa validada.

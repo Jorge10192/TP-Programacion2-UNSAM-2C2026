@@ -121,8 +121,9 @@ class BusinessService:
         except IntegrityError as error:
             self.db.rollback()
             name = getattr(getattr(error.orig, "diag", None), "constraint_name", None)
-            if name != "uq_business_creation_actor_key":
+            if name != "pk_business_creation_requests":
                 raise
+            # La PK compuesta, no un UNIQUE redundante, resuelve la carrera.
             # Otra solicitud concurrente pudo completar el mismo comando.
             try:
                 self._revalidate_actor(actor_id, auth_session_id)

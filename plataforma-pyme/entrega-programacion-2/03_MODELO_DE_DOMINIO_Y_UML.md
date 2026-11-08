@@ -2,12 +2,14 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.3  
-**Estado:** **MODELO CONCEPTUAL REVISADO PARA LA ENTREGA (TO-BE)** — diagramas validados para documentación; backend y decisiones de contratos todavía pendientes  
+**Versión:** 0.4 — modelo conceptual y correspondencia parcial con E2 real  
+**Estado:** **MODELO CONCEPTUAL REVISADO + ANEXO AS-IMPLEMENTED E2** — 03A/03B/03C no se rehicieron; subsistemas comerciales pendientes  
 **Fecha:** 7 de noviembre de 2026  
 **Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.2), `02_CASOS_DE_USO.md` (v0.3), políticas del frontend DEMO E1-D2.  
 
 > **Criterio de lectura:** AS-IS describe el modelo DEMO ya construido; TO-BE propone el dominio de la futura API FastAPI/SQLAlchemy/PostgreSQL. El diagrama conceptual **no es todavía el esquema SQL implementado**. Las extensiones posteriores aparecen separadas y no se incluyen en el núcleo evaluable.
+
+> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
 
 ## 1. Finalidad y alcance
 
@@ -310,3 +312,16 @@ En el MVP, CU-11 permite registrar **ajustes justificados** de inventario según
 - Se incorpora el caso de **idempotencia con `business_id = NULL`** y su efecto en los índices únicos de PostgreSQL.
 - Se conserva sin alterar el diseño visual aprobado; las diferencias deliberadas entre SVG editorial y PUML se describen en cada guía.
 - No se extiende el MVP con recepción parcial, servicios con consumo automático, cobros reales ni procesos de suspensión de empresas.
+
+## 12. Correspondencia conceptual ↔ esquema implementado (E2-1.3C.1)
+
+| Concepto de 03A | Implementación SQLAlchemy/PostgreSQL actual | Matiz |
+|---|---|---|
+| Usuario | `users`, UUID global, email normalizado UNIQUE, hash Argon2id generado por servicio | No tiene `business_id` ni rol global |
+| Sesión técnica | `auth_sessions`: usuario, `token_hash`, vencimiento/revocación | Infraestructura técnica; no convierte sesión en membresía |
+| Empresa | `businesses`: nombre, categoría, tipo de actividad, `founder_user_id`, estado y fechas | Fundador histórico ≠ titular legal |
+| Membresía | `memberships`: empresa, usuario, rol, estado, puesto opcional | UNIQUE por empresa/usuario; índice parcial limita a uno el titular activo |
+| Idempotencia del alta | `business_creation_requests` con PK compuesta `actor_user_id, idempotency_key` | El PK ya es UNIQUE; no duplicar constraint; respuesta previa por hash canónico |
+| Invitación | **No implementada** en SQL | Permanece conceptual y depende de futura autorización |
+
+La futura actualización del **03A** deberá distinguir los conceptos de dominio de las clases técnicas (sesiones, registro idempotente, políticas). En E2-1.3C.1 no hay cambios en cardinalidades ni entidades SQL: **no es necesario regenerar 03A**, y expresamente **no se rehace 03B**. La política pure-function `has_business_permission` no es una clase persistente del UML de dominio; se documenta en 04/05. Se exige verificar la pertenencia real de cada Membresía a la Empresa consultada al aplicar la política en endpoints; el rol de otra empresa no autoriza esta.
