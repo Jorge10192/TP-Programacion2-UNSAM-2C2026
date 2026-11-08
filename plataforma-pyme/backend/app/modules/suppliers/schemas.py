@@ -115,7 +115,7 @@ def normalized_contact(value: str, field: str) -> str:
 
 
 class SupplierPromotion(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="forbid")
 
     id: UUID
     days: list[Weekday] = Field(default_factory=list, max_length=7)
