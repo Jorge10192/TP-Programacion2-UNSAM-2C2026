@@ -19,7 +19,7 @@ def test_purchase_models_registered_but_no_receipts_or_stock() -> None:
 def test_purchase_document_stores_business_snapshot_and_idempotency() -> None:
     t = Purchase.__table__
     assert {c.name for c in t.columns} == {
-        "id", "business_id", "request_id", "supplier_id", "supplier_name_snapshot",
+        "id", "business_id", "request_id", "request_sha256", "supplier_id", "supplier_name_snapshot",
         "purchased_on", "status", "total_cents", "reference", "notes",
         "created_by_id", "created_at",
     }
@@ -91,3 +91,4 @@ def test_purchase_lines_enforce_scale_kind_and_half_up_in_db() -> None:
                        if isinstance(c, CheckConstraint)}
     assert "CERRADA_SIN_RECEPCION" in purchase_checks["ck_purchases_status"]
     assert "supplier_name_snapshot" in purchase_checks["ck_purchases_supplier_snapshot_optional"]
+    assert "request_sha256" in purchase_checks["ck_purchases_request_sha256"]
