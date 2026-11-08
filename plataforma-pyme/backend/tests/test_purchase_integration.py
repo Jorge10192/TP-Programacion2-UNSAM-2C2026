@@ -303,8 +303,10 @@ def test_invalid_header_values_cannot_be_persisted(isolated):
     assert db.execute(select(Purchase.id)).all() == []
 
 
-def test_e24d_still_does_not_publish_receipt_or_inventory_routes() -> None:
+def test_e24e_publishes_complete_receive_and_inventory_read_only() -> None:
     with TestClient(create_app()) as client:
         paths = client.get("/openapi.json").json()["paths"]
     assert any("/purchases" in path for path in paths)
-    assert not any("/receive" in path or "/receipts" in path for path in paths)
+    assert any("/receive" in path for path in paths)
+    assert any("/inventory/balances" in path for path in paths)
+    assert not any("/partial" in path for path in paths)
