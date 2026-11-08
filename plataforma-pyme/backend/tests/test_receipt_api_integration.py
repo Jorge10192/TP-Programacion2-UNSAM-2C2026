@@ -207,7 +207,7 @@ def test_location_must_be_own_active_and_can_store(isolated):
 
 @pytest.mark.parametrize("changed", ["INACTIVO", "KILOGRAMO"])
 def test_cannot_receive_inactive_item_or_changed_unit(isolated, changed):
-    client, _ = isolated
+    client, db = isolated
     auth, _ = actor(client)
     bid = business(client, auth)
     loc = location(client, bid, auth)
@@ -219,11 +219,39 @@ def test_cannot_receive_inactive_item_or_changed_unit(isolated, changed):
     else:
         result = client.patch(f"/api/v1/businesses/{bid}/catalog/{iid}",
                               headers=auth, json={"unit": "KILOGRAMO"})
-    assert result.status_code == 200, result.text
+    if changed == "INACTIVO":
+        assert result.status_code == 200, result.text
+    else:
+        # La API ya protege unidad/tipo al existir una compra histórica.
+        assert result.status_code == 409, result.text
+        # Defensa adicional: si una intervención SQL fuera de API altera la
+        # unidad, recepción también debe fallar cerrada (nunca crear stock).
+        db.execute(update(CatalogItem).where(
+            CatalogItem.business_id == bid, CatalogItem.id == iid,
+        ).values(unit="KILOGRAMO"))
     denied = receive(client, bid, pid, loc, auth)
     assert denied.status_code == 409, denied.text
     assert balances(client, bid, auth) == []
     assert client.get(path(bid, pid), headers=auth).json()["status"] == "REGISTRADA"
+
+
+def test_catalog_cannot_reinterpret_historical_kind_or_unit_but_can_rename(isolated):
+    client, _ = isolated
+    owner, _ = actor(client)
+    bid = business(client, owner)
+    loc = location(client, bid, owner)
+    iid = item(client, bid, owner)
+    pid = physical(client, bid, owner, iid)
+    base = f"/api/v1/businesses/{bid}/catalog/{iid}"
+    assert client.patch(base, headers=owner, json={"unit": "KILOGRAMO"}).status_code == 409
+    assert client.patch(base, headers=owner, json={"kind": "INSUMO"}).status_code == 409
+    assert client.patch(base, headers=owner, json={
+        "name": "Nuevo nombre sin reescribir compra",
+        "sku": "NEW-023",
+    }).status_code == 200
+    assert receive(client, bid, pid, loc, owner).status_code == 201
+    assert client.patch(base, headers=owner, json={"unit": "GRAMO"}).status_code == 409
+    assert client.get(path(bid, pid), headers=owner).json()["lines"][0]["sku_snapshot"] == "PRU-01"
 
 
 def test_assigned_employee_can_store_and_unassigned_employee_cannot(isolated):
