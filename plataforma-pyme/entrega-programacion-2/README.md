@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión para múltiples empresas y rubros.  
 **Ubicación prevista en el repositorio:** `plataforma-pyme/entrega-programacion-2/`.  
-**Estado de esta carpeta:** 01 v0.7, 02 v0.8, 03 v0.8 y 04 v0.9; conservan el diseño conceptual y documentan equipo C.4b. 05 v0.5 registra rutas RBAC del equipo (CI aprobado, validación local pendiente). 06 pruebas/despliegue pendiente. No sustituye `../docs/`.
+**Estado de esta carpeta (08/11/2026):** 01 v0.8, 02 v0.9, 03 v0.9, 04 v1.0, 05 v0.6 sincronizados para C.5. **195 pruebas locales** y **3/3 CI del commit funcional C.4b**. 03A se reconcilia en PUML, SVG y guía; 03B/03C se conservan. El Documento 06 sigue pendiente. **El informe para el compañero se escribirá por separado después del cierre documental.**
 
 ## Propósito
 
@@ -14,11 +14,11 @@ Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»*
 
 | Documento | Propósito | Estado |
 |---|---|---|
-| `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR funcional v0.7, equipo C.4b** |
-| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.8 — equipo C.4b con RBAC** |
-| [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO v0.8 — invariantes de membresía C.4b** |
-| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v0.9 — administración de equipo C.4b** |
-| [`05_MATRIZ_API_Y_TRAZABILIDAD.md`](05_MATRIZ_API_Y_TRAZABILIDAD.md) | RF → CU → endpoints reales → pruebas/roles/evidencia/pendientes | **PUBLICADO v0.5 — E2-1 C.4b** |
+| `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR funcional v0.8 — cierre C.5** |
+| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.9 — cierre C.5** |
+| [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO v0.9 — 03A conciliado** |
+| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v1.0 — arquitectura E2-1 real** |
+| [`05_MATRIZ_API_Y_TRAZABILIDAD.md`](05_MATRIZ_API_Y_TRAZABILIDAD.md) | RF → CU → endpoints reales → pruebas/roles/evidencia/pendientes | **PUBLICADO v0.6 — matriz de C.5** |
 | `06_PRUEBAS_Y_DESPLIEGUE.md` | Estrategia de pruebas, GitHub Actions, Docker, despliegue y evidencias | Pendiente |
 | [`diagramas/`](diagramas/) | SVG vectoriales aprobados, fuentes PlantUML editables y tres guías detalladas | **03A / 03B / 03C publicados** |
 | `presentacion/` | Diapositivas de defensa final | A crear |
@@ -28,7 +28,7 @@ Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»*
 ## Convenciones
 
 1. **AS-IS / Implementado DEMO:** evidencia disponible en el frontend React, con persistencia local y sin seguridad de servidor.
-2. **AS-IMPLEMENTED / Backend comprobado:** FastAPI, PostgreSQL, SQLAlchemy, Docker, auth y empresas; contrastar rutas y pruebas con 05. **TO-BE / Pendiente:** invitaciones, autorización de futuros comandos, catálogo, compras, stock, ventas e integración con React.
+2. **AS-IMPLEMENTED / Backend comprobado:** FastAPI, PostgreSQL, SQLAlchemy, Docker, auth y empresas; contrastar rutas y pruebas con 05. **TO-BE / Pendiente:** permisos de comandos comerciales, ubicaciones, catálogo, compras, stock, ventas e integración React. **Invitaciones y equipo básico ya están implementados en la API E2-1.**
 3. **Diferido:** fuera del alcance del MVP; por ejemplo, pagos reales de Mercado Pago, QR parcial real, conciliación bancaria y automatizaciones no comprometidas.
 4. Requerimientos identificados como `RF-xx`, no funcionales como `RNF-xx` y reglas de negocio como `RN-xx`. Conservan sus identificadores entre documentos. La etiqueta **NÚCLEO MVP**, **SOPORTE MVP** o **POST-MVP** expresa el alcance propuesto del backend, no una funcionalidad implementada.
 5. Cada documento pasa por `BORRADOR` → `APROBADO` → `ACTUALIZADO PARA ENTREGA`, registrando versión/fecha. La aprobación corresponde al equipo. **No se debe marcar un backend como implementado ni una prueba como aprobada sin evidencia.**
@@ -59,20 +59,24 @@ Cada explicación enlaza la **lámina SVG vectorial** (visualización de present
 
 **Regla operativa:** ninguna entrega mayor se considera cerrada solo por compilar. La misma entrega debe enlazar código, contratos HTTP, pruebas, versión Alembic si corresponde y documentos académicos. En cada corte se revisa 05 y `../backend/README.md`; 01/02 cambian al concretar RF/CU, 03 y el UML 03A al modificar entidades/reglas/cardinalidades, y 04 al modificar arquitectura/seguridad/patrones. El 03B no se regenera por cambios de identidad o autorización.
 
-**Orden acordado:** C.1 RBAC (validado) → C.2 edición empresarial (validado) → C.3 emisión (147 pruebas validadas) → C.4a aceptación (171 pruebas validadas) → C.4b equipo (CI aprobado, validación local pendiente) → C.5 cierre documental de E2-1 y revisión 03A/Documento 05 → RF-03 ubicaciones. Cada paso exige tests locales y CI verificables antes de avanzar; un código publicado no equivale por sí solo a etapa validada.
+**Secuencia verificada:** C.1 RBAC (98) → C.2 edición empresarial (125) → C.3 emisión (147) → C.4a aceptación (171) → C.4b equipo (195), todos validados localmente. **C.5:** documentación y 03A. **Próximo orden:** preparar por separado la revisión de E2-1 para el compañero y, después, RF-03 Ubicaciones.
 
 ### Estado de E2-1.3C.2 (corte del 8/11/2026)
 
-Se publicó `PATCH /api/v1/businesses/{business_id}` con validaciones de datos y autorización por rol real vinculada a la sesión y la empresa. La nueva ruta implementa una parte de RF-02/CU-03. **La ejecución local y CI de las pruebas nuevas está pendiente**; C.1 sí terminó con 98 pruebas aprobadas. No se alteró el modelo de dominio ni se regeneraron 03A/03B. Las invitaciones siguen en el bloque E2-1 (C.3/C.4); no generar todavía la hoja formal para revisión del compañero, porque el bloque funcional no terminó.
+Se publicó `PATCH /api/v1/businesses/{business_id}` con validaciones de datos y autorización por rol real vinculada a la sesión y la empresa. La nueva ruta implementa una parte de RF-02/CU-03. **La ejecución local/CI se validó posteriormente en C.2 (125 pruebas)**; C.1 sí terminó con 98 pruebas aprobadas. No se alteró el modelo de dominio ni se regeneraron 03A/03B. Las invitaciones siguen en el bloque E2-1 (C.3/C.4); no generar todavía la hoja formal para revisión del compañero, porque el bloque funcional no terminó.
 
 ### Estado C.3, corte del 8/11/2026
 
-Emisión segura de invitaciones `POST /api/v1/businesses/{business_id}/invitations` implementada y probada en CI. Existe nueva migración `e213c3_invitations`; la invitación no crea membresía, el token se entrega una sola vez y se persiste únicamente su hash. Aceptación y administración de miembros siguen pendientes. Validación de Alembic/PostgreSQL/Docker local requerida antes de cerrar C.3. La hoja formal de auditoría para el compañero se prepara solo al cerrar **E2-1** completo, no por cada subpaso.
+Emisión segura de invitaciones `POST /api/v1/businesses/{business_id}/invitations` implementada y probada en CI. Existe nueva migración `e213c3_invitations`; la invitación no crea membresía, el token se entrega una sola vez y se persiste únicamente su hash. Aceptación y administración de miembros siguen pendientes. La validación local del corte C.3 se completó posteriormente (147 pruebas); el texto anterior es histórico. La hoja formal de auditoría para el compañero se prepara solo al cerrar **E2-1** completo, no por cada subpaso.
 
 ### C.4a — Aceptación de invitaciones, 8/11/2026
 
-Se implementó `POST /api/v1/invitations/accept`: el destinatario autenticado consume la invitación con el token de C.3, crea o reactiva una sola Membresía y confirma estado ACEPTADA + traza de usuario/fecha en una sola transacción. Migración `e213c4_acceptance`. CI aprobado en Python 3.12/3.14/PostgreSQL y Docker, **validación local pendiente**. C.4b (administración del equipo) y cierre UML 03A quedan pendientes. No generar todavía la entrega de auditoría por bloque E2-1; se confeccionará al cerrar todos sus pasos.
+Se implementó `POST /api/v1/invitations/accept`: el destinatario autenticado consume la invitación con el token de C.3, crea o reactiva una sola Membresía y confirma estado ACEPTADA + traza de usuario/fecha en una sola transacción. Migración `e213c4_acceptance`. CI aprobado en Python 3.12/3.14/PostgreSQL y Docker, **validación local posteriormente aprobada (171 pruebas)**. C.4b luego se completó con 195 pruebas; C.5 sincronizó 03A. No generar todavía la entrega de auditoría por bloque E2-1; se confeccionará al cerrar todos sus pasos.
 
 ### C.4b — Control del equipo y titularidad protegida
 
-Sin migración nueva, se agregaron `GET /api/v1/businesses/{business_id}/memberships` (solo titular/administrador) y `PATCH /api/v1/businesses/{business_id}/memberships/{membership_id}` (solo titular) para administrar roles operativos y estado. La fuente de permisos es la membresía SQL del tenant. CI aprobó PostgreSQL/Pytest y Docker, **validación local pendiente**. La titularidad no puede transferirse ni revocarse por esta operación. Cierre E2-1/03A y hoja de auditoría para el compañero siguen para C.5.
+Sin migración nueva, se agregaron `GET /api/v1/businesses/{business_id}/memberships` (solo titular/administrador) y `PATCH /api/v1/businesses/{business_id}/memberships/{membership_id}` (solo titular) para administrar roles operativos y estado. La fuente de permisos es la membresía SQL del tenant. CI aprobó PostgreSQL/Pytest y Docker; **validación local aprobada (195 pruebas)**. La titularidad no puede transferirse ni revocarse por esta operación. Cierre E2-1/03A y hoja de auditoría para el compañero siguen para C.5.
+
+### C.5 — Sincronización documental completa (08/11/2026)
+
+El cierre funcional E2-1 tiene `195 passed in 23.86s`, Alembic `e213c4_acceptance (head)` sin deriva, Docker API/DB `healthy` y `/ready` `ready`/`ok`; el código C.4b `8cd1674` aprobó 3/3 CI. Se conciliaron documentos 01–05, README técnico, y el UML 03A (fuente PlantUML, SVG editorial y guía). 03B/03C y el código no se alteran. Este cierre **no presupone una nueva ejecución de pruebas sobre el commit documental**. El informe de revisión para el compañero será el siguiente trabajo separado; recién después comenzará RF-03.

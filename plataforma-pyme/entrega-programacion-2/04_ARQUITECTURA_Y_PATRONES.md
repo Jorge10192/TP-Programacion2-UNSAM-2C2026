@@ -2,15 +2,15 @@
 
 **Proyecto:** Asistente PyME — plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.9 — RBAC de consulta y gestión del equipo C.4b  
+**Versión:** 1.0 — conciliación de arquitectura E2-1, C.5
 **Estado:** **PROPUESTA BASE + ANEXO DE COMPONENTES BACKEND REALMENTE IMPLEMENTADOS** — aprobación académica del equipo pendiente  
-**Fecha:** 7 de noviembre de 2026  
+**Fecha:** 8 de noviembre de 2026  
 **Base de contraste:** `main` del repositorio `Jorge10192/TP-Programacion2-UNSAM-2C2026`, commit `764ba20674f14621e381a4e9753017070943f2e3` (frontend y documentos 01–03). Esta referencia de commit documenta el **baseline histórico** previo a E2; el estado implementado actual se registra en el anexo E2 de este documento.  
 **Documentos vinculados:** [01 — Requerimientos](01_ANALISIS_DE_REQUERIMIENTOS.md) · [02 — Casos de uso](02_CASOS_DE_USO.md) · [03 — Modelo de dominio y UML](03_MODELO_DE_DOMINIO_Y_UML.md).
 
 > **Alcance y lectura obligatoria.** **AS-IS** indica funcionalidades verificables en el frontend DEMO; **TO-BE** identifica decisiones y arquitectura que deberán implementarse en FastAPI; **DIFERIDO** representa evolución posterior. Los esquemas, carpetas, interfaces, fragmentos Python y endpoints propuestos en este documento **no son código de backend existente ni pruebas de backend ejecutadas**. Esta versión se somete a revisión antes de subirla a GitHub.
 
-> **Estado del backend E2 al 8/11/2026:** C.1 (98 pruebas), C.2 (125), C.3 (147) y **C.4a (171 pruebas)** validados en PostgreSQL local; `e213c4_acceptance (head)`, Alembic sin diferencias, API/DB Docker `healthy` y `/ready` correcto. **C.4b:** consulta y gestión de membresías implementadas y verificadas en GitHub Actions (Python 3.12/3.14 con PostgreSQL y Docker), **pendientes de comprobación local**. No hubo nuevas migraciones en C.4b. Transferencia de titularidad, eliminación física de miembros, edición de puestos, frontend/API y funcionalidades comerciales continúan fuera de este corte. El diseño conceptual TO-BE original no debe confundirse con funciones ya implementadas. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
+> **Cierre E2-1 / C.5 — 08/11/2026:** C.1 (98), C.2 (125), C.3 (147), C.4a (171) y C.4b **195/195 pruebas locales aprobadas** (`195 passed in 23.86s`). Alembic `e213c4_acceptance (head)`, sin nuevas operaciones; API y PostgreSQL Docker `healthy`, `/ready` = `ready`/`ok`. CI **3/3** del commit funcional `8cd1674`. C.5 es exclusivamente documental, no implica nuevos tests, migraciones o endpoints. React continúa DEMO; RF-03–RF-07 siguen pendientes.
 
 ## Resumen de decisiones de esta revisión
 
@@ -46,10 +46,7 @@ La plataforma es **multiempresa y multirrubro**. WALOS es únicamente una empres
 
 ### 1.1 Estado de los documentos
 
-- Documento 01: borrador v0.2 con alcance de backend **propuesto**, aún pendiente de aprobación formal del recorte.
-- Documento 02: v0.3 revisada, 12 casos de uso; CU-12 (invitación real) es soporte a confirmar.
-- Documento 03: modelo conceptual v0.3 publicado; **la representación UML técnica completa de 03B sigue en revisión** porque las láminas editoriales simplificaron asociaciones. El texto del dominio conserva las relaciones necesarias para este diseño.
-- Documento 04: **este borrador** define la arquitectura propuesta; ningún componente TO-BE puede describirse como implementado antes de pruebas y código comprobables.
+- **Estado vigente C.5:** 01 v0.8, 02 v0.9, 03 v0.9, 04 v1.0 y 05 v0.6. Las decisiones iniciales se conservan como **historial de arquitectura**; no deben interpretarse como fotografía actual de `main`. El 03B sigue siendo conceptual para módulos aún no implementados.
 
 ## 2. Arquitectura existente — AS-IS: frontend DEMO
 
@@ -64,9 +61,9 @@ La plataforma es **multiempresa y multirrubro**. WALOS es únicamente una empres
 | Imágenes DEMO | `IndexedDB`, blobs optimizados y aislados por clave de empresa/ficha | `src/data/demo/imageStorage.ts`, `imagePolicy.ts` |
 | Reglas funcionales | Funciones/políticas TypeScript para catálogo, compras, inventario, ventas, equipo, caja, cuentas y QR ficticio | `src/data/demo/*Policy.ts` |
 | Calidad de frontend | Build TypeScript/Vite, lint oxlint, tests Node y E2E con Playwright Chromium escritorio/móvil | `frontend/package.json`, `frontend/tests/`, `frontend/e2e/`, `.github/workflows/plataforma-pyme-frontend.yml` |
-| Backend/API | **No existe en `plataforma-pyme/`** | El directorio contiene `frontend/`, `docs/`, `entrega-programacion-2/` y `CHANGELOG.md` |
+| Backend/API | **FastAPI/SQLAlchemy/PostgreSQL reales para RF-01/RF-02** | `backend/app/`, `backend/alembic/`, `backend/tests/`; frontend React permanece DEMO desconectado |
 
-**Corrección frente a documentos históricos:** no hay evidencias de **React Router**, **Zustand** ni de un `AppGateway`/`ApiGateway` implementado en este estado. **Sí existe el objeto exportado `demoGateway`** dentro de `demoStore.ts`; todavía no hay una interfaz común de adaptadores DEMO/API. Esos nombres figuran en propuestas E0/ADR, **no** describen el runtime actual. Tampoco existe autenticación real, autorización de servidor, SQLAlchemy, migraciones, pagos reales ni sincronización multiusuario.
+**Corrección frente a documentos históricos:** no hay evidencias de **React Router**, **Zustand** ni de un `AppGateway`/`ApiGateway` implementado en este estado. **Sí existe el objeto exportado `demoGateway`** dentro de `demoStore.ts`; todavía no hay una interfaz común de adaptadores DEMO/API. Esos nombres figuran en propuestas E0/ADR, **no** describen el runtime actual. En el **frontend DEMO** no hay autenticación ni autorización de servidor, pagos reales ni sincronización multiusuario; **en el backend E2 sí hay** autenticación, permisos empresariales, SQLAlchemy y migraciones.
 
 ### 2.2 Estructura real simplificada
 
@@ -152,12 +149,12 @@ El dibujo es una **vista de arquitectura**, no un diagrama UML de clases ni una 
 
 ## 4. Estructura propuesta de carpetas y módulos
 
-La siguiente estructura es una **propuesta de creación** para el inicio de E2; hoy la carpeta `backend/` no existe. Se busca una organización familiar para el equipo, no un framework propio.
+La estructura siguiente fue una **propuesta histórica de inicio de E2**. Actualmente `backend/` existe con módulos de autenticación y empresas, SQLAlchemy, migraciones y tests. Se conserva el árbol conceptual como referencia de diseño, no como inventario literal del repositorio.
 
 ```text
 plataforma-pyme/
 ├── frontend/                         # se conserva tal como funciona
-├── backend/                          # A CREAR EN E2
+├── backend/                          # ya existe en E2; el resto es esquema ilustrativo
 │   ├── app/
 │   │   ├── main.py                   # instancia FastAPI; routers; errores
 │   │   ├── api/
@@ -786,7 +783,7 @@ Ya existe `.github/workflows/plataforma-pyme-frontend.yml`, que se ejecuta ante 
 - **Conexión SQL sin interpolar URI manualmente:** los caracteres reservados en una contraseña no deben romper `DATABASE_URL`. Se propone suministrar `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` por entorno y construir el URL con `sqlalchemy.engine.URL.create(...)`; alternativamente aceptar una URL previamente codificada/verificada.
 - **Configuración:** `backend/.env.example` sin secretos, `DATABASE_URL`, origen permitido del frontend, parámetros de autenticación y modo de entorno. El archivo `.env` real no se versiona.
 
-Ejemplo **ilustrativo** de servicios Docker Compose (no existe aún):
+Ejemplo **ilustrativo histórico** de Compose (no representa exactamente el `compose.yaml` ya implementado):
 
 ```yaml
 # Archivo conceptual: plataforma-pyme/compose.yaml (TODAVÍA NO EXISTE)
@@ -942,7 +939,7 @@ Las **restricciones SQL y contratos API definitivos** se aprobarán al programar
 - [PostgreSQL 16 — constraints de unicidad y FK](https://www.postgresql.org/docs/16/ddl-constraints.html#DDL-CONSTRAINTS-FOREIGN-KEYS) y [`NULLS NOT DISTINCT`](https://www.postgresql.org/docs/16/ddl-constraints.html#DDL-CONSTRAINTS-UNIQUE-CONSTRAINTS).
 - [RFC 9457 — Problem Details](https://www.rfc-editor.org/rfc/rfc9457.html).
 
-**Siguiente paso acordado:** conservar este documento publicado como arquitectura propuesta, iniciar E2 y verificar los patrones implementados con código y pruebas. Los Documentos 05 (API/trazabilidad) y 06 (pruebas/despliegue) se completarán junto con el backend, con pruebas reales y evidencias verificables. **No se anticipan resultados ni fechas de entrega que todavía no existen.**
+**Actualización C.5:** la decisión anterior corresponde a una etapa histórica previa a construir E2. Hoy el Documento 05 registra la API y pruebas reales de RF-01/RF-02; el Documento 06 de pruebas/despliegue queda pendiente. La auditoría del compañero se prepara en otro paso, después de esta sincronización.
 
 ## 17. Dictamen de revisión externa y decisiones adoptadas (v0.3)
 
@@ -970,7 +967,7 @@ La revisión externa proporcionada por el equipo se consideró **insumo crítico
 - **Seguridad de configuración:** eliminar del ejemplo Compose la interpolación directa de contraseña dentro de `DATABASE_URL`; usar variables y `URL.create()` para prevenir URI inválidos por caracteres reservados.
 - **Inventario:** reafirmar que un saldo ausente se rechaza como cero en salidas, y que las entradas iniciales son UPSERT atómicos, sin precrear todas las combinaciones.
 - **Dinero y unidades:** introducir explícitamente el manejo de productos discretos en milésimas, límites de BIGINT y bonificaciones por renglón sin pagos ficticios cero.
-- **Simetría AS-IS/TO-BE:** las pruebas frontend ya existentes permanecen independientes de las pruebas PostgreSQL aún por construir; el diseño de API no es un resultado de tests.
+- **Simetría AS-IS/TO-BE:** las pruebas frontend permanecen independientes de las pruebas PostgreSQL actuales para RF-01/RF-02 y futuras para los requerimientos comerciales; el diseño de API no es un resultado de tests.
 
 ---
 
@@ -1024,7 +1021,7 @@ La ruta separada `POST /api/v1/invitations/accept` utiliza `current_auth` y `Bus
 
 **Restricciones:** rol `ENCARGADO` o `TRABAJADOR` definido al invitar, nunca en el body de aceptación; no administrar titulares históricos por este flujo; empresa suspendida o membresía ya activa producen 409. El receptor puede haberse registrado después de la invitación; no hay creación automática de cuenta. Token, email ajeno o rol no otorgan privilegios sin una sesión válida. No hay correo ni automatización de entrega, rate limit ni verificación de propiedad del email antes de publicación pública; el secreto debe comunicarse por canal seguro y jamás quedar en logs/capturas. El estado `PENDIENTE` puede permanecer después del vencimiento, pero `expires_at` siempre tiene prioridad.
 
-**Auditoría SQL:** migración `20261108_0007_business_invitation_acceptance.py` y entidad `BusinessInvitation` con FK a usuario aceptante, timestamp y CHECK de coherencia. **Tests:** `test_business_acceptance_schema.py` y `test_business_acceptance_integration.py`, con PostgreSQL real y SAVEPOINT transaccional. CI de C.4a superó Python 3.12/3.14, migraciones/Alembic y Docker. Falta ejecutar las pruebas en Windows y confirmar `/ready` después de actualizar imagen; no se debe declarar C.4b implementado.
+**Auditoría SQL:** migración `20261108_0007_business_invitation_acceptance.py` y entidad `BusinessInvitation` con FK a usuario aceptante, timestamp y CHECK de coherencia. **Tests:** `test_business_acceptance_schema.py` y `test_business_acceptance_integration.py`, con PostgreSQL real y SAVEPOINT transaccional. CI de C.4a superó Python 3.12/3.14, migraciones/Alembic y Docker. La validación Windows posterior comprobó **195 pruebas**, API/DB `healthy` y `/ready` conectado; C.4b queda implementado y validado en su alcance.
 
 ## 23. C.4b — Consulta y modificación de membresías sin escalada de privilegios
 
@@ -1032,6 +1029,12 @@ La ruta separada `POST /api/v1/invitations/accept` utiliza `current_auth` y `Bus
 
 **Política de mínimos privilegios:** se añadió la capacidad `members.read` para no exponer emails y nombres del equipo al rol operativo general. Los administradores pueden consultar e invitar, pero no cambiar roles/estados. El titular activo puede promover/degradar entre `ADMINISTRADOR`, `ENCARGADO` y `TRABAJADOR`, además de marcar `ACTIVA`/`INACTIVA` la membresía ajena no titular. La propia membresía titular y cualquier membresía con `role=TITULAR_ADMINISTRATIVO` permanecen inmodificables desde esta API; transferencia futura exige un caso de uso y una transacción específica. Ninguna mutación toca el perfil global del Usuario ni su pertenencia a otros tenants. Empresa suspendida admite lectura del perfil empresarial, pero no listar equipo sensible ni administrar miembros.
 
-**API:** `GET /api/v1/businesses/{business_id}/memberships` (200/401/403/404/409); `PATCH /api/v1/businesses/{business_id}/memberships/{membership_id}` (200/401/403/404/409/422). `BusinessTeamMemberView` expone id, user_id, email normalizado, display_name, role, status, job_title; no password, teléfono ni tokens. `UpdateBusinessTeamMemberRequest` prohíbe campos extra, `null`, actualización vacía y cambio a rol TITULAR. Se verifica con pruebas Pydantic/HTTP y PostgreSQL transaccional. CI C.4b aprobado, verificación local por realizar. **No se añadió migración** ni se tocó React.
+**API:** `GET /api/v1/businesses/{business_id}/memberships` (200/401/403/404/409); `PATCH /api/v1/businesses/{business_id}/memberships/{membership_id}` (200/401/403/404/409/422). `BusinessTeamMemberView` expone id, user_id, email normalizado, display_name, role, status, job_title; no password, teléfono ni tokens. `UpdateBusinessTeamMemberRequest` prohíbe campos extra, `null`, actualización vacía y cambio a rol TITULAR. Se verifica con pruebas Pydantic/HTTP y PostgreSQL transaccional. CI funcional C.4b 3/3 aprobado y verificación local 195/195 superada el 08/11/2026. **No se añadió migración** ni se tocó React.
 
 **Pendientes declarados:** control de titularidad/traspaso, edición de `job_title`, auditoría histórica de cambios de rol, verificación de email y endurecimiento público de sesiones/invitaciones, UX de equipo en frontend. No introducirlos automáticamente en una revisión correctiva de este incremento.
+
+## 24. C.5 — Arquitectura consolidada y límites de alcance
+
+El backend real de E2-1 aplica **FastAPI Router → BusinessService → BusinessRepository → SQLAlchemy/PostgreSQL**, sesiones por petición y validación de identidad/sesión, empresa y membresía en el contexto concreto del tenant. La política RBAC permite editar perfil, invitar y consultar/administrar equipo según rol; las escrituras se confirman en transacciones con rollback. C.4b agregó endpoints de equipo sin migraciones ni cambios de negocio comercial. Los ejemplos y diagramas históricos de secciones anteriores pueden seguir siendo TO-BE y **no sustituyen la implementación verificada**.
+
+**Evidencia:** `195 passed in 23.86s` en Windows, Alembic `e213c4_acceptance (head)` sin deriva, Docker API/PostgreSQL `healthy`, `/ready` correcto, CI 3/3 del commit funcional `8cd1674`. En C.5 solo se cambian documentos y UML 03A. **No se declara integración React, deploy público ni RF-03–RF-07 implementados.**

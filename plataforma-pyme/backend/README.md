@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1 C.4b: consulta/administración del equipo publicadas y CI aprobado, pendientes de pruebas locales. C.4a validado localmente con 171 pruebas y Docker saludable. React permanece DEMO independiente.
+**Estado (08/11/2026):** E2-1 C.4b validado con **195/195 pruebas locales** (`195 passed in 23.86s`), Alembic `e213c4_acceptance (head)` sin diferencias, Docker API/PostgreSQL `healthy` y `/ready` correcto. GitHub Actions del commit funcional `8cd1674`: **3/3 aprobado**. C.5 sincroniza documentos y UML 03A sin editar FastAPI. React permanece DEMO.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -405,7 +405,7 @@ La revisión esperada es `e213b_business_creation (head)`. Las pruebas de integr
 
 Después, desde `plataforma-pyme/`, reconstruí la API Docker con `docker compose --profile api up -d --build api`, comprobá `docker compose ps` y abrí `http://127.0.0.1:18000/docs`. Las rutas nuevas aparecerán bajo `empresas`. La prueba manual de POST desde Swagger **sí guarda la empresa de verdad**, por lo que las pruebas automatizadas son suficientes para este corte.
 
-**Pendiente E2-1.3C:** permisos detallados por rol, invitaciones y aceptación de membresías, verificación de autorizaciones en cada comando comercial. React seguirá en modo DEMO hasta disponer de contratos HTTP probados. Los modelos UML 03A se ajustarán sobre el código confirmado.
+**Actualización del registro histórico E2-1.3C:** permisos empresariales, emisión/aceptación y gestión de equipo ya están implementados; siguen pendientes controles específicos para los futuros comandos comerciales. React seguirá en modo DEMO hasta disponer de contratos HTTP probados. Los modelos UML 03A se ajustarán sobre el código confirmado.
 
 ### Corrección de comparación Alembic en E2-1.3B
 
@@ -511,9 +511,9 @@ docker compose ps
 Invoke-RestMethod http://127.0.0.1:18000/ready
 ```
 
-Esperamos `e213c4_acceptance (head)`, sin operaciones nuevas de Alembic y todas las pruebas aprobadas; **no declarar cifra exacta hasta verificarla**. Una consulta a `/ready` inmediatamente después de reconstruir puede fallar mientras el contenedor muestra `health: starting`; repetir tras arrancar. No es necesario emitir invitaciones reales desde Swagger, porque las pruebas PostgreSQL crean y revierten los datos. La administración de miembros, cancelación/rechazo, validación de email y la entrega segura para producción permanecen pendientes del próximo corte C.4b y futuras etapas.
+La comprobación local posterior confirmó `e213c4_acceptance (head)`, Alembic sin nuevas operaciones y **195 pruebas aprobadas** al cierre C.4b. Una consulta a `/ready` inmediatamente después de reconstruir puede fallar mientras el contenedor muestra `health: starting`; repetir tras arrancar. No es necesario emitir invitaciones reales desde Swagger, porque las pruebas PostgreSQL crean y revierten los datos. La administración básica de miembros se completó en C.4b; cancelación/rechazo de invitaciones, validación de email y entrega segura para producción continúan pendientes.
 
-**Documentos actualizados:** 01 v0.6, 02 v0.7, 03 v0.7, 04 v0.8 y 05 v0.4; UML 03A se revisará al concluir E2-1 completo. Sin cambios de frontend.
+**Documentos de aquel corte histórico C.4a:** 01 v0.6, 02 v0.7, 03 v0.7, 04 v0.8 y 05 v0.4. **Versiones al cerrar C.5:** 01 v0.8, 02 v0.9, 03 v0.9, 04 v1.0 y 05 v0.6; UML 03A conciliado. Sin cambios de frontend.
 
 ## E2-1 C.4b — Directorio de miembros y administración por titular
 
@@ -542,4 +542,10 @@ docker compose ps
 Invoke-RestMethod http://127.0.0.1:18000/ready
 ```
 
-No se alteró React ni ningún proyecto hermano. El siguiente corte C.5 consolidará el UML 03A y la trazabilidad del bloque E2-1 antes de preparar su hoja de auditoría con IA para el compañero.
+No se alteró React ni ningún proyecto hermano. **C.5 consolidó el UML 03A y los documentos 01–05.** La hoja de auditoría del compañero se preparará aparte, después de la sincronización y antes de RF-03.
+
+## E2-1 C.5 — Evidencia y alcance del cierre documental (08/11/2026)
+
+**Base funcional:** commit `8cd167481291b78628da0d038c7414cc26e3a311`, con CI 3/3. En Windows, el desarrollador ejecutó las pruebas de integración PostgreSQL con `RUN_DB_INTEGRATION=1`, resultado `195 passed in 23.86s`. `alembic current` devolvió `e213c4_acceptance (head)` y `alembic check` no encontró operaciones nuevas. `docker compose --profile api up -d --build --wait api` concluyó con API/DB `healthy` y `/ready` `ready`/`ok`.
+
+**C.5:** actualizar documentos 01–05, índices y 03A (PUML, SVG, guía). **No modifica** código, tests, migraciones, React, 03B ni 03C, ni implica reejecutar CI por el commit documental. Tras este cierre viene una **hoja de revisión independiente** para el compañero; después, RF-03 Ubicaciones.
