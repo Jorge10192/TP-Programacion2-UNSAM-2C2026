@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert, select, update
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -93,6 +93,26 @@ def rejected_sql(conn, query):
             conn.execute(query)
     finally:
         sp.rollback()
+
+
+@pytest.mark.parametrize("db_timezone", [
+    "UTC", "America/Argentina/Buenos_Aires", "Asia/Kathmandu",
+])
+def test_revocation_response_is_identical_on_retry_and_get_in_any_db_timezone(ctx, db_timezone):
+    client, conn = ctx
+    conn.execute(select(func.set_config("TimeZone", db_timezone, True)))
+    owner, _ = actor(client)
+    _, worker = actor(client)
+    bid = business(client, owner)
+    lid = location(client, bid, owner)
+    mid = member(conn, bid, worker)
+    assert change(client, bid, lid, mid, owner).status_code == 200
+    revoked = change(client, bid, lid, mid, owner, "REVOCADA")
+    repeated = change(client, bid, lid, mid, owner, "REVOCADA")
+    assert revoked.status_code == repeated.status_code == 200
+    assert repeated.json() == revoked.json()
+    assert repeated.json()["revoked_at"].endswith("Z")
+    assert client.get(url(bid, lid), headers=owner).json() == [revoked.json()]
 
 
 def test_assign_list_idempotent_revoke_reactivate(ctx):

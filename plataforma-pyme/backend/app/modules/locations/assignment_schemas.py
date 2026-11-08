@@ -2,7 +2,7 @@
 
 La identidad de la membresía y ubicación proviene de la ruta, nunca del body.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
@@ -30,5 +30,8 @@ class LocationAssignmentView(BaseModel):
             business_id=record.business_id, location_id=record.location_id,
             membership_id=membership_id, user_id=record.user_id, status=record.status,
             created_at=record.created_at, updated_at=record.updated_at,
-            revoked_at=record.revoked_at,
+            revoked_at=(
+                record.revoked_at.astimezone(timezone.utc)
+                if record.revoked_at is not None else None
+            ),
         )
