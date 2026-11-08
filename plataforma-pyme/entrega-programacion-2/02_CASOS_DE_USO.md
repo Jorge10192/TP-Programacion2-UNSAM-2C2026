@@ -2,13 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.8 — CU-12 incorporación y administración operativa C.4b  
+**Versión:** 0.9 — cierre y sincronización documental C.5
 **Estado:** **REVISADO PARA ENTREGA — especificación TO-BE, con decisiones de E2 todavía abiertas**  
-**Fecha:** 7 de noviembre de 2026  
-**Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.7)  
+**Fecha:** 8 de noviembre de 2026  
+**Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.8)  
 **Alcance:** casos de uso del **núcleo propuesto** del backend RESTful (TO-BE), contrastados con los comportamientos del frontend DEMO (AS-IS). Las operaciones previstas NO implican endpoints implementados. La lista definitiva de permisos, campos y códigos HTTP se formalizará posteriormente. Esta revisión incorpora CU-12 como soporte para membresías reales, sin ampliar el alcance a envíos de correo o acceso público por QR.
 
-> **Estado del backend E2 al 8/11/2026:** C.1 (98 pruebas), C.2 (125), C.3 (147) y **C.4a (171 pruebas)** validados en PostgreSQL local; `e213c4_acceptance (head)`, Alembic sin diferencias, API/DB Docker `healthy` y `/ready` correcto. **C.4b:** consulta y gestión de membresías implementadas y verificadas en GitHub Actions (Python 3.12/3.14 con PostgreSQL y Docker), **pendientes de comprobación local**. No hubo nuevas migraciones en C.4b. Transferencia de titularidad, eliminación física de miembros, edición de puestos, frontend/API y funcionalidades comerciales continúan fuera de este corte. El diseño conceptual TO-BE original no debe confundirse con funciones ya implementadas. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
+> **Cierre E2-1 / C.5 — 08/11/2026:** C.1 (98), C.2 (125), C.3 (147), C.4a (171) y **C.4b (195/195 pruebas locales aprobadas; `195 passed in 23.86s`)**. Alembic `e213c4_acceptance (head)`, `No new upgrade operations detected.`; Docker FastAPI/PostgreSQL `healthy` y `/ready` = `ready`/`ok`. GitHub Actions **3/3** corresponde al commit funcional `8cd1674`. C.5 es **exclusivamente documental**; no se reejecutaron pruebas ni cambiaron endpoints, modelos SQL o migraciones. React sigue DEMO; RF-03–RF-07 no tienen backend; transferencia de titularidad, verificación de correo y endurecimiento para producción siguen pendientes.
 
 ## 1. Finalidad y metodología
 
@@ -460,7 +460,7 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 | CU-02 Login/perfil/salida | Implementado y probado localmente | `POST /login`, `GET /me`, `POST /logout` bajo `/api/v1/auth` |
 | CU-03 Crear y administrar perfil de empresa | Alta y lectura verificadas; edición C.2 publicada, aún sin pruebas locales confirmadas | `POST/GET /api/v1/businesses`, `GET/PATCH /api/v1/businesses/{business_id}`; RBAC empresarial en PATCH |
 | CU-04–CU-11 | Pendiente backend | Plan conceptual y experiencia frontend DEMO; todavía no hay endpoint real |
-| CU-12 Invitaciones/equipo | **C.3/C.4a validados localmente; C.4b gestión publicada y CI aprobado, validación local pendiente** | Emisión, aceptación, `GET /api/v1/businesses/{business_id}/memberships` y `PATCH /api/v1/businesses/{business_id}/memberships/{membership_id}` |
+| CU-12 Invitaciones/equipo | **C.3/C.4a/C.4b validados localmente; 195 pruebas finales y CI funcional 3/3** | Emisión, aceptación, directorio `GET /api/v1/businesses/{business_id}/memberships` y edición `PATCH /api/v1/businesses/{business_id}/memberships/{membership_id}` |
 
 **Política E2-1.3C.1:** se implementa la **matriz RBAC pura** con cuatro roles de membresía; para consulta empresarial todos los miembros activos pueden leer, mientras que la configuración se reserva al titular y administrador. `ENCARGADO` y `TRABAJADOR` no reciben facultad general para editar empresa, invitar ni administrar miembros. **Esta primera entrega define y prueba la política; la aplicación efectiva a la primera mutación protegida es el siguiente corte.** Identificador empresarial ajeno o membresía inactiva no deben otorgar acceso. Para un miembro activo de una empresa suspendida se prevé lectura informativa, no cambios. Véase Documento 05 para el detalle y los errores HTTP previstos.
 
@@ -472,7 +472,7 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 
 **Alternativas:** sesión inválida `401`; empresa ajena, inexistente o sin membresía activa `404`; miembro válido sin facultad `403`; titular/administrador de empresa suspendida `409`; campos prohibidos, `null`, nombres no válidos o cuerpo vacío `422`. Toda excepción antes del commit revierte la actualización. El rol de una empresa nunca habilita modificar otra. El estado no se actualiza por esta API.
 
-**Pruebas introducidas (pendientes de validar):** flujo exitoso del titular, administrador, denegación a encargado/trabajador, aislamiento entre empresas, empresa suspendida, sesión revocada, membresía inactiva, validación del cuerpo y rollback inducido tras `flush`. Este complemento no crea una entidad nueva ni exige regenerar 03A/03B.
+**Pruebas introducidas en C.2 (validadas posteriormente en la regresión de E2-1):** flujo exitoso del titular, administrador, denegación a encargado/trabajador, aislamiento entre empresas, empresa suspendida, sesión revocada, membresía inactiva, validación del cuerpo y rollback inducido tras `flush`. Este complemento no crea una entidad nueva ni exige regenerar 03A/03B.
 
 ## 12. E2-1.3C.3 — contrato parcial de CU-12a: emitir invitación
 
@@ -484,7 +484,7 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 
 **Pruebas y evidencia:** CI del commit C.3 exitoso en Python 3.12/3.14, migración+deriva Alembic y contenedor. Debe ejecutarse también en el equipo local. CU-12b (aceptación única por destinatario autenticado), cancelación, gestión de miembros y permisos de aprobación siguen **pendientes**.
 
-## 13. C.4a — Aceptación de invitación CU-12b (implementada, pendiente de prueba local)
+## 13. C.4a — Aceptación de invitación CU-12b (implementada y validada localmente)
 
 **Actor:** cuenta global con sesión Bearer válida y correo normalizado **igual** al correo de la invitación. El destinatario puede registrar su cuenta después de que se haya emitido la invitación. El emisor no acepta en nombre del destinatario.
 
@@ -492,7 +492,7 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 
 **Excepciones:** 401 sesión/usuario inválido; 404 token inexistente o dirigido a otra identidad **con el mismo mensaje**; 409 token consumido/vencido, empresa suspendida, membresía ya activa o reactivación de antiguo titular administrativo; 422 token con forma inválida o campos extra. Las excepciones no crean ni reactivan miembros. La aceptación consumida no produce segunda membresía ni cambio de rol al reintentarse. El rol para membresía reactivada proviene de invitación, no del cliente; el `job_title` anterior se limpia. No se permite degradar un titular histórico inactivo con una invitación operativa.
 
-**Trazabilidad:** CU-12b complementa CU-12a y RF-02. Se añaden `accepted_by_user_id` y `accepted_at` en una migración aditiva `e213c4_acceptance`, con restricción para que las columnas de auditoría solo aparezcan con `ACEPTADA` y sean obligatorias en ese estado. **CI aprobó Pytest/Alembic para ambos Python**; faltan verificación local y administración C.4b. La validación por correo real, cambios de rol y UI pertenecen a otros cortes.
+**Trazabilidad:** CU-12b complementa CU-12a y RF-02. Se añaden `accepted_by_user_id` y `accepted_at` en una migración aditiva `e213c4_acceptance`, con restricción para que las columnas de auditoría solo aparezcan con `ACEPTADA` y sean obligatorias en ese estado. **CI aprobó Pytest/Alembic para ambos Python**; C.4a se verificó con 171 pruebas locales y C.4b con 195. La validación por correo real, cambios de rol y UI pertenecen a otros cortes.
 
 ## 14. C.4b — CU-12: consultar equipo y cambiar permisos operativos
 
@@ -501,3 +501,7 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 **Mutación:** solo un titular administrativo **activo** puede solicitar `PATCH /api/v1/businesses/{business_id}/memberships/{membership_id}` con campo `role` y/o `status`. El cuerpo es parcial; valores `null`, desconocidos, `TITULAR_ADMINISTRATIVO` y campos extra dan 422. Revalidar sesión, empresa/membresía del actor, privilegio `members.manage` y membresía objetivo de la misma empresa; bloquear en SQL y confirmar una sola transacción. Un administrador no puede desactivar a colegas ni ascenderse. El titular no puede modificar su propia membresía ni ninguna membresía cuyo rol actual sea `TITULAR_ADMINISTRATIVO` (respuesta 409, rollback). Un objetivo ajeno/no existente da 404. Empresa suspendida da 409. Usuario no autenticado da 401 y miembro actor sin permisos da 403. Una desactivación tiene efecto inmediato en las próximas solicitudes con esa cuenta para ese tenant; no revoca su identidad global ni afecta otras empresas.
 
 **Fuera de alcance:** transferencia o cese del titular, eliminación física, edición `job_title`, envío de emails, verificación de propiedad de correo y gestión de solicitudes de invitación. El usuario mantiene su identidad personal global. La revisión de 03A y el cierre del bloque E2-1 se tratarán en una etapa documental propia. **Pruebas de C.4b aprobadas en CI, todavía no ejecutadas localmente**.
+
+## 15. C.5 — Correspondencia de casos de uso con API real
+
+CU-01/CU-02 (identidad) y los flujos concretados de CU-03/CU-12 (empresa, invitación y equipo básico) tienen endpoints y pruebas PostgreSQL. **Los casos de uso comerciales permanecen TO-BE**, aunque React DEMO disponga de pantallas. C.4b: `195 passed in 23.86s`, CI funcional 3/3 y Alembic sin diferencias. La transferencia de titularidad no está implementada; la auditoría para el compañero se preparará en una entrega separada, antes de RF-03.

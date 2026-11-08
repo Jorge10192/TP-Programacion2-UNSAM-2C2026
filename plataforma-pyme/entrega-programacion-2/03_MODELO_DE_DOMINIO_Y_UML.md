@@ -2,14 +2,14 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.8 — invariantes de equipo y titularidad empresarial C.4b  
-**Estado:** **MODELO CONCEPTUAL REVISADO + ANEXO AS-IMPLEMENTED E2** — 03A/03B/03C no se rehicieron; subsistemas comerciales pendientes  
-**Fecha:** 7 de noviembre de 2026  
+**Versión:** 0.9 — cierre y sincronización documental C.5
+**Estado:** **MODELO CONCEPTUAL + ANEXO AS-IMPLEMENTED E2-1** — 03A sincronizado con API y esquema SQL; 03B/03C preservados, comerciales pendientes  
+**Fecha:** 8 de noviembre de 2026  
 **Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.7), `02_CASOS_DE_USO.md` (v0.8), políticas del frontend DEMO E1-D2.  
 
 > **Criterio de lectura:** AS-IS describe el modelo DEMO ya construido; TO-BE propone el dominio de la futura API FastAPI/SQLAlchemy/PostgreSQL. El diagrama conceptual **no es todavía el esquema SQL implementado**. Las extensiones posteriores aparecen separadas y no se incluyen en el núcleo evaluable.
 
-> **Estado del backend E2 al 8/11/2026:** C.1 (98 pruebas), C.2 (125), C.3 (147) y **C.4a (171 pruebas)** validados en PostgreSQL local; `e213c4_acceptance (head)`, Alembic sin diferencias, API/DB Docker `healthy` y `/ready` correcto. **C.4b:** consulta y gestión de membresías implementadas y verificadas en GitHub Actions (Python 3.12/3.14 con PostgreSQL y Docker), **pendientes de comprobación local**. No hubo nuevas migraciones en C.4b. Transferencia de titularidad, eliminación física de miembros, edición de puestos, frontend/API y funcionalidades comerciales continúan fuera de este corte. El diseño conceptual TO-BE original no debe confundirse con funciones ya implementadas. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
+> **Cierre E2-1 / C.5 — 08/11/2026:** C.1 (98), C.2 (125), C.3 (147), C.4a (171) y **C.4b (195/195 pruebas locales aprobadas; `195 passed in 23.86s`)**. Alembic `e213c4_acceptance (head)`, `No new upgrade operations detected.`; Docker FastAPI/PostgreSQL `healthy` y `/ready` = `ready`/`ok`. GitHub Actions **3/3** corresponde al commit funcional `8cd1674`. C.5 es **exclusivamente documental**; no se reejecutaron pruebas ni cambiaron endpoints, modelos SQL o migraciones. React sigue DEMO; RF-03–RF-07 no tienen backend; transferencia de titularidad, verificación de correo y endurecimiento para producción siguen pendientes.
 
 ## 1. Finalidad y alcance
 
@@ -66,7 +66,7 @@ El propósito del modelo de dominio es identificar conceptos comerciales, relaci
 | **Usuario** | `id`, `emailNormalizado`, `passwordHash`, `nombre`, `estado`, fechas | Identidad única global; contraseña no reversible; email único normalizado |
 | **Empresa** | `id`, `nombre`, `rubro`, `tipoActividad`, `fundadorUserId`, `estado`, fechas | Tenant comercial; estado inicial `ACTIVA`, fundador histórico; no crea stock ni ubicación en el alta. `SUSPENDIDA` es una capacidad de ciclo de vida prevista, **sin endpoint de suspensión comprometido en el MVP** |
 | **Membresía** | `id`, `businessId`, `userId`, `rol`, `estado`, fechas | Une una identidad global con una empresa; unicidad `(businessId,userId)`; solo membresía activa y permisos válidos habilitan operaciones |
-| **Invitación** (emisión SQL implementada en C.3; aceptación pendiente) | `id`, `businessId`, `invitedByUserId`, `emailNormalizado`, `rolPropuesto`, `tokenHash`, `venceEn`, `estado`, fechas | Crear invitación no concede acceso; hash SHA-256, 7 días, único pendiente por empresa+email; aceptar una vez creará/activará membresía en C.4 |
+| **Invitación** (emisión C.3 y aceptación C.4a implementadas en SQL) | `id`, `businessId`, `invitedByUserId`, `emailNormalizado`, `rolPropuesto`, `tokenHash`, `venceEn`, `estado`, fechas | Crear invitación no concede acceso; hash SHA-256, 7 días, único pendiente por empresa+email; aceptar una vez creará/activará membresía en C.4 |
 | **Ubicación** | `id`, `businessId`, `nombre`, `tipo`, `canSell`, `canStore`, `estado` | Contexto de stock y venta; capacidades verificadas en cada operación |
 
 **Titularidad:** al crear Empresa se genera en la misma transacción una Membresía activa con la responsabilidad administrativa inicial; el fundador histórico no se confunde con un socio legal. La transferencia de titularidad queda diferida. Roles definitivos, expiración de invitaciones y permisos se completarán en Documento 04/05.
@@ -313,7 +313,7 @@ En el MVP, CU-11 permite registrar **ajustes justificados** de inventario según
 - Se conserva sin alterar el diseño visual aprobado; las diferencias deliberadas entre SVG editorial y PUML se describen en cada guía.
 - No se extiende el MVP con recepción parcial, servicios con consumo automático, cobros reales ni procesos de suspensión de empresas.
 
-## 13. Correspondencia conceptual ↔ esquema implementado (E2-1.3C.1)
+## 13. Correspondencia conceptual ↔ esquema implementado (actualizado C.5; corte inicial E2-1.3C.1)
 
 | Concepto de 03A | Implementación SQLAlchemy/PostgreSQL actual | Matiz |
 |---|---|---|
@@ -322,9 +322,9 @@ En el MVP, CU-11 permite registrar **ajustes justificados** de inventario según
 | Empresa | `businesses`: nombre, categoría, tipo de actividad, `founder_user_id`, estado y fechas | Fundador histórico ≠ titular legal |
 | Membresía | `memberships`: empresa, usuario, rol, estado, puesto opcional | UNIQUE por empresa/usuario; índice parcial limita a uno el titular activo |
 | Idempotencia del alta | `business_creation_requests` con PK compuesta `actor_user_id, idempotency_key` | El PK ya es UNIQUE; no duplicar constraint; respuesta previa por hash canónico |
-| Invitación | **No implementada** en SQL | Permanece conceptual y depende de futura autorización |
+| Invitación | `business_invitations`: FK de empresa e invitador, destinatario por correo y aceptante opcional, hash/expiración y auditoría de aceptación | Emisión/aceptación reales; solo aceptación autenticada genera/reactiva membresía |
 
-La futura actualización del **03A** deberá distinguir los conceptos de dominio de las clases técnicas (sesiones, registro idempotente, políticas). En E2-1.3C.1 no hay cambios en cardinalidades ni entidades SQL: **no es necesario regenerar 03A**, y expresamente **no se rehace 03B**. La política pure-function `has_business_permission` no es una clase persistente del UML de dominio; se documenta en 04/05. Se exige verificar la pertenencia real de cada Membresía a la Empresa consultada al aplicar la política en endpoints; el rol de otra empresa no autoriza esta.
+En C.5 se sincronizó **03A** con las relaciones reales de invitador y aceptante, sin añadir sesiones, idempotencia ni políticas RBAC como clases empresariales. La nota previa correspondía al corte histórico C.1, antes de existir el circuito de invitaciones. **03B no se rehace**. La política pure-function `has_business_permission` no es una clase persistente del UML de dominio; se documenta en 04/05. Se exige verificar la pertenencia real de cada Membresía a la Empresa consultada al aplicar la política en endpoints; el rol de otra empresa no autoriza esta.
 
 ## 14. Correspondencia E2-1.3C.2 con modelo y UML
 
@@ -340,13 +340,13 @@ La tabla real `business_invitations` implementa la **entidad Invitación ya prev
 
 **Relaciones:** cada invitación pertenece a una empresa, tiene un usuario invitador identificado y **no se vincula aún a un miembro invitado**. La invitación puede dirigirse a un correo sin cuenta global existente. El modelo de `Membership` y su unicidad `(business_id,user_id)` no cambió. Crear la invitación no concede permisos ni crea una segunda titularidad. En C.4 se concretará la aceptación con identidad autenticada y transición de estado.
 
-**UML:** 03A ya muestra la asociación conceptual de Invitación con Empresa. No se regeneran sus láminas por este corte intermedio; al cerrar E2-1 se revisarán atributos de invitador, estados y aceptación frente al esquema final. No se altera 03B (dominio comercial). El hash evita persistir el token en claro pero no sustituye TLS ni controles de entrega del secreto. El estado `PENDIENTE` con fecha pasada no implica vigencia: `expires_at` será obligatorio durante la aceptación.
+**UML:** en el corte intermedio C.3 se conservó 03A. En C.5 se revisaron fuente PlantUML y SVG editorial: emisor obligatorio, aceptante opcional y destinatario por email, no por FK previa a Usuario. No se altera 03B (dominio comercial). El hash evita persistir el token en claro pero no sustituye TLS ni controles de entrega del secreto. El estado `PENDIENTE` con fecha pasada no implica vigencia: `expires_at` será obligatorio durante la aceptación.
 
 ## 16. C.4a — Correspondencia entidad Invitación y alta de Membresía
 
 La invitación conceptual de 03A incorpora dos atributos técnicos de auditoría en la entidad real: `accepted_by_user_id` (FK opcional a Usuario) y `accepted_at` (fecha de aceptación). La migración aditiva `e213c4_acceptance` añade ambas columnas, FK y restricción de coherencia con `status=ACEPTADA`. **Relaciones:** Invitación sigue perteneciendo a una Empresa, fue emitida por un Usuario y, si está aceptada, conserva la identidad global de quien la consumió; la cuenta destinataria se identifica por correo normalizado. Una Membresía conecta exactamente un Usuario con una Empresa. Ninguna invitación pendiente concede acceso; el estado ACEPTADA y la membresía ACTIVA se confirman conjuntamente.
 
-Al aceptar se crea una nueva Membresía si no existía, o se reactiva la misma fila INACTIVA con rol operativo de la invitación. La PK/UNIQUE por empresa y usuario impide duplicados; se protege la titularidad administrativa histórica en una membresía inactiva. **No se modifica la cardinalidad conceptual, las relaciones de inventario ni 03B.** Al cerrar E2-1 se revisará la fuente editable/diagrama 03A, no se rehacen gráficas intermedias. La revisión local de C.4a todavía está pendiente; el CI del código sí aprobó.
+Al aceptar se crea una nueva Membresía si no existía, o se reactiva la misma fila INACTIVA con rol operativo de la invitación. La PK/UNIQUE por empresa y usuario impide duplicados; se protege la titularidad administrativa histórica en una membresía inactiva. **No cambian las cardinalidades Empresa–Membresía ni el 03B.** 03A se actualizó en C.5; C.4a se validó con 171 pruebas locales y CI aprobado.
 
 ## 17. C.4b — Administración de Membresía sin modificar UML estructural
 
@@ -354,4 +354,14 @@ Los métodos de lista y edición de equipo **reutilizan** `Membership` y `User` 
 
 `members.read` autoriza a titular/administrador a consultar la composición del equipo; `members.manage` autoriza solo al titular a actualizar **roles operativos** y estado de colaboradores. No se concede capacidad de convertir a otro usuario en titular ni de eliminar el único titular activo. El fundador es un hecho histórico, no la fuente de autorización. No se regeneran los SVG/PlantUML 03A y 03B en este corte, porque no cambia cardinalidad; el cierre E2-1 revisará el 03A contra las tablas reales y dejará toda modificación estructural posterior trazada.
 
-**Evidencia:** CI de C.4b aprobó los tests de equipo en PostgreSQL y el backend Docker; validación local aún pendiente. Sin migración nueva: Alembic debe permanecer en `e213c4_acceptance`.
+**Evidencia:** CI 3/3 del código C.4b y **195/195 pruebas locales**; Alembic sin deriva y contenedores Docker saludables. Sin migración nueva: Alembic debe permanecer en `e213c4_acceptance`.
+
+## 18. C.5 — Conciliación final de 03A con modelos PostgreSQL
+
+- **Usuario–Membresía–Empresa:** unicidad `(business_id, user_id)` y permisos por membresía ACTIVA del tenant. El usuario no tiene rol global.
+- **Titular:** creación transaccional con titular inicial; el índice `uq_memberships_one_active_owner` impone **como máximo uno** activo, no garantiza por sí solo la existencia de un titular. C.4b impide modificar titulares actuales o históricos; transferencia diferida.
+- **Invitación:** cada registro tiene un invitador obligatorio `invited_by_user_id`, un destinatario **por `email_normalizado` (sin FK de usuario previo)** y un `accepted_by_user_id` opcional hasta aceptación. El CHECK exige aceptante y fecha `accepted_at` conjuntamente solo en ACEPTADA; token guardado exclusivamente como SHA-256.
+- **Aceptación:** confirma membresía única y consumo de invitación en una transacción; equipo C.4b reutiliza tablas sin migración nueva.
+- **Límite conceptual:** Ubicación, Artículo y Proveedor siguen TO-BE; sesiones, idempotencia y permisos son soporte técnico, no asociaciones comerciales adicionales. 03B y 03C permanecen intactos.
+
+**Evidencia:** pruebas Windows 195/195, CI 3/3 del código `8cd1674`, Alembic `e213c4_acceptance (head)` sin cambios, API y PostgreSQL `healthy`. C.5 solo actualiza documentación y diagramas.

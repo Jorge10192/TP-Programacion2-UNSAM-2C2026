@@ -2,13 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.7 — RF-02 administración de membresías con control de titularidad C.4b  
+**Versión:** 0.8 — cierre y sincronización documental C.5
 **Estado:** **BORRADOR FUNCIONAL — RF-01 validado; RF-02 parcialmente implementado y en ampliación**  
-**Fecha:** 7 de noviembre de 2026  
+**Fecha:** 8 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
 **Alcance de este documento:** análisis de producto y requisitos objetivo. **No equivale a afirmar que la API esté implementada.**
 
-> **Estado del backend E2 al 8/11/2026:** C.1 (98 pruebas), C.2 (125), C.3 (147) y **C.4a (171 pruebas)** validados en PostgreSQL local; `e213c4_acceptance (head)`, Alembic sin diferencias, API/DB Docker `healthy` y `/ready` correcto. **C.4b:** consulta y gestión de membresías implementadas y verificadas en GitHub Actions (Python 3.12/3.14 con PostgreSQL y Docker), **pendientes de comprobación local**. No hubo nuevas migraciones en C.4b. Transferencia de titularidad, eliminación física de miembros, edición de puestos, frontend/API y funcionalidades comerciales continúan fuera de este corte. El diseño conceptual TO-BE original no debe confundirse con funciones ya implementadas. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
+> **Cierre E2-1 / C.5 — 08/11/2026:** C.1 (98), C.2 (125), C.3 (147), C.4a (171) y **C.4b (195/195 pruebas locales aprobadas; `195 passed in 23.86s`)**. Alembic `e213c4_acceptance (head)`, `No new upgrade operations detected.`; Docker FastAPI/PostgreSQL `healthy` y `/ready` = `ready`/`ok`. GitHub Actions **3/3** corresponde al commit funcional `8cd1674`. C.5 es **exclusivamente documental**; no se reejecutaron pruebas ni cambiaron endpoints, modelos SQL o migraciones. React sigue DEMO; RF-03–RF-07 no tienen backend; transferencia de titularidad, verificación de correo y endurecimiento para producción siguen pendientes.
 
 ## 1. Presentación del proyecto
 
@@ -18,7 +18,7 @@ El sistema permite organizar empresas, ubicaciones, artículos y servicios, prov
 
 **WALOS** se utiliza como ejemplo de negocio durante las pruebas y demostraciones. La plataforma **no está limitada** al sector de productos para mascotas.
 
-El frontend React/TypeScript sigue en modo DEMO con almacenamiento local. En paralelo ya se implementó una API FastAPI con PostgreSQL y autenticación real, más las primeras operaciones de empresa. **La autorización específica por rol y los módulos comerciales del MVP siguen en desarrollo**; aún no existe integración frontend/API.
+El frontend React/TypeScript sigue en modo DEMO con almacenamiento local. En paralelo ya se implementó una API FastAPI con PostgreSQL y autenticación real, más las primeras operaciones de empresa. **La autorización empresarial de perfil, invitaciones y equipo ya está implementada; los permisos de las futuras operaciones comerciales y módulos RF-03–RF-07 siguen en desarrollo**; aún no existe integración frontend/API.
 
 ## 2. Problema que se busca resolver
 
@@ -88,8 +88,8 @@ Cobros reales mediante Mercado Pago, OAuth por vendedor, webhooks de acreditaci�
 
 | ID | Requerimiento de alto nivel | Comportamiento esperado | Estado actual | Alcance backend propuesto |
 |---|---|---|---|---|
-| **RF-01** | Gestionar usuarios y autenticación | Registro, inicio de sesión y acceso seguro a recursos autorizados | No hay login real; backend pendiente | **NÚCLEO MVP — obligatorio por consigna** |
-| **RF-02** | Gestionar empresas y miembros | Crear y consultar empresas; asociar usuarios mediante membresías y aplicar permisos por empresa | Empresas y membresías simuladas en DEMO | **NÚCLEO MVP** (membresía y permisos básicos) |
+| **RF-01** | Gestionar usuarios y autenticación | Registro, inicio de sesión y acceso seguro a recursos autorizados | React DEMO sin login; **API real con registro y sesiones** | **NÚCLEO MVP — obligatorio por consigna** |
+| **RF-02** | Gestionar empresas y miembros | Crear/editar empresas, invitar/aceptar y administrar equipo con permisos por tenant | React DEMO simulado; **backend RF-02 básico implementado** | **NÚCLEO MVP** (membresía y permisos básicos) |
 | **RF-03** | Administrar ubicaciones | Crear, editar, consultar y desactivar ubicaciones diferenciando venta y almacenamiento | DEMO local | **SOPORTE MVP** (altas/consultas y validaciones mínimas) |
 | **RF-04** | Administrar catálogo | Registrar y editar artículos, insumos y servicios con SKU, unidad, precio y estado | DEMO local | **NÚCLEO MVP** |
 | **RF-05** | Gestionar proveedores y compras | Registrar proveedores y compras; recibir mercadería explícitamente y consultar historial | DEMO local | **NÚCLEO MVP** (compra/recepción básica e idempotente) |
@@ -195,7 +195,7 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 | RF | Código y evidencia verificada | Pendiente |
 |---|---|---|
 | RF-01 | `POST /api/v1/auth/register`, `login`, `GET /me`, `POST /logout`; Argon2id, sesiones persistentes y pruebas PostgreSQL | Endurecimiento público, recuperación de cuenta e integración de React |
-| RF-02 | Crear/consultar/editar empresa, invitación/aceptación (C.4a, **171 pruebas locales**) y **consulta/administración de membresías C.4b implementadas, CI aprobado**; última migración `e213c4_acceptance` | Validación local C.4b, cierre UML 03A, interfaz React, verificación de email y endurecimiento público |
+| RF-02 | Crear/consultar/editar empresa; emitir/aceptar invitaciones; listar/administrar equipo — **195 pruebas locales aprobadas y CI funcional 3/3**; `e213c4_acceptance (head)` | React conectado, verificación de correo, transferencia de titularidad, auditoría histórica y endurecimiento público |
 | RF-03–RF-07 | Reglas planificadas, algunos comportamientos DEMO | Endpoints reales, tablas, transacciones y tests de negocio |
 | RF-08–RF-10 | Frontend DEMO o diseños diferidos | No comprometidos como backend del primer MVP |
 
@@ -213,13 +213,13 @@ Se implementó `POST /api/v1/businesses/{business_id}/invitations`, protegido po
 
 El token opaco aleatorio se entrega **una única vez en la respuesta 201** y solo su hash SHA-256 se guarda. Vence a los siete días. La base contiene una restricción UNIQUE parcial que impide dos invitaciones `PENDIENTE` al mismo correo normalizado dentro de la misma empresa. El servicio marca `EXPIRADA` una pendiente vencida antes de permitir una nueva; no existe tarea automática de expiración. Una solicitud duplicada mientras la primera está vigente responde 409. La confirmación ocurre en una transacción junto con la comprobación de identidad, membresía, permisos y empresa.
 
-**Fuera de C.3:** aceptación, listado de invitaciones, cancelación manual, reenvío, correo electrónico/QR públicos, generación de cuentas, modificaciones de roles e interfaz React. Estos puntos se evaluarán en C.4 y posteriores. La publicación en CI no equivale aún a validación local del desarrollador.
+**Registro histórico de C.3:** aceptación y administración de miembros estaban pendientes al emitir invitaciones, pero **fueron implementadas y validadas posteriormente en C.4a/C.4b**. El listado/cancelación/reenvío de invitaciones, correo/QR, generación de cuentas e interfaz React siguen fuera de E2-1.
 
 ### 13.3 C.4a — Aceptación de una invitación como identidad autenticada
 
 El destinatario puede aceptar exclusivamente una invitación cuyo correo normalizado coincida con el de su cuenta global autenticada. El token opaco se presenta mediante `POST /api/v1/invitations/accept`; la API usa únicamente `Authorization: Bearer` para obtener la identidad (no acepta `user_id`, rol o empresa enviados por el cliente). Se verifica por hash SHA-256 en PostgreSQL, estado `PENDIENTE`, vencimiento vigente y empresa `ACTIVA`. La operación crea una sola membresía o reactiva la anterior `INACTIVA` sin duplicar `(business_id,user_id)`; la nueva membresía utiliza el rol `ENCARGADO` o `TRABAJADOR` que fijó la invitación, nunca titularidad ni privilegios globales. La invitación pasa a `ACEPTADA` y registra `accepted_by_user_id` y `accepted_at` en el mismo commit. Repetir la aceptación no produce efectos.
 
-**Limitación funcional:** no hay aún pantalla de aceptación, envío de correo, gestión de equipo, cancelación/rechazo ni cambio de roles. En C.4b se definirá la administración del equipo. **Seguridad previa a producción:** la autenticación global todavía no incluye verificación del correo y deben diseñarse rate limits, entrega segura del token y protección de secretos; no describir esta funcionalidad como lista para internet público. Las pruebas del nuevo corte aprobaron CI, pero aún faltan las pruebas locales del desarrollador.
+**Limitaciones actuales:** no hay interfaz React conectada, envío de correo, listado/cancelación/reenvío de invitaciones ni verificación de propiedad de email. **La gestión de equipo y cambios de rol operativo sí están disponibles desde C.4b.** Para producción se requieren entrega segura del token, rate limiting y endurecimiento de auth. C.4a se validó con 171 pruebas y C.4b con 195.
 
 ### 13.4 C.4b — RF-02: consultar y administrar las membresías del equipo
 
@@ -227,4 +227,10 @@ Se incorporan `GET /api/v1/businesses/{business_id}/memberships` y `PATCH /api/v
 
 Se protege tanto la membresía del titular vigente como cualquier membresía histórica con rol `TITULAR_ADMINISTRATIVO`: ni la desactivación, ni la degradación ni la transferencia se implementan aquí. Las modificaciones se autorizan con el rol vigente **consultado en PostgreSQL dentro de la transacción** y se bloquean empresa, miembro actor y membresía objetivo. Una empresa suspendida no admite lectura de directorio sensible ni mutaciones; la lectura informativa del perfil de empresa sigue disponible.
 
-**Estado:** código publicado y tres trabajos de CI aprobados, falta prueba local de este corte. Sin migración nueva y sin cambios del UML conceptual 03A/03B. Las decisiones legales de titularidad y la administración avanzada del puesto/traspasos siguen pendientes; no deducirlas del endpoint operativo.
+**Estado C.5:** C.4b validado en Windows con **195/195 pruebas**, CI funcional 3/3, `e213c4_acceptance (head)` sin migración adicional y Docker saludable. Se actualizó la documentación y UML 03A sin alterar 03B; transferencia de titularidad y administración avanzada del puesto siguen pendientes.
+
+## 14. C.5 — Cierre de requerimientos comprobables
+
+**RF-01:** registro, login, `/me` y logout con sesiones PostgreSQL. **RF-02:** creación/listado/lectura/edición de empresa, emisión y aceptación de invitaciones, consulta de membresías y actualización de rol/estado por titular; permisos RBAC y aislamiento de tenant verificados. **No** equivale a todos los procesos futuros de gestión, cesión de titularidad ni integración React.
+
+**Evidencia local 08/11/2026:** `195 passed in 23.86s`, Alembic `e213c4_acceptance (head)` y `alembic check` sin operaciones, contenedores API y base `healthy`, `/ready` conectado. CI 3/3 corresponde al código `8cd1674`, no a un nuevo CI de C.5. Los RF-03–RF-07 carecen todavía de endpoints backend. Primero se prepara la revisión separada de E2-1 y luego se inicia RF-03.

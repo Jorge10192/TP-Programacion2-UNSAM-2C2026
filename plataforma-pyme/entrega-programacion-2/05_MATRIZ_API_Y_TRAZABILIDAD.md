@@ -1,7 +1,7 @@
 # 05 — Matriz de API, permisos y trazabilidad
 
 **Proyecto:** Asistente PyME — Programación 2  
-**Versión:** 0.5 (E2-1 C.4b — consulta y gestión autorizada de membresías)  
+**Versión:** 0.6 — cierre y sincronización documental C.5
 **Fecha:** 7 de noviembre de 2026  
 **Estado:** publicación técnica incremental; aprobación académica del equipo pendiente  
 **Referencia:** `main` del repositorio, carpeta exclusiva `plataforma-pyme/`.
@@ -10,7 +10,7 @@
 
 Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisiones de arquitectura (04), endpoints, controles de acceso y pruebas reales. No confundir **IMPLEMENTADO** (código en Git), **VALIDADO LOCALMENTE** (evidencia del desarrollador), **CI VERIFICADO** (GitHub Actions comprobado en una ejecución concreta) y **PLANIFICADO** (TO-BE). El frontend React continúa como DEMO independiente del backend. WALOS es solo un cliente de ejemplo.
 
-**Evidencia al 8/11/2026:** C.1 **98**, C.2 **125**, C.3 **147** y C.4a **171 pruebas locales aprobadas**. C.4a `e213c4_acceptance (head)`, sin deriva Alembic, Docker API/DB `healthy`, `/ready` ok. **C.4b aprobado en CI (Python 3.12/3.14/PostgreSQL y Docker), pendiente de validación local**.
+**Cierre E2-1 / C.5 — 08/11/2026:** C.1 (98), C.2 (125), C.3 (147), C.4a (171) y **C.4b (195/195 pruebas locales aprobadas; `195 passed in 23.86s`)**. Alembic `e213c4_acceptance (head)`, `No new upgrade operations detected.`; Docker FastAPI/PostgreSQL `healthy` y `/ready` = `ready`/`ok`. GitHub Actions **3/3** corresponde al commit funcional `8cd1674`. C.5 es **exclusivamente documental**; no se reejecutaron pruebas ni cambiaron endpoints, modelos SQL o migraciones. React sigue DEMO; RF-03–RF-07 no tienen backend; transferencia de titularidad, verificación de correo y endurecimiento para producción siguen pendientes.
 
 ## 2. Estado por requerimiento y caso de uso
 
@@ -19,7 +19,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | RF-01 | CU-01 | Implementado; validado localmente | `POST /api/v1/auth/register`; hash Argon2id, email único, 201/409/422 |
 | RF-01 | CU-02 | Implementado; validado localmente | `POST /api/v1/auth/login`, `GET /me`, `POST /logout`; sesiones revocables, 401 |
 | RF-02 | CU-03 | Alta, lectura y PATCH empresarial validados localmente | Empresa con titular inicial, idempotencia y edición autorizada por tenant/rol |
-| RF-02 | CU-12a / CU-12b y gestión | Emisión/aceptación validadas localmente; **equipo C.4b CI aprobado, pendiente de prueba local** | Emitir, aceptar, consultar equipo y editar roles/estados operativos con titularidad protegida |
+| RF-02 | CU-12a / CU-12b y gestión | Emisión/aceptación validadas localmente; **equipo C.4b validado localmente con 195 pruebas y CI 3/3** | Emitir, aceptar, consultar equipo y editar roles/estados operativos con titularidad protegida |
 | RF-03 | CU-04 | Planificado | Ubicación y permisos, necesaria para recepción/venta de bienes físicos |
 | RF-04 | CU-05 | Planificado | Catálogo y SKU único dentro del tenant |
 | RF-05 | CU-06, CU-07 | Planificado | Compra separada de recepción física completa |
@@ -43,8 +43,8 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | PATCH | `/api/v1/businesses/{business_id}` | Bearer + revalidación transaccional de sesión y membresía + `business.profile.edit` | 200; 401/403/404/409/422 | `test_business_update_*.py`, **125 pruebas locales aprobadas en C.2** |
 | POST | `/api/v1/businesses/{business_id}/invitations` | Bearer + membresía activa/rol autorizado + empresa activa + correo/rol validado en transacción | 201; 401/403/404/409/422 | `test_business_invitation_schemas.py` y `test_business_invitation_integration.py`; **147 pruebas locales aprobadas en C.3** |
 | POST | `/api/v1/invitations/accept` | Bearer + cuenta destinataria coincide con correo invitado + invitación PENDIENTE vigente + empresa ACTIVA; commit único | 200; 401/404/409/422 | `test_business_acceptance_*.py`, **171 pruebas locales en C.4a** |
-| GET | `/api/v1/businesses/{business_id}/memberships` | Bearer + membresía propia activa; permiso `members.read` (titular/administrador); empresa activa | 200; 401/403/404/409 | `test_business_team_schemas.py`, `test_business_team_integration.py` **(CI aprobado, local pendiente)** |
-| PATCH | `/api/v1/businesses/{business_id}/memberships/{membership_id}` | Bearer + rol titular vigente; miembro objetivo del mismo tenant no titular; permiso `members.manage`; transacción con bloqueo | 200; 401/403/404/409/422 | `test_business_team_schemas.py`, `test_business_team_integration.py` **(CI aprobado, local pendiente)** |
+| GET | `/api/v1/businesses/{business_id}/memberships` | Bearer + membresía propia activa; permiso `members.read` (titular/administrador); empresa activa | 200; 401/403/404/409 | `test_business_team_schemas.py`, `test_business_team_integration.py` **(195 pruebas locales; CI 3/3)** |
+| PATCH | `/api/v1/businesses/{business_id}/memberships/{membership_id}` | Bearer + rol titular vigente; miembro objetivo del mismo tenant no titular; permiso `members.manage`; transacción con bloqueo | 200; 401/403/404/409/422 | `test_business_team_schemas.py`, `test_business_team_integration.py` **(195 pruebas locales; CI 3/3)** |
 
 **Idempotencia CU-03:** `Idempotency-Key` UUID4, ámbito `actor_user_id` + clave; `business_creation_requests` conserva hash canónico y `business_id`. La **PK compuesta** mantiene la unicidad incluso con concurrencia. Reutilizar la clave con otro contenido devuelve 409; se corrigió la recuperación tras conflictos concurrentes sobre `pk_business_creation_requests` en E2-1.3C.1.
 
@@ -55,16 +55,16 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | Capacidad | TITULAR_ADMINISTRATIVO | ADMINISTRADOR | ENCARGADO | TRABAJADOR | Estado HTTP |
 |---|---|---|---|---|---|
 | `business.view` | Sí | Sí | Sí | Sí | Lectura vigente filtra por membresía activa; integración de política pura en C.2 |
-| `business.profile.edit` | Sí | Sí | No | No | **Implementado en PATCH C.2; pendiente de validación local/CI** |
-| `members.invite` | Sí | Sí | No | No | **Implementado en POST de CU-12a C.3; CI aprobado** |
-| `members.read` | Sí | Sí | No | No | **C.4b GET de equipo, CI aprobado** |
-| `members.manage` | Sí | No | No | No | **C.4b PATCH de colaborador, CI aprobado** |
+| `business.profile.edit` | Sí | Sí | No | No | **Implementado/validado C.2 (125 pruebas)** |
+| `members.invite` | Sí | Sí | No | No | **Implementado/validado C.3 (147 pruebas)** |
+| `members.read` | Sí | Sí | No | No | **C.4b GET validado (195 pruebas y CI 3/3)** |
+| `members.manage` | Sí | No | No | No | **C.4b PATCH validado (195 pruebas y CI 3/3)** |
 
 **Estados:** la membresía `INACTIVA` nunca autoriza; un rol desconocido o permiso nuevo se deniega por defecto (*fail closed*). La empresa `SUSPENDIDA` permite únicamente lectura informativa a miembros activos; no modificaciones, invitaciones ni administración de miembros. Esta función **no reemplaza** comprobar la empresa exacta en SQL ni la vigencia del token. Un titular de la empresa A no adquiere permisos en la empresa B por el nombre de su rol.
 
 **Decisión MVP:** el rol `ENCARGADO` no es un permiso universal. Las capacidades futuras de catálogo, inventario, compras y ventas deberán tener permisos específicos propios, con pruebas y documentación por CU; no se deducen automáticamente de este cuadro.
 
-### Comportamiento HTTP implementado en C.2 (pruebas pendientes de verificar)
+### Comportamiento HTTP implementado y validado desde C.2
 
 | Caso | HTTP esperado | Motivo |
 |---|---|---|
@@ -75,7 +75,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | Titular/administrador, empresa activa, cambios válidos | 200 | Actualización atómica |
 | Datos inválidos / cuerpo vacío | 422 | Validación de contrato |
 
-Los códigos precedentes están definidos en el router de C.2 y cuentan con pruebas escritas; **su conformidad real depende de ejecutarlas y validarlas localmente y en CI**. Para 403 se exige una membresía activa sin permiso; para 409 se exige rol apto pero empresa `SUSPENDIDA`.
+Los códigos precedentes están definidos en el router de C.2 y cuentan con pruebas escritas; **se validaron en C.2 (125 pruebas) y regresiones posteriores hasta 195**. Para 403 se exige una membresía activa sin permiso; para 409 se exige rol apto pero empresa `SUSPENDIDA`.
 
 ## 5. Entidades, migraciones y reglas de integridad
 
@@ -116,7 +116,7 @@ En E2-1.3C.1 y C.2 **no se añadieron tablas ni migraciones**; C.3 incorpora la 
 1. **C.1 — publicado y validado localmente:** política pura RBAC, regresión de idempotencia, 98 pruebas aprobadas.
 2. **C.2 — validado localmente y por CI:** PATCH de perfil empresarial, permisos por rol/tenant y pruebas; 125 casos aprobados, Docker/DB saludables.
 3. **C.3 — validado localmente:** emisión dirigida sin crear miembro, rol seguro, 7 días y 147 pruebas aprobadas.
-4. **C.4a — validado localmente (171 pruebas):** aceptación autenticada y atómica. **C.4b — publicado y CI aprobado, pendiente de prueba local:** consulta de equipo y actualización de roles operativos/estado con titularidad protegida.
+4. **C.4a — validado localmente (171 pruebas):** aceptación autenticada y atómica. **C.4b — validado localmente con 195 pruebas y CI 3/3:** consulta de equipo y actualización de roles operativos/estado con titularidad protegida.
 5. **Cierre de RF-02:** actualizar contratos y diagramas 03A sobre implementación confirmada; posteriormente abordar RF-03 Ubicaciones y RF-04 Catálogo.
 
 Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas exactamente como están en `main` a la fecha del corte. No extrapolar funciones del frontend DEMO a endpoints inexistentes.
@@ -135,7 +135,7 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 
 **Ruta:** `POST /api/v1/businesses/{business_id}/invitations`. Requiere Bearer, pertenencia al tenant activo, permiso `members.invite` (titular o administrador), body `{"email":"persona@example.com","role":"ENCARGADO"}` o `TRABAJADOR`. **No** admite `ADMINISTRADOR`, `TITULAR_ADMINISTRATIVO`, otros estados, `business_id` dentro del body ni campos extra. El destinatario puede no poseer cuenta al emitir la invitación.
 
-**Respuesta 201:** `id`, `business_id`, `email` normalizado, `role`, `status=PENDIENTE`, `expires_at` y `invitation_token` (solo disponible en esta respuesta). El token es aleatorio y confidencial; la base conserva `token_hash` SHA-256, no texto claro. **No existe todavía GET de invitaciones ni endpoint de aceptación.**
+**Respuesta 201:** `id`, `business_id`, `email` normalizado, `role`, `status=PENDIENTE`, `expires_at` y `invitation_token` (solo disponible en esta respuesta). El token es aleatorio y confidencial; la base conserva `token_hash` SHA-256, no texto claro. **No existe GET de invitaciones; el endpoint de aceptación se implementó después, en C.4a (`POST /api/v1/invitations/accept`).**
 
 **Errores:** 401 token de sesión inválido, 404 empresa ajena/inexistente/membresía inactiva, 403 rol de miembro no autorizado, 409 empresa suspendida, destinatario ya activo o invitación vigente duplicada, 422 correo/rol/cuerpo incorrecto. El envío repetido de la misma invitación **no** recupera el token: responde 409, evitando crear una segunda. Una invitación vencida puede reemplazarse, marcando `EXPIRADA` el registro previo dentro de la misma transacción.
 
@@ -153,7 +153,7 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 
 **Entidad y Alembic:** `business_invitations` suma `accepted_by_user_id` (FK a usuario, nullable), `accepted_at` (nullable) y CHECK `ck_business_invitation_acceptance_audit` que exige ambas columnas cuando `status=ACEPTADA` y prohíbe consignarlas en otro estado. Migración aditiva `e213c4_acceptance` (sin editar migraciones previas).
 
-**Evidencia:** código C.4a y tests de contrato/HTTP/PostgreSQL publicados. El CI confirmó migración desde cero, `alembic check`, Pytest en Python 3.12 y 3.14, y Docker. **Pruebas y migración local aún pendientes**; registrar la cantidad exacta tras ejecutarlas. **No implementado:** consulta/administración de miembros, cancelación/rechazo de invitaciones, correo automático/QR, verificación de propiedad del email, rate limiting para internet, reenvío seguro; quedan pendientes según alcance. En el cierre de E2-1 se actualizarán definitivamente UML 03A y hoja de auditoría al compañero.
+**Evidencia:** código C.4a y tests de contrato/HTTP/PostgreSQL publicados. El CI confirmó migración desde cero, `alembic check`, Pytest en Python 3.12 y 3.14, y Docker. **Pruebas y migración locales verificadas (171 pruebas en C.4a; 195 al cerrar C.4b)**; registrar la cantidad exacta tras ejecutarlas. **No implementado:** consulta/administración de miembros, cancelación/rechazo de invitaciones, correo automático/QR, verificación de propiedad del email, rate limiting para internet, reenvío seguro; quedan pendientes según alcance. En el cierre de E2-1 se actualizarán definitivamente UML 03A y hoja de auditoría al compañero.
 
 ## 11. C.4b — Contrato de equipo y decisiones de autorización
 
@@ -161,6 +161,18 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 
 **PATCH `/api/v1/businesses/{business_id}/memberships/{membership_id}`:** solo titular administrativo vigente, empresa ACTIVA, target existente de esa misma empresa con rol **distinto de TITULAR_ADMINISTRATIVO**. Body parcial exige al menos un campo `role: ADMINISTRADOR|ENCARGADO|TRABAJADOR` o `status: ACTIVA|INACTIVA`, sin nulls ni campos adicionales. Una edición puede ascender un colaborador a ADMINISTRADOR; un administrador no puede ejecutar PATCH sobre equipo. El titular no puede auto-desactivarse/degradarse ni modificar una membresía titular histórica inactiva. 200 retorna `BusinessTeamMemberView` del target; 401 auth, 403 permiso, 404 tenant/target desconocidos, 409 estado suspendido o titular protegido, 422 cuerpo inválido. El servidor bloquea identidad/sesión, empresa/membresía del actor y objetivo en una única transacción y revierte ante error.
 
-**Evidencia:** `tests/test_business_team_schemas.py`, `tests/test_business_team_integration.py` y actualización de matriz en `test_business_permissions.py`. GitHub Actions en código de C.4b aprobó Pytest PostgreSQL Python 3.12 y 3.14, y Docker. **La cifra exacta de pruebas y resultado local deben incorporarse tras ejecución en Windows.** Sin nueva tabla ni migración; `e213c4_acceptance` sigue como head.
+**Evidencia:** `tests/test_business_team_schemas.py`, `tests/test_business_team_integration.py` y actualización de matriz en `test_business_permissions.py`. GitHub Actions en código de C.4b aprobó Pytest PostgreSQL Python 3.12 y 3.14, y Docker. **Validación Windows: `195 passed in 23.86s`; Alembic `e213c4_acceptance (head)` sin deriva y Docker saludable.** Sin nueva tabla ni migración; `e213c4_acceptance` sigue como head.
 
 **Pendientes conscientemente fuera de este corte:** transferencia/revocación de titularidad (caso sensible separado), auditoría histórica de cambios de rol, edición de `job_title`, eliminación física, listado/rechazo/cancelación/reenvío de invitaciones, confirmación de email y frontend React conectado. El cierre documental y revisión de 03A corresponden a C.5, después de validar C.4b. Las funciones comerciales RF-03–RF-07 no se atribuyen a este bloque.
+
+## 12. Matriz de cierre de evidencias C.5 (08/11/2026)
+
+| RF / CU | Operación real | Evidencia al cierre | Estado |
+|---|---|---|---|
+| RF-01 / CU-01–02 | Registro, login, `/me`, logout | Regresión PostgreSQL 195/195 | Implementado en API |
+| RF-02 / CU-03 | Empresas: alta, consulta y PATCH | Regresión PostgreSQL 195/195 | Implementado en API |
+| RF-02 / CU-12 | Invitación, aceptación y equipo (`GET`/`PATCH` de membresías) | Regresión 195/195; CI 3/3 del commit `8cd1674` | Implementado, titular protegido |
+| Infraestructura | Alembic, API/PostgreSQL Docker, `/ready` | `e213c4_acceptance (head)`, sin deriva; ambos `healthy`; `ready`/`ok` | Verificado localmente |
+| RF-03–RF-07 | Ubicaciones, catálogo, compras, stock y ventas | No hay endpoints ni pruebas backend | TO-BE |
+
+**Precisiones:** la salida `195 passed in 23.86s` corresponde al código funcional `8cd1674`, **no a una ejecución posterior al commit documental C.5**. Frontend React, transferencia de titularidad, verificación de email, auditoría histórica de rol, seguridad de producción y deploy público siguen pendientes. La hoja de revisión del compañero se redactará después, antes de RF-03.
