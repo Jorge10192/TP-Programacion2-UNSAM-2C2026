@@ -11,5 +11,8 @@ from app.infrastructure.models.catalog_item import CatalogItem
 from app.infrastructure.models.supplier import Supplier
 from app.infrastructure.models.purchase import Purchase
 from app.infrastructure.models.purchase_line import PurchaseLine
+from app.infrastructure.models.purchase_receipt import PurchaseReceipt
+from app.infrastructure.models.stock_balance import StockBalance
+from app.infrastructure.models.stock_movement import StockMovement
 
-__all__ = ["User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem", "Supplier", "Purchase", "PurchaseLine"]
+__all__ = ["User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem", "Supplier", "Purchase", "PurchaseLine", "PurchaseReceipt", "StockBalance", "StockMovement"]
