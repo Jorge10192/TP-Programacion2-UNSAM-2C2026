@@ -64,6 +64,16 @@ def test_primary_unique_only_within_business() -> None:
     assert "is_primary" in where and "ACTIVA" in where
 
 
+def test_location_accepts_casa_kind_in_sql_model() -> None:
+    """CASA debe ser una opción real de la restricción, no solo del frontend."""
+    checks = {
+        constraint.name: str(constraint.sqltext)
+        for constraint in Location.__table__.constraints
+        if isinstance(constraint, CheckConstraint)
+    }
+    assert "'CASA'" in checks["ck_locations_kind"]
+
+
 def test_location_metadata_defaults_match_optional_demo_fields() -> None:
     t = Location.__table__
     assert t.c.address.default.arg == ""

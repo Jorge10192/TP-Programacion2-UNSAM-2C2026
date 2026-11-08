@@ -64,6 +64,30 @@ def _reject(conn, query):
         savepoint.rollback()
 
 
+@pytest.mark.parametrize(
+    ("can_sell", "can_store"),
+    [(False, False), (True, False), (False, True), (True, True)],
+)
+def test_casa_is_a_valid_location_with_independent_capabilities(
+    can_sell: bool, can_store: bool,
+) -> None:
+    with get_engine().connect() as conn:
+        tx = conn.begin()
+        try:
+            business = _business(conn, _user(conn))
+            location_id = _location(
+                conn, business, name="Casa familiar", kind="CASA",
+                can_sell=can_sell, can_store=can_store,
+            )
+            row = conn.execute(
+                select(Location.kind, Location.can_sell, Location.can_store)
+                .where(Location.id == location_id, Location.business_id == business)
+            ).one()
+            assert row == ("CASA", can_sell, can_store)
+        finally:
+            tx.rollback()
+
+
 def test_new_business_starts_with_zero_locations_and_no_fake_stock() -> None:
     with get_engine().connect() as conn:
         tx = conn.begin()

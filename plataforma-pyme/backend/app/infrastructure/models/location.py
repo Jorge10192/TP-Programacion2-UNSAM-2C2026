@@ -22,7 +22,7 @@ class Location(Base):
             name="ck_locations_name_length",
         ),
         CheckConstraint(
-            "kind IN ('LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'OTRO')",
+            "kind IN ('LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'CASA', 'OTRO')",
             name="ck_locations_kind",
         ),
         CheckConstraint(
