@@ -127,7 +127,7 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 
 **Evidencia de autorización:** `test_business_update_integration.py` ensaya titular y administrador con escritura persistida, encargado/trabajador con 403, empresa ajena con 404, membresía inactiva con 404, empresa suspendida con 409, sesión revocada y usuario deshabilitado con 401, DTO inválido con 422 y rollback si falla la respuesta después del `flush`. Los datos de prueba se revierten con una transacción externa. Se complementa con `test_business_update_schemas.py` y `test_business_update_http.py`.
 
-**Estado actual:** las pruebas están publicadas, **no se pueden declarar aprobadas hasta que se ejecuten**. El control local anterior (98 passed, `alembic check` sin diferencia) corresponde a C.1. Para C.2 se debe actualizar el resultado con SHA, cantidad exacta, fecha y evidencia CI cuando se disponga de ellos. No corresponde crear una nueva migración. `GET` de lectura sigue filtrando membresía activa; la nueva política RBAC se invoca efectivamente en `PATCH`.
+**Estado actualizado en C.5:** las pruebas C.2 fueron ejecutadas y **125 pasaron localmente**; las regresiones posteriores culminaron con **195 aprobadas** al cerrar C.4b, con CI funcional 3/3. C.2 no requirió migración. El `GET` empresarial filtra por membresía activa y `PATCH` aplica efectivamente la autorización RBAC. La referencia antigua a 98 casos correspondía al corte histórico C.1.
 
 **Dependencias:** C.3 emisión de invitaciones y C.4 aceptación/gestión de membresías usarán políticas `members.invite` / `members.manage`, sin dar permiso tácito a trabajador o encargado. El código React sigue exclusivamente DEMO.
 

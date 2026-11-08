@@ -998,7 +998,7 @@ Se incorporó `PATCH /api/v1/businesses/{business_id}` en el módulo `businesses
 
 No basta con pasar un `role` en el cuerpo; este valor se consulta exclusivamente en DB. El API rechaza `founder_user_id`, `status`, `role` y `membership` mediante Pydantic `extra=forbid`. `ADMINISTRADOR` y `TITULAR_ADMINISTRATIVO` pueden editar nombre, rubro y actividad; `ENCARGADO` y `TRABAJADOR` no. Con rol apto pero negocio `SUSPENDIDA`, la respuesta es 409; empresa ajena o membresía inactiva, 404. Auth no disponible, 401; rol insuficiente, 403. No se habilitan cambios de titularidad o de estado.
 
-**Pruebas publicadas en este corte:** `test_business_update_schemas.py`, `test_business_update_http.py` y `test_business_update_integration.py`; la última usa transacciones externas y SAVEPOINTs para no dejar registros. La validación local y CI de **estas nuevas pruebas todavía está pendiente**. El último resultado comprobado es C.1, 98 tests. Sin cambios Alembic ni frontend; el pipeline backend ya existente debe ejecutarse sobre el commit C.2.
+**Pruebas publicadas en C.2 (evidencia actualizada en C.5):** `test_business_update_schemas.py`, `test_business_update_http.py` y `test_business_update_integration.py`; la última usa transacciones externas y SAVEPOINTs para revertir datos de prueba. C.2 aprobó **125 pruebas locales y CI**; la regresión E2-1 llegó a **195 pruebas locales** en C.4b. No se incorporaron migraciones ni cambios al frontend en el corte C.2.
 
 **Continuidad:** futuras invitaciones C.3 y membresías C.4 usarán este mismo modelo de autorización por tenant, relectura transaccional, políticas sin acceso SQL y manejo explícito de estados. No introducir patrones decorativos ni nuevos frameworks para RBAC.
 

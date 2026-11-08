@@ -482,7 +482,7 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 
 **Alternativas:** 401 sin sesión; 404 si empresa ajena/inexistente o membresía inactiva; 403 si rol sin permiso; 409 empresa suspendida, miembro activo existente o invitación pendiente vigente; 422 correo/rol no admitidos o campos extra. Todos los errores revierten cambios. La tokenización se valida solo en servidor, no por React.
 
-**Pruebas y evidencia:** CI del commit C.3 exitoso en Python 3.12/3.14, migración+deriva Alembic y contenedor. Debe ejecutarse también en el equipo local. CU-12b (aceptación única por destinatario autenticado), cancelación, gestión de miembros y permisos de aprobación siguen **pendientes**.
+**Pruebas y evidencia (actualización C.5):** C.3 aprobó CI (Python 3.12/3.14, Alembic y Docker) y luego **147 pruebas locales**. CU-12b se implementó y validó en C.4a (**171 pruebas**); la consulta y gestión de membresías se validó en C.4b (**195 pruebas**). Siguen pendientes cancelación/reenvío/rechazo de invitaciones y aprobación/transferencia de titularidad. Esta sección conserva la especificación original de C.3 como antecedente.
 
 ## 13. C.4a — Aceptación de invitación CU-12b (implementada y validada localmente)
 
