@@ -9,6 +9,7 @@ from app.modules.auth.dependencies import current_auth, unauthorized
 from app.modules.auth.session_service import AuthContext
 from app.modules.catalog.schemas import (
     CatalogItemView, CreateCatalogItemRequest, UpdateCatalogItemRequest,
+    ChangeCatalogStatusRequest,
 )
 from app.modules.catalog.service import (
     CatalogService, CatalogSessionInvalid, CatalogBusinessUnavailable,
@@ -141,5 +142,35 @@ def update_catalog_item(
     except (
         CatalogBusinessUnavailable, CatalogItemNotFound, CatalogPermissionDenied,
         CatalogBusinessSuspended, CatalogConflict, CatalogInvalidChange,
+    ) as error:
+        raise _as_http(error) from None
+
+
+@router.patch(
+    "/{item_id}/status", response_model=CatalogItemView,
+    responses={
+        401: {"description": "Sesión inválida"},
+        403: {"description": "Rol sin facultad de administrar Catálogo"},
+        404: {"description": "Empresa, membresía o artículo inexistente/ajeno"},
+        409: {"description": "Empresa suspendida"},
+        422: {"description": "Estado inválido o campos protegidos"},
+    },
+    summary="Desactivar/reactivar ficha sin eliminarla ni liberar nombre o SKU",
+)
+def change_catalog_status(
+    business_id: UUID, item_id: UUID, command: ChangeCatalogStatusRequest,
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> CatalogItemView:
+    try:
+        return CatalogService(db).change_status(
+            context.user.id, context.auth_session.id,
+            business_id, item_id, command,
+        )
+    except CatalogSessionInvalid:
+        raise unauthorized() from None
+    except (
+        CatalogBusinessUnavailable, CatalogItemNotFound,
+        CatalogPermissionDenied, CatalogBusinessSuspended,
     ) as error:
         raise _as_http(error) from None

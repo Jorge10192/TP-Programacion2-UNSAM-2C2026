@@ -18,12 +18,13 @@ def test_catalog_endpoints_require_bearer_token():
                 "unit": "UNIDAD", "sellable": True,
             }),
             client.patch(f"{base}/{item}", json={"name": "Otro nombre"}),
+            client.patch(f"{base}/{item}/status", json={"status": "INACTIVO"}),
         ):
             assert result.status_code == 401
             assert result.headers["www-authenticate"] == "Bearer"
 
 
-def test_catalog_openapi_exposes_only_four_initial_operations():
+def test_catalog_openapi_exposes_status_management_without_delete():
     with TestClient(create_app()) as client:
         paths = client.get("/openapi.json").json()["paths"]
     main = paths["/api/v1/businesses/{business_id}/catalog"]
@@ -31,6 +32,10 @@ def test_catalog_openapi_exposes_only_four_initial_operations():
     assert {"get", "post"} <= set(main)
     assert {"get", "patch"} <= set(detail)
     assert "delete" not in main and "delete" not in detail
+    status = paths["/api/v1/businesses/{business_id}/catalog/{item_id}/status"]
+    assert "patch" in status and "delete" not in status
+    assert status["patch"]["security"]
+    assert {"200", "401", "403", "404", "409", "422"} <= set(status["patch"]["responses"])
     assert "put" not in detail
     assert main["get"]["security"] and main["post"]["security"]
     assert detail["get"]["security"] and detail["patch"]["security"]

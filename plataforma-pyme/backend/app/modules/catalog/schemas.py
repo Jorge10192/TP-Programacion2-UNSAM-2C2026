@@ -91,7 +91,7 @@ class CreateCatalogItemRequest(BaseModel):
 
 
 class UpdateCatalogItemRequest(BaseModel):
-    """PATCH parcial: campos protegidos y status requieren su propia ruta futura."""
+    """PATCH parcial: estado se administra por /status, nunca por esta ruta."""
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None, max_length=180)
@@ -133,6 +133,12 @@ class UpdateCatalogItemRequest(BaseModel):
         if "name" in self.model_fields_set:
             normalized_name_key(self.name)
         return self
+
+
+class ChangeCatalogStatusRequest(BaseModel):
+    """Cambio explícito de estado, sin mutación de SKU ni de atributos protegidos."""
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["ACTIVO", "INACTIVO"]
 
 
 class CatalogItemView(BaseModel):

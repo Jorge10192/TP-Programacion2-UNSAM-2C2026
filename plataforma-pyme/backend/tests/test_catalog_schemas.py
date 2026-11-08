@@ -3,7 +3,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.modules.catalog.schemas import (
-    CreateCatalogItemRequest, UpdateCatalogItemRequest,
+    CreateCatalogItemRequest, UpdateCatalogItemRequest, ChangeCatalogStatusRequest,
     normalized_name_key, normalized_sku,
 )
 
@@ -98,3 +98,20 @@ def test_update_accepts_partial_changes(payload):
 def test_patch_rejects_invalid_or_protected_values(payload):
     with pytest.raises(ValidationError):
         UpdateCatalogItemRequest.model_validate(payload)
+
+
+@pytest.mark.parametrize("state", ["ACTIVO", "INACTIVO"])
+def test_explicit_status_schema_accepts_only_known_states(state):
+    assert ChangeCatalogStatusRequest.model_validate({"status": state}).status == state
+
+
+@pytest.mark.parametrize("invalid", [
+    {}, {"status": None}, {"status": "PAUSADO"}, {"status": "BORRADO"},
+    {"status": 1}, {"status": "activo"},
+    {"status": "ACTIVO", "sku": "OTHER"},
+    {"status": "INACTIVO", "business_id": "falso"},
+    {"status": "ACTIVO", "sellable": False},
+])
+def test_explicit_status_schema_blocks_unknown_states_or_extra_fields(invalid):
+    with pytest.raises(ValidationError):
+        ChangeCatalogStatusRequest.model_validate(invalid)

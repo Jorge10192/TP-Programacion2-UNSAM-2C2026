@@ -368,3 +368,185 @@ def test_list_pagination_is_stable_and_invalid_query_is_422(isolated):
     assert client.get(endpoint(bid), headers=auth, params={"limit": 0}).status_code == 422
     assert client.get(endpoint(bid), headers=auth, params={"limit": 501}).status_code == 422
     assert client.get(endpoint(bid), headers=auth, params={"offset": -1}).status_code == 422
+
+
+# E2-3 C — transición reversible de estado y efectos en el catálogo.
+def set_status(client, bid, item_id, headers, status):
+    return client.patch(
+        endpoint(bid, item_id) + "/status",
+        headers=headers, json={"status": status},
+    )
+
+
+def test_deactivate_reactivate_and_idempotent_status_does_not_delete(isolated):
+    client, db = isolated
+    owner, _ = actor(client)
+    bid = business(client, owner)
+    first = create(client, bid, owner, payload("Taza de vidrio", sku="TAZA-1"))
+    assert first.status_code == 201
+    original = first.json()
+    item_id = UUID(original["id"])
+    assert original["status"] == "ACTIVO"
+
+    paused = set_status(client, bid, item_id, owner, "INACTIVO")
+    assert paused.status_code == 200, paused.text
+    disabled = paused.json()
+    assert disabled["status"] == "INACTIVO"
+    assert disabled["id"] == original["id"]
+    assert disabled["sku"] == original["sku"]
+    assert disabled["name"] == original["name"]
+    assert db.execute(select(CatalogItem.status).where(
+        CatalogItem.id == item_id, CatalogItem.business_id == bid,
+    )).scalar_one() == "INACTIVO"
+
+    again = set_status(client, bid, item_id, owner, "INACTIVO")
+    assert again.status_code == 200, again.text
+    assert again.json() == disabled
+    listing = client.get(endpoint(bid), headers=owner)
+    assert listing.status_code == 200
+    assert listing.json() == [disabled]
+    assert client.get(endpoint(bid, item_id), headers=owner).json() == disabled
+
+    enabled = set_status(client, bid, item_id, owner, "ACTIVO")
+    assert enabled.status_code == 200, enabled.text
+    active = enabled.json()
+    assert active["status"] == "ACTIVO" and active["id"] == original["id"]
+    assert client.get(endpoint(bid), headers=owner).json() == [active]
+    assert set_status(client, bid, item_id, owner, "ACTIVO").json() == active
+
+
+def test_inactive_name_and_sku_stay_reserved_even_while_disabled(isolated):
+    client, db = isolated
+    owner, _ = actor(client)
+    bid = business(client, owner)
+    first = create(client, bid, owner, payload("Frasco verde", sku="FR-1"))
+    item_id = UUID(first.json()["id"])
+    assert set_status(client, bid, item_id, owner, "INACTIVO").status_code == 200
+    assert create(client, bid, owner, payload("  FRASCO verde  ", sku="FR-2")).status_code == 409
+    assert create(client, bid, owner, payload("Otra ficha", sku="fr-1")).status_code == 409
+    assert db.execute(select(CatalogItem.sku).where(
+        CatalogItem.id == item_id,
+    )).scalar_one() == "FR-1"
+
+
+def test_status_change_preserves_business_and_commercial_fields(isolated):
+    client, db = isolated
+    owner, _ = actor(client)
+    bid = business(client, owner)
+    created = create(client, bid, owner, payload(
+        "Peluquería", kind="SERVICIO", unit="SERVICIO", sku="S-1",
+        price_cents=25000, reference_cost_cents=5000,
+        observations="Nota interna",
+    )).json()
+    item_id = UUID(created["id"])
+    modified = set_status(client, bid, item_id, owner, "INACTIVO")
+    assert modified.status_code == 200
+    data = modified.json()
+    for field in (
+        "id", "business_id", "name", "kind", "item_type", "unit",
+        "sku", "price_cents", "reference_cost_cents", "observations", "sellable",
+    ):
+        assert data[field] == created[field]
+    assert db.execute(select(Location.id).where(
+        Location.business_id == bid,
+    )).all() == []
+
+
+@pytest.mark.parametrize("role,allowed", [
+    ("ADMINISTRADOR", True), ("ENCARGADO", False), ("TRABAJADOR", False),
+])
+def test_status_write_permission_is_company_scoped(isolated, role, allowed):
+    client, db = isolated
+    owner, _ = actor(client)
+    colleague, uid = actor(client)
+    bid = business(client, owner)
+    db.execute(insert(Membership).values(
+        id=uuid4(), business_id=bid, user_id=uid,
+        role=role, status="ACTIVA",
+    ))
+    item_id = UUID(create(client, bid, owner).json()["id"])
+    result = set_status(client, bid, item_id, colleague, "INACTIVO")
+    assert result.status_code == (200 if allowed else 403), result.text
+    assert client.get(endpoint(bid, item_id), headers=owner).json()["status"] == (
+        "INACTIVO" if allowed else "ACTIVO"
+    )
+
+
+def test_status_command_cross_tenant_is_hidden_and_atomic(isolated):
+    client, db = isolated
+    alice, _ = actor(client)
+    bob, _ = actor(client)
+    a, b = business(client, alice), business(client, bob)
+    item = UUID(create(client, a, alice).json()["id"])
+    assert set_status(client, a, item, bob, "INACTIVO").status_code == 404
+    assert set_status(client, b, item, bob, "INACTIVO").status_code == 404
+    assert db.execute(select(CatalogItem.status).where(
+        CatalogItem.id == item,
+    )).scalar_one() == "ACTIVO"
+
+
+def test_suspended_business_can_read_but_not_change_status(isolated):
+    client, db = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    item = UUID(create(client, bid, auth).json()["id"])
+    db.execute(update(Business).where(Business.id == bid).values(status="SUSPENDIDA"))
+    assert client.get(endpoint(bid, item), headers=auth).status_code == 200
+    assert set_status(client, bid, item, auth, "INACTIVO").status_code == 409
+    assert db.execute(select(CatalogItem.status).where(
+        CatalogItem.id == item,
+    )).scalar_one() == "ACTIVO"
+
+
+def test_inactive_membership_and_revoked_session_block_status_mutations(isolated):
+    client, db = isolated
+    auth, uid = actor(client)
+    bid = business(client, auth)
+    item = UUID(create(client, bid, auth).json()["id"])
+    db.execute(update(Membership).where(
+        Membership.business_id == bid, Membership.user_id == uid,
+    ).values(status="INACTIVA"))
+    assert set_status(client, bid, item, auth, "INACTIVO").status_code == 404
+    db.execute(update(Membership).where(
+        Membership.business_id == bid, Membership.user_id == uid,
+    ).values(status="ACTIVA"))
+    assert client.post("/api/v1/auth/logout", headers=auth).status_code == 204
+    assert set_status(client, bid, item, auth, "INACTIVO").status_code == 401
+
+
+@pytest.mark.parametrize("bad", [
+    {}, {"status": None}, {"status": "PAUSADA"}, {"status": "BORRADO"},
+    {"status": "activo"}, {"status": "INACTIVO", "sku": "FALSO"},
+    {"status": "ACTIVO", "business_id": str(uuid4())},
+    {"status": "INACTIVO", "kind": "SERVICIO"},
+])
+def test_invalid_status_payload_never_changes_existing_item(isolated, bad):
+    client, db = isolated
+    owner, _ = actor(client)
+    bid = business(client, owner)
+    item = UUID(create(client, bid, owner).json()["id"])
+    result = client.patch(endpoint(bid, item) + "/status", headers=owner, json=bad)
+    assert result.status_code == 422, result.text
+    assert db.execute(select(CatalogItem.status).where(
+        CatalogItem.id == item,
+    )).scalar_one() == "ACTIVO"
+
+
+def test_status_flush_exception_rollback_prevents_partial_update(isolated, monkeypatch):
+    client, db = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    item = UUID(create(client, bid, auth).json()["id"])
+    from app.modules.catalog.schemas import CatalogItemView
+    original = CatalogItemView.from_record
+
+    def explode_after_flush(row):
+        raise RuntimeError("Fallo simulado posterior al flush de estado")
+
+    monkeypatch.setattr(CatalogItemView, "from_record", explode_after_flush)
+    with pytest.raises(RuntimeError, match="posterior al flush"):
+        set_status(client, bid, item, auth, "INACTIVO")
+    monkeypatch.setattr(CatalogItemView, "from_record", original)
+    assert db.execute(select(CatalogItem.status).where(
+        CatalogItem.id == item,
+    )).scalar_one() == "ACTIVO"

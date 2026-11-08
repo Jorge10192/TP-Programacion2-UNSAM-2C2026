@@ -12,7 +12,7 @@ from app.modules.businesses.repository import BusinessRepository
 from app.modules.catalog.repository import CatalogRepository
 from app.modules.catalog.schemas import (
     CatalogItemView, CreateCatalogItemRequest, UpdateCatalogItemRequest,
-    ensure_kind_unit, normalized_name_key,
+    ensure_kind_unit, normalized_name_key, ChangeCatalogStatusRequest,
 )
 
 
@@ -183,6 +183,33 @@ class CatalogService:
                 return view
             except IntegrityError as error:
                 self._translate_conflict(error)
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def change_status(
+        self, actor_id: UUID, session_id: UUID,
+        business_id: UUID, item_id: UUID, command: ChangeCatalogStatusRequest,
+    ) -> CatalogItemView:
+        """Desactivar/reactivar sin borrar la ficha, liberar SKU ni crear stock.
+
+        Bloqueo y autorización en la misma transacción. Un estado repetido es
+        idempotente: no altera updated_at ni confirma una escritura ficticia.
+        """
+        try:
+            self._authorize(actor_id, session_id, business_id, writing=True)
+            item = self.catalog.get_for_update(business_id, item_id)
+            if item is None:
+                raise CatalogItemNotFound()
+            if item.status == command.status:
+                view = CatalogItemView.from_record(item)
+                self.db.rollback()
+                return view
+            item.status = command.status
+            self.db.flush()
+            view = CatalogItemView.from_record(item)
+            self.db.commit()
+            return view
         except Exception:
             self.db.rollback()
             raise
