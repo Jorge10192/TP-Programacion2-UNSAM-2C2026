@@ -106,6 +106,15 @@ class BusinessRepository:
         self.db.add(invitation)
         self.db.flush()
 
+    def invitation_business_id(self, token_hash: str, recipient_email: str) -> UUID | None:
+        """Resolver tenant sin bloquear: el estado se relee después bajo bloqueo."""
+        return self.db.scalar(
+            select(BusinessInvitation.business_id).where(
+                BusinessInvitation.token_hash == token_hash,
+                BusinessInvitation.email_normalizado == recipient_email,
+            )
+        )
+
     def invitation_for_update(self, token_hash: str) -> BusinessInvitation | None:
         """El secreto jamás se busca en texto claro. Bloqueo por token."""
         return self.db.scalar(

@@ -295,35 +295,43 @@ class BusinessService:
     ) -> BusinessView:
         """CU-12b: aceptar una sola vez y crear/reactivar la membresía.
 
-        Revalida la sesión. Bloquea la invitación por hash, la empresa y la
-        membresía del destinatario antes de la escritura. Jamás usa un user_id
+        Revalida la sesión. Bloquea empresa, invitación y membresía, en ese
+        orden compartido con la emisión. Comprueba el vencimiento tras las
+        esperas, antes de escribir. Jamás usa un user_id
         o role recibido del cliente y no crea una empresa ni cuenta nueva.
         """
         try:
             self._revalidate_actor(actor_id, auth_session_id)
-            invitation = self.repository.invitation_for_update(
-                token_digest(command.invitation_token),
-            )
             actor = self.db.get(User, actor_id)
+            if actor is None:
+                raise InvitationUnavailable()
+            digest = token_digest(command.invitation_token)
+            business_id = self.repository.invitation_business_id(
+                digest, actor.email_normalizado,
+            )
+            if business_id is None:
+                raise InvitationUnavailable()
+
+            # La emisión también bloquea Empresa antes de tocar Invitación.
+            # La consulta anterior solo localiza el tenant; no concede acceso.
+            company = self.repository.business_for_update(business_id)
+            invitation = self.repository.invitation_for_update(digest)
             if (
-                invitation is None or actor is None
+                invitation is None or invitation.business_id != business_id
                 or invitation.email_normalizado != actor.email_normalizado
             ):
                 raise InvitationUnavailable()
-
-            now = now_utc()
-            if invitation.status != "PENDIENTE" or invitation.expires_at <= now:
-                raise InvitationNotAcceptable()
-            if invitation.proposed_role not in ("ENCARGADO", "TRABAJADOR"):
-                raise InvitationNotAcceptable()
-
-            company = self.repository.business_for_update(invitation.business_id)
             if company is None or company.status != "ACTIVA":
                 raise BusinessSuspended()
 
             member = self.repository.membership_for_update(
                 invitation.business_id, actor_id,
             )
+            now = now_utc()
+            if invitation.status != "PENDIENTE" or invitation.expires_at <= now:
+                raise InvitationNotAcceptable()
+            if invitation.proposed_role not in ("ENCARGADO", "TRABAJADOR"):
+                raise InvitationNotAcceptable()
             if member is not None:
                 if (
                     member.status != "INACTIVA"
