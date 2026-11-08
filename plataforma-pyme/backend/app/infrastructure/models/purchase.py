@@ -44,6 +44,10 @@ class Purchase(Base):
             name="ck_purchases_total_cents",
         ),
         CheckConstraint(
+            "request_sha256 IS NULL OR length(request_sha256) = 64",
+            name="ck_purchases_request_sha256",
+        ),
+        CheckConstraint(
             "(supplier_id IS NULL AND supplier_name_snapshot = '') OR "
             "(supplier_id IS NOT NULL AND "
             "length(btrim(supplier_name_snapshot)) BETWEEN 2 AND 90)",
@@ -58,6 +62,7 @@ class Purchase(Base):
         nullable=False,
     )
     request_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    request_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     supplier_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     supplier_name_snapshot: Mapped[str] = mapped_column(
         String(90), nullable=False, default="", server_default=text("''"),
