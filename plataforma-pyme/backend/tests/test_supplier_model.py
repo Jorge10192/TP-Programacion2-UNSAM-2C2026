@@ -6,9 +6,8 @@ from app.infrastructure.models import Supplier
 from app.infrastructure.models.base import Base
 
 
-def test_supplier_is_registered_without_purchases_or_stock() -> None:
+def test_supplier_is_registered_without_receipts_or_stock() -> None:
     assert Base.metadata.tables["suppliers"] is Supplier.__table__
-    assert "purchases" not in Base.metadata.tables
     assert "purchase_receipts" not in Base.metadata.tables
     assert "stock_balances" not in Base.metadata.tables
 
