@@ -127,13 +127,14 @@ def test_owner_issues_secure_invitation_without_creating_membership(isolated) ->
     assert body["role"] == "ENCARGADO"
     assert body["status"] == "PENDIENTE"
     assert 6 < (BusinessInvitationExpiry(body) - now_utc()).total_seconds() / 86400 < 8
-    record = connection.execute(
-        select(BusinessInvitation).where(BusinessInvitation.id == UUID(body["id"]))
-    ).scalar_one()
-    assert record.invited_by_user_id == owner_id
-    assert record.token_hash == token_digest(token)
-    assert token != record.token_hash
-    assert len(record.token_hash) == 64
+    stored_inviter, stored_hash = connection.execute(
+        select(BusinessInvitation.invited_by_user_id, BusinessInvitation.token_hash)
+        .where(BusinessInvitation.id == UUID(body["id"]))
+    ).one()
+    assert stored_inviter == owner_id
+    assert stored_hash == token_digest(token)
+    assert token != stored_hash
+    assert len(stored_hash) == 64
     assert count_invitations(connection, business_id) == 1
     after_members = connection.execute(
         select(func.count(Membership.id))
@@ -255,10 +256,10 @@ def test_expired_pending_gets_expired_and_new_token_issued(isolated) -> None:
     )
     new_issued = invite(client, auth, business_id, "repeat@example.com")
     assert new_issued.status_code == 201, new_issued.text
-    old_record = connection.execute(
-        select(BusinessInvitation).where(BusinessInvitation.id == old_id)
+    old_status = connection.execute(
+        select(BusinessInvitation.status).where(BusinessInvitation.id == old_id)
     ).scalar_one()
-    assert old_record.status == "EXPIRADA"
+    assert old_status == "EXPIRADA"
     assert count_invitations(connection, business_id) == 2
 
 
