@@ -332,7 +332,7 @@ La edición del perfil de Empresa reutiliza exactamente `users`, `auth_sessions`
 
 El servicio de escritura bloquea con SQL las filas de identidad/sesión y el par empresa/membresía del mismo tenant. La matriz de permisos implementada en C.1 es una **política de aplicación**, no entidad persistente del modelo; en C.2 empieza a decidir realmente la autorización de una operación HTTP. El modelo conceptual 03A se revisará al cerrar el bloque funcional E2-1 y cuando se incorpore invitación/membresía completa.
 
-**Validación C.2:** por ejecutar (el último control local verificado corresponde a 98 pruebas de C.1). Contrato y escenarios detallados en Documento 02 v0.5 y Documento 05 v0.2.
+**Validación C.2:** 125 pruebas locales aprobadas; las regresiones hasta C.4b culminaron en 195, según el cierre C.5. Contrato y escenarios en Documentos 02 y 05.
 
 ## 15. Correspondencia C.3: `business_invitations` y UML 03A
 

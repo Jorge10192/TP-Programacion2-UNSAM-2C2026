@@ -50,6 +50,8 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 
 **Sesiones:** El token Bearer es un secreto; se guarda solo la huella SHA-256 para buscar/revocar sesiones. La cuenta deshabilitada o sesión vencida no puede leer ni crear empresas.
 
+**Validación:** nombre visible, nombre empresarial y rubro rechazan NUL con 422. Los errores de longitud de contraseña en registro/login ocultan el valor recibido (`test_auth_secret_errors.py`).
+
 ## 4. Política RBAC E2-1.3C.1 y primera aplicación real E2-1.3C.2
 
 | Capacidad | TITULAR_ADMINISTRATIVO | ADMINISTRADOR | ENCARGADO | TRABAJADOR | Estado HTTP |
@@ -147,7 +149,7 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 
 ## 10. Contrato de aceptación C.4a: invitar ≠ aceptar ≠ administrar
 
-**POST `/api/v1/invitations/accept`** — requiere `Authorization: Bearer` global y cuerpo exclusivamente `{"invitation_token":"<token-opaco>"}`. La cuenta debe tener exactamente el correo normalizado para el que se emitió la invitación. El servidor busca **SHA-256 del token**, no el texto claro, bloquea la invitación, comprueba `PENDIENTE` y expiración, bloquea empresa `ACTIVA`, y crea o reactiva una sola Membresía para `(business_id,user_id)` con el rol operativo que se propuso al emitir. Marca `ACEPTADA` y `accepted_by_user_id/accepted_at` en el mismo commit; responde `200 BusinessView`, sin token ni datos privados de otras empresas.
+**POST `/api/v1/invitations/accept`** - requiere Bearer y cuerpo exclusivamente `{"invitation_token":"<token-opaco>"}`. Localiza el tenant por SHA-256 y correo destinatario; bloquea **Empresa → Invitación → Membresía**, en orden compatible con la emisión. Relee estado/destinatario y comprueba vigencia después de las esperas. Con empresa ACTIVA e invitación PENDIENTE vigente, crea/reactiva una sola Membresía con el rol propuesto y marca ACEPTADA con `accepted_by_user_id/accepted_at`, en el mismo commit. Responde `200 BusinessView`, sin token ni datos de otras empresas. `test_business_concurrency_integration.py` cubre vencimiento durante espera, reemisión simultánea, doble aceptación y alta empresarial idempotente.
 
 **Errores:** 401 cuenta/sesión inválida, 404 token desconocido o ajeno al email (misma respuesta), 409 token vencido o consumido, negocio suspendido, membresía ya activa o rol histórico de titular administrativo inactivo incompatible, 422 formato de token inválido/campos extra. La operación no otorga permisos antes de confirmar aceptación. No se asignan `ADMINISTRADOR` ni `TITULAR_ADMINISTRATIVO` mediante invitación básica. Ante error después del `flush` se revierte membresía y aceptación. El reintento de token consumido da 409, sin duplicaciones.
 

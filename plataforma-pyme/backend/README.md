@@ -13,6 +13,8 @@
 
 Desde la **raíz del repositorio**:
 
+Antes de ejecutar `pytest`, configurá el archivo privado `plataforma-pyme/.env` según **E2-0.2** más abajo. Sin `POSTGRES_PASSWORD`, algunas pruebas HTTP fallan al construir la configuración. PostgreSQL real se prueba al activar `RUN_DB_INTEGRATION=1`.
+
 ```powershell
 cd plataforma-pyme/backend
 py -m venv .venv
@@ -33,6 +35,8 @@ Abre:
 Detener Uvicorn con `Ctrl+C`.
 
 ## Linux / macOS
+
+También requiere configurar `plataforma-pyme/.env` antes de `pytest`.
 
 ```bash
 cd plataforma-pyme/backend
