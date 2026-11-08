@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado (08/11/2026):** E2-1 C.4b validado con **195/195 pruebas locales** (`195 passed in 23.86s`), Alembic `e213c4_acceptance (head)` sin diferencias, Docker API/PostgreSQL `healthy` y `/ready` correcto. GitHub Actions del commit funcional `8cd1674`: **3/3 aprobado**. C.5 sincroniza documentos y UML 03A sin editar FastAPI. React permanece DEMO.
+**Estado (08/11/2026):** backend de identidad, empresas, invitaciones, membresías y ubicaciones. E2-2 B permite crear, listar y consultar ubicaciones con autorización por empresa; incluye el tipo CASA. Alembic: `e22b_location_casa`. React continúa como DEMO independiente. Las secciones por corte conservan sus antecedentes históricos.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -553,3 +553,30 @@ No se alteró React ni ningún proyecto hermano. **C.5 consolidó el UML 03A y l
 **Base funcional:** commit `8cd167481291b78628da0d038c7414cc26e3a311`, con CI 3/3. En Windows, el desarrollador ejecutó las pruebas de integración PostgreSQL con `RUN_DB_INTEGRATION=1`, resultado `195 passed in 23.86s`. `alembic current` devolvió `e213c4_acceptance (head)` y `alembic check` no encontró operaciones nuevas. `docker compose --profile api up -d --build --wait api` concluyó con API/DB `healthy` y `/ready` `ready`/`ok`.
 
 **C.5:** actualizar documentos 01–05, índices y 03A (PUML, SVG, guía). **No modifica** código, tests, migraciones, React, 03B ni 03C, ni implica reejecutar CI por el commit documental. Tras este cierre viene una **hoja de revisión independiente** para el compañero; después, RF-03 Ubicaciones.
+
+## E2-2 A — Modelo de ubicaciones y validación incremental
+
+**E2-2 A — persistencia de Ubicaciones (08/11/2026):** se publicó `Location`/`locations` con FK obligatoria `business_id → businesses.id` (`RESTRICT`), seis tipos, `can_sell`/`can_store` independientes, campos de referencia opcionales, `ACTIVA/PAUSADA`, `is_primary`, índice parcial que permite como máximo una principal activa por tenant y CHECK que impide principal pausada. Migración aditiva `20261108_0008_business_locations.py` (`e22a_locations`, descendiente de `e213c4_acceptance`). La empresa continúa iniciándose **sin ubicaciones**. **No hay todavía rutas HTTP de ubicaciones**, ni inventario/compra/venta conectado, ni permisos de ubicación; esos cambios pertenecen a E2-2 B/C y bloques siguientes. El CI del código del corte se verificó en `300fa6f` (GitHub Actions [run 42491816481](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42491816481)): resultado `success`. La validación local Windows del nuevo corte aún se requiere; los 195 tests anteriores correspondían a E2-1.
+
+**Desde `plataforma-pyme/backend/` luego de `git pull`:**
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+try {
+  .\.venv\Scripts\python.exe -m pytest -q
+} finally {
+  Remove-Item Env:\RUN_DB_INTEGRATION -ErrorAction SilentlyContinue
+}
+```
+
+El head esperado ahora es **`e22b_location_casa (head)`** (el head anterior era `e22a_locations`). La migración agrega únicamente la tabla `locations`; no crea registros por defecto ni elimina datos anteriores. Los tests de integridad usan transacciones exteriores y SAVEPOINT. **No correr contra una base productiva; no ejecutar `downgrade`, `stamp` ni `docker compose down -v`.** El test de control de versión Alembic se ajustó al head nuevo, sin modificar las reglas de E2-1. La siguiente etapa implementará API/DTO/servicios/autorización; no atribuir CRUD a este incremento.
+
+
+### E2-2 A.1 — CASA y nuevo head (08/11/2026)
+
+`CASA` se añade a los tipos admitidos; las capacidades `can_sell`/`can_store` continúan independientes. Migración aditiva `e22b_location_casa` tras `e22a_locations`, sin cambios a datos anteriores, y reversión protegida cuando existen ubicaciones CASA. **CI backend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492475011)): **217 pruebas aprobadas, Python 3.12/3.14, Alembic `e22b_location_casa (head)` sin deriva, Docker 3/3**. **CI frontend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492474999)): **2/2 trabajos exitosos, incluidos build/lint y E2E**. Resultado Windows precedente de E2-2 A: 212 pruebas; **la migración adicional CASA y los 217 tests todavía deben reproducirse localmente**. Sin endpoints de ubicación hasta E2-2 B/C y sin conexión React–API.
+
+**Comando seguro desde `plataforma-pyme/backend/`:** primero `python -m alembic upgrade head`, después `python -m alembic current`, `python -m alembic check`, y `RUN_DB_INTEGRATION=1` con `pytest -q` en una DB local conocida. No ejecutar downgrade sobre datos reales.

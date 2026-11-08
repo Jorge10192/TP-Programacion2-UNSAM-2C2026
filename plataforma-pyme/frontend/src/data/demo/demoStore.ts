@@ -54,7 +54,7 @@ export type DemoMembership = {
   status: 'ACTIVA'
   jobTitle: string
 }
-export type LocationKind = 'LOCAL' | 'FERIA' | 'DEPOSITO' | 'OFICINA' | 'OTRO'
+export type LocationKind = 'LOCAL' | 'FERIA' | 'DEPOSITO' | 'OFICINA' | 'CASA' | 'OTRO'
 export type DemoLocation = {
   id: string
   businessId: string
@@ -73,6 +73,7 @@ export const locationKindLabels: Record<LocationKind, string> = {
   FERIA: 'Feria o punto temporal',
   DEPOSITO: 'Depósito',
   OFICINA: 'Oficina o espacio de trabajo',
+  CASA: 'Casa o domicilio particular',
   OTRO: 'Otro espacio',
 }
 
@@ -243,7 +244,7 @@ function validLocation(raw: unknown): raw is DemoLocation {
   return typeof raw.id === 'string' && /^demo-location-[a-f0-9-]{36}$/.test(raw.id)
     && typeof raw.businessId === 'string'
     && typeof raw.name === 'string' && raw.name.trim().length >= 2 && raw.name.length <= 80
-    && ['LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'OTRO'].includes(String(raw.kind))
+    && ['LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'CASA', 'OTRO'].includes(String(raw.kind))
     && typeof raw.address === 'string' && raw.address.length <= 160
     && typeof raw.canSell === 'boolean' && typeof raw.canStore === 'boolean'
     && typeof raw.isPrimary === 'boolean'
@@ -255,7 +256,7 @@ function normalizeLocationInput(input: LocationInput): LocationInput {
   const address = input.address.trim()
   const mapUrl = validateGoogleMapsLink(input.mapUrl)
   if (address.length > 160) throw new Error('La referencia de ubicación admite hasta 160 caracteres.')
-  if (!['LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'OTRO'].includes(input.kind)) {
+  if (!['LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'CASA', 'OTRO'].includes(input.kind)) {
     throw new Error('Tipo de ubicación inválido.')
   }
   if (typeof input.canSell !== 'boolean' || typeof input.canStore !== 'boolean') {

@@ -20,7 +20,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | RF-01 | CU-02 | Implementado; validado localmente | `POST /api/v1/auth/login`, `GET /me`, `POST /logout`; sesiones revocables, 401 |
 | RF-02 | CU-03 | Alta, lectura y PATCH empresarial validados localmente | Empresa con titular inicial, idempotencia y edición autorizada por tenant/rol |
 | RF-02 | CU-12a / CU-12b y gestión | Emisión/aceptación validadas localmente; **equipo C.4b validado localmente con 195 pruebas y CI 3/3** | Emitir, aceptar, consultar equipo y editar roles/estados operativos con titularidad protegida |
-| RF-03 | CU-04 | Planificado | Ubicación y permisos, necesaria para recepción/venta de bienes físicos |
+| RF-03 | CU-04 | **E2-2 A: solo persistencia SQL; rutas HTTP pendientes** | `Location`/`locations` y `e22a_locations`; autorizaciones, CRUD y tests HTTP faltan en E2-2 B/C |
 | RF-04 | CU-05 | Planificado | Catálogo y SKU único dentro del tenant |
 | RF-05 | CU-06, CU-07 | Planificado | Compra separada de recepción física completa |
 | RF-06 | CU-08, CU-09 | Planificado | Saldos, movimientos, stock no negativo, concurrencia |
@@ -90,6 +90,8 @@ Los códigos precedentes están definidos en el router de C.2 y cuentan con prue
 | `e213b_business_creation` | `business_creation_requests`, PK compuesta actor/clave, digest SHA-256 y negocio único por comando | Validada |
 | `e213c3_invitations` | `business_invitations`, token SHA-256 único, FK empresa/invitador, estados, expiración e índice parcial correo pendiente por tenant | Validada localmente C.3 |
 | `e213c4_acceptance` | Columnas `accepted_by_user_id`, `accepted_at`, FK usuario y CHECK de auditoría consistente | Localmente validada C.4a; C.4b sin migraciones |
+| `e22a_locations` | Tabla `locations`, FK a empresa, CHECK de estados/tipos/principal, índice parcial único de principal por empresa | E2-2 A: 212 pruebas locales aprobadas, CI 3/3 |
+| `e22b_location_casa` | Amplía CHECK de tipo para admitir `CASA` sin modificar esquema previo | E2-2 A.1: 217 pruebas CI backend; frontend 2/2; Windows pendiente |
 
 En E2-1.3C.1 y C.2 **no se añadieron tablas ni migraciones**; C.3 incorpora la nueva tabla `business_invitations` mediante una migración aditiva. El UML 03A representa vínculos conceptuales; no debe dibujarse la política como una entidad persistente ni regenerar 03B por esta etapa.
 
@@ -178,3 +180,21 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 | RF-03–RF-07 | Ubicaciones, catálogo, compras, stock y ventas | No hay endpoints ni pruebas backend | TO-BE |
 
 **Precisiones:** la salida `195 passed in 23.86s` corresponde al código funcional `8cd1674`, **no a una ejecución posterior al commit documental C.5**. Frontend React, transferencia de titularidad, verificación de email, auditoría histórica de rol, seguridad de producción y deploy público siguen pendientes. La hoja de revisión del compañero se redactará después, antes de RF-03.
+
+## 13. E2-2 A — Matriz de trazabilidad para persistencia RF-03
+
+| RF/CU | Implementación | Pruebas | Estado |
+|---|---|---|---|
+| RF-03 / CU-04, tabla | `models/location.py`, migración `20261108_0008_business_locations.py` | `test_location_model.py`, `test_location_integration.py` | **Persistencia implementada; CI validado** |
+| RF-03 / CU-04, HTTP | CRUD y cambios de principal / pausa | Pruebas HTTP y RBAC todavía inexistentes | **Pendiente E2-2 B/C** |
+| RF-03, permisos por ubicación | Controles tenant + membresía + capacidad concreta | Pruebas de autorización futuras | **Pendiente E2-2 C** |
+| RF-05/06/07, uso comercial | Validaciones de stock, recepción y venta con ubicación ACTIVA | Pruebas comerciales futuras | **Fuera de este corte** |
+
+**E2-2 A — persistencia de Ubicaciones (08/11/2026):** se publicó `Location`/`locations` con FK obligatoria `business_id → businesses.id` (`RESTRICT`), seis tipos, `can_sell`/`can_store` independientes, campos de referencia opcionales, `ACTIVA/PAUSADA`, `is_primary`, índice parcial que permite como máximo una principal activa por tenant y CHECK que impide principal pausada. Migración aditiva `20261108_0008_business_locations.py` (`e22a_locations`, descendiente de `e213c4_acceptance`). La empresa continúa iniciándose **sin ubicaciones**. **No hay todavía rutas HTTP de ubicaciones**, ni inventario/compra/venta conectado, ni permisos de ubicación; esos cambios pertenecen a E2-2 B/C y bloques siguientes. El CI del código del corte se verificó en `300fa6f` (GitHub Actions [run 42491816481](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42491816481)): resultado `success`. La validación local Windows del nuevo corte aún se requiere; los 195 tests anteriores correspondían a E2-1.
+
+**Observación:** el antiguo renglón de cierre E2-1 que describe `e213c4_acceptance (head)` es evidencia histórica de E2-1 y no el head nuevo. El head original E2-2 A fue `e22a_locations`, pero después de incorporar CASA el nuevo head es `e22b_location_casa`; el backend aún no expone nuevas rutas. No presentar los resultados del CI como pruebas locales de Windows.
+
+
+### E2-2 A.1 — CASA y nuevo head (08/11/2026)
+
+`CASA` se añade a los tipos admitidos; las capacidades `can_sell`/`can_store` continúan independientes. Migración aditiva `e22b_location_casa` tras `e22a_locations`, sin cambios a datos anteriores, y reversión protegida cuando existen ubicaciones CASA. **CI backend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492475011)): **217 pruebas aprobadas, Python 3.12/3.14, Alembic `e22b_location_casa (head)` sin deriva, Docker 3/3**. **CI frontend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492474999)): **2/2 trabajos exitosos, incluidos build/lint y E2E**. Resultado Windows precedente de E2-2 A: 212 pruebas; **la migración adicional CASA y los 217 tests todavía deben reproducirse localmente**. Sin endpoints de ubicación hasta E2-2 B/C y sin conexión React–API.

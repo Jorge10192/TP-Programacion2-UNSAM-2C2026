@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión para múltiples empresas y rubros.  
 **Ubicación prevista en el repositorio:** `plataforma-pyme/entrega-programacion-2/`.  
-**Estado de esta carpeta (08/11/2026):** 01 v0.8, 02 v0.9, 03 v0.9, 04 v1.0, 05 v0.6 sincronizados para C.5. **195 pruebas locales** y **3/3 CI del commit funcional C.4b**. 03A se reconcilia en PUML, SVG y guía; 03B/03C se conservan. El Documento 06 sigue pendiente. **El informe para el compañero se escribirá por separado después del cierre documental.**
+**Estado actual (08/11/2026):** E2-1 cerrado con 195 pruebas locales y entrega de revisión separada. **E2-2 A inició RF-03: modelo SQLAlchemy, migración `e22a_locations` y pruebas de integridad; CI del corte A validado y 212 pruebas Windows aprobadas; nueva ampliación CASA pendiente de validación local.** Versiones documentales: 01 v0.9, 02 v1.0, 03 v1.0, 04 v1.1 y 05 v0.7. No hay todavía API de ubicaciones; React continúa DEMO. 03B/03C preservados. El documento 06 sigue pendiente.
 
 ## Propósito
 
@@ -14,11 +14,11 @@ Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»*
 
 | Documento | Propósito | Estado |
 |---|---|---|
-| `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR funcional v0.8 — cierre C.5** |
-| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.9 — cierre C.5** |
-| [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO v0.9 — 03A conciliado** |
-| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v1.0 — arquitectura E2-1 real** |
-| [`05_MATRIZ_API_Y_TRAZABILIDAD.md`](05_MATRIZ_API_Y_TRAZABILIDAD.md) | RF → CU → endpoints reales → pruebas/roles/evidencia/pendientes | **PUBLICADO v0.6 — matriz de C.5** |
+| `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR funcional v0.9 — E2-2 A** |
+| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v1.0 — CU-04 parcial** |
+| [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO v1.0 — Ubicación en SQL** |
+| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v1.1 — esquema E2-2 A** |
+| [`05_MATRIZ_API_Y_TRAZABILIDAD.md`](05_MATRIZ_API_Y_TRAZABILIDAD.md) | RF → CU → endpoints reales → pruebas/roles/evidencia/pendientes | **PUBLICADO v0.7 — trazabilidad E2-2 A** |
 | `06_PRUEBAS_Y_DESPLIEGUE.md` | Estrategia de pruebas, GitHub Actions, Docker, despliegue y evidencias | Pendiente |
 | [`diagramas/`](diagramas/) | SVG vectoriales aprobados, fuentes PlantUML editables y tres guías detalladas | **03A / 03B / 03C publicados** |
 | `presentacion/` | Diapositivas de defensa final | A crear |
@@ -80,3 +80,14 @@ Sin migración nueva, se agregaron `GET /api/v1/businesses/{business_id}/members
 ### C.5 — Sincronización documental completa (08/11/2026)
 
 El cierre funcional E2-1 tiene `195 passed in 23.86s`, Alembic `e213c4_acceptance (head)` sin deriva, Docker API/DB `healthy` y `/ready` `ready`/`ok`; el código C.4b `8cd1674` aprobó 3/3 CI. Se conciliaron documentos 01–05, README técnico, y el UML 03A (fuente PlantUML, SVG editorial y guía). 03B/03C y el código no se alteran. Este cierre **no presupone una nueva ejecución de pruebas sobre el commit documental**. El informe de revisión para el compañero será el siguiente trabajo separado; recién después comenzará RF-03.
+
+### E2-2 A — Primer incremento de Ubicaciones (RF-03)
+
+**E2-2 A — persistencia de Ubicaciones (08/11/2026):** se publicó `Location`/`locations` con FK obligatoria `business_id → businesses.id` (`RESTRICT`), seis tipos, `can_sell`/`can_store` independientes, campos de referencia opcionales, `ACTIVA/PAUSADA`, `is_primary`, índice parcial que permite como máximo una principal activa por tenant y CHECK que impide principal pausada. Migración aditiva `20261108_0008_business_locations.py` (`e22a_locations`, descendiente de `e213c4_acceptance`). La empresa continúa iniciándose **sin ubicaciones**. **No hay todavía rutas HTTP de ubicaciones**, ni inventario/compra/venta conectado, ni permisos de ubicación; esos cambios pertenecen a E2-2 B/C y bloques siguientes. El CI del código del corte se verificó en `300fa6f` (GitHub Actions [run 42491816481](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42491816481)): resultado `success`. La validación local Windows del nuevo corte aún se requiere; los 195 tests anteriores correspondían a E2-1.
+
+La revisión E2-1 sigue anclada en el commit de entrega fijado; el nuevo trabajo no modifica su rama. El próximo paso E2-2 B añadirá la API real y su autorización por empresa, manteniendo las mismas reglas `Location` y sin alterar E1 React.
+
+
+### E2-2 A.1 — CASA y nuevo head (08/11/2026)
+
+`CASA` se añade a los tipos admitidos; las capacidades `can_sell`/`can_store` continúan independientes. Migración aditiva `e22b_location_casa` tras `e22a_locations`, sin cambios a datos anteriores, y reversión protegida cuando existen ubicaciones CASA. **CI backend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492475011)): **217 pruebas aprobadas, Python 3.12/3.14, Alembic `e22b_location_casa (head)` sin deriva, Docker 3/3**. **CI frontend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492474999)): **2/2 trabajos exitosos, incluidos build/lint y E2E**. Resultado Windows precedente de E2-2 A: 212 pruebas; **la migración adicional CASA y los 217 tests todavía deben reproducirse localmente**. Sin endpoints de ubicación hasta E2-2 B/C y sin conexión React–API.
