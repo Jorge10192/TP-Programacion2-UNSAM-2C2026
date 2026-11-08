@@ -1,7 +1,7 @@
 # 05 — Matriz de API, permisos y trazabilidad
 
 **Proyecto:** Asistente PyME — Programación 2  
-**Versión:** 0.6 — cierre y sincronización documental C.5
+**Versión:** undefined — E2-2 B, rutas reales de Ubicaciones (parcial RF-03)
 **Fecha:** 7 de noviembre de 2026  
 **Estado:** publicación técnica incremental; aprobación académica del equipo pendiente  
 **Referencia:** `main` del repositorio, carpeta exclusiva `plataforma-pyme/`.
@@ -20,7 +20,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | RF-01 | CU-02 | Implementado; validado localmente | `POST /api/v1/auth/login`, `GET /me`, `POST /logout`; sesiones revocables, 401 |
 | RF-02 | CU-03 | Alta, lectura y PATCH empresarial validados localmente | Empresa con titular inicial, idempotencia y edición autorizada por tenant/rol |
 | RF-02 | CU-12a / CU-12b y gestión | Emisión/aceptación validadas localmente; **equipo C.4b validado localmente con 195 pruebas y CI 3/3** | Emitir, aceptar, consultar equipo y editar roles/estados operativos con titularidad protegida |
-| RF-03 | CU-04 | **E2-2 A: solo persistencia SQL; rutas HTTP pendientes** | `Location`/`locations` y `e22a_locations`; autorizaciones, CRUD y tests HTTP faltan en E2-2 B/C |
+| RF-03 | CU-04 | **E2-2 B: POST, GET lista y GET detalle implementados y validados en CI** | `locations` con `e22b_location_casa`; autorización por tenant/rol y 277 pruebas CI; PATCH/pausa/principal pendientes E2-2 C |
 | RF-04 | CU-05 | Planificado | Catálogo y SKU único dentro del tenant |
 | RF-05 | CU-06, CU-07 | Planificado | Compra separada de recepción física completa |
 | RF-06 | CU-08, CU-09 | Planificado | Saldos, movimientos, stock no negativo, concurrencia |
@@ -45,6 +45,9 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | POST | `/api/v1/invitations/accept` | Bearer + cuenta destinataria coincide con correo invitado + invitación PENDIENTE vigente + empresa ACTIVA; commit único | 200; 401/404/409/422 | `test_business_acceptance_*.py`, **171 pruebas locales en C.4a** |
 | GET | `/api/v1/businesses/{business_id}/memberships` | Bearer + membresía propia activa; permiso `members.read` (titular/administrador); empresa activa | 200; 401/403/404/409 | `test_business_team_schemas.py`, `test_business_team_integration.py` **(195 pruebas locales; CI 3/3)** |
 | PATCH | `/api/v1/businesses/{business_id}/memberships/{membership_id}` | Bearer + rol titular vigente; miembro objetivo del mismo tenant no titular; permiso `members.manage`; transacción con bloqueo | 200; 401/403/404/409/422 | `test_business_team_schemas.py`, `test_business_team_integration.py` **(195 pruebas locales; CI 3/3)** |
+| POST | `/api/v1/businesses/{business_id}/locations` | Bearer + membresía `ACTIVA` y rol titular/administrador + empresa `ACTIVA` + DTO estricto | 201; 401/403/404/409/422 | `test_location_schemas.py`, `test_location_http.py`, `test_location_api_integration.py` **(277 pruebas CI; local pendiente)** |
+| GET | `/api/v1/businesses/{business_id}/locations` | Bearer + membresía activa propia; empresa `ACTIVA`/`SUSPENDIDA` (lectura) | 200 lista propia; 401/403/404 | `test_location_http.py`, `test_location_api_integration.py` |
+| GET | `/api/v1/businesses/{business_id}/locations/{location_id}` | Bearer + membresía activa y filtro simultáneo de empresa y ubicación | 200 propio; 401/403/404 | `test_location_http.py`, `test_location_api_integration.py` |
 
 **Idempotencia CU-03:** `Idempotency-Key` UUID4, ámbito `actor_user_id` + clave; `business_creation_requests` conserva hash canónico y `business_id`. La **PK compuesta** mantiene la unicidad incluso con concurrencia. Reutilizar la clave con otro contenido devuelve 409; se corrigió la recuperación tras conflictos concurrentes sobre `pk_business_creation_requests` en E2-1.3C.1.
 
@@ -196,3 +199,11 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 ### E2-2 A.1 — CASA y nuevo head (08/11/2026)
 
 `CASA` se añade a los tipos admitidos; las capacidades `can_sell`/`can_store` continúan independientes. Migración aditiva `e22b_location_casa` tras `e22a_locations`, sin cambios a datos anteriores, y reversión protegida cuando existen ubicaciones CASA. **CI backend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492475011)): **217 pruebas aprobadas, Python 3.12/3.14, Alembic `e22b_location_casa (head)` sin deriva, Docker 3/3**. **CI frontend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492474999)): **2/2 trabajos exitosos, incluidos build/lint y E2E**. Resultado Windows precedente de E2-2 A: 212 pruebas; **la migración adicional CASA y los 217 tests todavía deben reproducirse localmente**. Sin endpoints de ubicación hasta E2-2 B/C y sin conexión React–API.
+
+## 14. E2-2 B — Contratos y evidencia de RF-03 parcial
+
+**Estado E2-2 B (08/11/2026):** se publicaron tres rutas reales para ubicaciones bajo `/api/v1/businesses/{business_id}/locations` (`POST` 201, `GET` lista 200, `GET /{location_id}` 200). La creación valida DTO sin campos protegidos, revalida identidad/sesión, bloquea la empresa y membresía del actor, exige tenant `ACTIVA` y rol `TITULAR_ADMINISTRATIVO` o `ADMINISTRADOR`, y confirma una única transacción. Una primera ubicación recibe `is_primary=true`; las posteriores no la reemplazan. Los miembros activos de cualquier rol reconocido pueden consultar las ubicaciones propias, incluso con empresa suspendida; una empresa suspendida no permite crear. Empresa ajena o membresía inactiva devuelve 404; rol sin permiso 403; sesión inválida 401; empresa suspendida al crear 409; cuerpo incorrecto 422. `CASA` y Google Maps HTTPS validado están incluidos. **No hay PATCH/DELETE, ni pausa/reactivación, cambio de principal, asignación individual de personal o consumo comercial de ubicaciones todavía.** La DEMO permanece independiente. Backend sin migración nueva respecto de `e22b_location_casa`.
+
+**Matriz de capacidades del corte:** leer ubicaciones (cualquier rol empresarial reconocido con membresía activa); crear (titular y administrador); empresa suspendida solo permite leer. No se implementa autorización por ubicación asignada ni edición/pausa. Los nombres de los endpoints son los definidos en la tabla de contratos HTTP. **Los GET no son inventario ni habilitan operar stock**, y una empresa sin ubicaciones devuelve lista vacía.
+
+**Evidencia de CI:** commit funcional `bdd2c84653dafb976c8cd6b49d8c2d577cc345de`; [GitHub Actions E2-2 B](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42493624747) **3/3** (Python 3.12 y 3.14 con PostgreSQL, Docker), **277 pruebas aprobadas**, `e22b_location_casa (head)` y Alembic sin deriva. La salida local de Windows aportada previamente para **E2-2 A.1** fue **217 passed in 23.90s**. El nuevo corte E2-2 B **todavía requiere validación local Windows** y no se atribuyen sus 277 pruebas de CI a una ejecución local. La revisión de E2-1 por el compañero sigue anclada en el commit entregado.

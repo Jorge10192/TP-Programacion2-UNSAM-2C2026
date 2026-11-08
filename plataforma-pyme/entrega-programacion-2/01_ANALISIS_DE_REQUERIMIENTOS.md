@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.8 — cierre y sincronización documental C.5
+**Versión:** undefined — E2-2 B, rutas reales de Ubicaciones (parcial RF-03)
 **Estado:** **BORRADOR FUNCIONAL — RF-01 validado; RF-02 parcialmente implementado y en ampliación**  
 **Fecha:** 8 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
@@ -90,7 +90,7 @@ Cobros reales mediante Mercado Pago, OAuth por vendedor, webhooks de acreditaci�
 |---|---|---|---|---|
 | **RF-01** | Gestionar usuarios y autenticación | Registro, inicio de sesión y acceso seguro a recursos autorizados | React DEMO sin login; **API real con registro y sesiones** | **NÚCLEO MVP — obligatorio por consigna** |
 | **RF-02** | Gestionar empresas y miembros | Crear/editar empresas, invitar/aceptar y administrar equipo con permisos por tenant | React DEMO simulado; **backend RF-02 básico implementado** | **NÚCLEO MVP** (membresía y permisos básicos) |
-| **RF-03** | Administrar ubicaciones | Crear, editar, consultar y desactivar ubicaciones diferenciando venta y almacenamiento | **Modelo SQL y migración E2-2 A; API pendiente; DEMO local independiente** | **SOPORTE MVP** (altas/consultas y validaciones mínimas) |
+| **RF-03** | Administrar ubicaciones | Crear, editar, consultar y desactivar ubicaciones diferenciando venta y almacenamiento | **API E2-2 B: POST/GET lista/detalle; edición y pausa pendientes; DEMO independiente** | **SOPORTE MVP** (altas/consultas y validaciones mínimas) |
 | **RF-04** | Administrar catálogo | Registrar y editar artículos, insumos y servicios con SKU, unidad, precio y estado | DEMO local | **NÚCLEO MVP** |
 | **RF-05** | Gestionar proveedores y compras | Registrar proveedores y compras; recibir mercadería explícitamente y consultar historial | DEMO local | **NÚCLEO MVP** (compra/recepción básica e idempotente) |
 | **RF-06** | Controlar inventario | Consultar existencias por ubicación, registrar traslados, conteos y ajustes trazables | DEMO local | **NÚCLEO MVP** (existencias/traslados; conteos completos pueden ampliarse) |
@@ -245,3 +245,9 @@ Se protege tanto la membresía del titular vigente como cualquier membresía his
 ### E2-2 A.1 — Nuevo tipo CASA (08/11/2026)
 
 Se incorporó `CASA` como sexto tipo de ubicación, sin cambiar el contrato de capacidades independientes `can_sell` y `can_store`, ni los estados `ACTIVA`/`PAUSADA`. Una casa puede vender, almacenar, ambas actividades o ninguna (domicilio administrativo). **No se crean direcciones ni ubicaciones automáticamente** y no se presupone habilitación comercial. La migración nueva `e22b_location_casa`, descendiente de `e22a_locations`, amplía `ck_locations_kind` sin reescribir la migración anterior ni alterar filas existentes; impide su reversión mientras queden filas CASA. La DEMO React admite CASA en el selector y en validación/lectura del almacenamiento local, pero sigue separada de la API. CI del código `b50bf200`: **backend 217/217 pruebas, Alembic sin deriva y Docker 3/3** ([run backend](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492475011)); **frontend 2/2, incluido E2E de escritorio y móvil** ([run frontend](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492474999)). Resultado Windows anterior de E2-2 A: 212 pruebas; **validación local de A.1 pendiente**. CRUD HTTP y permisos por ubicación siguen para E2-2 B/C. E2-1/03B/03C no se alteran.
+
+## 16. E2-2 B — Alta y consulta autenticadas de ubicaciones (RF-03 parcial)
+
+**Estado E2-2 B (08/11/2026):** se publicaron tres rutas reales para ubicaciones bajo `/api/v1/businesses/{business_id}/locations` (`POST` 201, `GET` lista 200, `GET /{location_id}` 200). La creación valida DTO sin campos protegidos, revalida identidad/sesión, bloquea la empresa y membresía del actor, exige tenant `ACTIVA` y rol `TITULAR_ADMINISTRATIVO` o `ADMINISTRADOR`, y confirma una única transacción. Una primera ubicación recibe `is_primary=true`; las posteriores no la reemplazan. Los miembros activos de cualquier rol reconocido pueden consultar las ubicaciones propias, incluso con empresa suspendida; una empresa suspendida no permite crear. Empresa ajena o membresía inactiva devuelve 404; rol sin permiso 403; sesión inválida 401; empresa suspendida al crear 409; cuerpo incorrecto 422. `CASA` y Google Maps HTTPS validado están incluidos. **No hay PATCH/DELETE, ni pausa/reactivación, cambio de principal, asignación individual de personal o consumo comercial de ubicaciones todavía.** La DEMO permanece independiente. Backend sin migración nueva respecto de `e22b_location_casa`.
+
+**Evidencia de CI:** commit funcional `bdd2c84653dafb976c8cd6b49d8c2d577cc345de`; [GitHub Actions E2-2 B](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42493624747) **3/3** (Python 3.12 y 3.14 con PostgreSQL, Docker), **277 pruebas aprobadas**, `e22b_location_casa (head)` y Alembic sin deriva. La salida local de Windows aportada previamente para **E2-2 A.1** fue **217 passed in 23.90s**. El nuevo corte E2-2 B **todavía requiere validación local Windows** y no se atribuyen sus 277 pruebas de CI a una ejecución local. La revisión de E2-1 por el compañero sigue anclada en el commit entregado.
