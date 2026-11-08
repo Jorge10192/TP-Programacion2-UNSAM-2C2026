@@ -2,7 +2,10 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión para múltiples empresas y rubros.  
 **Ubicación prevista en el repositorio:** `plataforma-pyme/entrega-programacion-2/`.  
-**Estado actual (08/11/2026):** E2-1 cerrado con 195 pruebas locales y entrega de revisión separada. **E2-2 A inició RF-03: modelo SQLAlchemy, migración `e22a_locations` y pruebas de integridad; CI del corte A validado y 212 pruebas Windows aprobadas; nueva ampliación CASA pendiente de validación local.** Versiones documentales: 01 v1.2, 02 v1.3, 03 v1.3, 04 v1.4 y 05 v1.0. **E2-2 B validado localmente con 277 pruebas; E2-2 C agrega edición/estado/principal con CI de 325 pruebas y validación Windows pendiente.** React continúa DEMO. 03B/03C preservados. El documento 06 sigue pendiente.
+**Estado vigente (08/11/2026):** E2-0 y E2-1 preservados; **E2-2 completo en alcance propio**: ubicación empresarial, API, asignaciones y política operacional por sede; 371 pruebas Windows, CI 3/3, Alembic `e22d_assignments`, Docker saludable. React no integrado. Documentos 01 v1.2, 02 v1.3, 03 v1.3, 04 v1.4 y 05 v1.0. UML 03B/03C sin cambios. Documento 06 y módulos comerciales siguen pendientes. Próximo entregable: hoja independiente de auditoría E2-2.
+
+> **Estado vigente E2-2 (08/11/2026):** E2-2 A/A.1/B/C/D implementado y validado: **371 pruebas Windows aprobadas en 47.57s**, Alembic `e22d_assignments (head)` sin deriva, API y PostgreSQL en Docker `healthy`, `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), 371 pruebas Python 3.12/3.14 y Docker. **La política por sede aún no se aplica a inventario/compras/ventas**, que son bloques futuros; frontend React permanece DEMO. Los estados parciales descritos en notas de A/B/C constituyen histórico.
+
 
 ## Propósito
 

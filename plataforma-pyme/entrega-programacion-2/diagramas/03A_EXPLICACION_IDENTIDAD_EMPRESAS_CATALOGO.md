@@ -6,6 +6,8 @@
 
 [Ver SVG vectorial](03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg) · [Ver fuente PlantUML](03A_CLASES_IDENTIDAD_Y_CATALOGO.puml) · [Documento 02: casos de uso](../02_CASOS_DE_USO.md).
 
+> **Estado vigente E2-2 (08/11/2026):** E2-2 A/A.1/B/C/D implementado y validado: **371 pruebas Windows aprobadas en 47.57s**, Alembic `e22d_assignments (head)` sin deriva, API y PostgreSQL en Docker `healthy`, `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), 371 pruebas Python 3.12/3.14 y Docker. **La política por sede aún no se aplica a inventario/compras/ventas**, que son bloques futuros; frontend React permanece DEMO. Los estados parciales descritos en notas de A/B/C constituyen histórico.
+
 ## 1. Finalidad y organización
 
 El diagrama responde tres preguntas: **quién usa la plataforma**, **a qué empresa tiene acceso** y **qué datos pertenecen a esa empresa**. Representa el núcleo de identidad y configuración, sin confundir a una persona con un único negocio ni con un rol global.
@@ -122,4 +124,4 @@ E2-2 B/C agrega **seis rutas**: POST y GET de colección; GET y PATCH de detalle
 
 **Permiso operacional:** la función `can_operate_at_location` exige empresa, membresía y sede ACTIVA, capacidad `can_sell` para SELL o `can_store` para STORE; encargados/trabajadores necesitan asignación ACTIVA. Titular/administrador mantienen autorización administrativa empresarial sin depender de asignaciones. **Esta función aún no controla HTTP de venta/stock porque RF-05/06/07 siguen por implementar**; nunca afirmar lo contrario. El SVG editorial conserva la representación compacta de Empresa–Ubicación, mientras que la fuente PlantUML contiene además `AsignacionUbicacion` y sus dos asociaciones con multiplicidad; no interpretar la simplificación SVG como ausencia de la clase.
 
-**Evidencia:** 371 pruebas aprobadas en GitHub Actions Python 3.12/3.14 y Docker, commit `3cd7bce71d951218e8c77da58d147e78fb0d426e`, [run 42497556047](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), Alembic `e22d_assignments (head)` sin deriva. **Windows local de E2-2 D pendiente**, último resultado C: 325 pruebas. 03B y 03C permanecen intactos.
+**Evidencia:** 371 pruebas aprobadas en GitHub Actions Python 3.12/3.14 y Docker, commit `3cd7bce71d951218e8c77da58d147e78fb0d426e`, [run 42497556047](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), Alembic `e22d_assignments (head)` sin deriva. **Windows local de E2-2 D aprobado**: 371 pruebas en 47.57s, `e22d_assignments (head)` y Docker API/DB healthy. 03B y 03C permanecen intactos.

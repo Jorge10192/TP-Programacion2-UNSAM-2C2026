@@ -1,6 +1,9 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado (08/11/2026):** E2-1 validado localmente con **195 pruebas**. Se inició **E2-2 A**: tabla/modelo `Location`, migración aditiva `e22a_locations`, pruebas de metadatos/integridad PostgreSQL; **CI del código del corte aprobado**, validación local Windows del corte A aprobada con 212 pruebas; ampliación CASA pendiente local. **E2-2 B ya incorpora POST/GET lista/GET detalle de ubicaciones**, con roles y tenant revalidados; edición/pausa/principal añadidas en E2-2 C; integración React y uso de permisos por ubicación en módulos comerciales futuros siguen pendientes; las asignaciones y la política están implementadas en E2-2 D. E2-1 permanece intacto.
+**Estado vigente (08/11/2026):** E2-2 implementado y validado en Windows/CI: `e22d_assignments (head)`, **371 pruebas locales**, Docker API/DB healthy. Ocho endpoints de ubicaciones y asignaciones; control de pertenencia multiempresa y autorización por sede, política operacional para futuros módulos. E2-1 y frontend DEMO sin alterar en este cierre; no se implementaron compras, inventario ni ventas. Los apartados por corte más abajo representan hitos históricos.
+
+> **Estado vigente E2-2 (08/11/2026):** E2-2 A/A.1/B/C/D implementado y validado: **371 pruebas Windows aprobadas en 47.57s**, Alembic `e22d_assignments (head)` sin deriva, API y PostgreSQL en Docker `healthy`, `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), 371 pruebas Python 3.12/3.14 y Docker. **La política por sede aún no se aplica a inventario/compras/ventas**, que son bloques futuros; frontend React permanece DEMO. Los estados parciales descritos en notas de A/B/C constituyen histórico.
+
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 

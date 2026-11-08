@@ -1,11 +1,13 @@
 # E2-2 D — Plan previo y registro de implementación
 
-**Proyecto:** Asistente PyME · **Fecha:** 08/11/2026 · **Estado:** IMPLEMENTADO Y VALIDADO EN CI; VALIDACIÓN LOCAL WINDOWS PENDIENTE  
+**Proyecto:** Asistente PyME · **Fecha:** 08/11/2026 · **Estado:** IMPLEMENTADO Y VALIDADO EN CI Y WINDOWS (371/371); PR DE REVISIÓN AÚN NO PRESENTADO  
 **Bloque:** E2-2 — Ubicaciones empresariales y autorización por ubicación  
 **Corte verificado:** código E2-2 C en `7abafd8208965cd99b0116e02ffc5240d23f218f` (CI 3/3), documentación/03A sincronizados luego.  
 **Evidencia local:** Windows: **325 passed in 36.91s**, Alembic `e22b_location_casa (head)` sin deriva, Docker API y PostgreSQL `healthy`, `/ready` = `ready/ok`.
 
 > **Nota:** los apartados 1–5 son el plan histórico anterior a la implementación, por lo que sus expresiones «pendiente» se leen en ese contexto. La sección 6 registra el estado del código vigente.
+
+> **Estado vigente E2-2 (08/11/2026):** E2-2 A/A.1/B/C/D implementado y validado: **371 pruebas Windows aprobadas en 47.57s**, Alembic `e22d_assignments (head)` sin deriva, API y PostgreSQL en Docker `healthy`, `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), 371 pruebas Python 3.12/3.14 y Docker. **La política por sede aún no se aplica a inventario/compras/ventas**, que son bloques futuros; frontend React permanece DEMO. Los estados parciales descritos en notas de A/B/C constituyen histórico.
 
 ## 1. Motivo de esta fase
 
@@ -76,3 +78,7 @@ Estas reglas son **propuesta de diseño** para E2-2 D, no funcionalidad probada 
 **CI comprobado para código funcional `3cd7bce71d951218e8c77da58d147e78fb0d426e`:** [run 42497556047](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371/371 tests Python 3.12 y 3.14, 3/3 trabajos aprobados**, Alembic `e22d_assignments (head)` sin deriva y Docker saludable. **Windows local E2-2 D está pendiente:** la última ejecución aportada corresponde a E2-2 C, 325 passed. No atribuir al último commit documental ejecución propia de tests.
 
 **Próximo paso:** validar 371 pruebas en Windows, Alembic y Docker; luego cerrar documentación/UML y generar hoja de revisión E2-2 con SHA fijo y rama `review/e2-2-ubicaciones`. El compañero elaborará informe y PR sin merge, siguiendo la guía maestra.
+
+## 7. Cierre técnico confirmado y siguiente entrega
+
+**Evidencia Windows recibida:** `371 passed in 47.57s`, `e22d_assignments (head)`, `No new upgrade operations detected.`, PostgreSQL y FastAPI `healthy`, `ready/ok`. Esta validación sustituye la indicación «Windows pendiente» que quedó registrada al redactar el plan antes de la ejecución. El siguiente paso es crear `docs/revisiones/E2-2_ENTREGA_PARA_REVISION.md`, con la rama de revisión independiente. No iniciar E2-3 como parte de la revisión.
