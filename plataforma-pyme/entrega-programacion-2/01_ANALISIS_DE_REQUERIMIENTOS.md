@@ -3,7 +3,7 @@
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
 **Versión:** 1.2 — E2-2 D: asignaciones por sede
-**Estado:** **BORRADOR FUNCIONAL - RF-01/RF-02 núcleo implementado; RF-03 ubicaciones y asignaciones E2-2 D disponibles con límites declarados**
+**Estado:** **BORRADOR FUNCIONAL — RF-01/RF-02 núcleo implementado; RF-03 API de ubicaciones E2-2 C disponible con límites declarados**  
 **Fecha:** 8 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
 **Alcance de este documento:** análisis de producto y requisitos objetivo. **No equivale a afirmar que la API esté implementada.**
