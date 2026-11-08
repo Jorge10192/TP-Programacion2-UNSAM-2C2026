@@ -8,12 +8,13 @@ from app.infrastructure.models import Purchase, PurchaseLine
 from app.infrastructure.models.base import Base
 
 
-def test_purchase_models_registered_but_no_receipts_or_stock() -> None:
+def test_purchase_models_and_separate_receipt_stock_are_registered() -> None:
     assert Base.metadata.tables["purchases"] is Purchase.__table__
     assert Base.metadata.tables["purchase_lines"] is PurchaseLine.__table__
-    assert "purchase_receipts" not in Base.metadata.tables
-    assert "stock_balances" not in Base.metadata.tables
-    assert "stock_movements" not in Base.metadata.tables
+    assert "purchase_receipts" in Base.metadata.tables
+    assert "stock_balances" in Base.metadata.tables
+    assert "stock_movements" in Base.metadata.tables
+    assert "location_id" not in Purchase.__table__.c
 
 
 def test_purchase_document_stores_business_snapshot_and_idempotency() -> None:

@@ -14,7 +14,7 @@ from app.modules.catalog.schemas import (
 from app.modules.catalog.service import (
     CatalogService, CatalogSessionInvalid, CatalogBusinessUnavailable,
     CatalogItemNotFound, CatalogPermissionDenied,
-    CatalogBusinessSuspended, CatalogConflict, CatalogInvalidChange,
+    CatalogBusinessSuspended, CatalogConflict, CatalogInvalidChange, CatalogHistoricalChange,
 )
 
 router = APIRouter(prefix="/businesses/{business_id}/catalog", tags=["catalogo"])
@@ -29,6 +29,8 @@ def _as_http(error: Exception) -> HTTPException:
         return HTTPException(409, detail="Empresa suspendida")
     if isinstance(error, CatalogConflict):
         return HTTPException(409, detail="Nombre o SKU ya utilizado en esta empresa")
+    if isinstance(error, CatalogHistoricalChange):
+        return HTTPException(409, detail="Tipo o unidad protegidos por compras o stock historico")
     if isinstance(error, CatalogInvalidChange):
         return HTTPException(422, detail="Tipo y unidad incompatibles")
     raise TypeError("Excepción sin mapeo HTTP")
@@ -141,7 +143,7 @@ def update_catalog_item(
         raise unauthorized() from None
     except (
         CatalogBusinessUnavailable, CatalogItemNotFound, CatalogPermissionDenied,
-        CatalogBusinessSuspended, CatalogConflict, CatalogInvalidChange,
+        CatalogBusinessSuspended, CatalogConflict, CatalogInvalidChange, CatalogHistoricalChange,
     ) as error:
         raise _as_http(error) from None
 

@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from app.main import create_app
 
 
-def test_purchases_openapi_three_routes_and_no_receipt_endpoint():
+def test_purchases_openapi_three_routes_and_separate_receipt_endpoint():
     with TestClient(create_app()) as client:
         spec = client.get("/openapi.json").json()
         paths = spec["paths"]
@@ -12,7 +12,8 @@ def test_purchases_openapi_three_routes_and_no_receipt_endpoint():
     detail = collection + "/{purchase_id}"
     assert {"post", "get"} <= set(paths[collection])
     assert "get" in paths[detail]
-    assert not any("/purchases/{purchase_id}/receive" in p for p in paths)
+    assert detail + "/receive" in paths
+    assert detail + "/receipt" in paths
     for endpoint in (paths[collection]["post"], paths[collection]["get"],
                      paths[detail]["get"]):
         assert endpoint["security"]

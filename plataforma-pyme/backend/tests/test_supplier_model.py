@@ -6,10 +6,10 @@ from app.infrastructure.models import Supplier
 from app.infrastructure.models.base import Base
 
 
-def test_supplier_is_registered_without_receipts_or_stock() -> None:
+def test_supplier_remains_independent_from_receipt_and_stock_tables() -> None:
     assert Base.metadata.tables["suppliers"] is Supplier.__table__
-    assert "purchase_receipts" not in Base.metadata.tables
-    assert "stock_balances" not in Base.metadata.tables
+    assert "purchase_receipts" in Base.metadata.tables
+    assert "stock_balances" in Base.metadata.tables
 
 
 def test_supplier_columns_and_tenant_fk_are_explicit() -> None:

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.infrastructure.models import AuthSession, CatalogItem, User
+from app.infrastructure.models import AuthSession, CatalogItem, PurchaseLine, StockBalance, User
 from app.modules.auth.tokens import now_utc
 from app.modules.businesses.permissions import BusinessPermission, has_business_permission
 from app.modules.businesses.repository import BusinessRepository
@@ -42,6 +42,10 @@ class CatalogConflict(Exception):
 
 class CatalogInvalidChange(Exception):
     """Combinación de tipo y unidad incompatible en una edición parcial."""
+
+
+class CatalogHistoricalChange(Exception):
+    """Un tipo/unidad usado comercialmente no debe reinterpretar stock histórico."""
 
 
 class CatalogService:
@@ -172,6 +176,26 @@ class CatalogService:
                 ensure_kind_unit(new_kind, new_unit)
             except ValueError as error:
                 raise CatalogInvalidChange() from error
+            # Una línea de compra ya guardó el tipo/unidad histórico; además,
+            # el stock futuro/currente usa las milésimas en esa unidad. No
+            # reinterpretar cantidad a KILOGRAMO si se compró por UNIDAD.
+            # Escribir Compra y editar Catálogo bloquean primero la Empresa,
+            # evitando una carrera entre esta consulta y la inserción de la línea.
+            if (new_kind != item.kind or new_unit != item.unit):
+                historically_used = self.db.scalar(
+                    select(PurchaseLine.id).where(
+                        PurchaseLine.business_id == business_id,
+                        PurchaseLine.catalog_item_id == item.id,
+                    ).limit(1)
+                )
+                has_stock = self.db.scalar(
+                    select(StockBalance.catalog_item_id).where(
+                        StockBalance.business_id == business_id,
+                        StockBalance.catalog_item_id == item.id,
+                    ).limit(1)
+                )
+                if historically_used is not None or has_stock is not None:
+                    raise CatalogHistoricalChange()
             if "name" in changes:
                 changes["name_key"] = normalized_name_key(changes["name"])
             for key, value in changes.items():
