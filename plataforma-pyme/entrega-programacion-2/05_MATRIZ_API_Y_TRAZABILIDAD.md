@@ -1,7 +1,7 @@
 # 05 — Matriz de API, permisos y trazabilidad
 
 **Proyecto:** Asistente PyME — Programación 2  
-**Versión:** 1.0 — E2-2 D, asignaciones por sede y política operacional
+**Versión:** 1.1 — E2-3 A, esquema del catálogo (RF-04 parcial)
 **Fecha:** 8 de noviembre de 2026  
 **Estado:** publicación técnica incremental; aprobación académica del equipo pendiente  
 **Referencia:** `main` del repositorio, carpeta exclusiva `plataforma-pyme/`.
@@ -24,7 +24,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | RF-02 | CU-03 | Alta, lectura y PATCH empresarial validados localmente | Empresa con titular inicial, idempotencia y edición autorizada por tenant/rol |
 | RF-02 | CU-12a / CU-12b y gestión | Emisión/aceptación validadas localmente; **equipo C.4b validado localmente con 195 pruebas y CI 3/3** | Emitir, aceptar, consultar equipo y editar roles/estados operativos con titularidad protegida |
 | RF-03 | CU-04 | **E2-2 B/C/D: ubicación y asignaciones por sede con 371 pruebas CI** | Seis rutas de ubicación + GET/PUT de asignaciones; FK compuesta por empresa; uso comercial de la política aún pendiente |
-| RF-04 | CU-05 | Planificado | Catálogo y SKU único dentro del tenant |
+| RF-04 | CU-05 | **E2-3 A: modelo y migración SQL; rutas HTTP pendientes** | `CatalogItem`/`catalog_items`, nombre y SKU únicos por tenant, unidad servicio y precios en centavos; CRUD/RBAC faltan E2-3 B/C |
 | RF-05 | CU-06, CU-07 | Planificado | Compra separada de recepción física completa |
 | RF-06 | CU-08, CU-09 | Planificado | Saldos, movimientos, stock no negativo, concurrencia |
 | RF-07 | CU-10, CU-11 | Planificado | Ventas, pagos declarados y restricciones monetarias |
@@ -236,3 +236,17 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 **E2-2 D AS-IMPLEMENTED:** `LocationAssignment` con clave `(business_id,location_id,user_id)` y FK compuesta hacia `Location` y `Membership` del MISMO tenant. Migración aditiva `e22d_assignments`, índice único auxiliar de ubicación `(business_id,id)`. Estados administrativos `ACTIVA`/`REVOCADA`; fecha `revoked_at`, sin borrado físico. `GET /api/v1/businesses/{business_id}/locations/{location_id}/assignments` lista asignaciones de una sede (titular/administrador); `PUT /api/v1/businesses/{business_id}/locations/{location_id}/assignments/{membership_id}` recibe JSON `{"status":"ACTIVA"}` o `{"status":"REVOCADA"}` y activa/revoca idempotentemente. Solo se activa una membresía ENCARGADO/TRABAJADOR activa hacia ubicación ACTIVA; revocar permite sede pausada o miembro inactivo. Empresa SUSPENDIDA solo lectura. La política pura `can_operate_at_location` obliga a tenant, membresía, sede y capacidad `SELL/STORE` vigentes, además de asignación ACTIVA a encargados/trabajadores. **La política todavía no se consume en compras, inventario ni ventas**, fuera de este corte. Sin nuevas funciones de E2-1 ni conexión del frontend.
 
 **CI comprobado para código funcional `3cd7bce71d951218e8c77da58d147e78fb0d426e`:** [run 42497556047](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371/371 tests Python 3.12 y 3.14, 3/3 trabajos aprobados**, Alembic `e22d_assignments (head)` sin deriva y Docker saludable. **Windows local E2-2 D está pendiente:** la última ejecución aportada corresponde a E2-2 C, 325 passed. No atribuir al último commit documental ejecución propia de tests.
+
+## 17. E2-3 A — Trazabilidad de esquema de Catálogo (RF-04)
+
+| Capa | Artefacto | Prueba | Estado |
+|---|---|---|---|
+| SQL y ORM | `models/catalog_item.py`, `alembic/versions/20261108_0011_catalog_items.py` | `test_catalog_item_model.py`, `test_catalog_item_integration.py` | **407 pruebas CI aprobadas, local pendiente** |
+| SKU/nombre por empresa | Índices/UNIQUE, normalización posterior por servicio | Duplicados del mismo tenant/inactivos y reutilización en otro tenant | **Restricción SQL implementada; API pendiente** |
+| Tipo/unidad | CHECK para clases DEMO y exclusividad `SERVICIO` | Combinaciones válidas e inválidas en PostgreSQL | **Implementado** |
+| API, RBAC y CRUD | Endpoints bajo `/businesses/{business_id}/items` (propuesta previa) | Tests HTTP, sesiones, concurrencia y errores | **Pendiente E2-3 B/C** |
+| Inventario/compras/ventas | FK compuestas futuras y snapshots históricos | Tests comerciales futuros | **Fuera de E2-3 A** |
+
+**Corte E2-3 A (08/11/2026), persistencia parcial de RF-04/CU-05:** clase SQLAlchemy `CatalogItem` y tabla `catalog_items` con `business_id` obligatorio, FK a Empresa (`RESTRICT`) y par UNIQUE `(business_id,id)` para futuras FK comerciales del mismo tenant. Cuatro clases de ficha según la DEMO: `ELABORADO`, `REVENTA`, `INSUMO` (bienes físicos) y `SERVICIO` (conceptualmente un servicio). Un servicio obliga unidad `SERVICIO`; un bien físico la prohíbe. Unidades físicas: `UNIDAD`, `GRAMO`, `KILOGRAMO`, `MILILITRO`, `LITRO`, `PAQUETE`, `CAJA`. Se almacenan nombre, clave normalizada `name_key`, categoría, SKU opcional, descripción, observaciones internas, estado `ACTIVO`/`INACTIVO`, condición `sellable`, `price_cents` y `reference_cost_cents` opcionales. Importes enteros BIGINT entre 0 y 99.999.999.999 centavos, sin Float. Dos restricciones independientes impiden repetir `name_key` y SKU no nulo **dentro de la empresa**, también en fichas inactivas; distintos tenants pueden reutilizarlos. En E2-3 B el servicio deberá calcular `name_key` de forma canónica (NFKC, espacios colapsados, equivalencia de mayúsculas) y normalizar SKU a mayúsculas **antes de insertar/editar**: SQL impone la unicidad de las claves guardadas y el formato de SKU, pero no deriva `name_key` automáticamente. Crear ficha no crea ubicación, stock, compras, ventas ni movimientos.
+
+**Evidencia:** corte de código/pruebas `79c2071f4e5192be95d75c78d5b1e9a75492a645`; [GitHub Actions E2-3 A](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42504783843) **3/3**, **407 pruebas aprobadas** en Python 3.12 y Python 3.14 con PostgreSQL 16, Docker liveness aprobado y `e23a_catalog (head)` sin cambios pendientes de Alembic. **Validación local de Windows pendiente para E2-3 A**; los 371 tests anteriores corresponden al cierre de E2-2. **No existen rutas HTTP de Catálogo** en este corte; CRUD, RBAC de catálogo, SKU/name normalization de entrada y protección de historias comerciales se implementarán en E2-3 B/C/D. No hay integración React API ni revisión independiente de E2-3 todavía. No se modificó E2-1 ni E2-2 ni frontend DEMO.

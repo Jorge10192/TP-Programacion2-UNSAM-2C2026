@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 1.2 — E2-2 D: asignaciones por sede
+**Versión:** 1.3 — E2-3 A, esquema del catálogo (RF-04 parcial)
 **Estado:** **BORRADOR FUNCIONAL — RF-01/RF-02 núcleo implementado; RF-03 API de ubicaciones E2-2 C disponible con límites declarados**  
 **Fecha:** 8 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
@@ -94,7 +94,7 @@ Cobros reales mediante Mercado Pago, OAuth por vendedor, webhooks de acreditaci�
 | **RF-01** | Gestionar usuarios y autenticación | Registro, inicio de sesión y acceso seguro a recursos autorizados | React DEMO sin login; **API real con registro y sesiones** | **NÚCLEO MVP — obligatorio por consigna** |
 | **RF-02** | Gestionar empresas y miembros | Crear/editar empresas, invitar/aceptar y administrar equipo con permisos por tenant | React DEMO simulado; **backend RF-02 básico implementado** | **NÚCLEO MVP** (membresía y permisos básicos) |
 | **RF-03** | Administrar ubicaciones | Crear, editar, consultar y desactivar ubicaciones diferenciando venta y almacenamiento | **API E2-2 B/C: alta, lista/detalle, edición, pausa/reactivación y principal; DEMO independiente; controles comerciales posteriores pendientes** | **SOPORTE MVP** (altas/consultas y validaciones mínimas) |
-| **RF-04** | Administrar catálogo | Registrar y editar artículos, insumos y servicios con SKU, unidad, precio y estado | DEMO local | **NÚCLEO MVP** |
+| **RF-04** | Administrar catálogo | Registrar y editar artículos, insumos y servicios con SKU, unidad, precio y estado | **E2-3 A: modelo SQL y migración implementados; API pendiente; DEMO local desacoplada** | **NÚCLEO MVP** |
 | **RF-05** | Gestionar proveedores y compras | Registrar proveedores y compras; recibir mercadería explícitamente y consultar historial | DEMO local | **NÚCLEO MVP** (compra/recepción básica e idempotente) |
 | **RF-06** | Controlar inventario | Consultar existencias por ubicación, registrar traslados, conteos y ajustes trazables | DEMO local | **NÚCLEO MVP** (existencias/traslados; conteos completos pueden ampliarse) |
 | **RF-07** | Registrar ventas y pagos declarados | Registrar ventas, descuentos y uno o más medios cuyo importe total coincida con la venta; descontar stock físico cuando corresponda | DEMO local | **NÚCLEO MVP** (ventas transaccionales con pagos declarados) |
@@ -268,3 +268,9 @@ Se incorporó `CASA` como sexto tipo de ubicación, sin cambiar el contrato de c
 
 
 **Evidencia:** código final `3cd7bce71d951218e8c77da58d147e78fb0d426e` y [CI E2-2 D 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371 pruebas** en Python 3.12/3.14, `e22d_assignments (head)` sin deriva y Docker correcto. El último resultado local aportado es E2-2 C, **325 passed in 36.91s**. **La migración y las 371 pruebas de E2-2 D aún requieren ejecución local Windows antes de cerrar el bloque y preparar la hoja de auditoría.**
+
+## 19. E2-3 A — Catálogo: persistencia real de RF-04 (parcial)
+
+**Corte E2-3 A (08/11/2026), persistencia parcial de RF-04/CU-05:** clase SQLAlchemy `CatalogItem` y tabla `catalog_items` con `business_id` obligatorio, FK a Empresa (`RESTRICT`) y par UNIQUE `(business_id,id)` para futuras FK comerciales del mismo tenant. Cuatro clases de ficha según la DEMO: `ELABORADO`, `REVENTA`, `INSUMO` (bienes físicos) y `SERVICIO` (conceptualmente un servicio). Un servicio obliga unidad `SERVICIO`; un bien físico la prohíbe. Unidades físicas: `UNIDAD`, `GRAMO`, `KILOGRAMO`, `MILILITRO`, `LITRO`, `PAQUETE`, `CAJA`. Se almacenan nombre, clave normalizada `name_key`, categoría, SKU opcional, descripción, observaciones internas, estado `ACTIVO`/`INACTIVO`, condición `sellable`, `price_cents` y `reference_cost_cents` opcionales. Importes enteros BIGINT entre 0 y 99.999.999.999 centavos, sin Float. Dos restricciones independientes impiden repetir `name_key` y SKU no nulo **dentro de la empresa**, también en fichas inactivas; distintos tenants pueden reutilizarlos. En E2-3 B el servicio deberá calcular `name_key` de forma canónica (NFKC, espacios colapsados, equivalencia de mayúsculas) y normalizar SKU a mayúsculas **antes de insertar/editar**: SQL impone la unicidad de las claves guardadas y el formato de SKU, pero no deriva `name_key` automáticamente. Crear ficha no crea ubicación, stock, compras, ventas ni movimientos.
+
+**Evidencia:** corte de código/pruebas `79c2071f4e5192be95d75c78d5b1e9a75492a645`; [GitHub Actions E2-3 A](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42504783843) **3/3**, **407 pruebas aprobadas** en Python 3.12 y Python 3.14 con PostgreSQL 16, Docker liveness aprobado y `e23a_catalog (head)` sin cambios pendientes de Alembic. **Validación local de Windows pendiente para E2-3 A**; los 371 tests anteriores corresponden al cierre de E2-2. **No existen rutas HTTP de Catálogo** en este corte; CRUD, RBAC de catálogo, SKU/name normalization de entrada y protección de historias comerciales se implementarán en E2-3 B/C/D. No hay integración React API ni revisión independiente de E2-3 todavía. No se modificó E2-1 ni E2-2 ni frontend DEMO.

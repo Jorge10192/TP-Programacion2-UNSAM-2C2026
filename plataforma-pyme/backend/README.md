@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado vigente (08/11/2026):** E2-2 implementado y validado en Windows/CI: `e22d_assignments (head)`, **371 pruebas locales**, Docker API/DB healthy. Ocho endpoints de ubicaciones y asignaciones; control de pertenencia multiempresa y autorización por sede, política operacional para futuros módulos. E2-1 y frontend DEMO sin alterar en este cierre; no se implementaron compras, inventario ni ventas. Los apartados por corte más abajo representan hitos históricos.
+**Estado vigente (08/11/2026):** E2-2 completo (371 tests Windows); E2-3 A de Catálogo implementado en SQLAlchemy/PostgreSQL, CI 407 pruebas 3/3 y migración `e23a_catalog`. **Aún no hay endpoints de Catálogo ni integración React**. Para validar localmente, aplicar la migración aditiva y correr Pytest; no alterar el historial Alembic de E2-1/E2-2.
 
 > **Estado vigente E2-2 (08/11/2026):** E2-2 A/A.1/B/C/D implementado y validado: **371 pruebas Windows aprobadas en 47.57s**, Alembic `e22d_assignments (head)` sin deriva, API y PostgreSQL en Docker `healthy`, `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), 371 pruebas Python 3.12/3.14 y Docker. **La política por sede aún no se aplica a inventario/compras/ventas**, que son bloques futuros; frontend React permanece DEMO. Los estados parciales descritos en notas de A/B/C constituyen histórico.
 
@@ -614,3 +614,25 @@ finally { Remove-Item Env:\RUN_DB_INTEGRATION -ErrorAction SilentlyContinue }
 ```
 
 Esperado: `e22d_assignments (head)` y **371 passed**. La migración agrega tabla e índice único, sin tocar datos anteriores. No usar `stamp`, `downgrade`, `down -v` ni comandos destructivos. Reconstruir contenedores y verificar `/ready` tras sincronizar.
+
+## E2-3 A — Catálogo: ORM y migración, sin API HTTP todavía
+
+**Corte E2-3 A (08/11/2026), persistencia parcial de RF-04/CU-05:** clase SQLAlchemy `CatalogItem` y tabla `catalog_items` con `business_id` obligatorio, FK a Empresa (`RESTRICT`) y par UNIQUE `(business_id,id)` para futuras FK comerciales del mismo tenant. Cuatro clases de ficha según la DEMO: `ELABORADO`, `REVENTA`, `INSUMO` (bienes físicos) y `SERVICIO` (conceptualmente un servicio). Un servicio obliga unidad `SERVICIO`; un bien físico la prohíbe. Unidades físicas: `UNIDAD`, `GRAMO`, `KILOGRAMO`, `MILILITRO`, `LITRO`, `PAQUETE`, `CAJA`. Se almacenan nombre, clave normalizada `name_key`, categoría, SKU opcional, descripción, observaciones internas, estado `ACTIVO`/`INACTIVO`, condición `sellable`, `price_cents` y `reference_cost_cents` opcionales. Importes enteros BIGINT entre 0 y 99.999.999.999 centavos, sin Float. Dos restricciones independientes impiden repetir `name_key` y SKU no nulo **dentro de la empresa**, también en fichas inactivas; distintos tenants pueden reutilizarlos. En E2-3 B el servicio deberá calcular `name_key` de forma canónica (NFKC, espacios colapsados, equivalencia de mayúsculas) y normalizar SKU a mayúsculas **antes de insertar/editar**: SQL impone la unicidad de las claves guardadas y el formato de SKU, pero no deriva `name_key` automáticamente. Crear ficha no crea ubicación, stock, compras, ventas ni movimientos.
+
+**Evidencia:** corte de código/pruebas `79c2071f4e5192be95d75c78d5b1e9a75492a645`; [GitHub Actions E2-3 A](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42504783843) **3/3**, **407 pruebas aprobadas** en Python 3.12 y Python 3.14 con PostgreSQL 16, Docker liveness aprobado y `e23a_catalog (head)` sin cambios pendientes de Alembic. **Validación local de Windows pendiente para E2-3 A**; los 371 tests anteriores corresponden al cierre de E2-2. **No existen rutas HTTP de Catálogo** en este corte; CRUD, RBAC de catálogo, SKU/name normalization de entrada y protección de historias comerciales se implementarán en E2-3 B/C/D. No hay integración React API ni revisión independiente de E2-3 todavía. No se modificó E2-1 ni E2-2 ni frontend DEMO.
+
+**Validación local segura** desde `plataforma-pyme/backend/` con PostgreSQL 16 de desarrollo (no producción):
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+try {
+  .\.venv\Scripts\python.exe -m pytest -q
+} finally {
+  Remove-Item Env:\RUN_DB_INTEGRATION -ErrorAction SilentlyContinue
+}
+```
+
+Esperado **`e23a_catalog (head)`** y **407 passed**. Es una tabla nueva sin datos ni stock. Evitar `downgrade`, `stamp` y eliminación de volúmenes.
