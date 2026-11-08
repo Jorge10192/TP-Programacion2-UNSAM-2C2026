@@ -4,7 +4,9 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.models import Business, BusinessCreationRequest, Membership
+from app.infrastructure.models import (
+    Business, BusinessCreationRequest, BusinessInvitation, Membership, User,
+)
 
 
 class BusinessRepository:
@@ -74,3 +76,32 @@ class BusinessRepository:
         if row is None:
             return None
         return row[0], row[1]
+
+    def active_membership_for_email(
+        self, business_id: UUID, email_normalizado: str,
+    ) -> Membership | None:
+        """Nunca buscar un membership de otra empresa por el email global."""
+        return self.db.scalar(
+            select(Membership)
+            .join(User, User.id == Membership.user_id)
+            .where(
+                Membership.business_id == business_id,
+                Membership.status == "ACTIVA",
+                User.email_normalizado == email_normalizado,
+            )
+        )
+
+    def pending_invitation_for_email(
+        self, business_id: UUID, email_normalizado: str,
+    ) -> BusinessInvitation | None:
+        return self.db.scalar(
+            select(BusinessInvitation).where(
+                BusinessInvitation.business_id == business_id,
+                BusinessInvitation.email_normalizado == email_normalizado,
+                BusinessInvitation.status == "PENDIENTE",
+            )
+        )
+
+    def add_invitation(self, invitation: BusinessInvitation) -> None:
+        self.db.add(invitation)
+        self.db.flush()

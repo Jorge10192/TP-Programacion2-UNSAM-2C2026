@@ -6,6 +6,7 @@ para cerrar la ventana entre Depends(current_auth) y la escritura.
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -13,15 +14,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.infrastructure.models import (
-    AuthSession, Business, BusinessCreationRequest, Membership, User,
+    AuthSession, Business, BusinessCreationRequest, BusinessInvitation, Membership, User,
 )
-from app.modules.auth.tokens import now_utc
+from app.modules.auth.tokens import new_token, now_utc, token_digest
 from app.modules.businesses.permissions import (
     BusinessPermission, has_business_permission,
 )
 from app.modules.businesses.repository import BusinessRepository
 from app.modules.businesses.schemas import (
     BusinessView, CreateBusinessRequest, UpdateBusinessProfileRequest,
+    CreateBusinessInvitationRequest, BusinessInvitationIssued,
 )
 
 
@@ -37,6 +39,13 @@ class BusinessUnavailable(Exception):
     """La membresía ya no habilita consultar ese negocio."""
 
 
+
+
+class InvitationConflict(Exception):
+    """El destinatario ya es miembro o tiene invitación pendiente válida."""
+
+
+INVITATION_LIFETIME = timedelta(days=7)
 
 
 class BusinessPermissionDenied(Exception):
@@ -191,6 +200,70 @@ class BusinessService:
                 setattr(company, field, value)
             self.db.flush()
             response = BusinessView.from_records(company, member)
+            self.db.commit()
+            return response
+        except Exception:
+            self.db.rollback()
+            raise
+
+
+    def issue_invitation(
+        self, actor_id: UUID, auth_session_id: UUID,
+        business_id: UUID, command: CreateBusinessInvitationRequest,
+    ) -> BusinessInvitationIssued:
+        """CU-12a: emitir sin conceder membresía ni persistir el token claro.
+
+        Toda creación de invitación usa el bloqueo de la empresa, además de
+        la sesión y membresía del actor, para serializar duplicados por tenant.
+        """
+        try:
+            self._revalidate_actor(actor_id, auth_session_id)
+            pair = self.repository.lock_active_member_business(actor_id, business_id)
+            if pair is None:
+                raise BusinessUnavailable()
+            company, member = pair
+            permission = BusinessPermission.INVITE_MEMBERS
+            permitted = has_business_permission(
+                role=member.role, membership_status=member.status,
+                business_status=company.status, permission=permission,
+            )
+            if not permitted:
+                capable_if_active = has_business_permission(
+                    role=member.role, membership_status=member.status,
+                    business_status="ACTIVA", permission=permission,
+                )
+                if company.status == "SUSPENDIDA" and capable_if_active:
+                    raise BusinessSuspended()
+                raise BusinessPermissionDenied()
+
+            if self.repository.active_membership_for_email(
+                business_id, command.email,
+            ) is not None:
+                raise InvitationConflict()
+
+            now = now_utc()
+            previous = self.repository.pending_invitation_for_email(
+                business_id, command.email,
+            )
+            if previous is not None:
+                if previous.expires_at > now:
+                    raise InvitationConflict()
+                previous.status = "EXPIRADA"
+                self.db.flush()  # libera la unicidad parcial de email pendiente
+
+            secret = new_token()
+            invitation = BusinessInvitation(
+                id=uuid4(),
+                business_id=business_id,
+                invited_by_user_id=actor_id,
+                email_normalizado=command.email,
+                proposed_role=command.role,
+                token_hash=token_digest(secret),
+                status="PENDIENTE",
+                expires_at=now + INVITATION_LIFETIME,
+            )
+            self.repository.add_invitation(invitation)
+            response = BusinessInvitationIssued.from_record(invitation, secret)
             self.db.commit()
             return response
         except Exception:

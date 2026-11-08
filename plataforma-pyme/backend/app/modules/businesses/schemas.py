@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 class CreateBusinessRequest(BaseModel):
@@ -89,3 +89,44 @@ class UpdateBusinessProfileRequest(BaseModel):
             if getattr(self, field) is None:
                 raise ValueError("No se permiten valores null en la edición")
         return self
+
+
+class CreateBusinessInvitationRequest(BaseModel):
+    """Emisión C.3: rol acotado, correo normalizado, sin otros datos del tenant."""
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    role: Literal["ENCARGADO", "TRABAJADOR"]
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def strip_recipient(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_recipient(cls, value: EmailStr) -> str:
+        result = str(value).lower()
+        if not result.isascii() or len(result) > 254:
+            raise ValueError("Se requiere un correo ASCII valido")
+        return result
+
+
+class BusinessInvitationIssued(BaseModel):
+    """Solo respuesta de emisión: el secreto NO puede recuperarse por GET."""
+    id: UUID
+    business_id: UUID
+    email: str
+    role: str
+    status: Literal["PENDIENTE"]
+    expires_at: datetime
+    invitation_token: str
+
+    @classmethod
+    def from_record(cls, record: object, token: str) -> "BusinessInvitationIssued":
+        return cls(
+            id=record.id, business_id=record.business_id,
+            email=record.email_normalizado, role=record.proposed_role,
+            status="PENDIENTE", expires_at=record.expires_at,
+            invitation_token=token,
+        )

@@ -10,10 +10,12 @@ from app.modules.auth.dependencies import current_auth, unauthorized
 from app.modules.auth.session_service import AuthContext
 from app.modules.businesses.schemas import (
     BusinessView, CreateBusinessRequest, UpdateBusinessProfileRequest,
+    CreateBusinessInvitationRequest, BusinessInvitationIssued,
 )
 from app.modules.businesses.service import (
     BusinessService, BusinessUnavailable, BusinessPermissionDenied,
     BusinessSuspended, CreationSessionInvalid, IdempotencyConflict,
+    InvitationConflict,
 )
 
 router = APIRouter(prefix="/businesses", tags=["empresas"])
@@ -108,4 +110,43 @@ def update_business_profile(
     except BusinessSuspended:
         raise HTTPException(
             status_code=409, detail="Empresa suspendida: no se puede editar"
+        ) from None
+
+
+@router.post(
+    "/{business_id}/invitations",
+    response_model=BusinessInvitationIssued,
+    status_code=201,
+    responses={
+        401: {"description": "Sesión inválida o revocada"},
+        403: {"description": "Miembro activo sin permiso de invitación"},
+        404: {"description": "Empresa ajena o sin membresía activa"},
+        409: {"description": "Empresa suspendida, miembro existente o invitación pendiente"},
+        422: {"description": "Correo, rol o cuerpo inválido"},
+    },
+    summary="Emitir invitación empresarial segura; no crea membresía",
+)
+def issue_business_invitation(
+    business_id: UUID,
+    command: CreateBusinessInvitationRequest,
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> BusinessInvitationIssued:
+    try:
+        return BusinessService(db).issue_invitation(
+            context.user.id, context.auth_session.id, business_id, command,
+        )
+    except CreationSessionInvalid:
+        raise unauthorized() from None
+    except BusinessUnavailable:
+        raise HTTPException(status_code=404, detail="Empresa no disponible") from None
+    except BusinessPermissionDenied:
+        raise HTTPException(status_code=403, detail="Operacion no permitida") from None
+    except BusinessSuspended:
+        raise HTTPException(
+            status_code=409, detail="Empresa suspendida: no se pueden emitir invitaciones"
+        ) from None
+    except InvitationConflict:
+        raise HTTPException(
+            status_code=409, detail="El destinatario ya pertenece a la empresa o tiene invitacion pendiente"
         ) from None
