@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME (multiempresa y multirrubro)  
 **Fecha:** 08/11/2026  
-**Estado:** CÓDIGO Y CI VALIDADOS; EJECUCIÓN WINDOWS DEL CORTE D PENDIENTE  
+**Estado:** CÓDIGO Y CI D VALIDADOS, WINDOWS 580/580 APROBADO; UML 03A CONCILIADO EN E2-3 E  
 **Base funcional:** E2-3 C, commit `5fe257f140ebc0d19d6504798bcdee02b9c7e314`  
 **Corte de pruebas D:** `8598c271eeaf5a21e64909e518765135d22fbc03`  
 **Corte de paginación D:** `bf4fd3fa809c9f4e6afdeb064a155acf233b1722`  
@@ -77,3 +77,9 @@ Invoke-RestMethod http://127.0.0.1:18000/ready
 Esperado: **580 passed**, `e23a_catalog (head)`, ausencia de deriva, dos contenedores `healthy` y `ready/ok`. No usar `downgrade`, `stamp` ni borrar volúmenes.
 
 **Luego:** E2-3 E — conciliar 03A PUML/guía/SVG y cerrar documentos 01–05 con un SHA fijo para auditoría externa. No iniciar E2-4 en el mismo corte.
+
+## 6. Actualización tras validación local y cierre E2-3 E
+
+**E2-3 E cerrado funcional y documentalmente (08/11/2026):** catálogo `CatalogItem` con migración `e23a_catalog`, cinco rutas REST reales, verificación de tenant/RBAC y estado ACTIVO/INACTIVO. **580 passed en Windows (66.45s)**, Alembic sin deriva, API y DB Docker healthy, `/ready` ready/ok. CI D [3/3 y 580 tests en Python 3.12/3.14](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42508771222) sobre `bf4fd3fa809c9f4e6afdeb064a155acf233b1722`. UML 03A v0.7 (PUML, guía y SVG editorial) actualizado; Proveedor TO-BE, 03B/03C preservados. No hay aún compras, inventario, ventas ni integración React/API. **Pendiente: entrega formal al revisor, sin merge de PR**. Los estados A/B/C/D más abajo corresponden a cortes históricos.
+
+**La sección 5 registra el procedimiento anterior a la prueba local, ahora ejecutado por el desarrollador**. Se mantiene como evidencia histórica; no significa que Windows siga pendiente. Para la auditoría externa, no confundir pruebas de duplicación SQL secuencial con carrera de conexiones simultáneas.
