@@ -15,7 +15,7 @@ def validate_maps_link(value: str) -> str:
     normalized = value.strip()
     if not normalized:
         return ""
-    if len(normalized) > 2048 or any(c in normalized for c in "\r\n\t"):
+    if len(normalized) > 2048 or any(c in normalized for c in "\x00\r\n\t"):
         raise ValueError("Enlace de Maps inválido o demasiado largo")
     try:
         parsed = urlsplit(normalized)
@@ -52,6 +52,8 @@ class CreateLocationRequest(BaseModel):
     @field_validator("name", "address")
     @classmethod
     def trim_name_and_address(cls, value: str, info) -> str:
+        if "\x00" in value:
+            raise ValueError("El texto no puede contener caracteres nulos")
         cleaned = value.strip()
         if info.field_name == "name" and len(cleaned) < 2:
             raise ValueError("Nombre de ubicación demasiado corto")
@@ -105,6 +107,8 @@ class UpdateLocationRequest(BaseModel):
     def trim_optional_text(cls, value: str | None, info) -> str | None:
         if value is None:
             return value
+        if "\x00" in value:
+            raise ValueError("El texto no puede contener caracteres nulos")
         cleaned = value.strip()
         if info.field_name == "name" and len(cleaned) < 2:
             raise ValueError("Nombre de ubicación demasiado corto")

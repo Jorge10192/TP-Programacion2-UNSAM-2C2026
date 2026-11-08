@@ -83,6 +83,43 @@ def data(name="Casa particular", **overrides):
     return body
 
 
+@pytest.mark.parametrize("field,value", [
+    ("name", "Casa\x00central"),
+    ("address", "Calle\x00numero"),
+    ("map_url", "https://www.google.com/maps/\x00Sitio"),
+])
+def test_create_rejects_nul_without_rows_or_primary_side_effects(isolated, field, value):
+    client, connection = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    response = client.post(endpoint(bid), headers=auth, json=data(**{field: value}))
+    assert response.status_code == 422, response.text
+    assert connection.execute(
+        select(Location.id).where(Location.business_id == bid)
+    ).first() is None
+    valid = client.post(endpoint(bid), headers=auth, json=data())
+    assert valid.status_code == 201
+    assert valid.json()["is_primary"] is True
+
+
+@pytest.mark.parametrize("field,value", [
+    ("name", "Casa\x00central"),
+    ("address", "Calle\x00numero"),
+    ("map_url", "https://www.google.com/maps/\x00Sitio"),
+])
+def test_edit_rejects_nul_and_preserves_full_location(isolated, field, value):
+    client, _ = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    created = client.post(endpoint(bid), headers=auth, json=data())
+    assert created.status_code == 201
+    location_id = UUID(created.json()["id"])
+    before = client.get(endpoint(bid, location_id), headers=auth).json()
+    response = client.patch(endpoint(bid, location_id), headers=auth, json={field: value})
+    assert response.status_code == 422, response.text
+    assert client.get(endpoint(bid, location_id), headers=auth).json() == before
+
+
 def test_create_casa_and_subsequent_location_with_single_primary(isolated) -> None:
     client, db = isolated
     owner, _ = actor(client)
