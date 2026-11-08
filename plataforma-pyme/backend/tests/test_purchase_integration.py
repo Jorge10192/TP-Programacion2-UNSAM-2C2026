@@ -1,7 +1,8 @@
-"""E2-4 C: pruebas reales PostgreSQL 16; siempre rollback de la transacción exterior.
+"""Pruebas de Compra en PostgreSQL real, con rollback de transacción exterior.
 
-Las inserciones directas ejercitan FKs/CHECK/UNIQUE del esquema; no son
-endpoints de Compras. E2-4 D implementará el comando comercial atómico.
+Las verificaciones se filtran por el tenant o el documento creado por la prueba:
+la base local puede contener compras reales de QA sin que se alteren ni se
+cuenten como resultados de este test. No usar consultas globales para assert.
 """
 import os
 from collections.abc import Iterator
@@ -225,7 +226,9 @@ def test_line_rejects_catalog_or_purchase_belonging_to_another_tenant(isolated):
     must_reject(db, PurchaseLine, line_values(a, values["id"], item_b))
     must_reject(db, PurchaseLine, line_values(b, values["id"], item_b))
     db.execute(insert(PurchaseLine).values(**line_values(a, values["id"], item_a)))
-    assert len(db.execute(select(PurchaseLine.id)).all()) == 1
+    assert len(db.execute(select(PurchaseLine.id).where(
+        PurchaseLine.business_id == a, PurchaseLine.purchase_id == values["id"],
+    )).all()) == 1
 
 
 @pytest.mark.parametrize("change", [
@@ -243,7 +246,9 @@ def test_line_check_constraints_reject_invalid_values(isolated, change):
     purchase = purchase_values(bid, owner)
     db.execute(insert(Purchase).values(**purchase))
     must_reject(db, PurchaseLine, line_values(bid, purchase["id"], good, **change))
-    assert db.execute(select(PurchaseLine.id)).all() == []
+    assert db.execute(select(PurchaseLine.id).where(
+        PurchaseLine.business_id == bid, PurchaseLine.purchase_id == purchase["id"],
+    )).all() == []
 
 
 def test_half_up_uses_numeric_scale_even_for_fractional_quantity(isolated):
@@ -257,7 +262,9 @@ def test_half_up_uses_numeric_scale_even_for_fractional_quantity(isolated):
                           unit_snapshot="KILOGRAMO", quantity_milli=500,
                           unit_cost_cents=3, line_total_cents=2)
     db.execute(insert(PurchaseLine).values(**half_up))
-    assert db.execute(select(PurchaseLine.line_total_cents)).scalar_one() == 2
+    assert db.execute(select(PurchaseLine.line_total_cents).where(
+        PurchaseLine.business_id == bid, PurchaseLine.purchase_id == purchase["id"],
+    )).scalar_one() == 2
     must_reject(db, PurchaseLine, {
         **half_up, "id": uuid4(), "line_number": 2, "line_total_cents": 1,
     })
@@ -273,7 +280,9 @@ def test_request_is_unique_inside_tenant_but_reusable_in_other_tenant(isolated):
     must_reject(db, Purchase, purchase_values(a, owner, request_id=request_id))
     second = purchase_values(b, owner, request_id=request_id)
     db.execute(insert(Purchase).values(**second))
-    assert {row[0] for row in db.execute(select(Purchase.business_id)).all()} == {a, b}
+    assert {row[0] for row in db.execute(select(Purchase.business_id).where(
+        Purchase.request_id == request_id,
+    )).all()} == {a, b}
 
 
 def test_duplicate_line_number_is_rejected_without_losing_first_line(isolated):
@@ -285,7 +294,9 @@ def test_duplicate_line_number_is_rejected_without_losing_first_line(isolated):
     db.execute(insert(Purchase).values(**purchase))
     db.execute(insert(PurchaseLine).values(**line_values(bid, purchase["id"], good)))
     must_reject(db, PurchaseLine, line_values(bid, purchase["id"], good))
-    assert len(db.execute(select(PurchaseLine.id)).all()) == 1
+    assert len(db.execute(select(PurchaseLine.id).where(
+        PurchaseLine.business_id == bid, PurchaseLine.purchase_id == purchase["id"],
+    )).all()) == 1
 
 
 def test_invalid_header_values_cannot_be_persisted(isolated):
@@ -300,7 +311,32 @@ def test_invalid_header_values_cannot_be_persisted(isolated):
         {"supplier_name_snapshot": "Nombre sin proveedor"},
     ):
         must_reject(db, Purchase, purchase_values(bid, owner, **bad))
-    assert db.execute(select(Purchase.id)).all() == []
+    assert db.execute(select(Purchase.id).where(Purchase.business_id == bid)).all() == []
+
+
+def test_tenant_scoped_assertions_work_with_preexisting_unrelated_purchases(isolated):
+    """Regresión: la base compartida puede contener otras compras, incluso QA."""
+    client, db = isolated
+    auth, owner = actor(client)
+    tenant_a, tenant_b = business(client, auth), business(client, auth)
+    item_a, item_b = catalog(client, tenant_a, auth), catalog(client, tenant_b, auth)
+    doc_a, doc_b = purchase_values(tenant_a, owner), purchase_values(tenant_b, owner)
+    for doc, good in ((doc_a, item_a), (doc_b, item_b)):
+        db.execute(insert(Purchase).values(**doc))
+        db.execute(insert(PurchaseLine).values(**line_values(
+            doc["business_id"], doc["id"], good,
+        )))
+    # La consulta global obtiene al menos las dos líneas sembradas (y puede
+    # incluir más de QA); nunca representa el resultado de una prueba aislada.
+    assert len(db.execute(select(PurchaseLine.id)).all()) >= 2
+    for document in (doc_a, doc_b):
+        assert len(db.execute(select(PurchaseLine.id).where(
+            PurchaseLine.business_id == document["business_id"],
+            PurchaseLine.purchase_id == document["id"],
+        )).all()) == 1
+        assert db.execute(select(Purchase.id).where(
+            Purchase.business_id == document["business_id"],
+        )).scalars().all() == [document["id"]]
 
 
 def test_e24e_publishes_complete_receive_and_inventory_read_only() -> None:
