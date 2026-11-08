@@ -98,7 +98,7 @@ class PurchaseService:
              *, offset: int, limit: int) -> list[PurchaseView]:
         try:
             self._authorize(actor_id, session_id, business_id, writing=False)
-            response = [self._view(row) for row in self.purchases.list(
+            response = [self._view(row) for row in self.purchases.list_for_business(
                 business_id, offset=offset, limit=limit,
             )]
             self.db.rollback()
