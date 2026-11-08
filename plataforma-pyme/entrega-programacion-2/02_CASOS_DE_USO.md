@@ -155,6 +155,8 @@ Los flujos de autenticación y autorización aquí descritos son **objetivo de b
 **Excepciones:** empresa ajena, nombre o capacidad inválidos; en una operación posterior, se rechaza una ubicación pausada/inactiva si se exige actividad.  
 **Criterios de aceptación:** no existe uso cruzado entre empresas; una recepción requiere ubicación apta para almacenamiento; un servicio no exige stock físico.
 
+**Estado CU-04 en E2-2 A:** ya existen tabla/migración y restricciones PostgreSQL para ubicaciones, pero aún **no** se puede registrar por API. Crear/editar/listar/pausar y designar principal, validar membresías y empresas suspendidas y comprobar permisos por ubicación corresponden a E2-2 B/C. Las futuras recepciones y ventas de bienes deben consultar `can_store`/`can_sell` vigentes; nada de eso se ejecuta en este corte.
+
 ### CU-05 — Registrar un artículo o servicio
 
 **Requerimiento:** RF-04. **Actor:** Miembro autorizado para gestionar catálogo. **Objetivo:** incorporar una ficha reutilizable a las operaciones de la empresa.  
@@ -505,3 +507,9 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 ## 15. C.5 — Correspondencia de casos de uso con API real
 
 CU-01/CU-02 (identidad) y los flujos concretados de CU-03/CU-12 (empresa, invitación y equipo básico) tienen endpoints y pruebas PostgreSQL. **Los casos de uso comerciales permanecen TO-BE**, aunque React DEMO disponga de pantallas. C.4b: `195 passed in 23.86s`, CI funcional 3/3 y Alembic sin diferencias. La transferencia de titularidad no está implementada; la auditoría para el compañero se preparará en una entrega separada, antes de RF-03.
+
+## 16. E2-2 A — Evidencia parcial de CU-04
+
+**E2-2 A — persistencia de Ubicaciones (08/11/2026):** se publicó `Location`/`locations` con FK obligatoria `business_id → businesses.id` (`RESTRICT`), cinco tipos, `can_sell`/`can_store` independientes, campos de referencia opcionales, `ACTIVA/PAUSADA`, `is_primary`, índice parcial que permite como máximo una principal activa por tenant y CHECK que impide principal pausada. Migración aditiva `20261108_0008_business_locations.py` (`e22a_locations`, descendiente de `e213c4_acceptance`). La empresa continúa iniciándose **sin ubicaciones**. **No hay todavía rutas HTTP de ubicaciones**, ni inventario/compra/venta conectado, ni permisos de ubicación; esos cambios pertenecen a E2-2 B/C y bloques siguientes. El CI del código del corte se verificó en `300fa6f` (GitHub Actions [run 42491816481](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42491816481)): resultado `success`. La validación local Windows del nuevo corte aún se requiere; los 195 tests anteriores correspondían a E2-1.
+
+**Pruebas añadidas:** `test_location_model.py` y `test_location_integration.py` revisan metadatos, restricciones SQL, FK, índice de principal, estados, capacidades independientes, aislamiento por consulta filtrada y rollback. **No constituyen aún tests de HTTP ni de permisos de ubicación** y no sustituyen el escenario de CU-04 completo. Los 195 tests reportados antes son históricos de E2-1, no se atribuyen como validación local del corte nuevo.
