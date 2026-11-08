@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 1.3 — E2-2 C, edición y transiciones de ubicaciones
+**Versión:** 1.4 — E2-2 D: asignaciones por sede
 **Estado:** **PROPUESTA BASE + ANEXO DE COMPONENTES BACKEND REALMENTE IMPLEMENTADOS** — aprobación académica del equipo pendiente  
 **Fecha:** 8 de noviembre de 2026  
 **Base de contraste:** `main` del repositorio `Jorge10192/TP-Programacion2-UNSAM-2C2026`, commit `764ba20674f14621e381a4e9753017070943f2e3` (frontend y documentos 01–03). Esta referencia de commit documenta el **baseline histórico** previo a E2; el estado implementado actual se registra en el anexo E2 de este documento.  
@@ -1065,3 +1065,11 @@ La arquitectura extiende `app/api/v1/router.py` con `app/modules/locations/route
 **Arquitectura:** el mismo `LocationService` de E2-2 B revalida usuario/sesión y usa `BusinessRepository.lock_active_member_business` para serializar las operaciones por empresa; `LocationRepository.get_for_update` comprueba que el registro objetivo pertenece al tenant y obtiene bloqueo exclusivo. `clear_primary` desmarca la anterior con actualización SQL y flush, seguido de la promoción y commit en un solo límite transaccional. `LocationRepository` no hace commit. Los DTO de actualización prohíben mutar UUIDs, FK, `is_primary` o `status` por una ruta genérica. Los estados usan una ruta separada y la principal una operación PUT idempotente. No se altera el modelo de sesiones/autorizaciones de E2-1 ni se toca React.
 
 **Evidencia:** código funcional `7abafd8208965cd99b0116e02ffc5240d23f218f`, [GitHub Actions E2-2 C](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42495567321) **3/3 exitoso**, 325/325 pruebas en Python 3.12 y 3.14 con PostgreSQL, Alembic `e22b_location_casa (head)` sin deriva y Docker correcto. Windows había validado previamente E2-2 B (`277 passed in 31.22s`, `/ready` = `ready`/`ok`). **Los 325 tests todavía deben reproducirse en Windows para dar por cerrado localmente E2-2 C.** La integración React/API, la asignación individual de miembros a ubicaciones, control de existencias al quitar `can_store`, recepciones/ventas y gestión de cajas operativas son trabajos futuros; no se atribuyen a este incremento. E2-1 y UML 03B/03C no fueron modificados.
+
+## 28. E2-2 D — Diseño y autorización operacional
+
+**E2-2 D (08/11/2026) — implementado, pendiente de validación local:** tabla `location_assignments` con clave triple `(business_id,location_id,user_id)`; FK compuesta `(business_id,user_id)` a `memberships` y `(business_id,location_id)` a `locations` para impedir cruces de empresa aun en SQL directo. Migración aditiva `e22d_assignments`, sin modificar migraciones de E2-1; UNIQUE auxiliar `(business_id,id)` en `locations`. Asignaciones `ACTIVA`/`REVOCADA` con `revoked_at` coherente (CHECK). GET de colección de asignaciones y PUT de estado de una membresía de la sede, solamente por titular/administrador de la empresa; activar asignaciones se limita a ENCARGADO/TRABAJADOR. Revocar preserva la fila y puede hacerse con sede pausada o miembro inactivo; activar exige ambos activos. Empresa suspendida permite consulta pero impide escrituras. La función pura `can_operate_at_location` requiere ubicación y empresa activas, membresía activa, capacidad `SELL`/`STORE` pertinente y, para encargados/trabajadores, asignación ACTIVA. **No se invoca aún desde inventario, compras o ventas**, porque esos endpoints son de bloques futuros. No cambia la membresía empresarial, no conecta React y no crea ubicaciones ficticias.
+
+
+
+**Evidencia:** código final `3cd7bce71d951218e8c77da58d147e78fb0d426e` y [CI E2-2 D 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371 pruebas** en Python 3.12/3.14, `e22d_assignments (head)` sin deriva y Docker correcto. El último resultado local aportado es E2-2 C, **325 passed in 36.91s**. **La migración y las 371 pruebas de E2-2 D aún requieren ejecución local Windows antes de cerrar el bloque y preparar la hoja de auditoría.**

@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 1.2 — E2-2 C, edición y transiciones de ubicaciones
+**Versión:** 1.3 — E2-2 D: asignaciones por sede
 **Estado:** **REVISADO PARA ENTREGA — especificación TO-BE, con decisiones de E2 todavía abiertas**  
 **Fecha:** 8 de noviembre de 2026  
 **Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.8)  
@@ -534,3 +534,11 @@ Se prueban la ausencia de ubicaciones al dar de alta una empresa, la elección a
 **Casos protegidos:** una ubicación `PAUSADA` no puede ser principal (409); al pausar una principal el servidor elimina ese indicador atómicamente y no designa otra por su cuenta; al reactivarla no recupera condición de principal. Dos ubicaciones de una misma empresa no pueden mantener `is_primary=true` simultáneamente. No se modifican ubicaciones de otra empresa aunque se conozca su UUID. La administración usa rol de membresía empresarial actual, no un rol global, y no expone datos ajenos. Cambios de capacidad `can_store` todavía no consultan saldos reales porque el backend comercial no existe; esa regla deberá resolverse cuando se implemente inventario.
 
 **Evidencia:** código funcional `7abafd8208965cd99b0116e02ffc5240d23f218f`, [GitHub Actions E2-2 C](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42495567321) **3/3 exitoso**, 325/325 pruebas en Python 3.12 y 3.14 con PostgreSQL, Alembic `e22b_location_casa (head)` sin deriva y Docker correcto. Windows había validado previamente E2-2 B (`277 passed in 31.22s`, `/ready` = `ready`/`ok`). **Los 325 tests todavía deben reproducirse en Windows para dar por cerrado localmente E2-2 C.** La integración React/API, la asignación individual de miembros a ubicaciones, control de existencias al quitar `can_store`, recepciones/ventas y gestión de cajas operativas son trabajos futuros; no se atribuyen a este incremento. E2-1 y UML 03B/03C no fueron modificados.
+
+## 19. E2-2 D — CU-04: asignación y revocación por sede
+
+**E2-2 D (08/11/2026) — implementado, pendiente de validación local:** tabla `location_assignments` con clave triple `(business_id,location_id,user_id)`; FK compuesta `(business_id,user_id)` a `memberships` y `(business_id,location_id)` a `locations` para impedir cruces de empresa aun en SQL directo. Migración aditiva `e22d_assignments`, sin modificar migraciones de E2-1; UNIQUE auxiliar `(business_id,id)` en `locations`. Asignaciones `ACTIVA`/`REVOCADA` con `revoked_at` coherente (CHECK). GET de colección de asignaciones y PUT de estado de una membresía de la sede, solamente por titular/administrador de la empresa; activar asignaciones se limita a ENCARGADO/TRABAJADOR. Revocar preserva la fila y puede hacerse con sede pausada o miembro inactivo; activar exige ambos activos. Empresa suspendida permite consulta pero impide escrituras. La función pura `can_operate_at_location` requiere ubicación y empresa activas, membresía activa, capacidad `SELL`/`STORE` pertinente y, para encargados/trabajadores, asignación ACTIVA. **No se invoca aún desde inventario, compras o ventas**, porque esos endpoints son de bloques futuros. No cambia la membresía empresarial, no conecta React y no crea ubicaciones ficticias.
+
+
+
+**Evidencia:** código final `3cd7bce71d951218e8c77da58d147e78fb0d426e` y [CI E2-2 D 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371 pruebas** en Python 3.12/3.14, `e22d_assignments (head)` sin deriva y Docker correcto. El último resultado local aportado es E2-2 C, **325 passed in 36.91s**. **La migración y las 371 pruebas de E2-2 D aún requieren ejecución local Windows antes de cerrar el bloque y preparar la hoja de auditoría.**
