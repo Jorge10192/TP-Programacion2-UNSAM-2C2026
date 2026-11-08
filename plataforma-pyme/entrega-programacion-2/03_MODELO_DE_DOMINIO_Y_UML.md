@@ -2,14 +2,14 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.5 — UML conceptual y contrato de edición empresarial E2  
+**Versión:** 0.6 — modelo conceptual + entidad de invitación C.3  
 **Estado:** **MODELO CONCEPTUAL REVISADO + ANEXO AS-IMPLEMENTED E2** — 03A/03B/03C no se rehicieron; subsistemas comerciales pendientes  
 **Fecha:** 7 de noviembre de 2026  
-**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.4), `02_CASOS_DE_USO.md` (v0.5), políticas del frontend DEMO E1-D2.  
+**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.5), `02_CASOS_DE_USO.md` (v0.6), políticas del frontend DEMO E1-D2.  
 
 > **Criterio de lectura:** AS-IS describe el modelo DEMO ya construido; TO-BE propone el dominio de la futura API FastAPI/SQLAlchemy/PostgreSQL. El diagrama conceptual **no es todavía el esquema SQL implementado**. Las extensiones posteriores aparecen separadas y no se incluyen en el núcleo evaluable.
 
-> **Avance vigente al 8/11/2026 (E2-1, en `main`):** infraestructura FastAPI/PostgreSQL 16, autenticación Argon2id, sesiones revocables, empresas, membresías, alta idempotente y consulta aislada ya fueron verificadas. **E2-1.3C.1 se validó localmente con 98/98 pruebas aprobadas y `alembic check` sin diferencias**. **E2-1.3C.2 publica ahora `PATCH /api/v1/businesses/{business_id}` con autorización real por rol/tenant y pruebas nuevas, pero está PENDIENTE de ejecutar y validar localmente y en CI.** Invitaciones, gestión de miembros, módulos comerciales e integración React permanecen pendientes. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md). Las descripciones TO-BE históricas de versiones anteriores deben leerse como propuestas, no como estado vigente.
+> **Estado verificado el 8/11/2026:** infraestructura y autenticación reales; empresas y membresías, creación idempotente y lecturas aisladas. **C.1:** 98 pruebas locales aprobadas. **C.2:** 125 pruebas locales aprobadas, `alembic check` sin diferencias, Docker API/PostgreSQL `healthy` y `/ready` correcto. **C.3:** emisión de invitaciones implementada y aprobada en GitHub Actions (Python 3.12/3.14, migración, Alembic, Pytest y Docker); **pendiente de validar en PostgreSQL/Docker local del desarrollador**. La aceptación y gestión de miembros (C.4), módulos comerciales e integración React siguen pendientes. Consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para contratos y alcance exacto. Las descripciones antiguas TO-BE se mantienen como decisiones históricas, no evidencia vigente.
 
 ## 1. Finalidad y alcance
 
@@ -66,7 +66,7 @@ El propósito del modelo de dominio es identificar conceptos comerciales, relaci
 | **Usuario** | `id`, `emailNormalizado`, `passwordHash`, `nombre`, `estado`, fechas | Identidad única global; contraseña no reversible; email único normalizado |
 | **Empresa** | `id`, `nombre`, `rubro`, `tipoActividad`, `fundadorUserId`, `estado`, fechas | Tenant comercial; estado inicial `ACTIVA`, fundador histórico; no crea stock ni ubicación en el alta. `SUSPENDIDA` es una capacidad de ciclo de vida prevista, **sin endpoint de suspensión comprometido en el MVP** |
 | **Membresía** | `id`, `businessId`, `userId`, `rol`, `estado`, fechas | Une una identidad global con una empresa; unicidad `(businessId,userId)`; solo membresía activa y permisos válidos habilitan operaciones |
-| **Invitación** (soporte propuesto) | `id`, `businessId`, `emailDestinatario`, `rolPropuesto`, `tokenHash`, `venceEn`, `estado` | Crear invitación no concede acceso; aceptar una vez crea/activa membresía autorizada |
+| **Invitación** (emisión SQL implementada en C.3; aceptación pendiente) | `id`, `businessId`, `invitedByUserId`, `emailNormalizado`, `rolPropuesto`, `tokenHash`, `venceEn`, `estado`, fechas | Crear invitación no concede acceso; hash SHA-256, 7 días, único pendiente por empresa+email; aceptar una vez creará/activará membresía en C.4 |
 | **Ubicación** | `id`, `businessId`, `nombre`, `tipo`, `canSell`, `canStore`, `estado` | Contexto de stock y venta; capacidades verificadas en cada operación |
 
 **Titularidad:** al crear Empresa se genera en la misma transacción una Membresía activa con la responsabilidad administrativa inicial; el fundador histórico no se confunde con un socio legal. La transferencia de titularidad queda diferida. Roles definitivos, expiración de invitaciones y permisos se completarán en Documento 04/05.
@@ -333,3 +333,11 @@ La edición del perfil de Empresa reutiliza exactamente `users`, `auth_sessions`
 El servicio de escritura bloquea con SQL las filas de identidad/sesión y el par empresa/membresía del mismo tenant. La matriz de permisos implementada en C.1 es una **política de aplicación**, no entidad persistente del modelo; en C.2 empieza a decidir realmente la autorización de una operación HTTP. El modelo conceptual 03A se revisará al cerrar el bloque funcional E2-1 y cuando se incorpore invitación/membresía completa.
 
 **Validación C.2:** por ejecutar (el último control local verificado corresponde a 98 pruebas de C.1). Contrato y escenarios detallados en Documento 02 v0.5 y Documento 05 v0.2.
+
+## 15. Correspondencia C.3: `business_invitations` y UML 03A
+
+La tabla real `business_invitations` implementa la **entidad Invitación ya prevista conceptualmente** en 03A. Incluye identificador UUID, FK de empresa, FK del invitador, correo normalizado, rol propuesto, huella única SHA-256, estado, expiración y fechas. La migración `e213c3_invitations` depende de `e213b_business_creation`. Se incorporó un índice UNIQUE parcial `uq_business_invitations_pending_email` sobre `(business_id,email_normalizado)` cuando estado `PENDIENTE` y restricciones CHECK para rol, estado, correo y huella.
+
+**Relaciones:** cada invitación pertenece a una empresa, tiene un usuario invitador identificado y **no se vincula aún a un miembro invitado**. La invitación puede dirigirse a un correo sin cuenta global existente. El modelo de `Membership` y su unicidad `(business_id,user_id)` no cambió. Crear la invitación no concede permisos ni crea una segunda titularidad. En C.4 se concretará la aceptación con identidad autenticada y transición de estado.
+
+**UML:** 03A ya muestra la asociación conceptual de Invitación con Empresa. No se regeneran sus láminas por este corte intermedio; al cerrar E2-1 se revisarán atributos de invitador, estados y aceptación frente al esquema final. No se altera 03B (dominio comercial). El hash evita persistir el token en claro pero no sustituye TLS ni controles de entrega del secreto. El estado `PENDIENTE` con fecha pasada no implica vigencia: `expires_at` será obligatorio durante la aceptación.

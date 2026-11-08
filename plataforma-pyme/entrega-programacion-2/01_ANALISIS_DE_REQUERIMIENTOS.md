@@ -2,13 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.4 — requisitos originales + seguimiento E2-1.3C.2  
+**Versión:** 0.5 — requisitos originales + emisión de invitaciones C.3  
 **Estado:** **BORRADOR FUNCIONAL — con implementación parcial de RF-01/RF-02 verificada**  
 **Fecha:** 7 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
 **Alcance de este documento:** análisis de producto y requisitos objetivo. **No equivale a afirmar que la API esté implementada.**
 
-> **Avance vigente al 8/11/2026 (E2-1, en `main`):** infraestructura FastAPI/PostgreSQL 16, autenticación Argon2id, sesiones revocables, empresas, membresías, alta idempotente y consulta aislada ya fueron verificadas. **E2-1.3C.1 se validó localmente con 98/98 pruebas aprobadas y `alembic check` sin diferencias**. **E2-1.3C.2 publica ahora `PATCH /api/v1/businesses/{business_id}` con autorización real por rol/tenant y pruebas nuevas, pero está PENDIENTE de ejecutar y validar localmente y en CI.** Invitaciones, gestión de miembros, módulos comerciales e integración React permanecen pendientes. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md). Las descripciones TO-BE históricas de versiones anteriores deben leerse como propuestas, no como estado vigente.
+> **Estado verificado el 8/11/2026:** infraestructura y autenticación reales; empresas y membresías, creación idempotente y lecturas aisladas. **C.1:** 98 pruebas locales aprobadas. **C.2:** 125 pruebas locales aprobadas, `alembic check` sin diferencias, Docker API/PostgreSQL `healthy` y `/ready` correcto. **C.3:** emisión de invitaciones implementada y aprobada en GitHub Actions (Python 3.12/3.14, migración, Alembic, Pytest y Docker); **pendiente de validar en PostgreSQL/Docker local del desarrollador**. La aceptación y gestión de miembros (C.4), módulos comerciales e integración React siguen pendientes. Consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para contratos y alcance exacto. Las descripciones antiguas TO-BE se mantienen como decisiones históricas, no evidencia vigente.
 
 ## 1. Presentación del proyecto
 
@@ -195,7 +195,7 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 | RF | Código y evidencia verificada | Pendiente |
 |---|---|---|
 | RF-01 | `POST /api/v1/auth/register`, `login`, `GET /me`, `POST /logout`; Argon2id, sesiones persistentes y pruebas PostgreSQL | Endurecimiento público, recuperación de cuenta e integración de React |
-| RF-02 | Alta idempotente, lista/lectura aislada y **PATCH de perfil empresarial con RBAC real, publicado y pendiente de validar**; migración `e213b_business_creation` | Invitaciones, gestión de miembros, permisos en futuros comandos y validación C.2 |
+| RF-02 | Alta idempotente, lectura aislada y PATCH de perfil con RBAC validados localmente; **emisión de invitaciones C.3 implementada y aprobada por CI**; migración `e213c3_invitations` | Validación local C.3, aceptación de token, gestión de miembros y autorizaciones de operaciones futuras |
 | RF-03–RF-07 | Reglas planificadas, algunos comportamientos DEMO | Endpoints reales, tablas, transacciones y tests de negocio |
 | RF-08–RF-10 | Frontend DEMO o diseños diferidos | No comprometidos como backend del primer MVP |
 
@@ -206,3 +206,11 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 Se publicó `PATCH /api/v1/businesses/{business_id}`: permite modificar parcialmente `name`, `category` y `activity_kind`. No puede modificar fundador, estado, titularidad, rol ni membresía. El actor se deriva del Bearer de la sesión, nunca de campos del cliente. La ejecución bloquea y vuelve a comprobar la identidad, sesión, empresa y membresía en PostgreSQL antes de escribir; titular y administrador pueden editar. Encargado y trabajador no reciben privilegios de modificación. Empresa ajena/no miembro activo responde 404; rol sin permiso, 403; empresa suspendida con rol autorizado, 409; cuerpo inválido, vacío o con campos prohibidos, 422. Todo ocurre en una única transacción, con rollback ante errores.
 
 **Estado de evidencia:** código y nuevas pruebas publicados, todavía no ejecutados en el equipo de desarrollo tras C.2. El último resultado **verificado** corresponde a C.1 (98 pruebas). No hay migración adicional ni cambios de cardinalidad. Este paso realiza solo una parte de RF-02; CU-12 (invitaciones) permanece pendiente.
+
+### 13.2 E2-1.3C.3 — RF-02: invitación dirigida sin alta automática de membresía
+
+Se implementó `POST /api/v1/businesses/{business_id}/invitations`, protegido por Bearer y por permiso `members.invite` sobre una membresía activa de la empresa solicitada. Permite invitar exclusivamente a los roles operativos **ENCARGADO** y **TRABAJADOR**; no asigna administrador, titularidad ni permisos de otra empresa. El destinatario se identifica por correo normalizado y no necesita una cuenta previa para **emitir** la invitación. La emisión **no crea, activa ni transfiere ninguna membresía**: la aceptación autenticada corresponde a C.4.
+
+El token opaco aleatorio se entrega **una única vez en la respuesta 201** y solo su hash SHA-256 se guarda. Vence a los siete días. La base contiene una restricción UNIQUE parcial que impide dos invitaciones `PENDIENTE` al mismo correo normalizado dentro de la misma empresa. El servicio marca `EXPIRADA` una pendiente vencida antes de permitir una nueva; no existe tarea automática de expiración. Una solicitud duplicada mientras la primera está vigente responde 409. La confirmación ocurre en una transacción junto con la comprobación de identidad, membresía, permisos y empresa.
+
+**Fuera de C.3:** aceptación, listado de invitaciones, cancelación manual, reenvío, correo electrónico/QR públicos, generación de cuentas, modificaciones de roles e interfaz React. Estos puntos se evaluarán en C.4 y posteriores. La publicación en CI no equivale aún a validación local del desarrollador.

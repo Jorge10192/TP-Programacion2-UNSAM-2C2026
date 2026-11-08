@@ -2,13 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.5 — casos de uso originales + operación RBAC real C.2  
+**Versión:** 0.6 — CU-12a emisión empresarial implementada; CU-12b pendiente  
 **Estado:** **REVISADO PARA ENTREGA — especificación TO-BE, con decisiones de E2 todavía abiertas**  
 **Fecha:** 7 de noviembre de 2026  
-**Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.4)  
+**Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.5)  
 **Alcance:** casos de uso del **núcleo propuesto** del backend RESTful (TO-BE), contrastados con los comportamientos del frontend DEMO (AS-IS). Las operaciones previstas NO implican endpoints implementados. La lista definitiva de permisos, campos y códigos HTTP se formalizará posteriormente. Esta revisión incorpora CU-12 como soporte para membresías reales, sin ampliar el alcance a envíos de correo o acceso público por QR.
 
-> **Avance vigente al 8/11/2026 (E2-1, en `main`):** infraestructura FastAPI/PostgreSQL 16, autenticación Argon2id, sesiones revocables, empresas, membresías, alta idempotente y consulta aislada ya fueron verificadas. **E2-1.3C.1 se validó localmente con 98/98 pruebas aprobadas y `alembic check` sin diferencias**. **E2-1.3C.2 publica ahora `PATCH /api/v1/businesses/{business_id}` con autorización real por rol/tenant y pruebas nuevas, pero está PENDIENTE de ejecutar y validar localmente y en CI.** Invitaciones, gestión de miembros, módulos comerciales e integración React permanecen pendientes. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md). Las descripciones TO-BE históricas de versiones anteriores deben leerse como propuestas, no como estado vigente.
+> **Estado verificado el 8/11/2026:** infraestructura y autenticación reales; empresas y membresías, creación idempotente y lecturas aisladas. **C.1:** 98 pruebas locales aprobadas. **C.2:** 125 pruebas locales aprobadas, `alembic check` sin diferencias, Docker API/PostgreSQL `healthy` y `/ready` correcto. **C.3:** emisión de invitaciones implementada y aprobada en GitHub Actions (Python 3.12/3.14, migración, Alembic, Pytest y Docker); **pendiente de validar en PostgreSQL/Docker local del desarrollador**. La aceptación y gestión de miembros (C.4), módulos comerciales e integración React siguen pendientes. Consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para contratos y alcance exacto. Las descripciones antiguas TO-BE se mantienen como decisiones históricas, no evidencia vigente.
 
 ## 1. Finalidad y metodología
 
@@ -341,7 +341,7 @@ Los flujos de autenticación y autorización aquí descritos son **objetivo de b
 **Alternativos:** si el usuario ya tiene membresía activa, no se crea otra; la API informa que ya pertenece a esa empresa. La invitación puede rechazarse/cancelarse si se implementan esas operaciones.  
 **Excepciones:** token inválido, vencido, reutilizado o dirigido a otra cuenta; administrador no autorizado; rol excesivo; empresa no accesible; aceptación concurrente. Todos los errores deben evitar revelar información sensible del destinatario y no crear membresías parciales.  
 **Criterios de aceptación:** invitar no concede acceso; un token se consume una vez; solo la identidad destinataria lo acepta; el invitado puede pertenecer a A y B con roles diferentes; no se duplican membresías bajo aceptación concurrente; el administrador no puede transferir titularidad mediante invitación básica.  
-**Pendiente E2:** decidir si CU-12 entra en la primera API o si las pruebas ET-03 se preparan con dos membresías creadas por fixtures. Fijar duración de token, canal de entrega, restricciones de roles y unicidad `(usuario_id, empresa_id)`.
+**E2-1.3C.3 implementado:** la emisión de CU-12a ya forma parte de la primera API. Token de siete días comunicado manualmente y en claro solo al crear, roles propuestos `ENCARGADO`/`TRABAJADOR`, un pendiente por correo+empresa; la aceptación CU-12b y los mecanismos de cancelación/reenvío quedan pendientes. La unicidad de membresía `(business_id,user_id)` ya existe en PostgreSQL.
 
 ## 5. Escenarios transversales de validación
 
@@ -460,7 +460,7 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 | CU-02 Login/perfil/salida | Implementado y probado localmente | `POST /login`, `GET /me`, `POST /logout` bajo `/api/v1/auth` |
 | CU-03 Crear y administrar perfil de empresa | Alta y lectura verificadas; edición C.2 publicada, aún sin pruebas locales confirmadas | `POST/GET /api/v1/businesses`, `GET/PATCH /api/v1/businesses/{business_id}`; RBAC empresarial en PATCH |
 | CU-04–CU-11 | Pendiente backend | Plan conceptual y experiencia frontend DEMO; todavía no hay endpoint real |
-| CU-12 Invitaciones | Pendiente backend | Emisión prevista en C.3; aceptación y administración de miembros en C.4 |
+| CU-12 Invitaciones | **Emisión C.3 implementada y aprobada por CI; aceptación C.4 pendiente** | `POST /api/v1/businesses/{business_id}/invitations`; solo genera invitación, no membresía |
 
 **Política E2-1.3C.1:** se implementa la **matriz RBAC pura** con cuatro roles de membresía; para consulta empresarial todos los miembros activos pueden leer, mientras que la configuración se reserva al titular y administrador. `ENCARGADO` y `TRABAJADOR` no reciben facultad general para editar empresa, invitar ni administrar miembros. **Esta primera entrega define y prueba la política; la aplicación efectiva a la primera mutación protegida es el siguiente corte.** Identificador empresarial ajeno o membresía inactiva no deben otorgar acceso. Para un miembro activo de una empresa suspendida se prevé lectura informativa, no cambios. Véase Documento 05 para el detalle y los errores HTTP previstos.
 
@@ -473,3 +473,13 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 **Alternativas:** sesión inválida `401`; empresa ajena, inexistente o sin membresía activa `404`; miembro válido sin facultad `403`; titular/administrador de empresa suspendida `409`; campos prohibidos, `null`, nombres no válidos o cuerpo vacío `422`. Toda excepción antes del commit revierte la actualización. El rol de una empresa nunca habilita modificar otra. El estado no se actualiza por esta API.
 
 **Pruebas introducidas (pendientes de validar):** flujo exitoso del titular, administrador, denegación a encargado/trabajador, aislamiento entre empresas, empresa suspendida, sesión revocada, membresía inactiva, validación del cuerpo y rollback inducido tras `flush`. Este complemento no crea una entidad nueva ni exige regenerar 03A/03B.
+
+## 12. E2-1.3C.3 — contrato parcial de CU-12a: emitir invitación
+
+**Precondiciones:** usuario con token personal vigente, membresía `ACTIVA` en la empresa `ACTIVA` y permiso `members.invite` (titular administrativo o administrador). Solicitud con `email` válido y rol `ENCARGADO` o `TRABAJADOR` exclusivamente. No se requiere una cuenta global previa del destinatario.
+
+**Flujo:** autenticar; revalidar sesión/usuario bloqueando filas; bloquear empresa+membresía del actor; verificar permiso en el mismo tenant; verificar que no exista ya membresía `ACTIVA` asociada al correo en esa empresa; descartar de forma explícita una invitación `PENDIENTE` vencida de la misma empresa/correo; rechazar duplicado vigente; generar un token seguro de 256 bits, persistir **solo** hash, plazo y datos mínimos; confirmar una sola transacción; devolver 201 e incluir el token una vez en la respuesta. No se crean miembros ni usuarios.
+
+**Alternativas:** 401 sin sesión; 404 si empresa ajena/inexistente o membresía inactiva; 403 si rol sin permiso; 409 empresa suspendida, miembro activo existente o invitación pendiente vigente; 422 correo/rol no admitidos o campos extra. Todos los errores revierten cambios. La tokenización se valida solo en servidor, no por React.
+
+**Pruebas y evidencia:** CI del commit C.3 exitoso en Python 3.12/3.14, migración+deriva Alembic y contenedor. Debe ejecutarse también en el equipo local. CU-12b (aceptación única por destinatario autenticado), cancelación, gestión de miembros y permisos de aprobación siguen **pendientes**.

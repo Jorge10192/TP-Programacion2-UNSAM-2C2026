@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.6 — arquitectura E2 con autorización corporativa aplicada en C.2  
+**Versión:** 0.7 — API de invitaciones, RBAC y persistencia de token C.3  
 **Estado:** **PROPUESTA BASE + ANEXO DE COMPONENTES BACKEND REALMENTE IMPLEMENTADOS** — aprobación académica del equipo pendiente  
 **Fecha:** 7 de noviembre de 2026  
 **Base de contraste:** `main` del repositorio `Jorge10192/TP-Programacion2-UNSAM-2C2026`, commit `764ba20674f14621e381a4e9753017070943f2e3` (frontend y documentos 01–03). Esta referencia de commit documenta el **baseline histórico** previo a E2; el estado implementado actual se registra en el anexo E2 de este documento.  
@@ -10,7 +10,7 @@
 
 > **Alcance y lectura obligatoria.** **AS-IS** indica funcionalidades verificables en el frontend DEMO; **TO-BE** identifica decisiones y arquitectura que deberán implementarse en FastAPI; **DIFERIDO** representa evolución posterior. Los esquemas, carpetas, interfaces, fragmentos Python y endpoints propuestos en este documento **no son código de backend existente ni pruebas de backend ejecutadas**. Esta versión se somete a revisión antes de subirla a GitHub.
 
-> **Avance vigente al 8/11/2026 (E2-1, en `main`):** infraestructura FastAPI/PostgreSQL 16, autenticación Argon2id, sesiones revocables, empresas, membresías, alta idempotente y consulta aislada ya fueron verificadas. **E2-1.3C.1 se validó localmente con 98/98 pruebas aprobadas y `alembic check` sin diferencias**. **E2-1.3C.2 publica ahora `PATCH /api/v1/businesses/{business_id}` con autorización real por rol/tenant y pruebas nuevas, pero está PENDIENTE de ejecutar y validar localmente y en CI.** Invitaciones, gestión de miembros, módulos comerciales e integración React permanecen pendientes. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md). Las descripciones TO-BE históricas de versiones anteriores deben leerse como propuestas, no como estado vigente.
+> **Estado verificado el 8/11/2026:** infraestructura y autenticación reales; empresas y membresías, creación idempotente y lecturas aisladas. **C.1:** 98 pruebas locales aprobadas. **C.2:** 125 pruebas locales aprobadas, `alembic check` sin diferencias, Docker API/PostgreSQL `healthy` y `/ready` correcto. **C.3:** emisión de invitaciones implementada y aprobada en GitHub Actions (Python 3.12/3.14, migración, Alembic, Pytest y Docker); **pendiente de validar en PostgreSQL/Docker local del desarrollador**. La aceptación y gestión de miembros (C.4), módulos comerciales e integración React siguen pendientes. Consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para contratos y alcance exacto. Las descripciones antiguas TO-BE se mantienen como decisiones históricas, no evidencia vigente.
 
 ## Resumen de decisiones de esta revisión
 
@@ -1004,3 +1004,16 @@ No basta con pasar un `role` en el cuerpo; este valor se consulta exclusivamente
 **Pruebas publicadas en este corte:** `test_business_update_schemas.py`, `test_business_update_http.py` y `test_business_update_integration.py`; la última usa transacciones externas y SAVEPOINTs para no dejar registros. La validación local y CI de **estas nuevas pruebas todavía está pendiente**. El último resultado comprobado es C.1, 98 tests. Sin cambios Alembic ni frontend; el pipeline backend ya existente debe ejecutarse sobre el commit C.2.
 
 **Continuidad:** futuras invitaciones C.3 y membresías C.4 usarán este mismo modelo de autorización por tenant, relectura transaccional, políticas sin acceso SQL y manejo explícito de estados. No introducir patrones decorativos ni nuevos frameworks para RBAC.
+
+## 21. E2-1.3C.3 — Emisión segura de invitaciones CU-12a
+
+**Ruta:** `POST /api/v1/businesses/{business_id}/invitations`. Mantiene el circuito **Router → BusinessService → BusinessRepository → PostgreSQL** y las dependencias `current_auth`/sesión por petición. En una transacción el servicio vuelve a comprobar usuario/sesión, bloquea el par Empresa–Membresía activo del tenant (filtrado por actor), invoca la política `members.invite`, valida rol/email y duplicados, crea el registro y confirma un único `commit`. No hay mutaciones ORM realizadas por el router ni `commit` en repositorio.
+
+- **Credencial:** `secrets.token_urlsafe(32)` produce un token opaco aleatorio de 256 bits. Solo su `sha256` se persiste; el token aparece **una vez** en el DTO de emisión y debe comunicarse por un canal seguro. No se devuelve en consultas ni se registra en logs.
+- **Vida útil:** siete días desde emisión. La fecha `expires_at` es la fuente de verdad; si existe pendiente vencida para el mismo correo/empresa se marca `EXPIRADA` en la misma transacción antes de insertar una nueva. No hay borrado automático ni tarea de vencimiento.
+- **Aislamiento y colisiones:** índice parcial impide dos `PENDIENTE` para el mismo correo normalizado en una empresa. El bloqueo de fila empresarial serializa emisiones concurrentes sobre el mismo tenant por los endpoints que respetan esa disciplina. Un destinatario puede recibir invitaciones a empresas distintas. Si ya integra la empresa con membresía activa se rechaza la emisión (409); una membresía inactiva podrá reactivarse al aceptar en C.4, según reglas a verificar entonces.
+- **Roles admitidos:** C.3 permite solo `ENCARGADO` o `TRABAJADOR`; no admite titularidad ni `ADMINISTRADOR` por invitación básica. El invitador debe ser titular o administrador. Ningún rol entra desde React como autoridad; el servidor lee la membresía de DB.
+- **HTTP:** 201 emisión; 401 sesión inválida, 403 rol insuficiente, 404 empresa ajena/sin membresía activa, 409 suspendida/miembro existente/pendiente vigente, 422 datos inválidos.
+- **Alcance futuro:** falta aceptar/rechazar/cancelar invitaciones, crear/activar membresía, evitar reutilización de token y emitir enlaces de acceso. No hay correo, QR ni infraestructura externa; se deben incorporar controles de abuso/rate limiting antes de abrir la emisión públicamente. El caso de respuesta HTTP perdida no admite recuperación del token (solo hash persistido); queda como límite explícito hasta diseñar renovación/cancelación segura.
+
+**Verificación:** GitHub Actions sobre el código del incremento C.3 aprobó los trabajos Python 3.12, Python 3.14 (Pytest, migración y Alembic check) y Docker; resultado local pendiente. Las pruebas con PostgreSQL usan `SAVEPOINT` y transacción externa reversible; no se generan usuarios/empresas persistentes por ejecutarlas.

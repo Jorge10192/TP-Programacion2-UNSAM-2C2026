@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1.3C.2 (PATCH de empresa con RBAC real, código y pruebas publicados; validación local/CI pendiente). C.1 validado con 98 pruebas. Frontend DEMO independiente.
+**Estado:** E2-1.3C.3: invitaciones con migración y CI exitoso, validación local pendiente. C.1 (98 pruebas) y C.2 (125 pruebas) validados localmente. Frontend React aún DEMO independiente.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -458,3 +458,32 @@ Remove-Item Env:\RUN_DB_INTEGRATION
 Esperado: misma revisión `e213b_business_creation (head)`, `No new upgrade operations detected` y suite completa aprobada. **No afirmar una cifra final hasta ejecutarla**. Para ver PATCH en Swagger de Docker, desde `plataforma-pyme/` volver a construir **solo la API** con `docker compose --profile api up -d --build api`, comprobar `docker compose ps`, `Invoke-RestMethod http://127.0.0.1:18000/ready` y abrir `http://127.0.0.1:18000/docs`. Esta actualización no necesita nuevas tablas ni migraciones.
 
 **Documentación:** 01 v0.4, 02 v0.5, 03 v0.5, 04 v0.6, 05 v0.2, índice académico. La etapa siguiente dentro de E2-1 será C.3 (emisión de invitaciones), seguida de C.4 (aceptación/gestión de membresías). La hoja formal de auditoría para tu compañero se creará al cerrar el bloque funcional grande **E2-1**, no al completar este subpaso.
+
+## E2-1.3C.3 — Invitaciones empresariales: emitir sin conceder acceso
+
+**Nueva migración:** `e213c3_invitations` crea `business_invitations` (correos normalizados, token SHA-256, rol, estado, vencimiento, empresa e invitador). `POST /api/v1/businesses/{business_id}/invitations` responde 201 y devuelve el token secreto **una sola vez**. El token no se almacena en claro. Solamente invita a `ENCARGADO` o `TRABAJADOR`, y solo titulares/administradores pueden emitir. No hay aceptación, envío de emails ni cambios a `memberships` en este paso.
+
+Permisos y errores: 401 sesión inválida, 403 miembro sin permiso, 404 empresa ajena/sin membresía activa, 409 suspendida/miembro ya activo/invitación vigente, 422 body incorrecto. Una invitación pendiente a email normalizado en una empresa se impide mediante índice parcial UNIQUE. Si venció, se marca `EXPIRADA` antes de generar una nueva. Se realiza validación y escritura en una transacción; el correo invitado no necesita tener cuenta global todavía.
+
+**CI:** GitHub Actions validó migración, `alembic check`, Pytest real con PostgreSQL 16 en Python 3.12/3.14 y Docker. **Falta ejecutar en Windows local** después de aplicar migraciones nuevas.
+
+Desde `plataforma-pyme/` con Docker DB saludable:
+
+```powershell
+git pull origin main
+cd backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -q
+Remove-Item Env:\RUN_DB_INTEGRATION
+cd ..
+docker compose --profile api up -d --build api
+docker compose ps
+Invoke-RestMethod http://127.0.0.1:18000/ready
+```
+
+Esperado: `e213c3_invitations (head)`, sin deriva Alembic, suite aprobada y API/DB `healthy`. En Swagger `http://127.0.0.1:18000/docs` aparecerá el nuevo POST. **Advertencia:** usar Swagger para emitir invitación crea un registro real; las pruebas de integración revertibles son suficientes para este corte. No exponer tokens de invitación en capturas, logs ni documentación.
+
+**Documentación sincronizada:** 01 v0.5, 02 v0.6, 03 v0.6, 04 v0.7, 05 v0.3 e índice académico. **Siguiente:** C.4 aceptar y gestionar membresías; solo al cerrar E2-1 completo se genera el informe de traspaso a auditoría de tu compañero.
