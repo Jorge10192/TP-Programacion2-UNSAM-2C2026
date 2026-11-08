@@ -5,9 +5,9 @@ from app.infrastructure.models import CatalogItem
 from app.infrastructure.models.base import Base
 
 
-def test_catalog_registered_without_stock_or_sales_tables() -> None:
+def test_catalog_registered_independently_from_stock_and_sales() -> None:
     assert Base.metadata.tables["catalog_items"] is CatalogItem.__table__
-    assert "stock_balances" not in Base.metadata.tables
+    assert "stock_balances" in Base.metadata.tables
     assert "sales" not in Base.metadata.tables
 
 
