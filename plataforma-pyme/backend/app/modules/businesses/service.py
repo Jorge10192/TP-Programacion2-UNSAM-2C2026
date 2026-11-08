@@ -24,6 +24,7 @@ from app.modules.businesses.repository import BusinessRepository
 from app.modules.businesses.schemas import (
     BusinessView, CreateBusinessRequest, UpdateBusinessProfileRequest,
     CreateBusinessInvitationRequest, BusinessInvitationIssued,
+    AcceptBusinessInvitationRequest,
 )
 
 
@@ -43,6 +44,14 @@ class BusinessUnavailable(Exception):
 
 class InvitationConflict(Exception):
     """El destinatario ya es miembro o tiene invitación pendiente válida."""
+
+
+class InvitationUnavailable(Exception):
+    """Token inexistente o dirigido a otra cuenta (no revelar existencia)."""
+
+
+class InvitationNotAcceptable(Exception):
+    """Invitación vencida/consumida, o membresía incompatible."""
 
 
 INVITATION_LIFETIME = timedelta(days=7)
@@ -266,6 +275,72 @@ class BusinessService:
             response = BusinessInvitationIssued.from_record(invitation, secret)
             self.db.commit()
             return response
+        except Exception:
+            self.db.rollback()
+            raise
+
+
+    def accept_invitation(
+        self, actor_id: UUID, auth_session_id: UUID,
+        command: AcceptBusinessInvitationRequest,
+    ) -> BusinessView:
+        """CU-12b: aceptar una sola vez y crear/reactivar la membresía.
+
+        Revalida la sesión. Bloquea la invitación por hash, la empresa y la
+        membresía del destinatario antes de la escritura. Jamás usa un user_id
+        o role recibido del cliente y no crea una empresa ni cuenta nueva.
+        """
+        try:
+            self._revalidate_actor(actor_id, auth_session_id)
+            invitation = self.repository.invitation_for_update(
+                token_digest(command.invitation_token),
+            )
+            actor = self.db.get(User, actor_id)
+            if (
+                invitation is None or actor is None
+                or invitation.email_normalizado != actor.email_normalizado
+            ):
+                raise InvitationUnavailable()
+
+            now = now_utc()
+            if invitation.status != "PENDIENTE" or invitation.expires_at <= now:
+                raise InvitationNotAcceptable()
+            if invitation.proposed_role not in ("ENCARGADO", "TRABAJADOR"):
+                raise InvitationNotAcceptable()
+
+            company = self.repository.business_for_update(invitation.business_id)
+            if company is None or company.status != "ACTIVA":
+                raise BusinessSuspended()
+
+            member = self.repository.membership_for_update(
+                invitation.business_id, actor_id,
+            )
+            if member is not None:
+                if (
+                    member.status != "INACTIVA"
+                    or member.role == "TITULAR_ADMINISTRATIVO"
+                ):
+                    # No sobrescribir una membresía activa ni titularidad
+                    # administrativa histórica con una invitación operativa.
+                    raise InvitationNotAcceptable()
+                member.status = "ACTIVA"
+                member.role = invitation.proposed_role
+                member.job_title = None
+            else:
+                member = Membership(
+                    id=uuid4(), business_id=company.id,
+                    user_id=actor_id, role=invitation.proposed_role,
+                    status="ACTIVA",
+                )
+                self.repository.add_membership(member)
+
+            invitation.status = "ACEPTADA"
+            invitation.accepted_by_user_id = actor_id
+            invitation.accepted_at = now
+            self.db.flush()
+            body = BusinessView.from_records(company, member)
+            self.db.commit()
+            return body
         except Exception:
             self.db.rollback()
             raise

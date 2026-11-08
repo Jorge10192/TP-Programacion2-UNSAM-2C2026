@@ -105,3 +105,29 @@ class BusinessRepository:
     def add_invitation(self, invitation: BusinessInvitation) -> None:
         self.db.add(invitation)
         self.db.flush()
+
+    def invitation_for_update(self, token_hash: str) -> BusinessInvitation | None:
+        """El secreto jamás se busca en texto claro. Bloqueo por token."""
+        return self.db.scalar(
+            select(BusinessInvitation)
+            .where(BusinessInvitation.token_hash == token_hash)
+            .with_for_update().execution_options(populate_existing=True)
+        )
+
+    def business_for_update(self, business_id: UUID) -> Business | None:
+        """Bloqueo empresarial antes de crear/reactivar cualquier membresía."""
+        return self.db.scalar(
+            select(Business).where(Business.id == business_id)
+            .with_for_update().execution_options(populate_existing=True)
+        )
+
+    def membership_for_update(
+        self, business_id: UUID, user_id: UUID
+    ) -> Membership | None:
+        """Incluye membresías INACTIVAS: su clave (empresa, usuario) es única."""
+        return self.db.scalar(
+            select(Membership).where(
+                Membership.business_id == business_id,
+                Membership.user_id == user_id,
+            ).with_for_update().execution_options(populate_existing=True)
+        )

@@ -130,3 +130,14 @@ class BusinessInvitationIssued(BaseModel):
             status="PENDIENTE", expires_at=record.expires_at,
             invitation_token=token,
         )
+
+
+class AcceptBusinessInvitationRequest(BaseModel):
+    """Un solo secreto opaco. La identidad se deriva del Bearer autenticado."""
+    model_config = ConfigDict(extra="forbid")
+
+    invitation_token: str = Field(
+        min_length=43,
+        max_length=43,
+        pattern=r"^[a-zA-Z0-9_-]{43}$",
+    )

@@ -45,6 +45,13 @@ class BusinessInvitation(Base):
             "expires_at > created_at",
             name="ck_business_invitation_expiration",
         ),
+        CheckConstraint(
+            "(status = 'ACEPTADA' AND accepted_by_user_id IS NOT NULL "
+            "AND accepted_at IS NOT NULL) OR "
+            "(status <> 'ACEPTADA' AND accepted_by_user_id IS NULL "
+            "AND accepted_at IS NULL)",
+            name="ck_business_invitation_acceptance_audit",
+        ),
         Index("ix_business_invitations_business_id", "business_id"),
         Index(
             "uq_business_invitations_pending_email",
@@ -65,6 +72,14 @@ class BusinessInvitation(Base):
         Uuid(as_uuid=True),
         ForeignKey("users.id", name="fk_business_invitation_inviter", ondelete="RESTRICT"),
         nullable=False,
+    )
+    accepted_by_user_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", name="fk_business_invitation_acceptor", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
     )
     email_normalizado: Mapped[str] = mapped_column(String(254), nullable=False)
     proposed_role: Mapped[str] = mapped_column(String(32), nullable=False)
