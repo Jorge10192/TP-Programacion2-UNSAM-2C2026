@@ -33,6 +33,8 @@ class RegisterRequest(BaseModel):
     @field_validator("display_name")
     @classmethod
     def strip_name(cls, value: str) -> str:
+        if "\x00" in value:
+            raise ValueError("El nombre no puede contener caracteres nulos")
         value = value.strip()
         if len(value) < 2:
             raise ValueError("El nombre debe tener al menos dos caracteres")

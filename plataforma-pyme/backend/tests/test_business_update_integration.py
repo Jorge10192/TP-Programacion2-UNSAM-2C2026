@@ -49,6 +49,24 @@ def isolated() -> Iterator[tuple[TestClient, object]]:
             outer.rollback()
 
 
+@pytest.mark.parametrize("field", ["name", "category"])
+def test_patch_rejects_nul_and_preserves_business(isolated, field):
+    client, connection = isolated
+    headers, _ = actor(client)
+    business_id = company(client, headers)
+    before = connection.execute(
+        select(Business.name, Business.category).where(Business.id == business_id)
+    ).one()
+    response = client.patch(
+        f"/api/v1/businesses/{business_id}", headers=headers,
+        json={field: "Texto\x00invalido"},
+    )
+    assert response.status_code == 422, response.text
+    assert connection.execute(
+        select(Business.name, Business.category).where(Business.id == business_id)
+    ).one() == before
+
+
 def actor(client: TestClient) -> tuple[dict[str, str], UUID]:
     email = f"edit-{uuid4().hex}@example.com"
     password = "Una contrasena segura de prueba para editar"
