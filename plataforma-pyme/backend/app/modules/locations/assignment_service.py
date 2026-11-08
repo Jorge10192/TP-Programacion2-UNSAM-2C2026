@@ -73,7 +73,7 @@ class LocationAssignmentService:
                 raise LocationNotFound()
             member, _ = row
             # El rol de una membresía no se modifica a través de asignaciones.
-            if member.role not in ("ENCARGADO", "TRABAJADOR"):
+            if command.status == "ACTIVA" and member.role not in ("ENCARGADO", "TRABAJADOR"):
                 raise LocationConflict()
             assignment = self.assignments.get_for_update(
                 business_id, location_id, member.user_id,
