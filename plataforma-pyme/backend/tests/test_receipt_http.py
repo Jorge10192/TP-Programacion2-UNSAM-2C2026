@@ -36,7 +36,7 @@ def test_receive_inventory_http_routes_security_and_no_partial_receipts():
     ))
     assert paths[prefix + "/receive"]["post"]["security"]
     assert any(p["name"] == "Idempotency-Key"
-               for p in paths[prefix + "/receive"]["parameters"])
+               for p in paths[prefix + "/receive"]["post"]["parameters"])
     assert not any("/partial" in p or "/split" in p for p in paths)
 
 
