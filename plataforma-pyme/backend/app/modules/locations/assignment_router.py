@@ -1,7 +1,7 @@
 """Gestión de asignaciones de miembros a ubicaciones del mismo tenant."""
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
@@ -22,6 +22,12 @@ router = APIRouter(
     prefix="/businesses/{business_id}/locations/{location_id}/assignments",
     tags=["asignaciones-ubicacion"],
 )
+
+
+def _assignment_http_error(error: Exception) -> HTTPException:
+    if isinstance(error, LocationConflict):
+        return HTTPException(409, detail="Miembro o ubicación incompatibles con la asignación")
+    return _location_http_error(error)
 
 
 @router.get(
@@ -48,7 +54,7 @@ def list_location_assignments(
     except (
         LocationBusinessUnavailable, LocationNotFound, LocationPermissionDenied,
     ) as error:
-        raise _location_http_error(error) from None
+        raise _assignment_http_error(error) from None
 
 
 @router.put(
@@ -79,4 +85,4 @@ def set_location_assignment(
         LocationBusinessUnavailable, LocationNotFound,
         LocationPermissionDenied, LocationBusinessSuspended, LocationConflict,
     ) as error:
-        raise _location_http_error(error) from None
+        raise _assignment_http_error(error) from None
