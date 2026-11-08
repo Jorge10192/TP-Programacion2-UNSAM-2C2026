@@ -1,5 +1,11 @@
 # Diagramas 03A, 03B y 03C — Asistente PyME
 
+## Estado del modelo
+
+Las láminas 03A/03B/03C representan el dominio conceptual de v0.3. El [Documento 03 v0.5](../03_MODELO_DE_DOMINIO_Y_UML.md#0-cambios-respecto-de-v04-y-aprobación) agrega los cambios, el UML implementado y los criterios de aprobación. Las entidades conceptuales de detalle/pago no implican tablas independientes: el corte actual conserva sus snapshots históricos en JSON. Gastos/caja y cuentas declaradas se incorporan al circuito; invitaciones y QR reales siguen pendientes. Revisar [05](../05_MATRIZ_API_Y_TRAZABILIDAD.md) antes de presentar una relación como endpoint real.
+
+
+
 **Estado:** modelo conceptual revisado para la entrega académica (TO-BE). **No** significa que FastAPI/PostgreSQL ya estén implementados.
 
 El [Documento 03](../03_MODELO_DE_DOMINIO_Y_UML.md) describe el modelo completo, estados, transacciones y restricciones. Cada diagrama posee una **explicación detallada en Markdown**, una **lámina SVG vectorial** para GitHub/presentación y una **fuente PlantUML** para revisar su semántica.

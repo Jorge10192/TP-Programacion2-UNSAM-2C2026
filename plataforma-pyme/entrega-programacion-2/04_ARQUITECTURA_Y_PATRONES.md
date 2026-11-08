@@ -2,15 +2,22 @@
 
 **Proyecto:** Asistente PyME — plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.5 — propuesta original v0.4 y anexo técnico E2 comprobado  
-**Estado:** **PROPUESTA BASE + ANEXO DE COMPONENTES BACKEND REALMENTE IMPLEMENTADOS** — aprobación académica del equipo pendiente  
+**Versión:** 0.6\
+**Estado:** IMPLEMENTACIÓN Y DISEÑO CONCEPTUAL DIFERENCIADOS - revisión del equipo pendiente\
 **Fecha:** 7 de noviembre de 2026  
-**Base de contraste:** `main` del repositorio `Jorge10192/TP-Programacion2-UNSAM-2C2026`, commit `764ba20674f14621e381a4e9753017070943f2e3` (frontend y documentos 01–03). Esta referencia de commit documenta el **baseline histórico** previo a E2; el estado implementado actual se registra en el anexo E2 de este documento.  
+**Base de contraste:** `main` del repositorio `Jorge10192/TP-Programacion2-UNSAM-2C2026`, commit `764ba20674f14621e381a4e9753017070943f2e3` (frontend y documentos 01–03). La arquitectura conceptual original se contrasta ahora con la integración indicada arriba.\
 **Documentos vinculados:** [01 — Requerimientos](01_ANALISIS_DE_REQUERIMIENTOS.md) · [02 — Casos de uso](02_CASOS_DE_USO.md) · [03 — Modelo de dominio y UML](03_MODELO_DE_DOMINIO_Y_UML.md).
 
-> **Alcance y lectura obligatoria.** **AS-IS** indica funcionalidades verificables en el frontend DEMO; **TO-BE** identifica decisiones y arquitectura que deberán implementarse en FastAPI; **DIFERIDO** representa evolución posterior. Los esquemas, carpetas, interfaces, fragmentos Python y endpoints propuestos en este documento **no son código de backend existente ni pruebas de backend ejecutadas**. Esta versión se somete a revisión antes de subirla a GitHub.
+> **Lectura de las secciones conceptuales históricas.** **AS-IS** indica funcionalidades verificables en el frontend DEMO; **TO-BE** identifica decisiones y arquitectura que deberán implementarse en FastAPI; **DIFERIDO** representa evolución posterior. Los esquemas, carpetas, interfaces, fragmentos Python y endpoints propuestos en este documento **no son código de backend existente ni pruebas de backend ejecutadas**. Esta versión se somete a revisión antes de subirla a GitHub.
 
-> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
+## Estado de la integración
+
+El backend existe en `plataforma-pyme/backend`; React se conecta en modo API y comparte origen en Docker. Se preservan identidad, sesiones, Empresa y Membresía de Jorge. La operación comercial está en `app/modules/commerce`, con claves por empresa, saldo versionado y ledger. Cada comando bloquea su empresa y confirma un único commit; empresas distintas operan independientemente.
+
+**Patrones aplicados:** Repository en identidad/empresas; Adapter en `AppGateway` para separar API y DEMO; Observer en las suscripciones del runtime/frontend. Factory, Decorator y otras alternativas del diseño previo siguen siendo propuestas si no tienen código y prueba asociados.
+
+Los detalles HTTP actuales están en [05](05_MATRIZ_API_Y_TRAZABILIDAD.md), y las diferencias entre dominio conceptual y persistencia en [03](03_MODELO_DE_DOMINIO_Y_UML.md). Los ejemplos arquitectónicos posteriores se conservan como diseño conceptual de referencia, no como inventario exacto de clases implementadas.
+
 
 ## Resumen de decisiones de esta revisión
 
@@ -28,7 +35,7 @@ Esta revisión precisa nueve decisiones importantes:
 8. **Propiedad inequívoca de la sesión en cada comando**: el servicio abre su transacción mediante una fábrica de sesiones; la autorización empresarial y las escrituras críticas utilizan ese mismo contexto, sin reutilizar una sesión ORM entre dependencias, hilos o solicitudes.
 9. **Contratos mínimos de calidad antes de programar**: error estructurado, esquema monetario exacto, versionado API, migraciones comprobables, pruebas unitarias y de integración PostgreSQL claramente separadas; las interfaces/patrones se implementarán cuando aporten valor.
 
-**Al preparar la base v0.4 todavía no se habían ejecutado pruebas de backend**; el anexo E2 al final registra la implementación y resultados locales posteriores, sin atribuirlos a aquel commit.
+La propuesta original no tenía pruebas de backend; la validación de este corte se describe en el Documento 06. Cada una tiene criterios concretos de comprobación en el plan de implementación E2.
 
 ## 1. Propósito y criterios de diseño
 
@@ -981,9 +988,9 @@ La revisión externa proporcionada por el equipo se consideró **insumo crítico
 Se incorporó la bibliografía *Head First Design Patterns* y se diferenciaron los patrones **AS-IS (Observer en el frontend)** de los **TO-BE (Repository, Adapter, Factory y Decorator)**. Factory se documenta como *Simple Factory* y Decorator como envoltorio por composición; son propuestas, no afirmaciones de ejecución. Se corrigió además la descripción del objeto real `demoGateway`. Los patrones no alteran los requisitos ni las garantías transaccionales: la venta, el movimiento y el saldo siguen confirmándose en una única transacción PostgreSQL.
 
 
-## 19. Anexo E2 implementado — identidad, tenants y política RBAC
+## 19. Antecedente E2-1.3C.1 - identidad, tenants y política RBAC
 
-**Evidencia base:** backend en `plataforma-pyme/backend/`, migraciones `e2003_baseline` hasta `e213b_business_creation`, Pytest de integración con PostgreSQL real; 80 pruebas locales aprobadas para E2-1.3B. El frontend DEMO no está conectado a esta API. La sección AS-IS original documentaba el estado del **commit histórico**, no el estado vigente.
+**Corte histórico de Jorge, anterior a esta integración:** backend en `plataforma-pyme/backend/`, migraciones `e2003_baseline` hasta `e213b_business_creation`, Pytest de integración con PostgreSQL real; 80 pruebas locales comunicadas para E2-1.3B. En ese corte React aún no se conectaba. La integración vigente y las pruebas reproducibles se describen al inicio y en 05/06.
 
 - **FastAPI:** rutas técnicas `/health`, `/ready`; autenticación `/api/v1/auth`; empresas `/api/v1/businesses`.
 - **Persistencia:** SQLAlchemy 2.x y psycopg sobre PostgreSQL 16; Alembic, `Session` por solicitud, repositorios sin `commit`; servicios confirmando transacciones completas.
@@ -994,3 +1001,7 @@ Se incorporó la bibliografía *Head First Design Patterns* y se diferenciaron l
 - **E2-1.3C.3/C.4:** invitación segura; aceptación y gestión de miembros con protección adicional del titular, en incrementos separados. No inferir que los permisos de invitar/administrar están operativos antes de exponer y verificar esos endpoints.
 
 La aplicación de los patrones **Repository**, **Service Layer** y **Observer** se describe con evidencias específicas, mientras que las propuestas **Factory**/**Decorator** continúan TO-BE hasta contar con clases ejecutadas en el módulo comercial apropiado. No forzar su adopción para cumplir nomenclatura.
+
+### Aplicación posterior de la política corporativa
+
+En esta integración `has_business_permission(..., EDIT_PROFILE)` se invoca dentro de la transacción de edición empresarial. `test_commerce_integration.py` cubre 401/403/404/409, roles, empresa ajena y suspendida. La política de invitaciones sigue siendo una propuesta sin endpoint; los permisos comerciales se validan en `CommerceService.authorize` y se publican por empresa para la UI.

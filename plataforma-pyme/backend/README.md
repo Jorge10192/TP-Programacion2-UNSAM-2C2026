@@ -1,8 +1,15 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1.3C.1 (matriz RBAC pura y pruebas, todavía sin nuevos endpoints autorizados por rol), sobre E2-1.3B verificado con 80 pruebas locales. Frontend DEMO independiente.
+**Estado:** integración multiempresa API 0.2.0 en rama; roles operativos incluidos; invitaciones reales pendientes. DEMO y API son modos explícitos.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
+
+## Integración actual
+
+La aplicación completa se inicia desde el [README de plataforma](../README.md). API 0.2.0: identidad y empresas de Jorge, más recursos y operación comercial por empresa. Revisión Alembic `e226_commerce`; `GET /api/v1/snapshot` es una lectura autorizada de la cuenta. React usa el mismo servidor en Docker. Los contratos actuales y permisos están en [05](../entrega-programacion-2/05_MATRIZ_API_Y_TRAZABILIDAD.md).
+
+Los apartados E2 siguientes conservan el historial de construcción de Jorge: las frases «próximo incremento» describen su corte original y no el estado actual. No se deben aplicar nuevamente migraciones históricas ni modificar la revisión `e213b_business_creation` ya desplegada en desarrollo.
+
 
 ## Requisitos
 
@@ -413,9 +420,9 @@ La clave primaria compuesta de `business_creation_requests(actor_user_id, idempo
 
 Se eliminó **solamente el UNIQUE redundante del modelo ORM** y se ajustó la prueba del modelo; no se modificó el esquema efectivo, no se alteraron contraseñas ni se generó una nueva migración. La migración histórica E2-1.3B permanece inmutable porque ya fue aplicada. La unicidad real sigue cubierta por la PK `pk_business_creation_requests`, y la referencia `business_id` conserva su UNIQUE independiente. Después de `git pull`, `python -m alembic check` debería indicar `No new upgrade operations detected.`. Si aún falla, inspeccionar `\\d business_creation_requests` antes de modificar la base de datos. No usar `alembic stamp`, `downgrade` ni SQL manual para esta corrección.
 
-## E2-1.3C.1 — Matriz inicial de permisos y actualización documental
+## Antecedente E2-1.3C.1 - matriz inicial de permisos y actualización documental
 
-`app/modules/businesses/permissions.py` define las capacidades `business.view`, `business.profile.edit`, `members.invite` y `members.manage`. La decisión depende de **rol de la membresía, estado de la membresía, estado de la empresa y permiso solicitado**. Los roles inexistentes y estados desconocidos se deniegan; empresa suspendida es de solo lectura para miembros activos. Esta política es pura y cuenta con tests; **todavía NO se invoca desde nuevos endpoints de edición o invitación**.
+`app/modules/businesses/permissions.py` define las capacidades `business.view`, `business.profile.edit`, `members.invite` y `members.manage`. La decisión depende de **rol de la membresía, estado de la membresía, estado de la empresa y permiso solicitado**. Los roles inexistentes y estados desconocidos se deniegan; empresa suspendida es de solo lectura para miembros activos. Esta política es pura y cuenta con tests; **en ese corte aún no se invocaba desde endpoints de edición o invitación**. La integración actual aplica `business.profile.edit` al PATCH empresarial; invitaciones sigue pendiente.
 
 Se corrigió también la recuperación de carreras de idempotencia en `BusinessService.create`: PostgreSQL puede informar la violación de **`pk_business_creation_requests`**, no la restricción `uq_business_creation_actor_key` que se eliminó por ser redundante. La ruta conserva reintentos sin duplicar empresas y se incorporó un test unitario específico.
 

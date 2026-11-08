@@ -1,16 +1,16 @@
+import { useAppData, useStockBalances, useBusinessPermissions } from '../../data/dataContext'
 import { useState } from 'react'
 import { Icon } from '../../app/Icon'
-import type { DemoBusiness, DemoCatalogItem, DemoLocation } from '../../data/demo/demoStore'
+import type { Business, CatalogItem, Location } from '../../data/models'
 import type { InventoryMovement, InventoryOperation } from '../../data/demo/inventoryPolicy'
-import { inventoryHistoryEntries, inventoryMovementLabels, stockBalances, stockKey } from '../../data/demo/inventoryPolicy'
+import { inventoryHistoryEntries, inventoryMovementLabels, stockKey } from '../../data/demo/inventoryPolicy'
 import { quantityText } from '../../data/demo/purchasePolicy'
 import { InventoryActionForm } from './InventoryActionForm'
 import { InventoryBatchCount } from './InventoryBatchCount'
 import { DemoPhoto } from '../common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
 
 type Tab = 'stock' | 'movements'
-type Row = { item: DemoCatalogItem; location: DemoLocation; milli: number }
+type Row = { item: CatalogItem; location: Location; milli: number }
 const movementsFilters = [
   { value: 'RECEPCION_COMPRA', label: 'Recepciones de compras' },
   { value: 'VENTA_SALIDA', label: 'Salidas por ventas' },
@@ -22,13 +22,15 @@ const movementsFilters = [
 export function InventoryPage({
   business, catalog, locations, movements, operations, initialTab,
 }: {
-  business: DemoBusiness
-  catalog: DemoCatalogItem[]
-  locations: DemoLocation[]
+  business: Business
+  catalog: CatalogItem[]
+  locations: Location[]
   movements: InventoryMovement[]
   operations: InventoryOperation[]
   initialTab: Tab
 }) {
+  const { capabilities } = useAppData()
+  const { canCountInventory } = useBusinessPermissions(business.id)
   const [tab, setTab] = useState<Tab>(initialTab)
   const [action, setAction] = useState<'TRANSFER' | 'COUNT' | 'BATCH' | null>(null)
   const [formVersion, setFormVersion] = useState(0)
@@ -37,10 +39,10 @@ export function InventoryPage({
   const [typeFilter, setTypeFilter] = useState('')
   const [notice, setNotice] = useState('')
   const [showEmpty, setShowEmpty] = useState(false)
-  const physical = catalog.filter((item) => item.kind !== 'SERVICIO')
+  const physical = catalog.filter((item) => item.kind !== 'SERVICIO' && !item.readonlyReason)
   const locById = new Map(locations.map((loc) => [loc.id, loc]))
   const itemById = new Map(physical.map((item) => [item.id, item]))
-  const balances = stockBalances(movements)
+  const balances = useStockBalances(movements, business.id)
   const positivePairs = [...balances.values()].filter((quantity) => quantity > 0).length
   const stockedArticles = new Set(
     [...balances].filter(([, quantity]) => quantity > 0).map(([key]) => (JSON.parse(key) as string[])[1]),
@@ -101,7 +103,7 @@ export function InventoryPage({
   })
   const shownHistory = filteredHistory.slice(0, 90)
   const canMove = locations.filter((loc) => loc.status === 'ACTIVA' && loc.canStore).length >= 2
-  const canCount = locations.some((loc) => loc.status === 'ACTIVA' && loc.canStore)
+  const canCount = canCountInventory && locations.some((loc) => loc.status === 'ACTIVA' && loc.canStore)
   const canAct = physical.some((item) => item.status === 'ACTIVO')
 
   function startAction(kind: 'TRANSFER' | 'COUNT' | 'BATCH') {
@@ -119,13 +121,13 @@ export function InventoryPage({
   return <>
     <div className="page-heading">
       <div>
-        <p className="eyebrow">OPERACIONES · EMPRESA DEMO</p>
-        <h1>{initialTab === 'movements' ? 'Movimientos de inventario' : 'Inventario'}</h1>
-        <p>Existencias por ubicación derivadas de recepciones, traslados, conteos y ventas en «{business.name}».</p>
+        <p className="eyebrow">OPERACIONES · EMPRESA</p>
+        <h1>{initialTab === 'movements' ? 'Movimientos de stock' : 'Stock'}</h1>
+        <p>Existencias y movimientos de «{business.name}».</p>
       </div>
       <div className="inventory-heading-actions">
-        <button type="button" className="button button-secondary" disabled={!canAct || !canMove}
-          onClick={() => startAction('TRANSFER')}><Icon name="truck" size={17}/> Trasladar</button>
+        {capabilities.transfers && <button type="button" className="button button-secondary" disabled={!canAct || !canMove}
+          onClick={() => startAction('TRANSFER')}><Icon name="truck" size={17}/> Trasladar</button>}
         <button type="button" className="button button-secondary" disabled={!canAct || !canCount}
           onClick={() => startAction('COUNT')}><Icon name="plus" size={17}/> Ajuste rápido</button>
         <button type="button" className="button button-primary" disabled={!canAct || !canCount}
@@ -133,7 +135,7 @@ export function InventoryPage({
       </div>
     </div>
 
-    <section className="inventory-summary" aria-label="Indicadores de inventario DEMO">
+    <section className="inventory-summary" aria-label="Indicadores de inventario">
       <div><span className="feature-icon blue"><Icon name="package" size={20}/></span><small>Artículos con stock</small><strong>{stockedArticles}</strong></div>
       <div><span className="feature-icon mint"><Icon name="pin" size={20}/></span><small>Combinaciones artículo / ubicación con stock</small><strong>{positivePairs}</strong></div>
       <div><span className="feature-icon violet"><Icon name="receipt" size={20}/></span><small>Entradas por recepción</small><strong>{receipts}</strong></div>
@@ -142,9 +144,9 @@ export function InventoryPage({
 
     <div className="informational-note inventory-note">
       <Icon name="shield" size={20}/>
-      <span>Los saldos se derivan de recepciones, traslados, conteos y ventas registradas, en la <strong>unidad de cada artículo</strong>; no se suman cajas con unidades ni kilos con gramos. Esta DEMO no incluye reservas, lotes, producción ni concurrencia real entre dispositivos.</span>
+      <span>Las compras recibidas suman stock. Cargá los productos terminados con un conteo.</span>
     </div>
-    {!canCount && <div className="inventory-attention">Para registrar un conteo o traslado, primero configurá al menos una ubicación activa con «Puede almacenar» en Ubicaciones. Para traslados necesitás dos.</div>}
+    {!canCount && <div className="inventory-attention">{!canCountInventory ? 'Tu membresía no permite registrar conteos.' : 'Para contar existencias necesitás una ubicación activa con almacenamiento. Los servicios no requieren stock.'}</div>}
     {!canAct && <div className="inventory-attention">Para operar, primero agregá un artículo físico activo (no un servicio) en Catálogo.</div>}
     {notice && <p className="form-message success inventory-notice" role="status">{notice}</p>}
 
@@ -196,7 +198,7 @@ export function InventoryPage({
         </div> : <>
           <div className="inventory-stock-list">
             {shownRows.map(({ item, location, milli }) => <article className="inventory-stock-row" key={stockKey(location.id, item.id)}>
-              <DemoPhoto imageKey={demoImageKey('catalog', business.id, item.id)}
+              <DemoPhoto target={{ scope: 'catalog', businessId: business.id, entityId: item.id }}
                 alt={'Imagen de ' + item.name}
                 fallback={<Icon name="package" size={20}/>}
                 className="inventory-stock-photo inventory-stock-icon"/>
@@ -231,7 +233,7 @@ export function InventoryPage({
                 </div>
                 <div className="inventory-movement-aside">
                   <strong className="transfer-quantity">{quantityText(entry.quantityMilli, entry.unit)}</strong>
-                  <small>Trasladadas · {new Date(entry.createdAt).toLocaleString('es-AR')}</small>
+                  <small>Trasladadas · {new Date(entry.createdAt).toLocaleString('es-AR', { hour12: false })}</small>
                 </div>
               </article>
             ) : entry.kind === 'BATCH_COUNT' ? (
@@ -245,7 +247,7 @@ export function InventoryPage({
                   </div>
                   <div className="inventory-movement-aside">
                     <strong className="transfer-quantity">Una sesión</strong>
-                    <small>{new Date(entry.createdAt).toLocaleString('es-AR')} · Ver detalle ▾</small>
+                    <small>{new Date(entry.createdAt).toLocaleString('es-AR', { hour12: false })} · Ver detalle ▾</small>
                   </div>
                 </summary>
                 <div className="inventory-audit-history-lines">
@@ -274,7 +276,7 @@ export function InventoryPage({
                   <strong className={entry.movement.deltaMilli >= 0 ? 'positive' : 'negative'}>
                     {entry.movement.deltaMilli > 0 ? '+' : '−'} {quantityText(Math.abs(entry.movement.deltaMilli), entry.movement.unit)}
                   </strong>
-                  <small>{new Date(entry.createdAt).toLocaleString('es-AR')}</small>
+                  <small>{new Date(entry.createdAt).toLocaleString('es-AR', { hour12: false })}</small>
                 </div>
               </article>
             ))}

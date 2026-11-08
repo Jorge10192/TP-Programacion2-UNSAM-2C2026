@@ -12,6 +12,7 @@ class CreateBusinessRequest(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     category: str = Field(min_length=2, max_length=120)
     activity_kind: Literal["PRODUCTOS", "SERVICIOS", "MIXTO"]
+    description: str = Field(default="", max_length=350)
 
     @field_validator("name", "category")
     @classmethod

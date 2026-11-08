@@ -1,9 +1,9 @@
 import { Icon } from '../../app/Icon'
 import { businessHref } from '../../app/navigation'
-import type { DemoBusiness } from '../../app/navigation'
+import type { Business } from '../../app/navigation'
 import type { Navigate } from '../../app/types'
 
-export function ComingSoon({ title, description, navigate, business }: { title: string; description: string; navigate: Navigate; business?: DemoBusiness }) {
+export function ComingSoon({ title, description, navigate, business }: { title: string; description: string; navigate: Navigate; business?: Business }) {
   return <>
     <div className="page-heading"><div><p className="eyebrow">PLATAFORMA PYME · DEMO</p><h1>{title}</h1><p>{description}</p></div></div>
     <section className="empty-state">
@@ -20,7 +20,7 @@ export function NotFound({ navigate, accessDenied = false }: { navigate: Navigat
   return <section className="empty-state not-found">
     <div className="empty-icon"><Icon name="shield" size={34}/></div>
     <h1>{accessDenied ? 'Empresa no disponible' : 'No encontramos esta página'}</h1>
-    <p>{accessDenied ? 'La empresa solicitada no forma parte de las empresas de ejemplo de esta sesión. No se muestran sus datos.' : 'La dirección solicitada no corresponde a una sección disponible.'}</p>
+    <p>{accessDenied ? 'No tenés acceso a esta empresa en la sesión actual.' : 'La dirección solicitada no corresponde a una sección disponible.'}</p>
     <button type="button" className="button button-primary" onClick={() => navigate('/inicio')}>Volver a mi espacio</button>
   </section>
 }

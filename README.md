@@ -1,3 +1,5 @@
-# Programación 2 — Grupo 5
+# Asistente PyME - Programación 2 - Grupo 5
 
-[WALOS: ejecución y documentación](Proyecto-3-AppAdmin-Mascotas/README.md)
+Plataforma de gestión multiempresa y multirrubro.
+
+[Ejecutar la aplicación](plataforma-pyme/README.md) - [Documentación de entrega](plataforma-pyme/entrega-programacion-2/README.md).

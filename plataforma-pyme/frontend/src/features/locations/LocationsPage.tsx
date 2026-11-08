@@ -2,10 +2,10 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { DemoPhoto, DemoImagePicker } from '../common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
-import { demoGateway, locationKindLabels } from '../../data/demo/demoStore'
+import { locationKindLabels } from '../../data/models'
+import { useAppData, useBusinessPermissions } from '../../data/dataContext'
 import { getLocationMapsLink, locationShareText, mapsSearchUrl } from '../../data/demo/mapsLinks'
-import type { DemoBusiness, DemoLocation, LocationInput, LocationKind } from '../../data/demo/demoStore'
+import type { Business, Location, LocationInput, LocationKind } from '../../data/models'
 
 const blank: LocationInput = { name: '', kind: 'LOCAL', address: '', mapUrl: '', canSell: true, canStore: false }
 
@@ -13,7 +13,9 @@ function typeIcon(kind: LocationKind) {
   return kind === 'DEPOSITO' ? 'boxes' : kind === 'FERIA' ? 'shopping' : kind === 'OFICINA' ? 'briefcase' : 'pin'
 }
 
-export function LocationsPage({ business, locations }: { business: DemoBusiness; locations: DemoLocation[] }) {
+export function LocationsPage({ business, locations }: { business: Business; locations: Location[] }) {
+  const { gateway, mode } = useAppData()
+  const { canManageResources } = useBusinessPermissions(business.id)
   const [editor, setEditor] = useState<string | 'new' | null>(null)
   const [draft, setDraft] = useState<LocationInput>(blank)
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null)
@@ -34,7 +36,7 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
     setManualShare(null)
   }
 
-  function startEdit(location: DemoLocation) {
+  function startEdit(location: Location) {
     setEditor(location.id)
     setDraft({
       name: location.name, kind: location.kind, address: location.address, mapUrl: location.mapUrl,
@@ -60,10 +62,10 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
     setNotice('')
     try {
       if (editor === 'new') {
-        await demoGateway.createLocation(business.id, draft)
-        setNotice('Ubicación DEMO creada para «' + business.name + '».')
+        await gateway.createLocation(business.id, draft)
+        setNotice('Ubicación creada para «' + business.name + '».')
       } else {
-        await demoGateway.updateLocation(business.id, editor, draft)
+        await gateway.updateLocation(business.id, editor, draft)
         setNotice('Ubicación DEMO actualizada.')
       }
       setEditor(null)
@@ -79,7 +81,7 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
     setNotice('')
     setBusy(true)
     try {
-      await demoGateway.setPrimaryLocation(business.id, locationId)
+      await gateway.setPrimaryLocation(business.id, locationId)
       setNotice('Ubicación principal actualizada en «' + business.name + '».')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo asignar la ubicación principal.')
@@ -88,13 +90,13 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
     }
   }
 
-  async function changeStatus(location: DemoLocation) {
+  async function changeStatus(location: Location) {
     setError('')
     setNotice('')
     setBusy(true)
     try {
       const status = location.status === 'ACTIVA' ? 'PAUSADA' : 'ACTIVA'
-      await demoGateway.setLocationStatus(business.id, location.id, status)
+      await gateway.setLocationStatus(business.id, location.id, status)
       setPendingStatusId(null)
       setNotice(status === 'PAUSADA'
         ? 'Ubicación pausada. Si era principal, el negocio quedó sin ubicación principal.'
@@ -106,7 +108,7 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
     }
   }
 
-  async function copyLocation(location: DemoLocation) {
+  async function copyLocation(location: Location) {
     setError('')
     setNotice('')
     setManualShare(null)
@@ -130,7 +132,7 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
   return <>
     <div className="page-heading">
       <div><p className="eyebrow">ADMINISTRACIÓN · EMPRESA DEMO</p><h1>Ubicaciones</h1><p>Locales, depósitos, ferias y espacios de trabajo de «{business.name}».</p></div>
-      {editor === null && <button type="button" className="button button-primary" onClick={startCreate}><Icon name="plus" size={18}/> Nueva ubicación</button>}
+      {editor === null && <button type="button" className="button button-primary" onClick={startCreate} disabled={!canManageResources}><Icon name="plus" size={18}/> Nueva ubicación</button>}
     </div>
 
     <section className="locations-summary" aria-label="Resumen de ubicaciones">
@@ -141,7 +143,7 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
 
     <div className="informational-note location-info-note">
       <Icon name="shield" size={20}/>
-      <span>Las ubicaciones son opcionales: una empresa de servicios puede funcionar sin local ni depósito. Las capacidades «Vender» y «Almacenar» son independientes. Los registros de esta pantalla son solamente DEMO.</span>
+      <span>Las ubicaciones son opcionales: una empresa de servicios puede funcionar sin local ni depósito. Las capacidades «Vender» y «Almacenar» son independientes. {mode === 'demo' ? 'Los registros de esta pantalla son solamente DEMO.' : 'Los datos pertenecen a esta empresa y se guardan en el servidor.'}</span>
     </div>
 
     {error && <p className="form-message error locations-notice" role="alert">{error}</p>}
@@ -153,8 +155,8 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
         <div><h2>{editingLocation ? 'Editar ubicación' : 'Nueva ubicación'}</h2><p>Se guardará únicamente dentro de {business.name}.</p></div>
       </div>
       <form className="demo-form" onSubmit={submit}>
-        {editingLocation ? <DemoImagePicker imageKey={demoImageKey('location', business.id, editingLocation.id)} label="Foto de la ubicación"/> :
-          <p className="form-hint">Guardá primero la ubicación; después podés añadir una fotografía desde «Editar».</p>}
+        {editingLocation ? <DemoImagePicker target={{ scope: 'location', businessId: business.id, entityId: editingLocation.id }} label="Foto de la ubicación"/> :
+          <p className="form-hint">{mode === 'demo' ? 'Guardá primero la ubicación; después podés añadir una fotografía desde «Editar».' : 'Elegí sus capacidades. Crear una ubicación no carga stock ni abre caja.'}</p>}
         <div className="locations-form-grid">
           <label className="form-field"><span>Nombre de la ubicación *</span>
             <input autoFocus required minLength={2} maxLength={80} value={draft.name} onChange={(event) => setDraft((x) => ({ ...x, name: event.target.value }))} placeholder="Ej.: Local centro / Feria del sábado" />
@@ -180,12 +182,12 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
         <fieldset className="location-capabilities">
           <legend>¿Para qué se utiliza este espacio?</legend>
           <label><input type="checkbox" checked={draft.canSell} onChange={(event) => setDraft((x) => ({ ...x, canSell: event.target.checked }))}/><span><strong>Permite vender</strong><small>Punto de atención, venta o prestación de servicios</small></span></label>
-          <label><input type="checkbox" checked={draft.canStore} onChange={(event) => setDraft((x) => ({ ...x, canStore: event.target.checked }))}/><span><strong>Permite almacenar</strong><small>Se puede asociar inventario cuando exista ese módulo</small></span></label>
+          <label><input type="checkbox" checked={draft.canStore} onChange={(event) => setDraft((x) => ({ ...x, canStore: event.target.checked }))}/><span><strong>Permite almacenar</strong><small>Habilita recepciones y control de stock en esta ubicación</small></span></label>
         </fieldset>
         <p className="form-hint">Una ubicación puede tener ambas capacidades o ninguna. No se crea stock ni caja automáticamente.</p>
         <div className="form-actions">
           <button type="button" className="button button-secondary" onClick={cancel} disabled={busy}>Cancelar</button>
-          <button type="submit" className="button button-primary" disabled={busy}>{busy ? 'Guardando…' : editingLocation ? 'Guardar cambios' : 'Crear ubicación DEMO'}</button>
+          <button type="submit" className="button button-primary" disabled={busy || !canManageResources}>{busy ? 'Guardando…' : editingLocation ? 'Guardar cambios' : mode === 'api' ? 'Crear ubicación' : 'Crear ubicación DEMO'}</button>
         </div>
       </form>
     </section>}
@@ -196,13 +198,13 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
       <div className="empty-icon"><Icon name="pin" size={34}/></div>
       <h2>Todavía no hay ubicaciones</h2>
       <p>Es válido no tener establecimientos. Cuando quieras, agregá un local, depósito, feria, oficina u otro espacio.</p>
-      {editor === null && <button type="button" className="button button-primary" onClick={startCreate}><Icon name="plus" size={17}/> Crear primera ubicación</button>}
+      {editor === null && <button type="button" className="button button-primary" onClick={startCreate} disabled={!canManageResources}><Icon name="plus" size={17}/> Crear primera ubicación</button>}
     </section>}
 
     <div className="locations-grid">
       {locations.map((location) => <article className={'location-card' + (location.status === 'PAUSADA' ? ' location-paused' : '')} key={location.id}>
         <div className="location-card-heading">
-          <DemoPhoto imageKey={demoImageKey('location', business.id, location.id)} alt={'Foto de ' + location.name}
+          <DemoPhoto target={{ scope: 'location', businessId: business.id, entityId: location.id }} alt={'Foto de ' + location.name}
             fallback={<Icon name={typeIcon(location.kind)} size={22}/>} className="feature-icon blue demo-photo-list"/>
           <div><h3>{location.name}</h3><p>{locationKindLabels[location.kind]}</p></div>
           <span className={'location-status ' + (location.status === 'ACTIVA' ? 'active' : 'paused')}>{location.status === 'ACTIVA' ? 'Activa' : 'Pausada'}</span>
@@ -230,20 +232,20 @@ export function LocationsPage({ business, locations }: { business: DemoBusiness;
           <textarea id={'share-location-' + location.id} value={manualShare.text} readOnly rows={4} onFocus={(event) => event.currentTarget.select()} />
         </div>}
         <div className="location-actions">
-          <button type="button" className="button button-secondary" onClick={() => startEdit(location)} disabled={busy}>Editar</button>
-          {!location.isPrimary && location.status === 'ACTIVA' && <button type="button" className="button button-secondary" onClick={() => markPrimary(location.id)} disabled={busy}>Hacer principal</button>}
-          <button type="button" className="button button-secondary" onClick={() => { setPendingStatusId(location.id); setNotice(''); setError('') }} disabled={busy}>
+          <button type="button" className="button button-secondary" onClick={() => startEdit(location)} disabled={busy || !canManageResources}>Editar</button>
+          {!location.isPrimary && location.status === 'ACTIVA' && <button type="button" className="button button-secondary" onClick={() => markPrimary(location.id)} disabled={busy || !canManageResources}>Hacer principal</button>}
+          <button type="button" className="button button-secondary" onClick={() => { setPendingStatusId(location.id); setNotice(''); setError('') }} disabled={busy || !canManageResources}>
             {location.status === 'ACTIVA' ? 'Pausar' : 'Reactivar'}
           </button>
         </div>
         {pendingStatusId === location.id && <div className="location-confirm">
           <p>{location.status === 'ACTIVA'
-            ? '¿Pausar esta ubicación? No se eliminará. En esta DEMO todavía no hay operaciones de stock o caja que revisar.'
+            ? '¿Pausar esta ubicación? Se conserva el historial. Revisá las existencias y jornadas abiertas antes de pausarla.'
             : '¿Reactivar esta ubicación para seguir utilizándola?'}</p>
           {location.isPrimary && <p>Atención: dejará de ser la ubicación principal.</p>}
           <div>
             <button type="button" className="button button-secondary" onClick={() => setPendingStatusId(null)} disabled={busy}>Cancelar</button>
-            <button type="button" className="button button-primary" onClick={() => changeStatus(location)} disabled={busy}>{busy ? 'Procesando…' : 'Confirmar'}</button>
+            <button type="button" className="button button-primary" onClick={() => changeStatus(location)} disabled={busy || !canManageResources}>{busy ? 'Procesando…' : 'Confirmar'}</button>
           </div>
         </div>}
       </article>)}

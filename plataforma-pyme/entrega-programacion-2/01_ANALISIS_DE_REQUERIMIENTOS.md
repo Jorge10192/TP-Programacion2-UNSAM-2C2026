@@ -2,13 +2,18 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.3 — requisitos originales + seguimiento de implementación E2  
-**Estado:** **BORRADOR FUNCIONAL — con implementación parcial de RF-01/RF-02 verificada**  
+**Versión:** 0.4\
+**Estado:** ACTUALIZADO PARA INTEGRACIÓN - revisión del equipo pendiente\
 **Fecha:** 7 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
 **Alcance de este documento:** análisis de producto y requisitos objetivo. **No equivale a afirmar que la API esté implementada.**
 
-> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
+## Estado de la integración
+
+La plataforma es multiempresa y multirrubro. La rama integra registro/login de Jorge con recursos, compras, stock, ventas, gastos y caja en PostgreSQL. El modo DEMO sigue separado; un fallo de API no guarda datos locales.
+
+RF-01 a RF-09 tienen operaciones implementadas en este corte; RF-02 incluye membresías y permisos, pero CU-12/invitaciones permanece pendiente. RF-10 conserva únicamente su simulación DEMO. Los contratos y el alcance exacto están en [05](05_MATRIZ_API_Y_TRAZABILIDAD.md); las comprobaciones y límites de publicación en [06](06_PRUEBAS_Y_DESPLIEGUE.md). Implementado en rama no significa aprobado por el equipo ni desplegado públicamente.
+
 
 ## 1. Presentación del proyecto
 
@@ -60,19 +65,15 @@ Desarrollar una plataforma de gestión comercial y operativa multiempresa, acces
 
 ## 5. Alcance y estados de implementación
 
-### 5.1 Funcionalidades disponibles en el frontend DEMO (AS-IS)
+### 5.1 Implementación actual
 
-Interfaz de múltiples empresas; perfil personal local; datos empresariales; ubicaciones; equipo e invitaciones simuladas; catálogo; imágenes locales; proveedores; compras y recepción; inventario y conteos; ventas con pagos divididos; gastos; cuentas declaradas; jornadas de caja y QR visual de cobro DEMO.
+En modo API: identidad global, empresas y membresías, ubicaciones, catálogo de bienes y servicios, proveedores, compras/recepción, stock/conteos/traslados, ventas/pagos declarados, gastos, cuentas declaradas y jornadas de caja. PostgreSQL es la autoridad de datos y permisos.
 
-Las operaciones ya fueron objeto de pruebas manuales y automatizadas de frontend, pero su almacenamiento sigue siendo local. No hay registro/login real, permisos de servidor, sincronización segura entre dispositivos ni conexión bancaria.
+En modo DEMO: datos locales y simulaciones independientes; las invitaciones, fotos locales y QR no se presentan como funciones reales del servidor.
 
-### 5.2 Alcance objetivo del backend académico (TO-BE)
+### 5.2 Alcance del corte conectado
 
-API RESTful en FastAPI, registro e inicio de sesión seguros, autorización y aislamiento de recursos por empresa, persistencia SQLAlchemy con base de datos, manejo de errores, Docker, pruebas automatizadas, GitHub Actions, documentación y despliegue. El alcance exacto de endpoints se fijará antes de implementar, manteniendo **al menos cinco requerimientos funcionales de alto nivel** cubiertos y verificables.
-
-**Propuesta de recorte para la primera entrega de API (sujeta a aprobación):** autenticar usuarios (RF-01); administrar empresas/membresías básicas (RF-02); administrar catálogo (RF-04); registrar compras y recepciones básicas (RF-05); controlar existencias y traslados (RF-06); y registrar ventas con pagos declarados (RF-07). Ubicaciones (RF-03) es una dependencia de soporte para compras, inventario y ventas: implementar lo mínimo necesario del lado servidor. Esta selección contiene más de cinco requerimientos de alto nivel, pero **no exige reproducir en el backend la totalidad de funciones avanzadas de cada pantalla**. Gastos/caja, cuentas financieras declaradas y QR DEMO (RF-08 a RF-10) quedan propuestos como segunda fase de integración, salvo revisión del equipo.
-
-La consigna exige autenticación segura aunque la aplicación actual no tenga login. Ninguno de los servicios mencionados se considera implementado por existir su interfaz DEMO.
+RF-01 a RF-09, con las operaciones mínimas y permisos de [05](05_MATRIZ_API_Y_TRAZABILIDAD.md). CU-12/invitaciones, pagos reales y RF-10/QR conectado permanecen diferidos. La ampliación incluye gastos/caja y cuentas declaradas; no implica reproducir todas las capacidades futuras del modelo conceptual.
 
 ### 5.3 Funcionalidades diferidas
 
@@ -88,18 +89,18 @@ Cobros reales mediante Mercado Pago, OAuth por vendedor, webhooks de acreditaci�
 
 | ID | Requerimiento de alto nivel | Comportamiento esperado | Estado actual | Alcance backend propuesto |
 |---|---|---|---|---|
-| **RF-01** | Gestionar usuarios y autenticación | Registro, inicio de sesión y acceso seguro a recursos autorizados | No hay login real; backend pendiente | **NÚCLEO MVP — obligatorio por consigna** |
-| **RF-02** | Gestionar empresas y miembros | Crear y consultar empresas; asociar usuarios mediante membresías y aplicar permisos por empresa | Empresas y membresías simuladas en DEMO | **NÚCLEO MVP** (membresía y permisos básicos) |
-| **RF-03** | Administrar ubicaciones | Crear, editar, consultar y desactivar ubicaciones diferenciando venta y almacenamiento | DEMO local | **SOPORTE MVP** (altas/consultas y validaciones mínimas) |
-| **RF-04** | Administrar catálogo | Registrar y editar artículos, insumos y servicios con SKU, unidad, precio y estado | DEMO local | **NÚCLEO MVP** |
-| **RF-05** | Gestionar proveedores y compras | Registrar proveedores y compras; recibir mercadería explícitamente y consultar historial | DEMO local | **NÚCLEO MVP** (compra/recepción básica e idempotente) |
-| **RF-06** | Controlar inventario | Consultar existencias por ubicación, registrar traslados, conteos y ajustes trazables | DEMO local | **NÚCLEO MVP** (existencias/traslados; conteos completos pueden ampliarse) |
-| **RF-07** | Registrar ventas y pagos declarados | Registrar ventas, descuentos y uno o más medios cuyo importe total coincida con la venta; descontar stock físico cuando corresponda | DEMO local | **NÚCLEO MVP** (ventas transaccionales con pagos declarados) |
-| **RF-08** | Gestionar gastos y caja | Registrar gastos; abrir y cerrar jornadas con arqueo e historial de cierres | DEMO local | **POST-MVP** (backend de segunda fase) |
-| **RF-09** | Administrar cuentas financieras declaradas | Registrar bancos y billeteras como referencias para cobros/pagos; controlar estado activo y conservar histórico | DEMO local | **POST-MVP** (backend de segunda fase) |
+| **RF-01** | Gestionar usuarios y autenticación | Registro, inicio de sesión y acceso seguro a recursos autorizados | API: registro, login, me y logout | **NÚCLEO MVP — obligatorio por consigna** |
+| **RF-02** | Gestionar empresas y miembros | Crear y consultar empresas; asociar usuarios mediante membresías y aplicar permisos por empresa | API: empresas, membresías iniciales y permisos; invitaciones pendientes | **NÚCLEO MVP** (membresía y permisos básicos) |
+| **RF-03** | Administrar ubicaciones | Crear, editar, consultar y desactivar ubicaciones diferenciando venta y almacenamiento | API conectada | **SOPORTE MVP** (altas/consultas y validaciones mínimas) |
+| **RF-04** | Administrar catálogo | Registrar y editar artículos, insumos y servicios con SKU, unidad, precio y estado | API conectada | **NÚCLEO MVP** |
+| **RF-05** | Gestionar proveedores y compras | Registrar proveedores y compras; recibir mercadería explícitamente y consultar historial | API conectada | **NÚCLEO MVP** (compra/recepción básica e idempotente) |
+| **RF-06** | Controlar inventario | Consultar existencias por ubicación, registrar traslados, conteos y ajustes trazables | API conectada | **NÚCLEO MVP** (existencias/traslados; conteos completos pueden ampliarse) |
+| **RF-07** | Registrar ventas y pagos declarados | Registrar ventas, descuentos y uno o más medios cuyo importe total coincida con la venta; descontar stock físico cuando corresponda | API conectada | **NÚCLEO MVP** (ventas transaccionales con pagos declarados) |
+| **RF-08** | Gestionar gastos y caja | Registrar gastos; abrir y cerrar jornadas con arqueo e historial de cierres | API conectada | Integrado en este corte |
+| **RF-09** | Administrar cuentas financieras declaradas | Registrar bancos y billeteras como referencias para cobros/pagos; controlar estado activo y conservar histórico | API conectada | Integrado en este corte |
 | **RF-10** | Gestionar intenciones QR DEMO | Crear, cancelar y aprobar de manera simulada una intención sin tratarla como cobro real | DEMO visual local, sin cobro real | **POST-MVP** (backend QR real no requerido) |
 
-**Advertencia de alcance:** RF-01 a RF-07 no significan siete módulos completos y sin recortes: se especificarán operaciones mínimas aceptables en casos de uso y matriz API antes de implementar. En particular, las ubicaciones son una dependencia real de inventario y recepción; no pueden omitirse sin redefinir esos casos. Los RF-08 a RF-10 no deben declararse implementados en la API de la primera entrega.
+**Advertencia de alcance:** RF-01 a RF-07 no significan siete módulos completos y sin recortes: se especificarán operaciones mínimas aceptables en casos de uso y matriz API antes de implementar. En particular, las ubicaciones son una dependencia real de inventario y recepción; no pueden omitirse sin redefinir esos casos. RF-08 y RF-09 se incorporan en este corte; RF-10 sigue diferido.
 
 ### 6.1 Criterios de aceptación funcional preliminares
 
@@ -146,22 +147,9 @@ Los objetivos cuantitativos adicionales de rendimiento, disponibilidad y cobertu
 | **RN-09** | Desactivar una cuenta declarada impide nuevas referencias internas; no cierra una cuenta bancaria real. |
 | **RN-10** | Una intención QR DEMO pendiente o cancelada no crea venta ni descuenta stock. La aprobación simulada revalida la operación. |
 
-## 9. Relación preliminar con la API RESTful
+## 9. API RESTful
 
-Para satisfacer la consigna académica, los requerimientos de alto nivel deben estar contemplados por endpoints reales. Estos ejemplos son **propuestos, no implementados**:
-
-| Requerimiento | Ejemplo de recursos/operaciones de API |
-|---|---|
-| RF-01 | `POST /auth/register`, `POST /auth/login` |
-| RF-02 | `GET/POST /businesses`, `GET /businesses/{id}/members` |
-| RF-03 (soporte) | `GET/POST /businesses/{id}/locations` (altas/consultas mínimas) |
-| RF-04 | `GET/POST /businesses/{id}/items` |
-| RF-05 | `GET/POST /businesses/{id}/purchases`, operación de recepción |
-| RF-06 | `GET /businesses/{id}/inventory`, operación de traslado |
-| RF-07 | `GET/POST /businesses/{id}/sales` |
-| RF-08 | `GET/POST /businesses/{id}/expenses`, operaciones de caja |
-
-El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el documento `05_MATRIZ_API_Y_TRAZABILIDAD.md`, tras aprobar los casos de uso y modelo de dominio. **No debe contarse una ruta de frontend como endpoint de API.**
+La matriz única de rutas, permisos y evidencia está en [05_MATRIZ_API_Y_TRAZABILIDAD.md](05_MATRIZ_API_Y_TRAZABILIDAD.md). Todas las rutas comerciales están bajo `/api/v1/businesses/{business_id}`; el snapshot global contiene únicamente empresas autorizadas de la cuenta.
 
 ## 10. Restricciones y supuestos
 
@@ -190,13 +178,8 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 
 **Este documento permanece en borrador hasta su aprobación.**
 
-## 13. Seguimiento de RF implementados y trazabilidad E2
+## 13. Trazabilidad del corte integrado
 
-| RF | Código y evidencia verificada | Pendiente |
-|---|---|---|
-| RF-01 | `POST /api/v1/auth/register`, `login`, `GET /me`, `POST /logout`; Argon2id, sesiones persistentes y pruebas PostgreSQL | Endurecimiento público, recuperación de cuenta e integración de React |
-| RF-02 | `businesses`, `memberships`, alta idempotente y listados filtrados por miembro activo; migración `e213b_business_creation` | Autorización por rol en mutaciones, invitaciones y gestión de miembros |
-| RF-03–RF-07 | Reglas planificadas, algunos comportamientos DEMO | Endpoints reales, tablas, transacciones y tests de negocio |
-| RF-08–RF-10 | Frontend DEMO o diseños diferidos | No comprometidos como backend del primer MVP |
+El estado vigente de RF-01 a RF-09, rutas y permisos está en [05](05_MATRIZ_API_Y_TRAZABILIDAD.md). Se preservan la identidad, la creación empresarial idempotente y la política RBAC de Jorge (`b750358`); `business.profile.edit` se aplica ahora al PATCH empresarial. CU-12 sigue pendiente, sin simular permisos de equipo en el modo API.
 
-**Política documental:** cada entrega E2 grande debe revisar sus RF y RNF, el caso de uso, las entidades UML si cambiaron, la arquitectura, el Documento 05 y la evidencia de pruebas. `03B` no se regenera por cambios de permisos de identidad; se conserva su trabajo conceptual. La matriz de permisos de E2-1.3C.1 es código de política testeable, **no equivale aún a un endpoint protegido por rol**.
+Cada entrega revisa RF/CU, entidades y cardinalidades afectadas, autorización, pruebas, migraciones y 05. Los diagramas conceptuales se distinguen del esquema implementado en 03; 06 contiene los comandos de comprobación. Publicar código no equivale a CI verde ni a aprobación académica.

@@ -1,0 +1,338 @@
+{
+  "schema_version": 2,
+  "complete": true,
+  "snapshot": {
+    "version": 1,
+    "mode": "api",
+    "profile": {
+      "id": "0456301e-27c7-4d37-a2d1-f3683e731756",
+      "displayName": "Persona Demo",
+      "email": "commerce-842bb33c02d5439b9ea3f440a5b3e8a4@example.com",
+      "avatarInitials": "",
+      "contactPhone": ""
+    },
+    "businessesById": {
+      "1b37bdbb-7e2c-4152-84dc-b92d32f8f6ca": {
+        "id": "1b37bdbb-7e2c-4152-84dc-b92d32f8f6ca",
+        "name": "Servicios Ejemplo",
+        "category": "Comercio",
+        "kind": "SERVICIOS",
+        "description": "",
+        "slogan": "",
+        "taxId": "",
+        "initials": "SE",
+        "accent": "blue",
+        "source": "server",
+        "founderUserId": "0456301e-27c7-4d37-a2d1-f3683e731756",
+        "administrativeOwnerUserId": "0456301e-27c7-4d37-a2d1-f3683e731756"
+      },
+      "69ada2d7-27f6-4593-bc04-f6d02af6ebeb": {
+        "id": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "name": "Comercio Ejemplo",
+        "category": "Comercio",
+        "kind": "MIXTO",
+        "description": "",
+        "slogan": "",
+        "taxId": "",
+        "initials": "CE",
+        "accent": "blue",
+        "source": "server",
+        "founderUserId": "0456301e-27c7-4d37-a2d1-f3683e731756",
+        "administrativeOwnerUserId": "0456301e-27c7-4d37-a2d1-f3683e731756"
+      }
+    },
+    "membershipsByBusinessId": {
+      "1b37bdbb-7e2c-4152-84dc-b92d32f8f6ca": {
+        "businessId": "1b37bdbb-7e2c-4152-84dc-b92d32f8f6ca",
+        "userId": "0456301e-27c7-4d37-a2d1-f3683e731756",
+        "role": "TITULAR_ADMINISTRATIVO",
+        "status": "ACTIVA",
+        "jobTitle": ""
+      },
+      "69ada2d7-27f6-4593-bc04-f6d02af6ebeb": {
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "userId": "0456301e-27c7-4d37-a2d1-f3683e731756",
+        "role": "TITULAR_ADMINISTRATIVO",
+        "status": "ACTIVA",
+        "jobTitle": ""
+      }
+    },
+    "locationsById": {
+      "c92b76d9-895f-45c5-9eb7-118751c6bf8b": {
+        "id": "c92b76d9-895f-45c5-9eb7-118751c6bf8b",
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "name": "Principal",
+        "kind": "LOCAL",
+        "address": "",
+        "mapUrl": "",
+        "canSell": true,
+        "canStore": true,
+        "isPrimary": false,
+        "status": "ACTIVA"
+      }
+    },
+    "teamInvitationsById": {},
+    "teamMembersById": {},
+    "catalogItemsById": {
+      "76b8ba8a-9b73-4fe4-8186-b8a2cd518b5a": {
+        "id": "76b8ba8a-9b73-4fe4-8186-b8a2cd518b5a",
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "name": "Producto",
+        "kind": "REVENTA",
+        "category": "General",
+        "sku": "ART-001",
+        "unit": "UNIDAD",
+        "description": "",
+        "observations": "",
+        "sellable": true,
+        "priceCents": 250000,
+        "referenceCostCents": 100000,
+        "status": "ACTIVO",
+        "updatedAt": "2026-11-08T00:36:55.318507Z"
+      },
+      "e8003bd3-b4fe-4606-9e82-ab16c2c7f34b": {
+        "id": "e8003bd3-b4fe-4606-9e82-ab16c2c7f34b",
+        "businessId": "1b37bdbb-7e2c-4152-84dc-b92d32f8f6ca",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "name": "Asesoramiento",
+        "kind": "SERVICIO",
+        "category": "General",
+        "sku": "ART-001",
+        "unit": "SERVICIO",
+        "description": "",
+        "observations": "",
+        "sellable": true,
+        "priceCents": 250000,
+        "referenceCostCents": 100000,
+        "status": "ACTIVO",
+        "updatedAt": "2026-11-08T00:36:55.318507Z"
+      }
+    },
+    "suppliersById": {
+      "8e38eb08-c25c-4a2c-82d3-7adf25fd5207": {
+        "name": "Proveedor Ejemplo",
+        "offerings": "",
+        "contactPerson": "",
+        "phone": "",
+        "whatsapp": "",
+        "email": "",
+        "address": "",
+        "mapsUrl": "",
+        "website": "",
+        "instagram": "",
+        "paymentMethods": [],
+        "promotions": [],
+        "notes": "",
+        "id": "8e38eb08-c25c-4a2c-82d3-7adf25fd5207",
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "status": "ACTIVO",
+        "updatedAt": "2026-11-08T00:36:55.318507Z"
+      }
+    },
+    "purchasesById": {
+      "49d5859c-258c-4ea3-b81a-5d153f33c2ed": {
+        "id": "49d5859c-258c-4ea3-b81a-5d153f33c2ed",
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "requestId": "49d5859c-258c-4ea3-b81a-5d153f33c2ed",
+        "supplierId": null,
+        "supplierNameSnapshot": "",
+        "purchasedOn": "2026-11-07",
+        "reference": "COMPRA-01",
+        "notes": "",
+        "lines": [
+          {
+            "id": "fb540580-3686-4ac4-9fa9-99c7b85b8d46",
+            "catalogItemId": "76b8ba8a-9b73-4fe4-8186-b8a2cd518b5a",
+            "description": "Producto",
+            "unit": "UNIDAD",
+            "quantityMilli": 10000,
+            "unitCostCents": 100000,
+            "kind": "BIEN",
+            "sku": "ART-001",
+            "totalCents": 1000000
+          }
+        ],
+        "totalCents": 1000000,
+        "receipt": {
+          "id": "66b6296d-38ae-42b3-bb89-f8f17965451e",
+          "locationId": "c92b76d9-895f-45c5-9eb7-118751c6bf8b",
+          "createdAt": "2026-11-08T00:36:55.555503Z",
+          "movements": [
+            {
+              "id": "2784efb9-7b40-4a5a-9a6b-afcab3adf2fd",
+              "purchaseLineId": "fb540580-3686-4ac4-9fa9-99c7b85b8d46",
+              "catalogItemId": "76b8ba8a-9b73-4fe4-8186-b8a2cd518b5a",
+              "unit": "UNIDAD",
+              "quantityMilli": 10000
+            }
+          ]
+        },
+        "serverStatus": "CONFIRMADA"
+      }
+    },
+    "inventoryOperationsById": {},
+    "salesById": {
+      "17fd5f5c-cc7d-49a7-a37e-75bb2997ec4a": {
+        "id": "17fd5f5c-cc7d-49a7-a37e-75bb2997ec4a",
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "requestId": "17fd5f5c-cc7d-49a7-a37e-75bb2997ec4a",
+        "locationId": "c92b76d9-895f-45c5-9eb7-118751c6bf8b",
+        "cashSessionId": "f2db4d90-2c3f-4837-b130-9362d69a732a",
+        "lines": [
+          {
+            "id": "eeae3811-43f7-4472-97e7-9148ccce2bc4",
+            "catalogItemId": "76b8ba8a-9b73-4fe4-8186-b8a2cd518b5a",
+            "quantityMilli": 2000,
+            "unitPriceCents": 250000,
+            "name": "Producto",
+            "sku": "ART-001",
+            "unit": "UNIDAD",
+            "kind": "BIEN",
+            "lineTotalCents": 500000
+          }
+        ],
+        "payments": [
+          {
+            "method": "EFECTIVO",
+            "amountCents": 500000,
+            "financialAccountId": null,
+            "financialAccountLabelSnapshot": null
+          }
+        ],
+        "subtotalCents": 500000,
+        "discountCents": 0,
+        "totalCents": 500000,
+        "notes": "",
+        "status": "REGISTRADA"
+      }
+    },
+    "expensesById": {
+      "0f2a33ad-e19d-4a03-b2c9-3169dec012c1": {
+        "paidOn": "2026-11-07",
+        "locationId": "c92b76d9-895f-45c5-9eb7-118751c6bf8b",
+        "category": "TRANSPORTE",
+        "description": "Traslado",
+        "amountCents": 25000,
+        "paymentMethod": "EFECTIVO",
+        "financialAccountId": null,
+        "financialAccountLabelSnapshot": null,
+        "notes": "",
+        "id": "0f2a33ad-e19d-4a03-b2c9-3169dec012c1",
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "requestId": "0f2a33ad-e19d-4a03-b2c9-3169dec012c1",
+        "cashSessionId": "f2db4d90-2c3f-4837-b130-9362d69a732a"
+      }
+    },
+    "cashSessionsById": {
+      "f2db4d90-2c3f-4837-b130-9362d69a732a": {
+        "id": "f2db4d90-2c3f-4837-b130-9362d69a732a",
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "openRequestId": "f2db4d90-2c3f-4837-b130-9362d69a732a",
+        "closeRequestId": null,
+        "locationId": "c92b76d9-895f-45c5-9eb7-118751c6bf8b",
+        "openingCashCents": 100000,
+        "openedAt": "2026-11-08T00:36:55.318507Z",
+        "openedBy": "Persona Demo",
+        "status": "CERRADA",
+        "closeSnapshot": {
+          "openingCashCents": 100000,
+          "cashSalesCents": 500000,
+          "cashExpensesCents": 25000,
+          "expectedCashCents": 575000,
+          "saleIds": [
+            "17fd5f5c-cc7d-49a7-a37e-75bb2997ec4a"
+          ],
+          "expenseIds": [
+            "0f2a33ad-e19d-4a03-b2c9-3169dec012c1"
+          ],
+          "countedCashCents": 575000,
+          "differenceCents": 0,
+          "closedBy": "Persona Demo",
+          "closedAt": "2026-11-08T00:36:55.635574Z",
+          "notes": ""
+        },
+        "serverTotals": {
+          "openingCashCents": 100000,
+          "cashSalesCents": 500000,
+          "cashExpensesCents": 25000,
+          "expectedCashCents": 575000,
+          "saleIds": [
+            "17fd5f5c-cc7d-49a7-a37e-75bb2997ec4a"
+          ],
+          "expenseIds": [
+            "0f2a33ad-e19d-4a03-b2c9-3169dec012c1"
+          ]
+        }
+      }
+    },
+    "financialAccountsById": {},
+    "qrIntentsById": {},
+    "apiInventoryMovements": [
+      {
+        "id": "2784efb9-7b40-4a5a-9a6b-afcab3adf2fd",
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "operationId": "66b6296d-38ae-42b3-bb89-f8f17965451e",
+        "catalogItemId": "76b8ba8a-9b73-4fe4-8186-b8a2cd518b5a",
+        "itemNameSnapshot": "Producto",
+        "unit": "UNIDAD",
+        "locationId": "c92b76d9-895f-45c5-9eb7-118751c6bf8b",
+        "deltaMilli": 10000,
+        "type": "RECEPCION_COMPRA",
+        "reason": "Recepción de compra",
+        "reference": "COMPRA-01"
+      },
+      {
+        "id": "75d97a6e-8f27-4344-ab63-97db7d1f68c7",
+        "businessId": "69ada2d7-27f6-4593-bc04-f6d02af6ebeb",
+        "createdAt": "2026-11-08T00:36:55.318507Z",
+        "operationId": "17fd5f5c-cc7d-49a7-a37e-75bb2997ec4a",
+        "catalogItemId": "76b8ba8a-9b73-4fe4-8186-b8a2cd518b5a",
+        "itemNameSnapshot": "Producto",
+        "unit": "UNIDAD",
+        "locationId": "c92b76d9-895f-45c5-9eb7-118751c6bf8b",
+        "deltaMilli": -2000,
+        "type": "VENTA_SALIDA",
+        "reason": "Venta registrada",
+        "reference": ""
+      }
+    ],
+    "apiStockBalances": {
+      "[\"c92b76d9-895f-45c5-9eb7-118751c6bf8b\",\"76b8ba8a-9b73-4fe4-8186-b8a2cd518b5a\"]": 8000
+    },
+    "apiStockVersions": {
+      "[\"c92b76d9-895f-45c5-9eb7-118751c6bf8b\",\"76b8ba8a-9b73-4fe4-8186-b8a2cd518b5a\"]": 2
+    },
+    "apiCapabilitiesByBusiness": {
+      "1b37bdbb-7e2c-4152-84dc-b92d32f8f6ca": {
+        "purchase": true,
+        "receipt": true,
+        "sale": true,
+        "expense": true,
+        "count": true,
+        "cash": true,
+        "resources": true,
+        "business": true
+      },
+      "69ada2d7-27f6-4593-bc04-f6d02af6ebeb": {
+        "purchase": true,
+        "receipt": true,
+        "sale": true,
+        "expense": true,
+        "count": true,
+        "cash": true,
+        "resources": true,
+        "business": true
+      }
+    },
+    "apiLegacyRecords": [],
+    "apiAsOf": "2026-11-08T00:36:55.666384Z"
+  }
+}

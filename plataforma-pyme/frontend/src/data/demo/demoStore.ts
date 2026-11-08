@@ -4,178 +4,44 @@
  * No usar datos comerciales o personales verdaderos.
  */
 import { useSyncExternalStore } from 'react'
+import type { Profile, Business, Membership, Location, LocationInput, Invitation, TeamMember, CatalogItem, Supplier, Purchase, Sale, Snapshot, BusinessDetailsPatch, BusinessInput, ProfileInput } from '../models'
+import { listCatalog, listSuppliers, listPurchases, listInventoryMovements, listFinancialAccounts, listExpenses, listCashSessions, activeCashSession, listQrIntents, listSales, inventoryBalanceMilli, listInventoryOperations, listTeamMembers, findBusiness } from '../selectors'
+export * from '../models'
+export * from '../selectors'
+
 import { validateGoogleMapsLink } from './mapsLinks'
 import { canReplyToInvitation, displayInvitationStatus, invitationExpiresAt, normalizeInviteInput } from './teamPolicy'
-import type { InviteRole, InvitationStatus } from './teamPolicy'
+import type { InviteRole } from './teamPolicy'
 import { catalogNameKey, normalizeCatalogInput } from './catalogPolicy'
 import type { CatalogInput } from './catalogPolicy'
 import { normalizeSupplierInput, supplierNameKey } from './supplierPolicy'
 import type { SupplierInput } from './supplierPolicy'
 import { lineTotalCents, normalizePurchaseInput, physicalPurchaseLines, sumLineTotals } from './purchasePolicy'
 import type { PurchaseInput, PurchaseLineSnapshot, PurchaseReceipt } from './purchasePolicy'
-import { checkedCountDifference, countDifference, inventoryOperationMovements, normalizeStockReason, requireTransferStock, stockBalance, validateStockMilli } from './inventoryPolicy'
-import type { InventoryCountInput, InventoryCountLine, InventoryMovement, InventoryOperation } from './inventoryPolicy'
-import { normalizeSaleInput, saleAmounts, saleInventoryMovements, validateSalePayments, validSaleQuantity } from './salePolicy'
+import { checkedCountDifference, countDifference, normalizeStockReason, requireTransferStock, stockBalance, validateStockMilli } from './inventoryPolicy'
+import type { InventoryCountInput, InventoryCountLine, InventoryOperation } from './inventoryPolicy'
+import { normalizeSaleInput, saleAmounts, validateSalePayments, validSaleQuantity } from './salePolicy'
 import type { SaleInput, SaleLineSnapshot, SalePayment } from './salePolicy'
 import { cashCents, cashSessionTotals, cashText, makeCloseSnapshot, normalizeExpense } from './cashPolicy'
-import type { CashCloseInput, DemoCashSession, DemoExpense, ExpenseInput } from './cashPolicy'
+import type { CashCloseInput, CashSession, Expense, ExpenseInput } from './cashPolicy'
 import { accountSupportsDeclaredPayment, financialAccountKey, normalizeFinancialAccountInput } from './financialAccountPolicy'
-import type { DemoFinancialAccount, FinancialAccountInput } from './financialAccountPolicy'
+import type { FinancialAccount, FinancialAccountInput } from './financialAccountPolicy'
 import { normalizeQrSaleInput, validQrDemoIntent } from './qrDemoPolicy'
-import type { DemoQrIntent } from './qrDemoPolicy'
-
-export type BusinessKind = 'PRODUCTOS' | 'SERVICIOS' | 'MIXTO'
-export type Accent = 'mint' | 'blue' | 'violet'
-export type DemoProfile = { id: 'demo-user'; displayName: string; email: string; avatarInitials: string; contactPhone: string }
-export function profileInitials(profile: Pick<DemoProfile, 'displayName' | 'avatarInitials'>): string {
-  return profile.avatarInitials ||
-    profile.displayName.trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() ||
-    'UD'
-}
-
-export type DemoBusiness = {
-  id: string
-  name: string
-  category: string
-  kind: BusinessKind
-  description: string
-  slogan: string
-  taxId: string
-  initials: string
-  accent: Accent
-  source: 'fixture' | 'created'
-  founderUserId: 'demo-user'
-  administrativeOwnerUserId: 'demo-user'
-}
-export type DemoMembership = {
-  businessId: string
-  userId: 'demo-user'
-  role: 'TITULAR_ADMINISTRATIVO'
-  status: 'ACTIVA'
-  jobTitle: string
-}
-export type LocationKind = 'LOCAL' | 'FERIA' | 'DEPOSITO' | 'OFICINA' | 'OTRO'
-export type DemoLocation = {
-  id: string
-  businessId: string
-  name: string
-  kind: LocationKind
-  address: string
-  mapUrl: string
-  canSell: boolean
-  canStore: boolean
-  isPrimary: boolean
-  status: 'ACTIVA' | 'PAUSADA'
-}
-export type LocationInput = Pick<DemoLocation, 'name' | 'kind' | 'address' | 'mapUrl' | 'canSell' | 'canStore'>
-export const locationKindLabels: Record<LocationKind, string> = {
-  LOCAL: 'Local o sucursal',
-  FERIA: 'Feria o punto temporal',
-  DEPOSITO: 'Depósito',
-  OFICINA: 'Oficina o espacio de trabajo',
-  OTRO: 'Otro espacio',
-}
-
-export type DemoInvitation = {
-  id: string
-  businessId: string
-  email: string
-  role: InviteRole
-  status: InvitationStatus
-  createdAt: string
-  expiresAt: string
-  memberId?: string
-}
-export type DemoTeamMember = {
-  id: string
-  businessId: string
-  email: string
-  role: InviteRole
-  status: 'ACTIVA'
-  joinedAt: string
-  sourceInvitationId: string
-}
-
-export type DemoCatalogItem = CatalogInput & {
-  id: string
-  businessId: string
-  status: 'ACTIVO' | 'INACTIVO'
-  createdAt: string
-  updatedAt: string
-}
-
-export type DemoSupplier = SupplierInput & {
-  id: string
-  businessId: string
-  status: 'ACTIVO' | 'INACTIVO'
-  createdAt: string
-  updatedAt: string
-}
-
-export type DemoPurchase = Omit<PurchaseInput, 'lines'> & {
-  id: string
-  requestId: string
-  businessId: string
-  supplierNameSnapshot: string
-  lines: PurchaseLineSnapshot[]
-  totalCents: number
-  createdAt: string
-  receipt: PurchaseReceipt | null
-}
-
-export type DemoSale = {
-  id: string; requestId: string; businessId: string; locationId: string | null
-  lines: SaleLineSnapshot[]; subtotalCents: number; discountCents: number
-  totalCents: number; payments: SalePayment[]; notes: string
-  createdAt: string; status: 'REGISTRADA_DEMO'; cashSessionId?: string | null
-}
-
-export type DemoReceiptMovement = PurchaseReceipt['movements'][number] & {
-  businessId: string
-  purchaseId: string
-  receiptId: string
-  locationId: string
-  createdAt: string
-  source: 'RECEPCION_COMPRA'
-}
-
-export type DemoSnapshot = {
-  version: 1
-  profile: DemoProfile
-  businessesById: Record<string, DemoBusiness>
-  membershipsByBusinessId: Record<string, DemoMembership>
-  locationsById: Record<string, DemoLocation>
-  teamInvitationsById: Record<string, DemoInvitation>
-  teamMembersById: Record<string, DemoTeamMember>
-  catalogItemsById: Record<string, DemoCatalogItem>
-  suppliersById: Record<string, DemoSupplier>
-  purchasesById: Record<string, DemoPurchase>
-  inventoryOperationsById: Record<string, InventoryOperation>
-  salesById: Record<string, DemoSale>
-  expensesById: Record<string, DemoExpense>
-  cashSessionsById: Record<string, DemoCashSession>
-  financialAccountsById: Record<string, DemoFinancialAccount>
-  qrIntentsById: Record<string, DemoQrIntent>
-}
+import type { QrIntent } from './qrDemoPolicy'
 
 const STORAGE_KEY = 'asistente-pyme.e1a2.demo.v1'
-const fixtures: DemoBusiness[] = [
+const fixtures: Business[] = [
   { id: 'walos-demo', name: 'WALOS', category: 'Elaboración de productos', kind: 'PRODUCTOS', description: '', slogan: '', taxId: '', initials: 'W', accent: 'mint', source: 'fixture', founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user' },
   { id: 'comercio-demo', name: 'Comercio Ejemplo', category: 'Reventa de productos', kind: 'PRODUCTOS', description: '', slogan: '', taxId: '', initials: 'C', accent: 'blue', source: 'fixture', founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user' },
   { id: 'servicios-demo', name: 'Servicios Ejemplo', category: 'Prestación de servicios', kind: 'SERVICIOS', description: '', slogan: '', taxId: '', initials: 'S', accent: 'violet', source: 'fixture', founderUserId: 'demo-user', administrativeOwnerUserId: 'demo-user' },
 ]
 
-export const kindLabels: Record<BusinessKind, string> = {
-  PRODUCTOS: 'Venta o elaboración de productos',
-  SERVICIOS: 'Prestación de servicios',
-  MIXTO: 'Productos y servicios',
-}
 
-function membership(id: string): DemoMembership {
+function membership(id: string): Membership {
   return { businessId: id, userId: 'demo-user', role: 'TITULAR_ADMINISTRATIVO', status: 'ACTIVA', jobTitle: '' }
 }
 
-function defaults(): DemoSnapshot {
+function defaults(): Snapshot {
   return {
     version: 1,
     profile: { id: 'demo-user', displayName: 'Usuario DEMO', email: '', avatarInitials: '', contactPhone: '' },
@@ -198,10 +64,8 @@ function defaults(): DemoSnapshot {
 
 type Stored = { version: 1; profile?: unknown; createdBusinesses?: unknown; fixtureEdits?: unknown; memberJobs?: unknown; locations?: unknown; teamInvitations?: unknown; teamMembers?: unknown; catalogItems?: unknown; suppliers?: unknown; purchases?: unknown; inventoryOperations?: unknown; sales?: unknown; expenses?: unknown; cashSessions?: unknown; financialAccounts?: unknown; qrIntents?: unknown }
 
-export type EditableBusinessField = 'name' | 'category' | 'description' | 'slogan' | 'taxId'
-export type BusinessDetailsPatch = Partial<Pick<DemoBusiness, EditableBusinessField>>
 
-function editableFields(business: DemoBusiness): BusinessDetailsPatch {
+function editableFields(business: Business): BusinessDetailsPatch {
   return { name: business.name, category: business.category, description: business.description, slogan: business.slogan, taxId: business.taxId }
 }
 
@@ -218,7 +82,7 @@ function cleanEditable(raw: unknown): BusinessDetailsPatch {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
-function validCreated(value: unknown): value is DemoBusiness {
+function validCreated(value: unknown): value is Business {
   if (!isRecord(value)) return false
   return typeof value.id === 'string' && /^demo-business-[a-z0-9-]{16,}$/i.test(value.id)
     && typeof value.name === 'string' && value.name.trim().length >= 2 && value.name.length <= 80
@@ -238,7 +102,7 @@ function safeLoadedMapLink(input: string): string {
   }
 }
 
-function validLocation(raw: unknown): raw is DemoLocation {
+function validLocation(raw: unknown): raw is Location {
   if (!isRecord(raw)) return false
   return typeof raw.id === 'string' && /^demo-location-[a-f0-9-]{36}$/.test(raw.id)
     && typeof raw.businessId === 'string'
@@ -264,25 +128,19 @@ function normalizeLocationInput(input: LocationInput): LocationInput {
   return { name, kind: input.kind, address, mapUrl, canSell: input.canSell, canStore: input.canStore }
 }
 
-export function listDemoLocations(snapshot: DemoSnapshot, businessId: string): DemoLocation[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.locationsById)
-    .filter((location) => location.businessId === businessId)
-    .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name, 'es'))
-}
 
 function activeBusiness(businessId: string): void {
-  if (!findDemoBusiness(state, businessId)) throw new Error('La empresa DEMO no está disponible.')
+  if (!findBusiness(state, businessId)) throw new Error('La empresa DEMO no está disponible.')
 }
 
-function locationOfBusiness(businessId: string, locationId: string): DemoLocation {
+function locationOfBusiness(businessId: string, locationId: string): Location {
   activeBusiness(businessId)
   const location = state.locationsById[locationId]
   if (!location || location.businessId !== businessId) throw new Error('Ubicación no disponible para esta empresa.')
   return location
 }
 
-function validInvitation(raw: unknown): raw is DemoInvitation {
+function validInvitation(raw: unknown): raw is Invitation {
   if (!isRecord(raw)) return false
   return typeof raw.id === 'string' && /^demo-invite-[0-9a-f-]{36}$/.test(raw.id)
     && typeof raw.businessId === 'string'
@@ -294,7 +152,7 @@ function validInvitation(raw: unknown): raw is DemoInvitation {
     && (raw.memberId === undefined || (typeof raw.memberId === 'string' && /^demo-team-[0-9a-f-]{36}$/.test(raw.memberId)))
 }
 
-function validTeamMember(raw: unknown): raw is DemoTeamMember {
+function validTeamMember(raw: unknown): raw is TeamMember {
   if (!isRecord(raw)) return false
   return typeof raw.id === 'string' && /^demo-team-[0-9a-f-]{36}$/.test(raw.id)
     && typeof raw.businessId === 'string'
@@ -305,28 +163,10 @@ function validTeamMember(raw: unknown): raw is DemoTeamMember {
     && typeof raw.sourceInvitationId === 'string'
 }
 
-export function listDemoInvitations(snapshot: DemoSnapshot, businessId: string): DemoInvitation[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.teamInvitationsById)
-    .filter((invite) => invite.businessId === businessId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-}
 
-export function listDemoCatalog(snapshot: DemoSnapshot, businessId: string): DemoCatalogItem[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.catalogItemsById)
-    .filter((item) => item.businessId === businessId)
-    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
-}
 
-export function listDemoSuppliers(snapshot: DemoSnapshot, businessId: string): DemoSupplier[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.suppliersById)
-    .filter((supplier) => supplier.businessId === businessId)
-    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
-}
 
-function supplierOfBusiness(businessId: string, supplierId: string): DemoSupplier {
+function supplierOfBusiness(businessId: string, supplierId: string): Supplier {
   activeBusiness(businessId)
   const supplier = state.suppliersById[supplierId]
   if (!supplier || supplier.businessId !== businessId) {
@@ -343,7 +183,7 @@ function supplierUniqueness(businessId: string, name: string, excludeId?: string
   }
 }
 
-function validFinancialAccount(raw: unknown): raw is DemoFinancialAccount {
+function validFinancialAccount(raw: unknown): raw is FinancialAccount {
   if (!isRecord(raw) || typeof raw.id !== 'string' ||
       !/^demo-financial-account-[a-f0-9-]{36}$/.test(raw.id) ||
       typeof raw.businessId !== 'string' ||
@@ -357,7 +197,7 @@ function validFinancialAccount(raw: unknown): raw is DemoFinancialAccount {
   } catch { return false }
 }
 
-function validSupplier(raw: unknown): raw is DemoSupplier {
+function validSupplier(raw: unknown): raw is Supplier {
   if (!isRecord(raw)) return false
   return typeof raw.id === 'string' && /^demo-supplier-[a-f0-9-]{36}$/.test(raw.id)
     && typeof raw.businessId === 'string' && typeof raw.name === 'string'
@@ -372,69 +212,14 @@ function validSupplier(raw: unknown): raw is DemoSupplier {
     && typeof raw.updatedAt === 'string' && Number.isFinite(Date.parse(raw.updatedAt))
 }
 
-export function listDemoPurchases(snapshot: DemoSnapshot, businessId: string): DemoPurchase[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.purchasesById).filter((purchase) => purchase.businessId === businessId)
-    .sort((a, b) => b.purchasedOn.localeCompare(a.purchasedOn) || b.createdAt.localeCompare(a.createdAt))
-}
 
 /** Historial de entradas efectivo de compras: los eventos son la autoridad, no un contador paralelo. */
-export function listDemoReceiptMovements(snapshot: DemoSnapshot, businessId: string): DemoReceiptMovement[] {
-  return listDemoPurchases(snapshot, businessId).flatMap((purchase) => purchase.receipt
-    ? purchase.receipt.movements.map((movement) => ({
-      ...movement,
-      businessId,
-      purchaseId: purchase.id,
-      receiptId: purchase.receipt!.id,
-      locationId: purchase.receipt!.locationId,
-      createdAt: purchase.receipt!.createdAt,
-      source: 'RECEPCION_COMPRA' as const,
-    }))
-    : [])
-}
 
-export function receiptQuantityMilli(
-  snapshot: DemoSnapshot, businessId: string, catalogItemId: string, locationId: string,
-): number {
-  return listDemoReceiptMovements(snapshot, businessId)
-    .filter((movement) => movement.catalogItemId === catalogItemId && movement.locationId === locationId)
-    .reduce((qty, movement) => qty + movement.quantityMilli, 0)
-}
 
 /** Un único ledger: recepciones de Compras + transferencias/conteos de Inventario. */
-export function listDemoInventoryMovements(snapshot: DemoSnapshot, businessId: string): InventoryMovement[] {
-  const receipts: InventoryMovement[] = listDemoPurchases(snapshot, businessId).flatMap((purchase) =>
-    purchase.receipt ? purchase.receipt.movements.map((movement) => {
-      const line = purchase.lines.find((candidate) => candidate.id === movement.purchaseLineId)
-      return {
-        id: movement.id, operationId: purchase.receipt!.id, businessId,
-        catalogItemId: movement.catalogItemId, itemNameSnapshot: line?.description ?? 'Artículo',
-        unit: movement.unit, locationId: purchase.receipt!.locationId,
-        deltaMilli: movement.quantityMilli, type: 'RECEPCION_COMPRA' as const,
-        createdAt: purchase.receipt!.createdAt, reason: 'Mercadería recibida',
-        reference: purchase.reference || 'Compra DEMO',
-      }
-    }) : [])
-  const sold = Object.values(snapshot.salesById)
-    .filter((sale) => sale.businessId === businessId)
-    .flatMap(saleInventoryMovements)
-  const localOps = Object.values(snapshot.inventoryOperationsById)
-    .filter((operation) => operation.businessId === businessId)
-    .flatMap(inventoryOperationMovements)
-  return [...receipts, ...localOps, ...sold].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
-}
 
-export function listDemoFinancialAccounts(snapshot: DemoSnapshot, businessId: string): DemoFinancialAccount[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.financialAccountsById)
-    .filter((account) => account.businessId === businessId)
-    .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) ||
-      Number(b.status === 'ACTIVA') - Number(a.status === 'ACTIVA') ||
-      a.label.localeCompare(b.label, 'es-AR'))
-}
 
-function financialAccountOfBusiness(businessId: string, accountId: string): DemoFinancialAccount {
+function financialAccountOfBusiness(businessId: string, accountId: string): FinancialAccount {
   activeBusiness(businessId)
   const account = state.financialAccountsById[accountId]
   if (!account || account.businessId !== businessId) {
@@ -443,7 +228,7 @@ function financialAccountOfBusiness(businessId: string, accountId: string): Demo
   return account
 }
 
-function accountForDeclaredPayment(businessId: string, method: string, accountId?: string | null): DemoFinancialAccount | null {
+function accountForDeclaredPayment(businessId: string, method: string, accountId?: string | null): FinancialAccount | null {
   if (!accountId) return null
   const account = financialAccountOfBusiness(businessId, accountId)
   if (!accountSupportsDeclaredPayment(account, method)) {
@@ -466,31 +251,12 @@ function uniqueFinancialAccount(businessId: string, fields: FinancialAccountInpu
   }
 }
 
-export function listDemoExpenses(snapshot: DemoSnapshot, businessId: string): DemoExpense[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.expensesById).filter((expense) => expense.businessId === businessId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-}
 
-export function listDemoCashSessions(snapshot: DemoSnapshot, businessId: string): DemoCashSession[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.cashSessionsById).filter((session) => session.businessId === businessId)
-    .sort((a, b) => b.openedAt.localeCompare(a.openedAt))
-}
 
-export function activeCashSession(snapshot: DemoSnapshot, businessId: string, locationId: string | null): DemoCashSession | undefined {
-  return listDemoCashSessions(snapshot, businessId).find((session) =>
-    session.locationId === locationId && session.status === 'ABIERTA')
-}
 
 /** Las intenciones sin venta no cuentan como ingresos ni como salida de inventario. */
-export function listDemoQrIntents(snapshot: DemoSnapshot, businessId: string): DemoQrIntent[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.qrIntentsById).filter(intent => intent.businessId === businessId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-}
 
-function qrIntentOfBusiness(businessId: string, qrId: string): DemoQrIntent {
+function qrIntentOfBusiness(businessId: string, qrId: string): QrIntent {
   activeBusiness(businessId)
   const intent = state.qrIntentsById[qrId]
   if (!intent || intent.businessId !== businessId) {
@@ -499,26 +265,10 @@ function qrIntentOfBusiness(businessId: string, qrId: string): DemoQrIntent {
   return intent
 }
 
-export function listDemoSales(snapshot: DemoSnapshot, businessId: string): DemoSale[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.salesById).filter((sale) => sale.businessId === businessId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-}
 
-export function inventoryBalanceMilli(
-  snapshot: DemoSnapshot, businessId: string, catalogItemId: string, locationId: string,
-): number {
-  return stockBalance(listDemoInventoryMovements(snapshot, businessId), locationId, catalogItemId)
-}
 
-export function listDemoInventoryOperations(snapshot: DemoSnapshot, businessId: string): InventoryOperation[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.inventoryOperationsById)
-    .filter((operation) => operation.businessId === businessId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-}
 
-function inventoryItemOfBusiness(businessId: string, itemId: string): DemoCatalogItem {
+function inventoryItemOfBusiness(businessId: string, itemId: string): CatalogItem {
   const item = catalogItemOfBusiness(businessId, itemId)
   if (item.status !== 'ACTIVO' || item.kind === 'SERVICIO' || item.unit === 'SERVICIO') {
     throw new Error('Seleccioná un artículo físico activo del Catálogo.')
@@ -526,7 +276,7 @@ function inventoryItemOfBusiness(businessId: string, itemId: string): DemoCatalo
   return item
 }
 
-function inventoryLocationOfBusiness(businessId: string, locationId: string): DemoLocation {
+function inventoryLocationOfBusiness(businessId: string, locationId: string): Location {
   const location = locationOfBusiness(businessId, locationId)
   if (location.status !== 'ACTIVA' || !location.canStore) {
     throw new Error('La ubicación debe estar activa y habilitada para almacenar.')
@@ -534,7 +284,7 @@ function inventoryLocationOfBusiness(businessId: string, locationId: string): De
   return location
 }
 
-function validCashSession(raw: unknown, snapshot: DemoSnapshot): raw is DemoCashSession {
+function validCashSession(raw: unknown, snapshot: Snapshot): raw is CashSession {
   if (!isRecord(raw) || typeof raw.id !== 'string' ||
       !/^demo-cash-session-[a-f0-9-]{36}$/.test(raw.id) ||
       typeof raw.openRequestId !== 'string' || !/^demo-cash-open-[a-f0-9-]{36}$/.test(raw.openRequestId) ||
@@ -573,7 +323,7 @@ function validCashSession(raw: unknown, snapshot: DemoSnapshot): raw is DemoCash
   } catch { return false }
 }
 
-function validExpense(raw: unknown, snapshot: DemoSnapshot): raw is DemoExpense {
+function validExpense(raw: unknown, snapshot: Snapshot): raw is Expense {
   if (!isRecord(raw) || typeof raw.id !== 'string' ||
       !/^demo-expense-[a-f0-9-]{36}$/.test(raw.id) ||
       typeof raw.requestId !== 'string' || !/^demo-expense-request-[a-f0-9-]{36}$/.test(raw.requestId) ||
@@ -585,7 +335,7 @@ function validExpense(raw: unknown, snapshot: DemoSnapshot): raw is DemoExpense 
   try { normalizeExpense(raw as ExpenseInput); return true } catch { return false }
 }
 
-function validSale(raw: unknown, snapshot: DemoSnapshot): raw is DemoSale {
+function validSale(raw: unknown, snapshot: Snapshot): raw is Sale {
   if (!isRecord(raw) || typeof raw.id !== 'string' ||
       !/^demo-sale-[a-f0-9-]{36}$/.test(raw.id) ||
       typeof raw.requestId !== 'string' ||
@@ -629,7 +379,7 @@ function validSale(raw: unknown, snapshot: DemoSnapshot): raw is DemoSale {
   } catch { return false }
 }
 
-function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is InventoryOperation {
+function validInventoryOperation(raw: unknown, snapshot: Snapshot): raw is InventoryOperation {
   if (!isRecord(raw) || typeof raw.id !== 'string' ||
       !/^demo-inventory-op-[a-f0-9-]{36}$/.test(raw.id) ||
       typeof raw.requestId !== 'string' ||
@@ -642,7 +392,7 @@ function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is I
     const businessId = raw.businessId
     // Cada operación se valida contra los eventos existentes hasta su fecha.
     // load() reproduce las operaciones en orden cronológico.
-    const historicalMovements = listDemoInventoryMovements(snapshot, businessId)
+    const historicalMovements = listInventoryMovements(snapshot, businessId)
       .filter((movement) => movement.createdAt <= (raw.createdAt as string))
     if (raw.kind === 'BATCH_COUNT') {
       if (typeof raw.locationId !== 'string' ||
@@ -685,29 +435,29 @@ function validInventoryOperation(raw: unknown, snapshot: DemoSnapshot): raw is I
           snapshot.locationsById[raw.destinationLocationId].businessId !== businessId ||
           typeof raw.quantityMilli !== 'number') return false
       requireTransferStock(stockBalance(historicalMovements, raw.sourceLocationId, raw.catalogItemId),
-        raw.quantityMilli, raw.unit as DemoCatalogItem['unit'])
+        raw.quantityMilli, raw.unit as CatalogItem['unit'])
       return true
     }
     if (raw.kind === 'COUNT') {
       if (typeof raw.locationId !== 'string' || !snapshot.locationsById[raw.locationId] ||
           snapshot.locationsById[raw.locationId].businessId !== businessId ||
           typeof raw.countedMilli !== 'number' || typeof raw.deltaMilli !== 'number') return false
-      validateStockMilli(raw.countedMilli, raw.unit as DemoCatalogItem['unit'], true)
+      validateStockMilli(raw.countedMilli, raw.unit as CatalogItem['unit'], true)
       const current = stockBalance(historicalMovements, raw.locationId, raw.catalogItemId)
-      return raw.deltaMilli === countDifference(current, raw.countedMilli, raw.unit as DemoCatalogItem['unit'])
+      return raw.deltaMilli === countDifference(current, raw.countedMilli, raw.unit as CatalogItem['unit'])
     }
     return false
   } catch { return false }
 }
 
-function purchaseOfBusiness(businessId: string, purchaseId: string): DemoPurchase {
+function purchaseOfBusiness(businessId: string, purchaseId: string): Purchase {
   activeBusiness(businessId)
   const purchase = state.purchasesById[purchaseId]
   if (!purchase || purchase.businessId !== businessId) throw new Error('La compra no pertenece a esta empresa.')
   return purchase
 }
 
-function validPurchase(raw: unknown, snapshot: DemoSnapshot): raw is DemoPurchase {
+function validPurchase(raw: unknown, snapshot: Snapshot): raw is Purchase {
   if (!isRecord(raw) || typeof raw.id !== 'string' ||
       !/^demo-purchase-[a-f0-9-]{36}$/.test(raw.id) ||
       typeof raw.requestId !== 'string' || !/^demo-request-[a-f0-9-]{36}$/.test(raw.requestId) ||
@@ -761,7 +511,7 @@ function validPurchase(raw: unknown, snapshot: DemoSnapshot): raw is DemoPurchas
   }
 }
 
-function catalogItemOfBusiness(businessId: string, itemId: string): DemoCatalogItem {
+function catalogItemOfBusiness(businessId: string, itemId: string): CatalogItem {
   activeBusiness(businessId)
   const item = state.catalogItemsById[itemId]
   if (!item || item.businessId !== businessId) throw new Error('Artículo no disponible para esta empresa DEMO.')
@@ -779,7 +529,7 @@ function catalogUniqueness(businessId: string, input: CatalogInput, excludeItemI
   }
 }
 
-function validCatalogItem(raw: unknown): raw is DemoCatalogItem {
+function validCatalogItem(raw: unknown): raw is CatalogItem {
   if (!isRecord(raw)) return false
   return typeof raw.id === 'string' && /^demo-catalog-[a-f0-9-]{36}$/.test(raw.id)
     && typeof raw.businessId === 'string'
@@ -795,21 +545,15 @@ function validCatalogItem(raw: unknown): raw is DemoCatalogItem {
     && typeof raw.updatedAt === 'string' && Number.isFinite(Date.parse(raw.updatedAt))
 }
 
-export function listDemoTeamMembers(snapshot: DemoSnapshot, businessId: string): DemoTeamMember[] {
-  if (!findDemoBusiness(snapshot, businessId)) return []
-  return Object.values(snapshot.teamMembersById)
-    .filter((member) => member.businessId === businessId && member.status === 'ACTIVA')
-    .sort((a, b) => a.email.localeCompare(b.email))
-}
 
-function invitationInBusiness(businessId: string, invitationId: string): DemoInvitation {
+function invitationInBusiness(businessId: string, invitationId: string): Invitation {
   activeBusiness(businessId)
   const found = state.teamInvitationsById[invitationId]
   if (!found || found.businessId !== businessId) throw new Error('Invitación DEMO no disponible para esta empresa.')
   return found
 }
 
-function load(): DemoSnapshot {
+function load(): Snapshot {
   const state = defaults()
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
@@ -829,7 +573,7 @@ function load(): DemoSnapshot {
     if (Array.isArray(data.createdBusinesses)) {
       for (const rawBusiness of data.createdBusinesses.slice(0, 50)) {
         if (!validCreated(rawBusiness)) continue
-        const item: DemoBusiness = {
+        const item: Business = {
           id: rawBusiness.id,
           name: rawBusiness.name.trim(),
           category: rawBusiness.category.trim() || 'Sin rubro especificado',
@@ -935,7 +679,7 @@ function load(): DemoSnapshot {
           const existing = Object.values(state.catalogItemsById).filter((item) => item.businessId === rawItem.businessId)
           if (existing.some((item) => catalogNameKey(item.name) === catalogNameKey(fields.name)
               || (fields.sku && item.sku === fields.sku))) continue
-          const clean: DemoCatalogItem = {
+          const clean: CatalogItem = {
             ...fields, id: rawItem.id, businessId: rawItem.businessId, status: rawItem.status,
             createdAt: rawItem.createdAt, updatedAt: rawItem.updatedAt,
           }
@@ -958,7 +702,7 @@ function load(): DemoSnapshot {
             entry.businessId === rawSupplier.businessId &&
             supplierNameKey(entry.name) === supplierNameKey(fields.name))
           if (previous) continue
-          const supplier: DemoSupplier = {
+          const supplier: Supplier = {
             ...fields, id: rawSupplier.id, businessId: rawSupplier.businessId,
             status: rawSupplier.status, createdAt: rawSupplier.createdAt,
             updatedAt: rawSupplier.updatedAt,
@@ -990,7 +734,7 @@ function load(): DemoSnapshot {
           const isPrimary = rawAccount.status === 'ACTIVA' &&
             rawAccount.isPrimary && !primaries.has(rawAccount.businessId)
           if (isPrimary) primaries.add(rawAccount.businessId)
-          const account: DemoFinancialAccount = {
+          const account: FinancialAccount = {
             ...fields, id: rawAccount.id, businessId: rawAccount.businessId,
             status: rawAccount.status, isPrimary,
             createdAt: rawAccount.createdAt, updatedAt: rawAccount.updatedAt,
@@ -1010,7 +754,7 @@ function load(): DemoSnapshot {
         if (!validPurchase(rawPurchase, state)) continue
         if (state.purchasesById[rawPurchase.id] || seenRequests.has(rawPurchase.requestId)) continue
         if ((countByBusiness.get(rawPurchase.businessId) ?? 0) >= 500) continue
-        const purchase: DemoPurchase = {
+        const purchase: Purchase = {
           id: rawPurchase.id, requestId: rawPurchase.requestId, businessId: rawPurchase.businessId,
           purchasedOn: rawPurchase.purchasedOn, supplierId: rawPurchase.supplierId,
           supplierNameSnapshot: rawPurchase.supplierNameSnapshot, reference: rawPurchase.reference,
@@ -1038,7 +782,7 @@ function load(): DemoSnapshot {
         if ((counts.get(rawSession.businessId) ?? 0) >= 300) continue
         const scope = JSON.stringify([rawSession.businessId, rawSession.locationId])
         if (rawSession.status === 'ABIERTA' && openScopes.has(scope)) continue
-        const session: DemoCashSession = {
+        const session: CashSession = {
           id: rawSession.id, openRequestId: rawSession.openRequestId,
           closeRequestId: rawSession.closeRequestId, businessId: rawSession.businessId,
           locationId: rawSession.locationId, openingCashCents: rawSession.openingCashCents,
@@ -1063,7 +807,7 @@ function load(): DemoSnapshot {
       for (const rawSale of data.sales.slice(0, 10000)) {
         if (!validSale(rawSale, state) || state.salesById[rawSale.id] || requests.has(rawSale.requestId)) continue
         if ((counts.get(rawSale.businessId) ?? 0) >= 500) continue
-        const sale: DemoSale = {
+        const sale: Sale = {
           id: rawSale.id, requestId: rawSale.requestId, businessId: rawSale.businessId,
           locationId: rawSale.locationId,
           lines: rawSale.lines.map((line) => ({ ...line })),
@@ -1100,7 +844,7 @@ function load(): DemoSnapshot {
         if (!validExpense(rawExpense, state) || requests.has(rawExpense.requestId) ||
             state.expensesById[rawExpense.id]) continue
         if ((counts.get(rawExpense.businessId) ?? 0) >= 500) continue
-        const expense: DemoExpense = {
+        const expense: Expense = {
           id: rawExpense.id, requestId: rawExpense.requestId, businessId: rawExpense.businessId,
           paidOn: rawExpense.paidOn, category: rawExpense.category,
           description: rawExpense.description, amountCents: rawExpense.amountCents,
@@ -1198,7 +942,7 @@ function load(): DemoSnapshot {
 
 let state = load()
 const listeners = new Set<() => void>()
-function notify(next: DemoSnapshot) {
+function notify(next: Snapshot) {
   state = next
   try {
     const saved: Stored = {
@@ -1228,28 +972,19 @@ function notify(next: DemoSnapshot) {
 }
 
 export const demoStore = {
-  getSnapshot: (): DemoSnapshot => state,
+  getSnapshot: (): Snapshot => state,
   subscribe: (listener: () => void): (() => void) => {
     listeners.add(listener)
     return () => listeners.delete(listener)
   },
 }
 
-export function useDemoSnapshot(): DemoSnapshot {
+export function useDemoSnapshot(): Snapshot {
   return useSyncExternalStore(demoStore.subscribe, demoStore.getSnapshot)
 }
 
-export function listDemoBusinesses(snapshot: DemoSnapshot): DemoBusiness[] {
-  return Object.values(snapshot.businessesById).filter((item) => snapshot.membershipsByBusinessId[item.id]?.status === 'ACTIVA')
-}
 
-export function findDemoBusiness(snapshot: DemoSnapshot, id: string): DemoBusiness | undefined {
-  if (snapshot.membershipsByBusinessId[id]?.status !== 'ACTIVA') return undefined
-  return snapshot.businessesById[id]
-}
 
-export type BusinessInput = { name: string; category: string; kind: BusinessKind; description: string }
-export type ProfileInput = { displayName: string; email: string; avatarInitials: string; contactPhone: string }
 function requiredText(value: string, label: string, min: number, max: number): string {
   const clean = value.trim()
   if (clean.length < min || clean.length > max) throw new Error(label + ' debe tener entre ' + min + ' y ' + max + ' caracteres.')
@@ -1257,17 +992,17 @@ function requiredText(value: string, label: string, min: number, max: number): s
 }
 
 export const demoGateway = {
-  async createFinancialAccount(businessId: string, input: FinancialAccountInput): Promise<DemoFinancialAccount> {
+  async createFinancialAccount(businessId: string, input: FinancialAccountInput): Promise<FinancialAccount> {
     activeBusiness(businessId)
-    if (listDemoFinancialAccounts(state, businessId).length >= 100) {
+    if (listFinancialAccounts(state, businessId).length >= 100) {
       throw new Error('El prototipo admite hasta 100 cuentas de referencia por empresa.')
     }
     const fields = normalizeFinancialAccountInput(input)
     uniqueFinancialAccount(businessId, fields)
     const now = new Date().toISOString()
-    const firstActive = !listDemoFinancialAccounts(state, businessId)
+    const firstActive = !listFinancialAccounts(state, businessId)
       .some((account) => account.status === 'ACTIVA')
-    const account: DemoFinancialAccount = {
+    const account: FinancialAccount = {
       ...fields, id: 'demo-financial-account-' + crypto.randomUUID(),
       businessId, status: 'ACTIVA', isPrimary: firstActive,
       createdAt: now, updatedAt: now,
@@ -1280,14 +1015,14 @@ export const demoGateway = {
 
   async updateFinancialAccount(
     businessId: string, accountId: string, input: FinancialAccountInput,
-  ): Promise<DemoFinancialAccount> {
+  ): Promise<FinancialAccount> {
     const previous = financialAccountOfBusiness(businessId, accountId)
     const fields = normalizeFinancialAccountInput(input)
     uniqueFinancialAccount(businessId, fields, accountId)
     if (previous.status !== 'ACTIVA') {
       throw new Error('Primero reactivá la cuenta para editar su ficha.')
     }
-    const updated: DemoFinancialAccount = {
+    const updated: FinancialAccount = {
       ...previous, ...fields, updatedAt: new Date().toISOString(),
     }
     notify({ ...state, financialAccountsById: {
@@ -1297,12 +1032,12 @@ export const demoGateway = {
   },
 
   async setFinancialAccountStatus(
-    businessId: string, accountId: string, status: DemoFinancialAccount['status'],
-  ): Promise<DemoFinancialAccount> {
+    businessId: string, accountId: string, status: FinancialAccount['status'],
+  ): Promise<FinancialAccount> {
     const previous = financialAccountOfBusiness(businessId, accountId)
     if (status !== 'ACTIVA' && status !== 'INACTIVA') throw new Error('Estado de cuenta inválido.')
     if (status === previous.status) return previous
-    const updated: DemoFinancialAccount = {
+    const updated: FinancialAccount = {
       ...previous, status, isPrimary: status === 'ACTIVA' ? previous.isPrimary : false,
       updatedAt: new Date().toISOString(),
     }
@@ -1314,7 +1049,7 @@ export const demoGateway = {
 
   async setPrimaryFinancialAccount(
     businessId: string, accountId: string,
-  ): Promise<DemoFinancialAccount> {
+  ): Promise<FinancialAccount> {
     const selected = financialAccountOfBusiness(businessId, accountId)
     if (selected.status !== 'ACTIVA') throw new Error('Sólo una cuenta activa puede marcarse como principal.')
     if (selected.isPrimary) return selected
@@ -1324,7 +1059,7 @@ export const demoGateway = {
         accounts[account.id] = { ...account, isPrimary: false, updatedAt: new Date().toISOString() }
       }
     }
-    const updated: DemoFinancialAccount = { ...selected, isPrimary: true, updatedAt: new Date().toISOString() }
+    const updated: FinancialAccount = { ...selected, isPrimary: true, updatedAt: new Date().toISOString() }
     accounts[accountId] = updated
     notify({ ...state, financialAccountsById: accounts })
     return updated
@@ -1333,7 +1068,7 @@ export const demoGateway = {
   async openCashSession(
     businessId: string, locationId: string | null,
     openingCashCents: number, requestId: string,
-  ): Promise<DemoCashSession> {
+  ): Promise<CashSession> {
     activeBusiness(businessId)
     if (!/^demo-cash-open-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Solicitud de apertura inválida.')
     const prior = Object.values(state.cashSessionsById).find((session) => session.openRequestId === requestId)
@@ -1341,7 +1076,7 @@ export const demoGateway = {
       if (prior.businessId !== businessId) throw new Error('La solicitud ya pertenece a otra empresa.')
       return prior
     }
-    if (listDemoCashSessions(state, businessId).length >= 300) throw new Error('Se alcanzó el límite de jornadas DEMO por empresa.')
+    if (listCashSessions(state, businessId).length >= 300) throw new Error('Se alcanzó el límite de jornadas DEMO por empresa.')
     cashCents(openingCashCents, 'Fondo inicial', true)
     if (locationId !== null) {
       const location = locationOfBusiness(businessId, locationId)
@@ -1352,7 +1087,7 @@ export const demoGateway = {
     if (activeCashSession(state, businessId, locationId)) {
       throw new Error('Ya existe una jornada abierta para esa ubicación/caja.')
     }
-    const opened: DemoCashSession = {
+    const opened: CashSession = {
       id: 'demo-cash-session-' + crypto.randomUUID(), openRequestId: requestId,
       closeRequestId: null, businessId, locationId, openingCashCents,
       openedAt: new Date().toISOString(), openedBy: 'demo-user',
@@ -1362,7 +1097,7 @@ export const demoGateway = {
     return opened
   },
 
-  async registerExpense(businessId: string, input: ExpenseInput, requestId: string): Promise<DemoExpense> {
+  async registerExpense(businessId: string, input: ExpenseInput, requestId: string): Promise<Expense> {
     activeBusiness(businessId)
     if (!/^demo-expense-request-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Solicitud de gasto inválida.')
     const prior = Object.values(state.expensesById).find((expense) => expense.requestId === requestId)
@@ -1370,7 +1105,7 @@ export const demoGateway = {
       if (prior.businessId !== businessId) throw new Error('La solicitud de gasto ya pertenece a otra empresa.')
       return prior
     }
-    if (listDemoExpenses(state, businessId).length >= 500) throw new Error('Límite de gastos DEMO alcanzado.')
+    if (listExpenses(state, businessId).length >= 500) throw new Error('Límite de gastos DEMO alcanzado.')
     const fields = normalizeExpense(input)
     const linkedAccount = accountForDeclaredPayment(businessId, fields.paymentMethod, fields.financialAccountId)
     if (fields.locationId !== null) {
@@ -1386,7 +1121,7 @@ export const demoGateway = {
         throw new Error('Efectivo insuficiente en esta jornada. No podés registrar un gasto mayor al efectivo esperado.')
       }
     }
-    const expense: DemoExpense = {
+    const expense: Expense = {
       ...fields, id: 'demo-expense-' + crypto.randomUUID(),
       financialAccountId: linkedAccount?.id ?? null,
       financialAccountLabelSnapshot: linkedAccount?.label ?? null,
@@ -1400,7 +1135,7 @@ export const demoGateway = {
   async closeCashSession(
     businessId: string, sessionId: string, input: CashCloseInput,
     requestId: string,
-  ): Promise<DemoCashSession> {
+  ): Promise<CashSession> {
     activeBusiness(businessId)
     if (!/^demo-cash-close-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Solicitud de cierre inválida.')
     const session = state.cashSessionsById[sessionId]
@@ -1415,7 +1150,7 @@ export const demoGateway = {
     const snapshot = makeCloseSnapshot(session,
       Object.values(state.salesById), Object.values(state.expensesById),
       input, new Date().toISOString())
-    const closed: DemoCashSession = {
+    const closed: CashSession = {
       ...session, status: 'CERRADA', closeRequestId: requestId, closeSnapshot: snapshot,
     }
     // Snapshot + estado CERRADA se guardan juntos; nunca se elimina el detalle.
@@ -1436,7 +1171,7 @@ export const demoGateway = {
       }
       return previous
     }
-    if (listDemoInventoryOperations(state, businessId).length >= 1500) {
+    if (listInventoryOperations(state, businessId).length >= 1500) {
       throw new Error('Se alcanzó el límite de operaciones DEMO por empresa.')
     }
     inventoryLocationOfBusiness(businessId, locationId)
@@ -1481,7 +1216,7 @@ export const demoGateway = {
         throw new Error('La solicitud de traslado ya fue utilizada.')
       return previous
     }
-    if (listDemoInventoryOperations(state, businessId).length >= 1500)
+    if (listInventoryOperations(state, businessId).length >= 1500)
       throw new Error('Se alcanzó el límite de operaciones DEMO por empresa.')
     const item = inventoryItemOfBusiness(businessId, catalogItemId)
     inventoryLocationOfBusiness(businessId, sourceLocationId)
@@ -1511,7 +1246,7 @@ export const demoGateway = {
         throw new Error('La solicitud de conteo ya fue utilizada.')
       return previous
     }
-    if (listDemoInventoryOperations(state, businessId).length >= 1500)
+    if (listInventoryOperations(state, businessId).length >= 1500)
       throw new Error('Se alcanzó el límite de operaciones DEMO por empresa.')
     const item = inventoryItemOfBusiness(businessId, catalogItemId)
     inventoryLocationOfBusiness(businessId, locationId)
@@ -1527,7 +1262,7 @@ export const demoGateway = {
     return operation
   },
 
-  async createQrDemoIntent(businessId: string, input: SaleInput, requestId: string, saleRequestId: string): Promise<DemoQrIntent> {
+  async createQrDemoIntent(businessId: string, input: SaleInput, requestId: string, saleRequestId: string): Promise<QrIntent> {
     activeBusiness(businessId)
     if (!/^demo-qr-request-[a-f0-9-]{36}$/.test(requestId) ||
         !/^demo-sale-request-[a-f0-9-]{36}$/.test(saleRequestId)) {
@@ -1542,7 +1277,7 @@ export const demoGateway = {
         Object.values(state.salesById).some(s => s.requestId === saleRequestId)) {
       throw new Error('Este identificador de venta ya está reservado.')
     }
-    if (listDemoQrIntents(state, businessId).length >= 100) {
+    if (listQrIntents(state, businessId).length >= 100) {
       throw new Error('Límite de 100 intenciones QR DEMO por empresa.')
     }
     const normalized = normalizeQrSaleInput(input)
@@ -1566,7 +1301,7 @@ export const demoGateway = {
       normalized.payments[0].financialAccountId)
     const payment = { ...normalized.payments[0], financialAccountId: account?.id ?? null }
     const now = new Date().toISOString()
-    const intent: DemoQrIntent = {
+    const intent: QrIntent = {
       id: 'demo-qr-intent-' + crypto.randomUUID(),
       requestId, saleRequestId, businessId,
       input: { ...normalized, payments: [payment] },
@@ -1578,16 +1313,16 @@ export const demoGateway = {
     return intent
   },
 
-  async cancelQrDemoIntent(businessId: string, intentId: string): Promise<DemoQrIntent> {
+  async cancelQrDemoIntent(businessId: string, intentId: string): Promise<QrIntent> {
     const intent = qrIntentOfBusiness(businessId, intentId)
     if (intent.status === 'CANCELADO') return intent
     if (intent.status !== 'PENDIENTE') throw new Error('Una intención aprobada no se puede cancelar como pendiente.')
-    const updated: DemoQrIntent = { ...intent, status: 'CANCELADO', updatedAt: new Date().toISOString() }
+    const updated: QrIntent = { ...intent, status: 'CANCELADO', updatedAt: new Date().toISOString() }
     notify({ ...state, qrIntentsById: { ...state.qrIntentsById, [intent.id]: updated } })
     return updated
   },
 
-  async simulateQrDemoApproval(businessId: string, intentId: string): Promise<DemoSale> {
+  async simulateQrDemoApproval(businessId: string, intentId: string): Promise<Sale> {
     const intent = qrIntentOfBusiness(businessId, intentId)
     if (intent.status === 'CANCELADO') throw new Error('La intención fue cancelada. Creá otra para reintentar.')
     if (intent.status === 'SIMULADO_APROBADO') {
@@ -1598,7 +1333,7 @@ export const demoGateway = {
     // registerSale valida stock, ubicación, cuentas y montos nuevamente. El ID
     // persistente de solicitud impide registrar dos ventas por reintentos.
     const sale = await demoGateway.registerSale(businessId, intent.input, intent.saleRequestId)
-    const updated: DemoQrIntent = {
+    const updated: QrIntent = {
       ...intent, status: 'SIMULADO_APROBADO', saleId: sale.id,
       updatedAt: new Date().toISOString(),
     }
@@ -1606,7 +1341,7 @@ export const demoGateway = {
     return sale
   },
 
-  async registerSale(businessId: string, input: SaleInput, requestId: string): Promise<DemoSale> {
+  async registerSale(businessId: string, input: SaleInput, requestId: string): Promise<Sale> {
     activeBusiness(businessId)
     if (!/^demo-sale-request-[a-f0-9-]{36}$/.test(requestId)) {
       throw new Error('Identificador de venta inválido.')
@@ -1616,7 +1351,7 @@ export const demoGateway = {
       if (previous.businessId !== businessId) throw new Error('La solicitud ya pertenece a otra empresa.')
       return previous
     }
-    if (listDemoSales(state, businessId).length >= 500) {
+    if (listSales(state, businessId).length >= 500) {
       throw new Error('Esta empresa alcanzó el límite de ventas de demostración.')
     }
     const fields = normalizeSaleInput(input)
@@ -1648,7 +1383,7 @@ export const demoGateway = {
     })
     const amounts = saleAmounts(lines, fields.discountCents)
     validateSalePayments(fields.payments, amounts.totalCents)
-    const sale: DemoSale = {
+    const sale: Sale = {
       id: 'demo-sale-' + crypto.randomUUID(), requestId, businessId,
       locationId: location?.id ?? null, lines,
       ...amounts, payments: fields.payments.map((payment) => {
@@ -1665,7 +1400,7 @@ export const demoGateway = {
     return sale
   },
 
-  async registerPurchase(businessId: string, input: PurchaseInput, requestId: string): Promise<DemoPurchase> {
+  async registerPurchase(businessId: string, input: PurchaseInput, requestId: string): Promise<Purchase> {
     activeBusiness(businessId)
     if (!/^demo-request-[a-f0-9-]{36}$/.test(requestId)) throw new Error('Identificador de solicitud inválido.')
     const previous = Object.values(state.purchasesById).find((purchase) => purchase.requestId === requestId)
@@ -1673,7 +1408,7 @@ export const demoGateway = {
       if (previous.businessId !== businessId) throw new Error('La solicitud ya fue usada por otra empresa.')
       return previous // reintento de un mismo submit, sin duplicar una compra
     }
-    if (listDemoPurchases(state, businessId).length >= 500) {
+    if (listPurchases(state, businessId).length >= 500) {
       throw new Error('La DEMO admite hasta 500 compras por empresa.')
     }
     const fields = normalizePurchaseInput(input)
@@ -1692,7 +1427,7 @@ export const demoGateway = {
       }
     })
     const now = new Date().toISOString()
-    const purchase: DemoPurchase = {
+    const purchase: Purchase = {
       id: 'demo-purchase-' + crypto.randomUUID(),
       requestId, businessId, supplierId: fields.supplierId,
       supplierNameSnapshot: supplier?.name ?? '',
@@ -1731,20 +1466,20 @@ export const demoGateway = {
         quantityMilli: line.quantityMilli,
       })),
     }
-    const updated: DemoPurchase = { ...purchase, receipt }
+    const updated: Purchase = { ...purchase, receipt }
     notify({ ...state, purchasesById: { ...state.purchasesById, [purchase.id]: updated } })
     return receipt
   },
 
-  async createSupplier(businessId: string, input: SupplierInput): Promise<DemoSupplier> {
+  async createSupplier(businessId: string, input: SupplierInput): Promise<Supplier> {
     activeBusiness(businessId)
-    if (listDemoSuppliers(state, businessId).length >= 200) {
+    if (listSuppliers(state, businessId).length >= 200) {
       throw new Error('El prototipo admite hasta 200 proveedores por empresa.')
     }
     const fields = normalizeSupplierInput(input)
     supplierUniqueness(businessId, fields.name)
     const now = new Date().toISOString()
-    const supplier: DemoSupplier = {
+    const supplier: Supplier = {
       ...fields, id: 'demo-supplier-' + crypto.randomUUID(), businessId,
       status: 'ACTIVO', createdAt: now, updatedAt: now,
     }
@@ -1752,33 +1487,33 @@ export const demoGateway = {
     return supplier
   },
 
-  async updateSupplier(businessId: string, supplierId: string, input: SupplierInput): Promise<DemoSupplier> {
+  async updateSupplier(businessId: string, supplierId: string, input: SupplierInput): Promise<Supplier> {
     const previous = supplierOfBusiness(businessId, supplierId)
     const fields = normalizeSupplierInput(input)
     supplierUniqueness(businessId, fields.name, supplierId)
-    const updated: DemoSupplier = { ...previous, ...fields, updatedAt: new Date().toISOString() }
+    const updated: Supplier = { ...previous, ...fields, updatedAt: new Date().toISOString() }
     notify({ ...state, suppliersById: { ...state.suppliersById, [supplierId]: updated } })
     return updated
   },
 
-  async setSupplierStatus(businessId: string, supplierId: string, status: DemoSupplier['status']): Promise<DemoSupplier> {
+  async setSupplierStatus(businessId: string, supplierId: string, status: Supplier['status']): Promise<Supplier> {
     const supplier = supplierOfBusiness(businessId, supplierId)
     if (status !== 'ACTIVO' && status !== 'INACTIVO') throw new Error('Estado de proveedor inválido.')
     if (supplier.status === status) return supplier
-    const updated: DemoSupplier = { ...supplier, status, updatedAt: new Date().toISOString() }
+    const updated: Supplier = { ...supplier, status, updatedAt: new Date().toISOString() }
     notify({ ...state, suppliersById: { ...state.suppliersById, [supplierId]: updated } })
     return updated
   },
 
-  async createCatalogItem(businessId: string, input: CatalogInput): Promise<DemoCatalogItem> {
+  async createCatalogItem(businessId: string, input: CatalogInput): Promise<CatalogItem> {
     activeBusiness(businessId)
-    if (listDemoCatalog(state, businessId).length >= 500) {
+    if (listCatalog(state, businessId).length >= 500) {
       throw new Error('La DEMO admite hasta 500 artículos por empresa.')
     }
     const fields = normalizeCatalogInput(input)
     catalogUniqueness(businessId, fields)
     const now = new Date().toISOString()
-    const item: DemoCatalogItem = {
+    const item: CatalogItem = {
       ...fields, id: 'demo-catalog-' + crypto.randomUUID(), businessId,
       status: 'ACTIVO', createdAt: now, updatedAt: now,
     }
@@ -1786,7 +1521,7 @@ export const demoGateway = {
     return item
   },
 
-  async updateCatalogItem(businessId: string, itemId: string, input: CatalogInput): Promise<DemoCatalogItem> {
+  async updateCatalogItem(businessId: string, itemId: string, input: CatalogInput): Promise<CatalogItem> {
     const current = catalogItemOfBusiness(businessId, itemId)
     const fields = normalizeCatalogInput(input)
     catalogUniqueness(businessId, fields, itemId)
@@ -1802,21 +1537,21 @@ export const demoGateway = {
         throw new Error('No podés cambiar la unidad ni convertir un bien en servicio mientras tenga compras, ventas o movimientos históricos.')
       }
     }
-    const updated: DemoCatalogItem = { ...current, ...fields, updatedAt: new Date().toISOString() }
+    const updated: CatalogItem = { ...current, ...fields, updatedAt: new Date().toISOString() }
     notify({ ...state, catalogItemsById: { ...state.catalogItemsById, [itemId]: updated } })
     return updated
   },
 
-  async setCatalogItemStatus(businessId: string, itemId: string, status: DemoCatalogItem['status']): Promise<DemoCatalogItem> {
+  async setCatalogItemStatus(businessId: string, itemId: string, status: CatalogItem['status']): Promise<CatalogItem> {
     const current = catalogItemOfBusiness(businessId, itemId)
     if (status !== 'ACTIVO' && status !== 'INACTIVO') throw new Error('Estado inválido.')
     if (current.status === status) return current
-    const updated: DemoCatalogItem = { ...current, status, updatedAt: new Date().toISOString() }
+    const updated: CatalogItem = { ...current, status, updatedAt: new Date().toISOString() }
     notify({ ...state, catalogItemsById: { ...state.catalogItemsById, [itemId]: updated } })
     return updated
   },
 
-  async createInvitation(businessId: string, emailInput: string, role: InviteRole): Promise<DemoInvitation> {
+  async createInvitation(businessId: string, emailInput: string, role: InviteRole): Promise<Invitation> {
     activeBusiness(businessId)
     const { email } = normalizeInviteInput(emailInput, role)
     if (state.profile.email && email === state.profile.email.trim().toLowerCase()) {
@@ -1831,7 +1566,7 @@ export const demoGateway = {
       throw new Error('Ya hay una invitación pendiente para ese correo en esta empresa.')
     }
     const createdAt = new Date().toISOString()
-    const invitation: DemoInvitation = {
+    const invitation: Invitation = {
       id: 'demo-invite-' + crypto.randomUUID(), businessId, email, role, status: 'PENDIENTE',
       createdAt, expiresAt: invitationExpiresAt(createdAt),
     }
@@ -1839,16 +1574,16 @@ export const demoGateway = {
     return invitation
   },
 
-  async cancelInvitation(businessId: string, invitationId: string): Promise<DemoInvitation> {
+  async cancelInvitation(businessId: string, invitationId: string): Promise<Invitation> {
     const current = invitationInBusiness(businessId, invitationId)
     if (current.status === 'CANCELADA') return current
     if (!canReplyToInvitation(current)) throw new Error('Sólo puede cancelarse una invitación pendiente y vigente.')
-    const updated: DemoInvitation = { ...current, status: 'CANCELADA' }
+    const updated: Invitation = { ...current, status: 'CANCELADA' }
     notify({ ...state, teamInvitationsById: { ...state.teamInvitationsById, [invitationId]: updated } })
     return updated
   },
 
-  async simulateInvitationResponse(businessId: string, invitationId: string, action: 'ACEPTAR' | 'RECHAZAR'): Promise<DemoInvitation> {
+  async simulateInvitationResponse(businessId: string, invitationId: string, action: 'ACEPTAR' | 'RECHAZAR'): Promise<Invitation> {
     const invitation = invitationInBusiness(businessId, invitationId)
     if (action !== 'ACEPTAR' && action !== 'RECHAZAR') throw new Error('Respuesta DEMO inválida.')
     if (invitation.status === 'ACEPTADA' && action === 'ACEPTAR' && invitation.memberId && state.teamMembersById[invitation.memberId]) {
@@ -1856,20 +1591,20 @@ export const demoGateway = {
     }
     if (!canReplyToInvitation(invitation)) throw new Error('La invitación no está pendiente o ya venció.')
     if (action === 'RECHAZAR') {
-      const rejected: DemoInvitation = { ...invitation, status: 'RECHAZADA' }
+      const rejected: Invitation = { ...invitation, status: 'RECHAZADA' }
       notify({ ...state, teamInvitationsById: { ...state.teamInvitationsById, [invitationId]: rejected } })
       return rejected
     }
     if (Object.values(state.teamMembersById).some((item) => item.businessId === businessId && item.email === invitation.email)) {
       throw new Error('Ese correo ya tiene un integrante DEMO en esta empresa.')
     }
-    if (listDemoTeamMembers(state, businessId).length >= 50) throw new Error('La DEMO admite hasta 50 integrantes invitados por empresa.')
-    const member: DemoTeamMember = {
+    if (listTeamMembers(state, businessId).length >= 50) throw new Error('La DEMO admite hasta 50 integrantes invitados por empresa.')
+    const member: TeamMember = {
       id: 'demo-team-' + crypto.randomUUID(), businessId, email: invitation.email,
       role: invitation.role, status: 'ACTIVA', joinedAt: new Date().toISOString(),
       sourceInvitationId: invitation.id,
     }
-    const accepted: DemoInvitation = { ...invitation, status: 'ACEPTADA', memberId: member.id }
+    const accepted: Invitation = { ...invitation, status: 'ACEPTADA', memberId: member.id }
     // Una única actualización local representa invitación ACEPTADA + nueva membresía.
     notify({
       ...state,
@@ -1879,12 +1614,12 @@ export const demoGateway = {
     return accepted
   },
 
-  async createLocation(businessId: string, input: LocationInput): Promise<DemoLocation> {
+  async createLocation(businessId: string, input: LocationInput): Promise<Location> {
     activeBusiness(businessId)
     const current = Object.values(state.locationsById).filter((location) => location.businessId === businessId)
     if (current.length >= 100) throw new Error('El prototipo admite hasta 100 ubicaciones por empresa.')
     const fields = normalizeLocationInput(input)
-    const location: DemoLocation = {
+    const location: Location = {
       ...fields, id: 'demo-location-' + crypto.randomUUID(), businessId,
       status: 'ACTIVA', isPrimary: !current.some((item) => item.isPrimary && item.status === 'ACTIVA'),
     }
@@ -1892,20 +1627,20 @@ export const demoGateway = {
     return location
   },
 
-  async updateLocation(businessId: string, locationId: string, input: LocationInput): Promise<DemoLocation> {
+  async updateLocation(businessId: string, locationId: string, input: LocationInput): Promise<Location> {
     const previous = locationOfBusiness(businessId, locationId)
     const fields = normalizeLocationInput(input)
     if (previous.canStore && !fields.canStore) {
-      const hasStock = listDemoCatalog(state, businessId).some((item) =>
+      const hasStock = listCatalog(state, businessId).some((item) =>
         item.kind !== 'SERVICIO' && inventoryBalanceMilli(state, businessId, item.id, locationId) > 0)
       if (hasStock) throw new Error('La ubicación conserva existencias. Trasladá o ajustá el stock antes de deshabilitar el almacenamiento.')
     }
-    const updated: DemoLocation = { ...previous, ...fields }
+    const updated: Location = { ...previous, ...fields }
     notify({ ...state, locationsById: { ...state.locationsById, [locationId]: updated } })
     return updated
   },
 
-  async setPrimaryLocation(businessId: string, locationId: string): Promise<DemoLocation> {
+  async setPrimaryLocation(businessId: string, locationId: string): Promise<Location> {
     const location = locationOfBusiness(businessId, locationId)
     if (location.status !== 'ACTIVA') throw new Error('Sólo una ubicación activa puede ser principal.')
     const locationsById = { ...state.locationsById }
@@ -1917,16 +1652,16 @@ export const demoGateway = {
     return locationsById[locationId]
   },
 
-  async setLocationStatus(businessId: string, locationId: string, status: DemoLocation['status']): Promise<DemoLocation> {
+  async setLocationStatus(businessId: string, locationId: string, status: Location['status']): Promise<Location> {
     const previous = locationOfBusiness(businessId, locationId)
     if (!['ACTIVA', 'PAUSADA'].includes(status)) throw new Error('Estado de ubicación inválido.')
     if (previous.status === status) return previous
-    const updated: DemoLocation = { ...previous, status, isPrimary: status === 'PAUSADA' ? false : previous.isPrimary }
+    const updated: Location = { ...previous, status, isPrimary: status === 'PAUSADA' ? false : previous.isPrimary }
     notify({ ...state, locationsById: { ...state.locationsById, [locationId]: updated } })
     return updated
   },
 
-  async saveProfile(input: ProfileInput): Promise<DemoProfile> {
+  async saveProfile(input: ProfileInput): Promise<Profile> {
     const displayName = requiredText(input.displayName, 'El nombre visible', 2, 70)
     const email = input.email.trim()
     if (email.length > 120 || (email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
@@ -1940,12 +1675,12 @@ export const demoGateway = {
     if (contactPhone.length > 30 || !/^[+()\d\s.-]*$/.test(contactPhone)) {
       throw new Error('El contacto debe usar números y signos telefónicos, con hasta 30 caracteres.')
     }
-    const profile: DemoProfile = { id: 'demo-user', displayName, email, avatarInitials, contactPhone }
+    const profile: Profile = { id: 'demo-user', displayName, email, avatarInitials, contactPhone }
     notify({ ...state, profile })
     return profile
   },
 
-  async createBusiness(input: BusinessInput): Promise<DemoBusiness> {
+  async createBusiness(input: BusinessInput): Promise<Business> {
     const name = requiredText(input.name, 'El nombre de la empresa', 2, 80)
     const category = input.category.trim()
     const description = input.description.trim()
@@ -1954,7 +1689,7 @@ export const demoGateway = {
     if (!['PRODUCTOS', 'SERVICIOS', 'MIXTO'].includes(input.kind)) throw new Error('Seleccioná un tipo de actividad válido.')
     if (Object.keys(state.businessesById).length >= 53) throw new Error('La demostración admite hasta 50 empresas nuevas.')
     const id = 'demo-business-' + crypto.randomUUID()
-    const business: DemoBusiness = {
+    const business: Business = {
       id, name, category: category || 'Sin rubro especificado',
       kind: input.kind, description, slogan: '', taxId: '', initials: name.slice(0, 1).toUpperCase(),
       accent: 'blue', source: 'created',
@@ -1968,7 +1703,7 @@ export const demoGateway = {
     return business
   },
 
-  async saveMemberJobTitle(businessId: string, jobTitle: string): Promise<DemoMembership> {
+  async saveMemberJobTitle(businessId: string, jobTitle: string): Promise<Membership> {
     const current = state.membershipsByBusinessId[businessId]
     if (!current || current.status !== 'ACTIVA' || !state.businessesById[businessId]) {
       throw new Error('Membresía DEMO no disponible para esta empresa.')
@@ -1984,8 +1719,8 @@ export const demoGateway = {
   },
 
   /** Edita exclusivamente los campos comerciales de la empresa solicitada. */
-  async updateBusinessDetails(businessId: string, patch: BusinessDetailsPatch): Promise<DemoBusiness> {
-    const current = findDemoBusiness(state, businessId)
+  async updateBusinessDetails(businessId: string, patch: BusinessDetailsPatch): Promise<Business> {
+    const current = findBusiness(state, businessId)
     if (!current) throw new Error('Empresa DEMO no disponible.')
     if (Object.keys(patch).some((key) => !['name', 'category', 'description', 'slogan', 'taxId'].includes(key))) {
       throw new Error('Campo de empresa no permitido.')
@@ -2001,8 +1736,25 @@ export const demoGateway = {
     if (taxId.length > 0 && !/^\d{11}$|^\d{2}-\d{8}-\d$/.test(taxId)) {
       throw new Error('El CUIT de prueba debe tener 11 dígitos, con guiones opcionales.')
     }
-    const updated: DemoBusiness = { ...current, name, category, description, slogan, taxId, initials: name.slice(0, 1).toUpperCase() }
+    const updated: Business = { ...current, name, category, description, slogan, taxId, initials: name.slice(0, 1).toUpperCase() }
     notify({ ...state, businessesById: { ...state.businessesById, [businessId]: updated } })
     return updated
   },
 }
+
+export { listLocations as listDemoLocations } from '../selectors'
+export { listInvitations as listDemoInvitations } from '../selectors'
+export { listCatalog as listDemoCatalog } from '../selectors'
+export { listSuppliers as listDemoSuppliers } from '../selectors'
+export { listPurchases as listDemoPurchases } from '../selectors'
+export { listReceiptMovements as listDemoReceiptMovements } from '../selectors'
+export { listInventoryMovements as listDemoInventoryMovements } from '../selectors'
+export { listFinancialAccounts as listDemoFinancialAccounts } from '../selectors'
+export { listExpenses as listDemoExpenses } from '../selectors'
+export { listCashSessions as listDemoCashSessions } from '../selectors'
+export { listQrIntents as listDemoQrIntents } from '../selectors'
+export { listSales as listDemoSales } from '../selectors'
+export { listInventoryOperations as listDemoInventoryOperations } from '../selectors'
+export { listTeamMembers as listDemoTeamMembers } from '../selectors'
+export { listBusinesses as listDemoBusinesses } from '../selectors'
+export { findBusiness as findDemoBusiness } from '../selectors'

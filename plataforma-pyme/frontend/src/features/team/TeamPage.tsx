@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
-import { demoGateway, profileInitials } from '../../data/demo/demoStore'
-import type { DemoBusiness, DemoInvitation, DemoMembership, DemoProfile, DemoTeamMember } from '../../data/demo/demoStore'
+import { profileInitials } from '../../data/models'
+import { useAppData } from '../../data/dataContext'
+import type { Business, Invitation, Membership, Profile, TeamMember } from '../../data/models'
 import { displayInvitationStatus, inviteRoleLabels } from '../../data/demo/teamPolicy'
 import type { InvitationDisplayStatus, InviteRole } from '../../data/demo/teamPolicy'
 
@@ -21,12 +22,13 @@ export function TeamPage({
   members,
   invitations,
 }: {
-  business: DemoBusiness
-  profile: DemoProfile
-  owner: DemoMembership
-  members: DemoTeamMember[]
-  invitations: DemoInvitation[]
+  business: Business
+  profile: Profile
+  owner: Membership
+  members: TeamMember[]
+  invitations: Invitation[]
 }) {
+  const { gateway } = useAppData()
   const [showForm, setShowForm] = useState(false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<InviteRole>('TRABAJADOR')
@@ -45,7 +47,7 @@ export function TeamPage({
     setError('')
     setNotice('')
     try {
-      await demoGateway.createInvitation(business.id, email, role)
+      await gateway.createInvitation(business.id, email, role)
       setEmail('')
       setRole('TRABAJADOR')
       setShowForm(false)
@@ -57,17 +59,17 @@ export function TeamPage({
     }
   }
 
-  async function updateInvitation(invitation: DemoInvitation, action: 'ACEPTAR' | 'RECHAZAR' | 'CANCELAR') {
+  async function updateInvitation(invitation: Invitation, action: 'ACEPTAR' | 'RECHAZAR' | 'CANCELAR') {
     if (busy) return
     setBusy(true)
     setError('')
     setNotice('')
     try {
       if (action === 'CANCELAR') {
-        await demoGateway.cancelInvitation(business.id, invitation.id)
+        await gateway.cancelInvitation(business.id, invitation.id)
         setNotice('Invitación DEMO cancelada. No se agregó ningún integrante.')
       } else {
-        await demoGateway.simulateInvitationResponse(business.id, invitation.id, action)
+        await gateway.simulateInvitationResponse(business.id, invitation.id, action)
         setNotice(action === 'ACEPTAR'
           ? 'Aceptación simulada: se creó un integrante ficticio en esta empresa, sin cuenta real ni permisos de servidor.'
           : 'Rechazo simulado: no se creó ninguna membresía.')

@@ -1,12 +1,12 @@
+import { useOnlineDraft } from '../common/useOnlineDraft'
 import { useState } from 'react'
 import { CatalogDetailDialog } from './CatalogDetailDialog'
 import { DemoImagePicker, DemoPhoto } from '../common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import type { IconName } from '../../app/navigation'
-import { demoGateway } from '../../data/demo/demoStore'
-import type { DemoBusiness, DemoCatalogItem } from '../../data/demo/demoStore'
+import { useAppData, useBusinessPermissions } from '../../data/dataContext'
+import type { Business, CatalogItem } from '../../data/models'
 import {
   catalogKinds, catalogKindLabels, catalogUnits, catalogUnitLabels,
   moneyDisplay, moneyInput, parseMoneyCents,
@@ -30,7 +30,7 @@ const kindIcon: Record<CatalogKind, IconName> = {
   SERVICIO: 'briefcase',
 }
 
-function draftOf(item: DemoCatalogItem): CatalogDraft {
+function draftOf(item: CatalogItem): CatalogDraft {
   return {
     name: item.name, kind: item.kind, category: item.category, sku: item.sku,
     unit: item.unit, description: item.description, observations: item.observations ?? '', sellable: item.sellable,
@@ -50,9 +50,11 @@ function toInput(draft: CatalogDraft): CatalogInput {
 export function CatalogPage({
   business, items,
 }: {
-  business: DemoBusiness
-  items: DemoCatalogItem[]
+  business: Business
+  items: CatalogItem[]
 }) {
+  const { gateway, mode, capabilities } = useAppData()
+  const { canManageResources } = useBusinessPermissions(business.id)
   const [editingId, setEditingId] = useState<string | 'new' | null>(null)
   const [draft, setDraft] = useState<CatalogDraft>(defaultDraft)
   const [search, setSearch] = useState('')
@@ -64,6 +66,7 @@ export function CatalogPage({
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
 
+  const { confirmDiscard, markSaved } = useOnlineDraft(editingId !== null && Boolean(draft.name || draft.sku || draft.description || draft.observations || draft.priceText || draft.costText), busy)
   const active = items.filter((item) => item.status === 'ACTIVO').length
   const serviceCount = items.filter((item) => item.kind === 'SERVICIO').length
   const term = search.trim().toLocaleLowerCase('es-AR')
@@ -83,7 +86,7 @@ export function CatalogPage({
     setNotice('')
   }
 
-  function startEdit(item: DemoCatalogItem) {
+  function startEdit(item: CatalogItem) {
     setEditingId(item.id)
     setDraft(draftOf(item))
     setDetailId(null)
@@ -93,6 +96,7 @@ export function CatalogPage({
   }
 
   function cancelEdit() {
+    if (!confirmDiscard()) return
     setEditingId(null)
     setError('')
   }
@@ -115,12 +119,13 @@ export function CatalogPage({
     try {
       const input = toInput(draft)
       if (editingId === 'new') {
-        await demoGateway.createCatalogItem(business.id, input)
-        setNotice('Artículo o servicio DEMO creado para «' + business.name + '». No se generó stock.')
+        await gateway.createCatalogItem(business.id, input)
+        setNotice((mode === 'api' ? 'Artículo creado para «' : 'Artículo o servicio creado para «') + business.name + '». No se generó stock.')
       } else {
-        await demoGateway.updateCatalogItem(business.id, editingId, input)
-        setNotice('Ficha DEMO actualizada. No se modificaron cantidades de inventario.')
+        await gateway.updateCatalogItem(business.id, editingId, input)
+        setNotice('Ficha actualizada. No se modificaron cantidades de inventario.')
       }
+      markSaved()
       setEditingId(null)
       setStatusFilter('TODOS')
     } catch (err) {
@@ -130,18 +135,18 @@ export function CatalogPage({
     }
   }
 
-  async function toggleStatus(item: DemoCatalogItem) {
+  async function toggleStatus(item: CatalogItem) {
     if (busy) return
     setBusy(true)
     setError('')
     setNotice('')
     try {
       const status = item.status === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
-      await demoGateway.setCatalogItemStatus(business.id, item.id, status)
+      await gateway.setCatalogItemStatus(business.id, item.id, status)
       setConfirmationId(null)
       setNotice(status === 'INACTIVO'
         ? 'Artículo inactivado. La ficha se conserva y aparece con el filtro Inactivos.'
-        : 'Artículo reactivado en el catálogo DEMO.')
+        : 'Artículo reactivado en el catálogo.')
       setStatusFilter('TODOS')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar el estado.')
@@ -157,23 +162,21 @@ export function CatalogPage({
 
   return <>
     <div className="page-heading">
-      <div><p className="eyebrow">OPERACIONES · EMPRESA DEMO</p><h1>Catálogo general</h1><p>Productos, insumos y servicios de «{business.name}».</p></div>
-      <button type="button" className="button button-primary" onClick={editingId === null ? startCreate : cancelEdit} disabled={busy}>
+      <div><p className="eyebrow">PREPARACIÓN · EMPRESA</p><h1>Catálogo</h1><p>{'Productos, insumos y servicios'} de «{business.name}».</p></div>
+      <button type="button" className="button button-primary" onClick={editingId === null ? startCreate : cancelEdit} disabled={busy || (editingId === null && !canManageResources)}>
         <Icon name={editingId === null ? 'plus' : 'close'} size={18}/>
-        {editingId === null ? 'Agregar artículo o servicio' : 'Cerrar formulario'}
+        {editingId === null ? mode === 'api' ? 'Agregar artículo' : 'Agregar artículo o servicio' : 'Cerrar formulario'}
       </button>
     </div>
 
     <section className="catalog-summary" aria-label="Resumen del catálogo">
       <div><span className="feature-icon blue"><Icon name="package"/></span><small>Fichas registradas</small><strong>{items.length}</strong></div>
       <div><span className="feature-icon mint"><Icon name="shield"/></span><small>Activas</small><strong>{active}</strong></div>
-      <div><span className="feature-icon violet"><Icon name="briefcase"/></span><small>Servicios</small><strong>{serviceCount}</strong></div>
+      {capabilities.services && <div><span className="feature-icon violet"><Icon name="briefcase"/></span><small>Servicios</small><strong>{serviceCount}</strong></div>}
     </section>
 
     <div className="informational-note catalog-info-note"><Icon name="shield" size={19}/><span>
-      Las fichas son exclusivas de esta empresa. Un <strong>servicio no tiene existencias físicas</strong>.
-      Registrar un producto o insumo tampoco crea stock: las existencias se actualizan desde Compras, Inventario y Ventas.
-      Los precios son de demostración y se expresan en pesos argentinos (ARS).
+      Definí qué comprás y vendés, en ARS. Crear una ficha no carga stock: usá una recepción o un conteo en Stock.{mode === 'demo' && ' Los servicios no tienen existencias físicas.'}
     </span></div>
 
     {error && <p className="form-message error catalog-feedback" role="alert">{error}</p>}
@@ -183,26 +186,26 @@ export function CatalogPage({
       <div className="form-panel-header">
         <span className="feature-icon blue"><Icon name={currentlyEditing ? 'package' : 'plus'}/></span>
         <div><h2>{currentlyEditing ? 'Editar ficha de catálogo' : 'Agregar al catálogo'}</h2><p>
-          {currentlyEditing ? 'Editás únicamente la ficha de «' + currentlyEditing.name + '».' : 'Creá un producto, insumo o servicio sin stock inicial obligatorio.'}
+          {currentlyEditing ? 'Editás únicamente la ficha de «' + currentlyEditing.name + '».' : mode === 'api' ? 'Creá un producto o insumo sin stock inicial obligatorio.' : 'Creá un producto, insumo o servicio sin stock inicial obligatorio.'}
         </p></div>
       </div>
       <form className="demo-form" onSubmit={saveItem}>
-        {currentlyEditing ? <DemoImagePicker imageKey={demoImageKey('catalog', business.id, currentlyEditing.id)} label="Imagen del artículo o servicio"/> :
-          <p className="form-hint">Guardá primero la ficha; después vas a poder agregarle su foto desde «Editar».</p>}
+        {currentlyEditing ? <DemoImagePicker target={{ scope: 'catalog', businessId: business.id, entityId: currentlyEditing.id }} label="Imagen del artículo o servicio"/> :
+          <p className="form-hint">{mode === 'demo' ? 'Guardá primero la ficha; después vas a poder agregarle su foto desde «Editar».' : 'La ficha se guardará en el servidor. Crear un artículo no genera existencias.'}</p>}
         <div className="catalog-form-grid">
-          <label className="form-field"><span>Nombre del artículo o servicio *</span>
-            <input required minLength={2} maxLength={90} autoFocus value={draft.name} onChange={(e) => setDraft((x) => ({ ...x, name: e.target.value }))} placeholder="Ej.: Producto, insumo o servicio de prueba" />
+          <label className="form-field"><span>{'Nombre del artículo o servicio *'}</span>
+            <input required minLength={2} maxLength={90} autoFocus value={draft.name} onChange={(e) => setDraft((x) => ({ ...x, name: e.target.value }))} placeholder={mode === 'api' ? 'Ej.: Producto o insumo' : 'Ej.: Producto, insumo o servicio de prueba'} />
           </label>
           <label className="form-field"><span>Tipo *</span>
-            <select value={draft.kind} onChange={(e) => setKind(e.target.value as CatalogKind)}>
-              {catalogKinds.map((kind) => <option key={kind} value={kind}>{catalogKindLabels[kind]}</option>)}
+            <select disabled={mode === 'api' && Boolean(currentlyEditing)} value={draft.kind} onChange={(e) => setKind(e.target.value as CatalogKind)}>
+              {catalogKinds.filter(kind => capabilities.services || kind !== 'SERVICIO').map((kind) => <option key={kind} value={kind}>{catalogKindLabels[kind]}</option>)}
             </select>
           </label>
           <label className="form-field"><span>Categoría *</span>
             <input required maxLength={60} minLength={2} value={draft.category} onChange={(e) => setDraft((x) => ({ ...x, category: e.target.value }))} placeholder="Ej.: Accesorios / Servicios / Materiales" />
           </label>
           <label className="form-field"><span>Unidad de control *</span>
-            <select value={draft.unit} disabled={draft.kind === 'SERVICIO'} onChange={(e) => setDraft((x) => ({ ...x, unit: e.target.value as CatalogUnit }))}>
+            <select value={draft.unit} disabled={draft.kind === 'SERVICIO' || mode === 'api' && Boolean(currentlyEditing)} onChange={(e) => setDraft((x) => ({ ...x, unit: e.target.value as CatalogUnit }))}>
               {catalogUnits.filter((unit) => draft.kind === 'SERVICIO' ? unit === 'SERVICIO' : unit !== 'SERVICIO').map((unit) =>
                 <option key={unit} value={unit}>{catalogUnitLabels[unit]}</option>)}
             </select>
@@ -227,19 +230,19 @@ export function CatalogPage({
         </label>
         <label className="form-field"><span>Observaciones internas (opcional)</span>
           <textarea rows={3} maxLength={600} value={draft.observations} onChange={(e) => setDraft((x) => ({ ...x, observations: e.target.value }))} placeholder="Indicaciones internas, cuidados y recordatorios del equipo."/>
-          <small>Se guardan en esta DEMO local; todavía no existe autorización de lectura desde un servidor.</small>
+          <small>{mode === 'api' ? 'Se guardan en el servidor y son visibles para los usuarios de esta instalación.' : 'Se guardan en esta DEMO local.'}</small>
         </label>
-        <p className="form-hint">El SKU es único dentro de cada empresa, pero puede repetirse en negocios diferentes. No se convierten automáticamente paquetes, cajas ni kilos a otras unidades. Sin precio significa «A cotizar».</p>
+        <p className="form-hint">{'El SKU es único dentro de cada empresa y puede repetirse en otras.'} No se convierten automáticamente paquetes, cajas ni kilos a otras unidades. Sin precio significa «A cotizar».</p>
         <div className="form-actions">
           <button type="button" className="button button-secondary" onClick={cancelEdit} disabled={busy}>Cancelar</button>
-          <button type="submit" className="button button-primary" disabled={busy}>{busy ? 'Guardando…' : currentlyEditing ? 'Guardar cambios' : 'Agregar a catálogo DEMO'}</button>
+          <button type="submit" className="button button-primary" disabled={busy || !canManageResources}>{busy ? 'Guardando…' : currentlyEditing ? 'Guardar cambios' : 'Agregar a catálogo'}</button>
         </div>
       </form>
     </section>}
 
     <section className="form-panel catalog-list-panel">
       <div className="business-section-heading catalog-list-heading">
-        <div><Icon name="package" size={22}/><h2>Artículos y servicios</h2></div>
+        <div><Icon name="package" size={22}/><h2>{'Artículos y servicios'}</h2></div>
         <span>{filtered.length} visibles de {items.length}</span>
       </div>
       <div className="catalog-filters">
@@ -249,7 +252,7 @@ export function CatalogPage({
         <label className="form-field"><span>Tipo</span>
           <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as CatalogKind | 'TODOS')}>
             <option value="TODOS">Todos los tipos</option>
-            {catalogKinds.map((kind) => <option key={kind} value={kind}>{catalogKindLabels[kind]}</option>)}
+            {catalogKinds.filter(kind => capabilities.services || kind !== 'SERVICIO').map((kind) => <option key={kind} value={kind}>{catalogKindLabels[kind]}</option>)}
           </select>
         </label>
         <label className="form-field"><span>Estado</span>
@@ -262,8 +265,8 @@ export function CatalogPage({
       {items.length === 0 && <div className="catalog-empty">
         <span className="feature-icon blue"><Icon name="package" size={25}/></span>
         <h3>Tu catálogo todavía está vacío</h3>
-        <p>Agregá tu primer producto, insumo o servicio. Una empresa de servicios puede empezar sin inventario ni ubicaciones.</p>
-        {editingId === null && <button className="button button-primary" type="button" onClick={startCreate}><Icon name="plus" size={17}/> Agregar primera ficha</button>}
+        <p>{mode === 'api' ? 'Agregá tu primer producto o insumo. Después cargá existencias con una recepción o un conteo.' : 'Agregá tu primer producto, insumo o servicio. Una empresa de servicios puede empezar sin inventario ni ubicaciones.'}</p>
+        {editingId === null && <button className="button button-primary" type="button" onClick={startCreate} disabled={!canManageResources}><Icon name="plus" size={17}/> Agregar primera ficha</button>}
       </div>}
       {items.length > 0 && filtered.length === 0 && <div className="catalog-empty">
         <h3>Sin coincidencias</h3><p>Probá otra búsqueda o cambiá los filtros. Las fichas inactivas se conservan en el catálogo.</p>
@@ -272,7 +275,7 @@ export function CatalogPage({
       <div className="catalog-grid">
         {filtered.map((item) => <article key={item.id} className={'catalog-card'+(item.status === 'INACTIVO' ? ' catalog-card-inactive' : '')}>
           <div className="catalog-card-head">
-            <DemoPhoto imageKey={demoImageKey('catalog', business.id, item.id)} alt={'Imagen de ' + item.name}
+            <DemoPhoto target={{ scope: 'catalog', businessId: business.id, entityId: item.id }} alt={'Imagen de ' + item.name}
               fallback={<Icon name={kindIcon[item.kind]} size={23}/>} className="feature-icon blue demo-photo-list"/>
             <div className="catalog-card-title"><h3>{item.name}</h3><span>{catalogKindLabels[item.kind]}</span></div>
             <span className={'catalog-state '+(item.status === 'ACTIVO' ? 'is-active' : 'is-inactive')}>{item.status === 'ACTIVO' ? 'Activo' : 'Inactivo'}</span>
@@ -285,16 +288,16 @@ export function CatalogPage({
           </div>
           <div className="catalog-card-note">{item.kind === 'SERVICIO'
             ? 'Servicio: sin stock físico propio'
-            : 'Producto o material: consultá sus existencias en Inventario'}</div>
+            : 'Producto o material: consultá el stock en Inventario por ubicación'}</div>
           <div className="catalog-card-actions">
             <button type="button" className="button button-secondary" onClick={() => { setDetailId(item.id); setConfirmationId(null) }}>Ver ficha</button>
-            <button type="button" className="button button-secondary" onClick={() => startEdit(item)} disabled={busy}>Editar</button>
-            <button type="button" className="button button-secondary" onClick={() => { setConfirmationId(confirmationId === item.id ? null : item.id); setDetailId(null) }} disabled={busy}>{item.status === 'ACTIVO' ? 'Desactivar' : 'Reactivar'}</button>
+            <button type="button" className="button button-secondary" onClick={() => startEdit(item)} disabled={busy || !canManageResources}>Editar</button>
+            <button type="button" className="button button-secondary" onClick={() => { setConfirmationId(confirmationId === item.id ? null : item.id); setDetailId(null) }} disabled={busy || !canManageResources}>{item.status === 'ACTIVO' ? 'Desactivar' : 'Reactivar'}</button>
           </div>
           {confirmationId === item.id && <section className="catalog-confirm">
             <p>¿Querés {item.status === 'ACTIVO' ? 'desactivar' : 'reactivar'} esta ficha? No se borra su registro ni se modifican existencias.</p>
             <div><button className="button button-secondary" type="button" onClick={() => setConfirmationId(null)} disabled={busy}>Cancelar</button>
-              <button className="button button-primary" type="button" onClick={() => toggleStatus(item)} disabled={busy}>{busy ? 'Procesando…' : 'Confirmar'}</button></div>
+              <button className="button button-primary" type="button" onClick={() => toggleStatus(item)} disabled={busy || !canManageResources}>{busy ? 'Procesando…' : 'Confirmar'}</button></div>
           </section>}
         </article>)}
       </div>

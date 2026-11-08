@@ -1,16 +1,17 @@
+import { useOnlineDraft } from '../common/useOnlineDraft'
+import { useAppData } from '../../data/dataContext'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
 import { DemoImagePicker } from '../common/DemoPhoto'
-import { demoImageKey } from '../../data/demo/imagePolicy'
-import type { DemoSupplier } from '../../data/demo/demoStore'
+import type { Supplier } from '../../data/models'
 import { mapsSearchUrl } from '../../data/demo/mapsLinks'
 import {
   blankSupplier, supplierPaymentLabels, supplierPayments, weekdays,
 } from '../../data/demo/supplierPolicy'
 import type { SupplierInput, SupplierPayment, SupplierPromotion } from '../../data/demo/supplierPolicy'
 
-function initial(supplier?: DemoSupplier): SupplierInput {
+function initial(supplier?: Supplier): SupplierInput {
   if (!supplier) return { ...blankSupplier, paymentMethods: [], promotions: [] }
   return {
     name: supplier.name, offerings: supplier.offerings, contactPerson: supplier.contactPerson,
@@ -25,15 +26,17 @@ function initial(supplier?: DemoSupplier): SupplierInput {
 export function SupplierForm({
   supplier, businessName, onSave, onCancel,
 }: {
-  supplier?: DemoSupplier
+  supplier?: Supplier
   businessName: string
   onSave: (input: SupplierInput) => Promise<void>
   onCancel: () => void
 }) {
+  const { mode } = useAppData()
   const [draft, setDraft] = useState<SupplierInput>(() => initial(supplier))
   const [usePhoneForWhatsapp, setUsePhoneForWhatsapp] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const { confirmDiscard, markSaved } = useOnlineDraft(Boolean(draft.name || draft.notes), saving)
   const set = <K extends keyof SupplierInput>(key: K, value: SupplierInput[K]) => setDraft((current) => ({ ...current, [key]: value }))
 
   function togglePayment(method: SupplierPayment, checked: boolean) {
@@ -67,6 +70,7 @@ export function SupplierForm({
     setError('')
     try {
       await onSave(draft)
+      markSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el proveedor.')
     } finally {
@@ -77,27 +81,27 @@ export function SupplierForm({
   return <section className="form-panel supplier-editor" aria-label="Formulario de proveedor">
     <div className="form-panel-header">
       <span className="feature-icon blue"><Icon name="truck" size={22}/></span>
-      <div><h2>{supplier ? 'Editar proveedor: ' + supplier.name : 'Agregar proveedor'}</h2><p>Contacto y condiciones comerciales de «{businessName}». Sólo el nombre es obligatorio.</p></div>
+      <div><h2>{supplier ? 'Editar proveedor: ' + supplier.name : 'Agregar proveedor'}</h2><p>{'Contacto y condiciones comerciales de «' + businessName + '».'} Sólo el nombre es obligatorio.</p></div>
     </div>
     <form className="demo-form" onSubmit={submit}>
-      {supplier ? <DemoImagePicker imageKey={demoImageKey('supplier', supplier.businessId, supplier.id)} label="Imagen comercial del proveedor"/> :
-        <p className="form-hint">Guardá el proveedor y luego abrí «Editar» para elegir su imagen.</p>}
+      {mode === 'demo' && (supplier ? <DemoImagePicker target={{ scope: 'supplier', businessId: supplier.businessId, entityId: supplier.id }} label="Imagen comercial del proveedor"/> :
+        <p className="form-hint">Guardá el proveedor y luego abrí «Editar» para elegir su imagen.</p>)}
       <div className="supplier-form-section">
-        <h3>1. Identificación comercial</h3>
+        <h3>{mode === 'api' ? 'Identificación comercial' : '1. Identificación comercial'}</h3>
         <div className="supplier-form-grid">
           <label className="form-field"><span>Nombre comercial *</span>
             <input required minLength={2} maxLength={90} autoFocus value={draft.name} onChange={(e) => set('name', e.target.value)} placeholder="Ej.: Distribuidora Ejemplo"/>
           </label>
-          <label className="form-field"><span>Persona de contacto (opcional)</span>
+          {<label className="form-field"><span>Persona de contacto (opcional)</span>
             <input maxLength={100} value={draft.contactPerson} onChange={(e) => set('contactPerson', e.target.value)} placeholder="Ej.: Área comercial"/>
-          </label>
+          </label>}
         </div>
-        <label className="form-field"><span>Productos o servicios que ofrece (opcional)</span>
+        {<label className="form-field"><span>Productos o servicios que ofrece (opcional)</span>
           <input maxLength={240} value={draft.offerings} onChange={(e) => set('offerings', e.target.value)} placeholder="Ej.: Insumos, servicios de mantenimiento, logística…"/>
-        </label>
+        </label>}
       </div>
 
-      <div className="supplier-form-section">
+      {<> <div className="supplier-form-section">
         <h3>2. Contacto y ubicación</h3>
         <div className="supplier-form-grid">
           <label className="form-field"><span>Teléfono comercial (opcional)</span>
@@ -165,18 +169,18 @@ export function SupplierForm({
         </div>)}
       </div>
 
-      <div className="supplier-form-section">
-        <h3>5. Observaciones comerciales (opcionales)</h3>
+      </>}<div className="supplier-form-section">
+        <h3>{mode === 'api' ? 'Observaciones comerciales (opcionales)' : '5. Observaciones comerciales (opcionales)'}</h3>
         <label className="form-field"><span>Indicaciones internas</span>
           <textarea rows={3} maxLength={650} value={draft.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Ej.: Horarios de entrega, retiro, condiciones de pedido…"/>
         </label>
       </div>
 
-      <p className="form-hint supplier-form-warning">El registro es DEMO local. No ingreses contactos personales reales ni información comercial confidencial. No se envían mensajes ni se validan promociones.</p>
+      <p className="form-hint supplier-form-warning">{mode === 'api' ? 'Se guardan el nombre y las observaciones en el servidor de esta instalación.' : 'El registro es DEMO local. No ingreses contactos personales reales ni información comercial confidencial. No se envían mensajes ni se validan promociones.'}</p>
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions">
-        <button type="button" className="button button-secondary" onClick={onCancel} disabled={saving}>Cancelar</button>
-        <button type="submit" className="button button-primary" disabled={saving}>{saving ? 'Guardando…' : supplier ? 'Guardar proveedor' : 'Agregar proveedor DEMO'}</button>
+        <button type="button" className="button button-secondary" onClick={() => { if (confirmDiscard()) onCancel() }} disabled={saving}>Cancelar</button>
+        <button type="submit" className="button button-primary" disabled={saving}>{saving ? 'Guardando…' : supplier ? 'Guardar proveedor' : 'Agregar proveedor'}</button>
       </div>
     </form>
   </section>

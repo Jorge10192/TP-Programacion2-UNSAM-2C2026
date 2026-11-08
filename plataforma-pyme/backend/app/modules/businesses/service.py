@@ -40,7 +40,7 @@ class CreationResult:
 
 def _payload_digest(command: CreateBusinessRequest) -> str:
     canonical = json.dumps(
-        command.model_dump(mode="json"),
+        command.model_dump(mode="json", exclude={"description"} if not command.description else set()),
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
@@ -104,6 +104,9 @@ class BusinessService:
                 founder_user_id=actor_id, status="ACTIVA",
             )
             self.repository.add_company(company)
+            if command.description:
+                from app.infrastructure.models.commerce import BusinessSettings
+                self.db.add(BusinessSettings(business_id=company.id, description=command.description))
             member = Membership(
                 id=uuid4(), business_id=company.id, user_id=actor_id,
                 role="TITULAR_ADMINISTRATIVO", status="ACTIVA",

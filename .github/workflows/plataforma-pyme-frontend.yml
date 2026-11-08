@@ -23,17 +23,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: plataforma-pyme/frontend/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
       - run: npm run lint
-      - run: npm run test:accounts
-      - run: npm run test:sales
-      - run: npm run test:cash
-      - run: npm run test:qr
-      - run: npm run test:inventory
+      - run: npm test
 
   browser-e2e:
     name: E2E Chromium escritorio y móvil
@@ -43,12 +39,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
           cache-dependency-path: plataforma-pyme/frontend/package-lock.json
       - name: Instalar frontend
         working-directory: plataforma-pyme/frontend
-        run: npm ci
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Instalar Playwright aislado
         working-directory: plataforma-pyme/frontend/e2e
         run: npm install --no-audit --no-fund

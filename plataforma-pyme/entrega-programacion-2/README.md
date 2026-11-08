@@ -1,62 +1,28 @@
-# Documentación de entrega — Programación 2
+# Entrega - Programación 2
 
-**Proyecto:** Asistente PyME — Plataforma generalista de gestión para múltiples empresas y rubros.  
-**Ubicación prevista en el repositorio:** `plataforma-pyme/entrega-programacion-2/`.  
-**Estado de esta carpeta:** 01 v0.3, 02 v0.4, 03 v0.4 y 04 v0.5; todos conservan el diseño conceptual y añaden estado E2. 05 v0.1 registra la trazabilidad de código/API. 06 pruebas/despliegue aún pendiente. No sustituye `../docs/`.
+**Asistente PyME:** plataforma multiempresa y multirrubro. Código ejecutable en `plataforma-pyme`; WALOS es un negocio de ejemplo.
 
-## Propósito
+## Orden de lectura y revisión
 
-Reunir los documentos académicos y el material de exposición correspondientes al proyecto de Programación 2. El contenido debe reflejar la implementación demostrable y diferenciarla de la arquitectura de backend aún planificada.
+| Documento | Contenido |
+|---|---|
+| [01 - Requerimientos](01_ANALISIS_DE_REQUERIMIENTOS.md) | Objetivos, RF/RNF y alcance actual |
+| [02 - Casos de uso](02_CASOS_DE_USO.md) | CU-01 a CU-11 integrados, CU-12 diferido, extensiones CU-13/14 |
+| [03 - Dominio y UML](03_MODELO_DE_DOMINIO_Y_UML.md) | Cambios de v0.4 a v0.5, modelo implementado, modelo conceptual y criterios de aprobación |
+| [04 - Arquitectura y patrones](04_ARQUITECTURA_Y_PATRONES.md) | Monolito modular, transacciones y patrones aplicados/propuestos |
+| [05 - API y trazabilidad](05_MATRIZ_API_Y_TRAZABILIDAD.md) | Rutas ejecutables, permisos, errores y reglas de precisión |
+| [06 - Pruebas y despliegue](06_PRUEBAS_Y_DESPLIEGUE.md) | Comandos reproducibles, aceptación y límites de publicación |
+| [Diagramas](diagramas/README.md) | Láminas conceptuales SVG, fuentes PlantUML y guías |
 
-Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»**: al menos cinco requerimientos funcionales de alto nivel cubiertos por endpoints, documentación y casos de uso, FastAPI, registro/autenticación segura, SQLAlchemy, Docker, testing, deploy, un patrón de diseño útil, al menos diez pruebas unitarias, GitHub Actions y una presentación con al menos un diagrama UML y explicación de patrones.
-
-## Índice y orden de trabajo
-
-| Documento | Propósito | Estado |
-|---|---|---|
-| `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR funcional v0.3, con anexo E2** |
-| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.4 — E2 implementado + pendientes** |
-| [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO v0.4 — conceptual + correspondencia E2** |
-| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v0.5 — histórico TO-BE + anexo E2** |
-| [`05_MATRIZ_API_Y_TRAZABILIDAD.md`](05_MATRIZ_API_Y_TRAZABILIDAD.md) | RF → CU → endpoints reales → pruebas/roles/evidencia/pendientes | **PUBLICADO v0.1 — E2-1.3C.1** |
-| `06_PRUEBAS_Y_DESPLIEGUE.md` | Estrategia de pruebas, GitHub Actions, Docker, despliegue y evidencias | Pendiente |
-| [`diagramas/`](diagramas/) | SVG vectoriales aprobados, fuentes PlantUML editables y tres guías detalladas | **03A / 03B / 03C publicados** |
-| `presentacion/` | Diapositivas de defensa final | A crear |
-
-> La consigna exige **al menos un UML**, no exactamente dos. Se planifica un diagrama de casos de uso y uno de clases para mejorar la exposición, sujetos a aprobación del equipo.
+La implementación sigue las dependencias E2: identidad y empresas → recursos → compra/recepción → stock → venta → integración React → pruebas/documentación/deploy. Gastos/caja y cuentas declaradas completan el circuito conectado. [Instalación](../README.md).
 
 ## Convenciones
 
-1. **AS-IS / Implementado DEMO:** evidencia disponible en el frontend React, con persistencia local y sin seguridad de servidor.
-2. **AS-IMPLEMENTED / Backend comprobado:** FastAPI, PostgreSQL, SQLAlchemy, Docker, auth y empresas; contrastar rutas y pruebas con 05. **TO-BE / Pendiente:** autorizaciones efectivas por rol, invitaciones, catálogo, compras, stock, ventas e integración con React.
-3. **Diferido:** fuera del alcance del MVP; por ejemplo, pagos reales de Mercado Pago, QR parcial real, conciliación bancaria y automatizaciones no comprometidas.
-4. Requerimientos identificados como `RF-xx`, no funcionales como `RNF-xx` y reglas de negocio como `RN-xx`. Conservan sus identificadores entre documentos. La etiqueta **NÚCLEO MVP**, **SOPORTE MVP** o **POST-MVP** expresa el alcance propuesto del backend, no una funcionalidad implementada.
-5. Cada documento pasa por `BORRADOR` → `APROBADO` → `ACTUALIZADO PARA ENTREGA`, registrando versión/fecha. La aprobación corresponde al equipo. **No se debe marcar un backend como implementado ni una prueba como aprobada sin evidencia.**
-6. **WALOS es una empresa de ejemplo**, no define el público objetivo ni limita los rubros de la plataforma.
-7. Documentar únicamente hechos verificables; no confundir pruebas de frontend con pruebas de API real.
+- **Implementado en rama:** existe código y una comprobación local reproducible. No implica merge, CI publicada, deploy ni aprobación del equipo.
+- **DEMO:** persistencia local y acciones simuladas; no equivale a seguridad o pagos reales.
+- **Conceptual / propuesto:** diseño futuro o detalle de persistencia diferente del código actual. El apartado 0 del Documento 03 explica las diferencias; 05 fija los contratos reales.
+- **Diferido:** invitaciones reales, QR/pagos bancarios, fotos sincronizadas, recetas, reservas y otras extensiones expresamente identificadas.
 
-## Documentación interna complementaria
+Los documentos E0/E1 de `../docs` conservan el historial del prototipo. Se consultan como antecedentes; el contrato vigente de integración está en 05. Las aprobaciones académicas corresponden al equipo y siguen pendientes hasta su revisión.
 
-Los documentos en `../docs/` incluyen decisiones de integración E0–E1, ADR y pruebas. Son fuentes de consulta, **no equivalentes automáticamente a la entrega final**: algunos representan propuestas históricas que deben contrastarse con el código actual.
-
-El README técnico de instalación y comandos se mantiene en `../frontend/README.md` y, cuando exista, en `../backend/README.md` o el README raíz correspondiente. Este índice académico no los sustituye.
-
-## Uso
-
-Se aprueba un documento por vez antes de incorporarlo a `main`. No subir capturas o datos sensibles de empresas reales. En las próximas etapas, completar la matriz de evidencia con rutas reales, resultados de tests y enlaces al despliegue.
-
-**Alcance para la primera API:** la selección de requerimientos de núcleo y soporte del Documento 01 es una propuesta sometida a aprobación, no un compromiso de implementar todas las pantallas de la DEMO en FastAPI. La presentación debe distinguir un diagrama UML de clases (estructura) y uno de casos de uso (interacciones). Los diagramas se guardarán junto con sus fuentes editables en `diagramas/`, y la exposición en `presentacion/`.
-
-## Cómo utilizar los diagramas del Documento 03
-
-- **[03A — Identidad, empresas y catálogo](diagramas/03A_EXPLICACION_IDENTIDAD_EMPRESAS_CATALOGO.md):** identidad global, membresías por empresa, fundador, invitaciones, recursos y cardinalidades.
-- **[03B — Compras, recepción, inventario y ventas](diagramas/03B_EXPLICACION_COMPRAS_INVENTARIO_VENTAS.md):** compra sin stock, recepción única, ventas y pagos declarados, snapshots, saldos, movimientos, concurrencia e idempotencia.
-- **[03C — Casos de uso de la primera API](diagramas/03C_EXPLICACION_CASOS_DE_USO.md):** actores, CU-01 a CU-12, flujos ejemplificativos y trazabilidad a requerimientos.
-
-Cada explicación enlaza la **lámina SVG vectorial** (visualización de presentación) y el archivo **PlantUML** (fuente UML editable). Las láminas muestran el diseño conceptual TO-BE, no la implementación ya existente de FastAPI. Para la defensa, usar los SVG; para mantener o revisar asociaciones y cardinalidades, consultar el PUML y el Documento 03.
-
-## Política de actualización por incrementos E2
-
-**Regla operativa:** ninguna entrega mayor se considera cerrada solo por compilar. La misma entrega debe enlazar código, contratos HTTP, pruebas, versión Alembic si corresponde y documentos académicos. En cada corte se revisa 05 y `../backend/README.md`; 01/02 cambian al concretar RF/CU, 03 y el UML 03A al modificar entidades/reglas/cardinalidades, y 04 al modificar arquitectura/seguridad/patrones. El 03B no se regenera por cambios de identidad o autorización.
-
-**Orden acordado:** E2-1.3C.1 política RBAC pura → E2-1.3C.2 autorización efectiva de perfil empresarial → E2-1.3C.3 emisión de invitaciones → E2-1.3C.4 aceptación y administración de membresías → revisión final de 03A y contratos de 05 → RF-03 ubicaciones. Cada paso exige tests locales y CI verificables antes de avanzar; un código publicado no equivale por sí solo a etapa validada.
+Se conserva la regla de revisión incremental E2 acordada con Jorge. Esta rama aplica la política C.1 a edición empresarial C.2 y conecta los recursos/comandos posteriores. Invitaciones y gestión de miembros C.3/C.4 permanecen identificadas como pendientes; no se consideran aprobadas por avanzar con el circuito comercial.

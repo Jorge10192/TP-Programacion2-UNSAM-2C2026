@@ -2,14 +2,76 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.4 — modelo conceptual y correspondencia parcial con E2 real  
-**Estado:** **MODELO CONCEPTUAL REVISADO + ANEXO AS-IMPLEMENTED E2** — 03A/03B/03C no se rehicieron; subsistemas comerciales pendientes  
+**Versión:** 0.5\
+**Estado:** integración implementada en rama; modelo conceptual y aprobación del equipo diferenciados\
 **Fecha:** 7 de noviembre de 2026  
-**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.3), `02_CASOS_DE_USO.md` (v0.4), políticas del frontend DEMO E1-D2.  
+**Referencias:** [01](01_ANALISIS_DE_REQUERIMIENTOS.md), [02](02_CASOS_DE_USO.md), contrato [05](05_MATRIZ_API_Y_TRAZABILIDAD.md), modelos SQLAlchemy y políticas de precisión del frontend.\
 
-> **Criterio de lectura:** AS-IS describe el modelo DEMO ya construido; TO-BE propone el dominio de la futura API FastAPI/SQLAlchemy/PostgreSQL. El diagrama conceptual **no es todavía el esquema SQL implementado**. Las extensiones posteriores aparecen separadas y no se incluyen en el núcleo evaluable.
+> **Criterio de lectura:** el apartado 0 identifica el modelo implementado y los cambios de v0.4 a v0.5. Los diagramas 03A/03B/03C conservan el dominio conceptual; no equivalen automáticamente a tablas SQL. Para rutas y permisos reales, usar el Documento 05.
 
-> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
+## 0. Cambios respecto de v0.4 y aprobación
+
+Base de comparación: Documento 03 v0.4 en `main` (`b750358`), que añade a v0.3 (`d655f4d`) la correspondencia de identidad/empresa con E2 y la política RBAC. Esta v0.5 conserva esos aportes e incorpora el circuito comercial conectado en `plataforma-pyme`.
+
+| Tema | Versión anterior | Esta integración |
+|---|---|---|
+| Producto | Plataforma generalista en el diseño, frontend DEMO | Se conserva multiempresa/multirrubro en API y React; WALOS es un ejemplo |
+| Permisos | Política corporativa pura E2-1.3C.1 | Se conserva y se aplica a edición empresarial; los comandos comerciales revalidan rol y membresía |
+| Identidad y empresa | Contratos backend de Jorge separados de React | Se conservan registro Argon2id, sesiones revocables, Empresa y Membresía; React los consume |
+| Recursos | Simulación local | Ubicaciones, catálogo, proveedores y cuentas declaradas con empresa y permisos en servidor |
+| Compra y stock | Modelo conceptual y políticas DEMO | Compra sin stock, recepción única, ledger y saldo versionado; conteo múltiple y traslado atómicos |
+| Venta | Regla propuesta de pagos exactos | Importes en centavos, HALF_UP por renglón, descuentos y pagos mixtos; servicio sin movimiento físico |
+| Caja | RF-08/RF-09 diferidos | Jornada, gastos, arqueo y cuentas declaradas incluidos; no se realizan pagos bancarios |
+| Persistencia | Detalles y pagos como entidades conceptuales | Maestros, saldos y movimientos relacionales; líneas/pagos/recepción/cierre como snapshots JSON inmutables de su documento |
+| Concurrencia | Propuesta de bloqueos por saldo | Un bloqueo de escritura por empresa y un commit por comando; idempotencia por empresa/usuario/clave; conteos con versión |
+| Pendientes | Parte del diseño futuro | Invitaciones reales, recepción parcial, producción, reservas, fotos sincronizadas y pagos/QR reales |
+
+### 0.1 Modelo implementado
+
+```mermaid
+classDiagram
+    User "1" --> "*" Membership
+    Business "1" --> "*" Membership
+    Business "1" --> "*" Location
+    Business "1" --> "*" CatalogItem
+    Business "1" --> "*" Supplier
+    Business "1" --> "*" Purchase
+    Supplier "0..1" --> "*" Purchase
+    Location "1" --> "*" StockBalance
+    CatalogItem "1" --> "*" StockBalance
+    StockBalance "1" ..> "*" StockMovement : reconciliar
+    Business "1" --> "*" CashSession
+    CashSession "1" --> "*" Sale
+    CashSession "1" --> "*" Expense
+    Business "1" --> "*" FinancialAccount
+    Business "1" --> "*" CommandReceipt
+```
+
+`User`, `Business` y `Membership` mantienen los modelos de Jorge. Los demás están en `backend/app/infrastructure/models/commerce.py`. Las referencias de ubicación/artículo/proveedor/caja incluyen empresa; el servicio valida también los identificadores contenidos en los snapshots. `CommandReceipt` guarda la huella y el resultado para reintentos; no reemplaza el ledger. Las líneas repetidas conservan sus propios precios e importes y descuentan sus cantidades dentro de la misma transacción.
+
+### 0.2 Criterios de aprobación de esta revisión
+
+La aprobación corresponde al equipo. Cada criterio debe revisarse contra código y pruebas, no sólo contra el dibujo:
+
+| Criterio | Evidencia exigida |
+|---|---|
+| Una cuenta puede operar varias empresas y un usuario ajeno no puede leerlas ni modificarlas | Pruebas HTTP de membresías, referencias ajenas y snapshot filtrado |
+| SKU puede repetirse entre empresas y no dentro de la misma | Constraint y prueba PostgreSQL |
+| Compra/recepción separadas y sin duplicar stock al reintentar | Prueba de recepción e idempotencia |
+| Ledger y saldo concuerdan; no hay stock negativo ni efectos parciales | Pruebas de rollback, traslado, conteo obsoleto y ventas simultáneas |
+| Cálculos exactos y servicios sin existencia física | Pruebas de redondeo, bonificación de renglón, pagos mixtos y venta de servicio |
+| Caja sólo incorpora efectivo y conserva el cierre | Prueba de arqueo, diferencia con motivo y recarga |
+| UML, nombres de modelos y endpoints se pueden localizar en el proyecto | Comparación con `models/`, routers y Documento 05 |
+| Frontend y API comparten contexto sin fallback a DEMO | Recorrido con dos empresas, cambio de cuenta y prueba de respuesta tardía |
+| Migraciones y arranque reproducibles | `alembic upgrade head`, `alembic check`, pytest y Docker sobre PostgreSQL descartable |
+
+**Estado de aprobación:** pendiente de revisión del equipo. Las pruebas locales están documentadas por comandos reproducibles en [06](06_PRUEBAS_Y_DESPLIEGUE.md); CI y deploy no se consideran hechos hasta ejecutarlos para el commit publicado.
+
+## Referencia conceptual conservada de v0.3
+
+Las secciones siguientes explican el dominio conceptual más amplio. Las diferencias de persistencia, alcance y concurrencia se resuelven según el apartado 0 y el contrato del Documento 05; una entidad dibujada como concepto no implica una tabla o endpoint adicional.
+
+> **Antecedente histórico E2-1.3C.1, anterior a esta integración (main `b750358`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
 
 ## 1. Finalidad y alcance
 
@@ -17,7 +79,7 @@ El propósito del modelo de dominio es identificar conceptos comerciales, relaci
 
 **Núcleo propuesto de primera API:** usuarios y autenticación (RF-01), empresas y membresías básicas (RF-02), ubicaciones mínimas (RF-03), catálogo (RF-04), compras y recepciones (RF-05), existencias y movimientos (RF-06), ventas y pagos declarados (RF-07). La invitación real (CU-12) se considera soporte propuesto a confirmar, no requisito de correo electrónico. Este documento diferencia las **relaciones conceptuales UML** de las **claves/índices concretos SQL** que se definirán durante la implementación.
 
-**Fuera del backend MVP:** gastos/caja (RF-08), cuentas financieras (RF-09), QR DEMO/MP real (RF-10), reservas de stock, recepción parcial o multidestino, producción/lotes, conciliación bancaria y el consumo planificado de insumos por servicios. Esas capacidades existen parcialmente como frontend DEMO o se contemplan para versiones futuras; ninguna se declara operativa en la API.
+**Fuera de este corte:** QR conectado/MP real (RF-10), reservas de stock, recepción parcial o multidestino, producción/lotes, conciliación bancaria y el consumo planificado de insumos por servicios. Esas capacidades existen parcialmente como frontend DEMO o se contemplan para versiones futuras; ninguna se declara operativa en la API.
 
 ## 2. Vocabulario del dominio
 
@@ -313,7 +375,7 @@ En el MVP, CU-11 permite registrar **ajustes justificados** de inventario según
 - Se conserva sin alterar el diseño visual aprobado; las diferencias deliberadas entre SVG editorial y PUML se describen en cada guía.
 - No se extiende el MVP con recepción parcial, servicios con consumo automático, cobros reales ni procesos de suspensión de empresas.
 
-## 13. Correspondencia conceptual ↔ esquema implementado (E2-1.3C.1)
+## 13. Antecedente de correspondencia identidad/empresa (E2-1.3C.1)
 
 | Concepto de 03A | Implementación SQLAlchemy/PostgreSQL actual | Matiz |
 |---|---|---|
@@ -324,4 +386,4 @@ En el MVP, CU-11 permite registrar **ajustes justificados** de inventario según
 | Idempotencia del alta | `business_creation_requests` con PK compuesta `actor_user_id, idempotency_key` | El PK ya es UNIQUE; no duplicar constraint; respuesta previa por hash canónico |
 | Invitación | **No implementada** en SQL | Permanece conceptual y depende de futura autorización |
 
-La futura actualización del **03A** deberá distinguir los conceptos de dominio de las clases técnicas (sesiones, registro idempotente, políticas). En E2-1.3C.1 no hay cambios en cardinalidades ni entidades SQL: **no es necesario regenerar 03A**, y expresamente **no se rehace 03B**. La política pure-function `has_business_permission` no es una clase persistente del UML de dominio; se documenta en 04/05. Se exige verificar la pertenencia real de cada Membresía a la Empresa consultada al aplicar la política en endpoints; el rol de otra empresa no autoriza esta.
+Este anexo conserva el corte de identidad de Jorge; el modelo comercial actual está en el apartado 0. La futura actualización del **03A** deberá distinguir los conceptos de dominio de las clases técnicas (sesiones, registro idempotente, políticas). En E2-1.3C.1 no hay cambios en cardinalidades ni entidades SQL: **no es necesario regenerar 03A**, y expresamente **no se rehace 03B**. La política pure-function `has_business_permission` no es una clase persistente del UML de dominio; se documenta en 04/05. Se exige verificar la pertenencia real de cada Membresía a la Empresa consultada al aplicar la política en endpoints; el rol de otra empresa no autoriza esta.

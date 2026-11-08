@@ -39,3 +39,16 @@ def test_db_port_override_for_future_docker_api() -> None:
     )
     assert settings.database_url.host == "db"
     assert settings.database_url.port == 5432
+
+
+def test_private_postgres_dsn_for_deploy_keeps_driver_and_password_redacted():
+    settings = DatabaseSettings(_env_file=None, DATABASE_URL='postgresql://pyme:private-test-pass@db.example.com/pyme')
+    assert settings.database_url.drivername == 'postgresql+psycopg'
+    assert settings.database_url.database == 'pyme'
+    assert 'private-test-pass' not in repr(settings)
+    assert 'private-test-pass' not in str(settings.database_url)
+
+
+def test_deploy_dsn_rejects_other_database_engines():
+    with pytest.raises(ValidationError):
+        DatabaseSettings(_env_file=None, DATABASE_URL='sqlite:///demo.db')

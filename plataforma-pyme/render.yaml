@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: asistente-pyme
+    runtime: docker
+    plan: free
+    dockerfilePath: ./plataforma-pyme/Dockerfile
+    dockerContext: ./plataforma-pyme
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    envVars:
+      - key: DATABASE_URL
+        sync: false

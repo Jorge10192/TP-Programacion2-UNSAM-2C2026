@@ -5,11 +5,17 @@ on:
     paths:
       - 'plataforma-pyme/backend/**'
       - 'plataforma-pyme/compose.yaml'
+      - 'plataforma-pyme/Dockerfile'
+      - 'plataforma-pyme/.dockerignore'
+      - 'plataforma-pyme/frontend/**'
       - '.github/workflows/plataforma-pyme-backend.yml'
   pull_request:
     paths:
       - 'plataforma-pyme/backend/**'
       - 'plataforma-pyme/compose.yaml'
+      - 'plataforma-pyme/Dockerfile'
+      - 'plataforma-pyme/.dockerignore'
+      - 'plataforma-pyme/frontend/**'
       - '.github/workflows/plataforma-pyme-backend.yml'
 
 permissions:
@@ -63,6 +69,44 @@ jobs:
           python -m alembic check
       - name: Tests unitarios e integracion PostgreSQL
         run: python -m pytest -v
+
+  full-app-container:
+    name: React y API - contenedor completo
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: asistente_pyme
+          POSTGRES_USER: pyme
+          POSTGRES_PASSWORD: ci_only_ephemeral_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pyme -d asistente_pyme"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f plataforma-pyme/Dockerfile -t pyme-full:ci plataforma-pyme
+      - name: Iniciar aplicación completa con PostgreSQL de CI
+        run: >-
+          docker run -d --name pyme-full --network host
+          -e POSTGRES_PASSWORD=ci_only_ephemeral_test_password
+          -e DB_HOST=127.0.0.1 -e DB_PORT=5432 -e PORT=18001 pyme-full:ci
+      - name: Comprobar interfaz, DB y rutas privadas
+        run: |
+          for n in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18001/ready; then break; fi
+            sleep 2
+          done
+          curl --fail http://127.0.0.1:18001/ready
+          curl --fail http://127.0.0.1:18001/ | grep 'id="root"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18001/api/v1/snapshot)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18001/.env)" = 404
+      - if: always()
+        run: docker rm -f pyme-full || true
 
   backend-container:
     name: Construir imagen y comprobar liveness

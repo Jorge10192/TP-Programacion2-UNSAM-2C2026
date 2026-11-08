@@ -33,7 +33,7 @@ export type ExpenseInput = {
   notes: string
 }
 
-export type DemoExpense = ExpenseInput & {
+export type Expense = ExpenseInput & {
   id: string; requestId: string; businessId: string
   createdAt: string; cashSessionId: string | null
 }
@@ -49,12 +49,12 @@ export type CashCloseSnapshot = {
   cashExpensesCents: number
   saleIds: string[]
   expenseIds: string[]
-  closedBy: 'demo-user'
+  closedBy: string
   closedAt: string
   notes: string
 }
 
-export type DemoCashSession = {
+export type CashSession = {
   id: string
   openRequestId: string
   closeRequestId: string | null
@@ -62,9 +62,13 @@ export type DemoCashSession = {
   locationId: string | null
   openingCashCents: number
   openedAt: string
-  openedBy: 'demo-user'
+  openedBy: string
   status: 'ABIERTA' | 'CERRADA'
   closeSnapshot: CashCloseSnapshot | null
+  serverTotals?: {
+    openingCashCents: number; cashSalesCents: number; cashExpensesCents: number
+    expectedCashCents: number; saleIds: string[]; expenseIds: string[]
+  }
 }
 
 export const MAX_CASH_CENTS = 99_999_999_999
@@ -127,7 +131,8 @@ type CashExpense = { id: string; businessId: string; cashSessionId: string | nul
   paymentMethod: ExpensePaymentMethod; amountCents: number }
 
 /** Proyección del estado ABIERTO: nunca modifica movimientos ni saldos externos. */
-export function cashSessionTotals(session: DemoCashSession, sales: CashSale[], expenses: CashExpense[]) {
+export function cashSessionTotals(session: CashSession, sales: CashSale[], expenses: CashExpense[]) {
+  if (session.serverTotals) return session.serverTotals
   const saleIds: string[] = []
   const expenseIds: string[] = []
   let cashSales = 0n
@@ -155,7 +160,7 @@ export function cashSessionTotals(session: DemoCashSession, sales: CashSale[], e
 }
 
 export function makeCloseSnapshot(
-  session: DemoCashSession, sales: CashSale[], expenses: CashExpense[],
+  session: CashSession, sales: CashSale[], expenses: CashExpense[],
   input: CashCloseInput, now: string,
 ): CashCloseSnapshot {
   if (session.status !== 'ABIERTA' || session.closeSnapshot) throw new Error('La jornada ya está cerrada.')

@@ -27,7 +27,7 @@ export type FinancialAccountInput = {
   identifier: string
   notes: string
 }
-export type DemoFinancialAccount = FinancialAccountInput & {
+export type FinancialAccount = FinancialAccountInput & {
   id: string
   businessId: string
   status: 'ACTIVA' | 'INACTIVA'
@@ -91,7 +91,7 @@ export function maskedAccountIdentifier(identifier: string): string {
 }
 
 /** Copia explícita: el destinatario puede ver los datos DEMO; el usuario decide si compartir. */
-export function financialAccountShareText(account: Pick<DemoFinancialAccount,
+export function financialAccountShareText(account: Pick<FinancialAccount,
   'label' | 'kind' | 'institution' | 'holder' | 'alias' | 'identifier'>): string {
   const lines = [
     account.label,
@@ -99,7 +99,7 @@ export function financialAccountShareText(account: Pick<DemoFinancialAccount,
     account.holder ? 'Titular: ' + account.holder : '',
     account.alias ? 'Alias: ' + account.alias : '',
     account.identifier ? (account.kind === 'BANCARIA' ? 'CBU: ' : 'CVU: ') + account.identifier : '',
-    'Datos de cuenta DEMO: verificá los datos antes de compartir.',
+    'Datos de referencia: verificá los datos antes de compartir.',
   ]
   return lines.filter(Boolean).join('\n')
 }
@@ -112,7 +112,7 @@ export function financialAccountShareText(account: Pick<DemoFinancialAccount,
  * Los canales específicos sólo se asocian a su propia billetera declarada.
  * Esto NO verifica transferencias, saldos ni acreditaciones externas.
  */
-export function accountSupportsDeclaredPayment(account: Pick<DemoFinancialAccount, 'status' | 'channel'>, method: string): boolean {
+export function accountSupportsDeclaredPayment(account: Pick<FinancialAccount, 'status' | 'channel'>, method: string): boolean {
   if (account.status !== 'ACTIVA') return false
   if (method === 'TRANSFERENCIA') {
     return Object.hasOwn(financialChannelLabels, account.channel)

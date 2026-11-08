@@ -8,7 +8,9 @@ from fastapi import APIRouter
 
 from app.modules.auth.router import router as auth_router
 from app.modules.businesses.router import router as businesses_router
+from app.modules.commerce.router import router as commerce_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(auth_router)
 api_v1_router.include_router(businesses_router)
+api_v1_router.include_router(commerce_router)

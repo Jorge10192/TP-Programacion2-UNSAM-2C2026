@@ -2,13 +2,18 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.4 — casos de uso originales + trazabilidad de implementación E2  
-**Estado:** **REVISADO PARA ENTREGA — especificación TO-BE, con decisiones de E2 todavía abiertas**  
+**Versión:** 0.5\
+**Estado:** CONTRASTADO CON API - CU-12 propuesto; revisión del equipo pendiente\
 **Fecha:** 7 de noviembre de 2026  
 **Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.3)  
 **Alcance:** casos de uso del **núcleo propuesto** del backend RESTful (TO-BE), contrastados con los comportamientos del frontend DEMO (AS-IS). Las operaciones previstas NO implican endpoints implementados. La lista definitiva de permisos, campos y códigos HTTP se formalizará posteriormente. Esta revisión incorpora CU-12 como soporte para membresías reales, sin ampliar el alcance a envíos de correo o acceso público por QR.
 
-> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
+## Estado de la integración
+
+CU-01 a CU-11 tienen contratos de API en [05](05_MATRIZ_API_Y_TRAZABILIDAD.md). CU-12/invitaciones sigue diferido. Se amplía el circuito con **CU-13: abrir caja, registrar gastos y cerrar con arqueo (RF-08)** y **CU-14: administrar cuentas declaradas (RF-09)**. No se ejecutan pagos bancarios.
+
+La matriz [05](05_MATRIZ_API_Y_TRAZABILIDAD.md) fija los campos, permisos y rutas ejecutables. El Documento [06](06_PRUEBAS_Y_DESPLIEGUE.md) fija las comprobaciones; la aprobación del equipo sigue pendiente. Las decisiones conceptuales que aún difieran se identifican como propuestas, no como endpoints disponibles.
+
 
 ## 1. Finalidad y metodología
 
@@ -65,7 +70,7 @@ Los flujos de autenticación y autorización aquí descritos son **objetivo de b
 | CU-08 | Consultar existencias por ubicación | RF-06 | Miembro autorizado | Núcleo MVP |
 | CU-09 | Trasladar existencias entre ubicaciones | RF-06 | Operador autorizado | Núcleo MVP |
 | CU-10 | Registrar una venta con pagos declarados | RF-07 | Operador de ventas autorizado | Núcleo MVP |
-| CU-11 | Registrar ajuste justificado de inventario | RF-06 | Operador autorizado de inventario | Núcleo MVP (ajuste básico; conteo múltiple diferido) |
+| CU-11 | Registrar ajuste justificado de inventario | RF-06 | Operador autorizado de inventario | Implementado: conteo absoluto múltiple con versión |
 | CU-12 | Invitar y aceptar incorporación de un colaborador | RF-02 | Administrador y usuario invitado | Soporte de membresías propuesto; confirmar para primera API |
 
 **Importante:** los doce CU representan **seis requerimientos funcionales principales** (RF-01, RF-02, RF-04, RF-05, RF-06, RF-07) y una dependencia RF-03; no significan diez módulos completos ni diez requerimientos independientes. RF-08 a RF-10 permanecen fuera de esta primera especificación de backend y podrán documentarse en una ampliación posterior. **CU-12 es una propuesta acotada de soporte para membresías reales**: el envío automático de correos y los enlaces QR de solicitud no forman parte del núcleo acordado.
@@ -423,11 +428,11 @@ El **diagrama de clases** se definirá después de aprobar el dominio y no se co
 
 Para demostrar concurrencia e idempotencia en la defensa será útil, aunque no obligatorio, un **diagrama de secuencia de confirmación de venta**, mostrando verificación y descuento bajo la misma transacción. La máquina de estados de Compra se describe en CU-07; **no obliga a implementar el patrón State**.
 
-## 7. Cobertura del alcance y funcionalidades diferidas
+## 7. Cobertura y diferidos
 
-Los casos CU-01 a CU-12 corresponden al backend **propuesto**, no a doce capacidades completamente implementadas hoy. La inclusión de CU-12 no obliga a enviar correos ni incorpora automáticamente permisos reales al frontend local. RF-08 (gastos y caja), RF-09 (cuentas declaradas) y RF-10 (QR DEMO) permanecen en el frontend local y se especificarán para backend solo si la planificación se amplía. Las operaciones de devoluciones, producción por lotes, reservas, conciliación bancaria y pagos reales no están comprometidas para la primera API.
+CU-01 a CU-11 están integrados; CU-11 incluye conteo múltiple versionado. CU-12 permanece propuesto. CU-13 añade gastos/caja: abrir una jornada por destino, vincular ventas y gastos, contar efectivo y exigir motivo ante diferencia. CU-14 mantiene cuentas declaradas y valida su empresa/estado al referenciarlas. Servicios sin ubicación física usan una caja general.
 
-Los endpoints y métodos HTTP exactos se definirán en `05_MATRIZ_API_Y_TRAZABILIDAD.md`. No se equipararán pruebas del frontend DEMO con pruebas unitarias y de integración del backend académico.
+Recepción parcial, estado administrativo `CERRADA_SIN_RECEPCION`, invitaciones reales, producción, reservas y pagos reales siguen pendientes. Los contratos implementados prevalecen sobre ejemplos conceptuales de rutas o políticas de las versiones previas: ver [05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
 
 ## 8. Decisiones pendientes de aprobación
 
@@ -448,18 +453,12 @@ Los endpoints y métodos HTTP exactos se definirán en `05_MATRIZ_API_Y_TRAZABIL
 
 Esta versión se considera base revisada para entrega. El equipo deberá confirmar los actores, el alcance de operaciones del núcleo y, especialmente, si **una recepción completa por compra** es suficiente para la API académica. Se propone como decisión de menor complejidad para el MVP, sin impedir evolución posterior a recepciones parciales. Los campos, códigos HTTP y rutas definitivas podrán precisarse durante diseño de API sin reescribir las metas de los casos de uso.
 
-**Estado:** versión 0.3 revisada para entrega como especificación **TO-BE**. Los contratos HTTP, permisos y esquemas SQL definitivos deberán concordar con los documentos siguientes; cualquier cambio de alcance exige actualizar los RF y CU relacionados.
+**Estado:** CONTRASTADO CON API - CU-12 propuesto; revisión del equipo pendiente\
 
 **Referencia técnica externa consultada para el formato de errores:** RFC 9457 — *Problem Details for HTTP APIs* (IETF, 2023), que reemplaza a RFC 7807: https://www.rfc-editor.org/rfc/rfc9457.html. Se documenta como preferencia arquitectónica, no como obligación expresa de la consigna.
 
-## 10. Estado de los casos de uso y próxima política de autorización
+## 10. Contratos y autorización vigentes
 
-| CU | Estado API | Endpoint o comprobación |
-|---|---|---|
-| CU-01 Registro | Implementado y probado localmente | `POST /api/v1/auth/register` |
-| CU-02 Login/perfil/salida | Implementado y probado localmente | `POST /login`, `GET /me`, `POST /logout` bajo `/api/v1/auth` |
-| CU-03 Crear empresa | Implementado y probado localmente | `POST /api/v1/businesses`; empresa + titular inicial + idempotencia atómica; `GET` filtra membresía activa |
-| CU-04–CU-11 | Pendiente backend | Plan conceptual y experiencia frontend DEMO; todavía no hay endpoint real |
-| CU-12 Invitaciones | Pendiente backend | Invitación, aceptación y gestión de membresías previstas para E2-1.3C.2/C.3 |
+CU-01 a CU-11 tienen operaciones reales en [05](05_MATRIZ_API_Y_TRAZABILIDAD.md), más CU-13 caja/gastos y CU-14 cuentas declaradas. CU-12/invitaciones y administración de miembros sigue pendiente.
 
-**Política E2-1.3C.1:** se implementa la **matriz RBAC pura** con cuatro roles de membresía; para consulta empresarial todos los miembros activos pueden leer, mientras que la configuración se reserva al titular y administrador. `ENCARGADO` y `TRABAJADOR` no reciben facultad general para editar empresa, invitar ni administrar miembros. **Esta primera entrega define y prueba la política; la aplicación efectiva a la primera mutación protegida es el siguiente corte.** Identificador empresarial ajeno o membresía inactiva no deben otorgar acceso. Para un miembro activo de una empresa suspendida se prevé lectura informativa, no cambios. Véase Documento 05 para el detalle y los errores HTTP previstos.
+La política corporativa de Jorge se conserva: todos los miembros activos pueden consultar su empresa; sólo titular y administrador editan sus datos. El PATCH revalida sesión, membresía, empresa y rol en su transacción. Una empresa ajena devuelve 404; un miembro sin facultad, 403; una empresa propia suspendida, 409 al intentar modificarla. La lectura informativa de identidad empresarial admite empresas suspendidas; la operación comercial y el snapshot sólo incluyen empresas activas. Las políticas de compras, stock, ventas y caja se especifican por operación en 05.

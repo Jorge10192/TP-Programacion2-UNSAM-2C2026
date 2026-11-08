@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import { Icon } from '../../app/Icon'
-import { demoGateway } from '../../data/demo/demoStore'
-import type { DemoBusiness } from '../../data/demo/demoStore'
+import { useAppData } from '../../data/dataContext'
+import type { Business } from '../../data/models'
 import { moneyDisplay } from '../../data/demo/catalogPolicy'
 import { demoQrVisualCells, qrStatusLabels } from '../../data/demo/qrDemoPolicy'
-import type { DemoQrIntent } from '../../data/demo/qrDemoPolicy'
+import type { QrIntent } from '../../data/demo/qrDemoPolicy'
 
 export function QrDemoPanel({ intent, business, onApproved, onCanceled, onClose }: {
-  intent: DemoQrIntent
-  business: DemoBusiness
+  intent: QrIntent
+  business: Business
   onApproved: (saleId: string) => void
   onCanceled: () => void
   onClose: () => void
 }) {
+  const { gateway } = useAppData()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const cells = demoQrVisualCells(intent.id)
@@ -21,10 +22,10 @@ export function QrDemoPanel({ intent, business, onApproved, onCanceled, onClose 
     setBusy(true); setError('')
     try {
       if (action === 'approve') {
-        const sale = await demoGateway.simulateQrDemoApproval(business.id, intent.id)
+        const sale = await gateway.simulateQrDemoApproval(business.id, intent.id)
         onApproved(sale.id)
       } else {
-        await demoGateway.cancelQrDemoIntent(business.id, intent.id)
+        await gateway.cancelQrDemoIntent(business.id, intent.id)
         onCanceled()
       }
     } catch (caught) {

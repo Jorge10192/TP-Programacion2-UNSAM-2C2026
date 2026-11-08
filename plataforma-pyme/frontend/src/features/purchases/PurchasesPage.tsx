@@ -1,36 +1,49 @@
 import { useState } from 'react'
+import { useAppData } from '../../data/dataContext'
 import { Icon } from '../../app/Icon'
-import type { DemoBusiness, DemoCatalogItem, DemoLocation, DemoPurchase, DemoSupplier } from '../../data/demo/demoStore'
+import { AppLink } from '../../app/AppLink'
+import { businessHref } from '../../app/navigation'
+import type { Navigate } from '../../app/types'
+import { useLeaveConfirmation } from '../../app/unsavedChanges'
+import type { Business, CatalogItem, Location, Purchase, Supplier } from '../../data/models'
 import { moneyDisplay } from '../../data/demo/catalogPolicy'
 import { physicalPurchaseLines, quantityText } from '../../data/demo/purchasePolicy'
 import { PurchaseForm } from './PurchaseForm'
 import { PurchaseDetailDialog } from './PurchaseDetailDialog'
 
-type PurchaseFilter = 'TODAS' | 'PENDIENTE' | 'RECIBIDA' | 'INFORMATIVA'
-function receiptState(purchase: DemoPurchase): Exclude<PurchaseFilter, 'TODAS'> {
+type PurchaseFilter = 'TODAS' | 'PENDIENTE' | 'RECIBIDA' | 'INFORMATIVA' | 'ANULADA'
+function receiptState(purchase: Purchase): Exclude<PurchaseFilter, 'TODAS'> {
+  if (purchase.serverStatus === 'ANULADA') return 'ANULADA'
   if (purchase.receipt) return 'RECIBIDA'
   return physicalPurchaseLines(purchase.lines).length ? 'PENDIENTE' : 'INFORMATIVA'
 }
 const purchaseStatusLabels: Record<Exclude<PurchaseFilter, 'TODAS'>, string> = {
+  ANULADA: 'Anulada',
   PENDIENTE: 'Pendiente de recepción',
   RECIBIDA: 'Recepción confirmada',
   INFORMATIVA: 'Sin recepción física',
 }
 
 export function PurchasesPage({
-  business, purchases, catalog, suppliers, locations,
+  business, purchases, catalog, suppliers, locations, navigate,
 }: {
-  business: DemoBusiness
-  purchases: DemoPurchase[]
-  catalog: DemoCatalogItem[]
-  suppliers: DemoSupplier[]
-  locations: DemoLocation[]
+  business: Business
+  purchases: Purchase[]
+  catalog: CatalogItem[]
+  suppliers: Supplier[]
+  navigate: Navigate
+  locations: Location[]
 }) {
+  const { mode } = useAppData()
+  const preparation = mode !== 'api' ? null : !catalog.some(item => item.status === 'ACTIVO' && item.kind !== 'SERVICIO' && !item.readonlyReason)
+    ? { segment: 'catalogo', label: 'Preparar catálogo' }
+    : null
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<PurchaseFilter>('TODAS')
   const [notice, setNotice] = useState('')
+  const requestLeave = useLeaveConfirmation()
 
   const pending = purchases.filter((item) => receiptState(item) === 'PENDIENTE').length
   const received = purchases.filter((item) => receiptState(item) === 'RECIBIDA').length
@@ -54,23 +67,27 @@ export function PurchasesPage({
 
   return <>
     <div className="page-heading">
-      <div><p className="eyebrow">OPERACIONES · EMPRESA DEMO</p><h1>Compras</h1>
+      <div><p className="eyebrow">OPERACIONES · EMPRESA</p><h1>Compras</h1>
         <p>Compras y recepciones de «{business.name}», vinculadas con tu Catálogo y Proveedores.</p></div>
-      <button className="button button-primary" type="button" onClick={() => { setCreating((x) => !x); setNotice('') }}>
+      {preparation && !creating ? <AppLink navigate={navigate} to={businessHref(business.id, preparation.segment)} className="button button-primary">{preparation.label}<Icon name="arrow" size={17}/></AppLink> : <button className="button button-primary" type="button" onClick={() => {
+        if (creating && !requestLeave()) return
+        setCreating((x) => !x)
+        setNotice('')
+      }}>
         <Icon name={creating ? 'close' : 'plus'} size={17}/>
         {creating ? 'Cerrar formulario' : 'Registrar compra'}
-      </button>
+      </button>}
     </div>
 
-    <section className="purchase-summary" aria-label="Indicadores de compras DEMO">
+    {purchases.length > 0 && <section className="purchase-summary" aria-label="Indicadores de compras">
       <div><span className="feature-icon blue"><Icon name="receipt"/></span><small>Compras registradas</small><strong>{purchases.length}</strong></div>
       <div><span className="feature-icon orange"><Icon name="clock"/></span><small>Pendientes de recepción</small><strong>{pending}</strong></div>
       <div><span className="feature-icon mint"><Icon name="shield"/></span><small>Con recepción confirmada</small><strong>{received}</strong></div>
-    </section>
+    </section>}
 
     <div className="informational-note purchase-note">
       <Icon name="shield" size={19}/>
-      <span>Registrar una compra <strong>no equivale a pagar ni recibir mercadería</strong>. Las entradas de stock requieren una confirmación posterior en una ubicación que permita almacenar; los servicios y conceptos libres nunca generan existencias físicas.</span>
+      <span>Confirmá la recepción para sumar stock. <strong>Registrar la compra no registra un pago.</strong>{mode === 'demo' && ' Servicios y conceptos libres no generan existencias.'}</span>
     </div>
 
     {notice && <p className="form-message success purchase-page-message" role="status">{notice}</p>}
@@ -96,6 +113,7 @@ export function PurchasesPage({
             <option value="TODAS">Todas las compras</option>
             <option value="PENDIENTE">Pendiente de recepción</option>
             <option value="RECIBIDA">Recepción confirmada</option>
+            <option value="ANULADA">Anulada</option>
             <option value="INFORMATIVA">Sin recepción física</option>
           </select>
         </label>
@@ -104,8 +122,8 @@ export function PurchasesPage({
       {purchases.length === 0 && <div className="catalog-empty">
         <span className="feature-icon blue"><Icon name="shopping" size={25}/></span>
         <h3>Todavía no registraste compras</h3>
-        <p>Podés empezar con un proveedor del directorio o con un concepto libre. Para ingresar artículos físicos, primero deben existir en Catálogo y una ubicación apta para almacenar.</p>
-        {!creating && <button type="button" className="button button-primary" onClick={() => setCreating(true)}><Icon name="plus" size={16}/> Primera compra DEMO</button>}
+        <p>Podés elegir un proveedor o dejarlo sin asignar. Para recibir bienes necesitás el artículo en Catálogo y una ubicación apta para almacenar.</p>
+        {!creating && <button type="button" className="button button-primary" onClick={() => setCreating(true)}><Icon name="plus" size={16}/> Primera compra</button>}
       </div>}
 
       {purchases.length > 0 && filtered.length === 0 && <div className="catalog-empty">

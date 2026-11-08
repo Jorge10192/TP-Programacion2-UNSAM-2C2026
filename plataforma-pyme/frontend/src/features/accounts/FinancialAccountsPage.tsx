@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon'
-import { demoGateway } from '../../data/demo/demoStore'
-import type { DemoBusiness } from '../../data/demo/demoStore'
+import { useAppData, useBusinessPermissions } from '../../data/dataContext'
+import type { Business } from '../../data/models'
 import { blankFinancialAccount, financialAccountShareText, financialChannelLabels, financialKindLabels, maskedAccountIdentifier } from '../../data/demo/financialAccountPolicy'
-import type { DemoFinancialAccount, FinancialAccountChannel, FinancialAccountInput, FinancialAccountKind } from '../../data/demo/financialAccountPolicy'
+import type { FinancialAccount, FinancialAccountChannel, FinancialAccountInput, FinancialAccountKind } from '../../data/demo/financialAccountPolicy'
 
-type StatusFilter = 'TODAS' | DemoFinancialAccount['status']
+type StatusFilter = 'TODAS' | FinancialAccount['status']
 type KindFilter = 'TODAS' | FinancialAccountKind
 
 export function FinancialAccountsPage({ business, accounts }: {
-  business: DemoBusiness; accounts: DemoFinancialAccount[]
+  business: Business; accounts: FinancialAccount[]
 }) {
+  const { gateway, mode } = useAppData()
+  const { canManageResources } = useBusinessPermissions(business.id)
   const [editingId, setEditingId] = useState<string | 'nueva' | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -41,45 +43,45 @@ export function FinancialAccountsPage({ business, accounts }: {
   async function save(input: FinancialAccountInput) {
     if (!editingId) return
     if (editingId === 'nueva') {
-      const created = await demoGateway.createFinancialAccount(business.id, input)
-      setNotice('Cuenta DEMO «' + created.label + '» registrada para ' + business.name + '. No se vinculó a ningún banco real.')
+      const created = await gateway.createFinancialAccount(business.id, input)
+      setNotice('Cuenta «' + created.label + '» registrada para ' + business.name + '. No se vinculó a ningún banco real.')
     } else {
-      await demoGateway.updateFinancialAccount(business.id, editingId, input)
+      await gateway.updateFinancialAccount(business.id, editingId, input)
       setNotice('Datos de referencia actualizados. No se alteraron ventas, gastos ni arqueos anteriores.')
     }
     setEditingId(null)
     setStatusFilter('TODAS')
   }
-  async function changeStatus(account: DemoFinancialAccount) {
+  async function changeStatus(account: FinancialAccount) {
     if (busy) return
     setBusy(true); setError(''); setNotice('')
     try {
       const next = account.status === 'ACTIVA' ? 'INACTIVA' : 'ACTIVA'
-      await demoGateway.setFinancialAccountStatus(business.id, account.id, next)
+      await gateway.setFinancialAccountStatus(business.id, account.id, next)
       setNotice(next === 'INACTIVA'
         ? 'Cuenta desactivada sólo en la plataforma: ya no aparece para nuevos pagos o cobros. Los registros previos permanecen, y el banco externo no se modifica.'
-        : 'Cuenta reactivada. Sus datos siguen siendo únicamente de referencia DEMO.')
+        : 'Cuenta reactivada. Sus datos siguen siendo únicamente de referencia.')
       setConfirmId(null)
       setStatusFilter('TODAS')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo cambiar el estado.')
     } finally { setBusy(false) }
   }
-  async function setMain(account: DemoFinancialAccount) {
+  async function setMain(account: FinancialAccount) {
     if (busy) return
     setBusy(true); setError(''); setNotice('')
     try {
-      await demoGateway.setPrimaryFinancialAccount(business.id, account.id)
+      await gateway.setPrimaryFinancialAccount(business.id, account.id)
       setNotice('«' + account.label + '» marcada como cuenta principal de referencia. No redirige cobros ni transferencias.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo cambiar la cuenta principal.')
     } finally { setBusy(false) }
   }
-  async function copy(account: DemoFinancialAccount) {
+  async function copy(account: FinancialAccount) {
     setError(''); setNotice('')
     try {
       await navigator.clipboard.writeText(financialAccountShareText(account))
-      setNotice('Datos DEMO copiados al portapapeles. Revisalos antes de compartirlos.')
+      setNotice('Datos copiados al portapapeles. Revisalos antes de compartirlos.')
     } catch {
       setError('No se pudo copiar automáticamente. Intentá desde localhost en un navegador con permisos de portapapeles.')
     }
@@ -87,11 +89,11 @@ export function FinancialAccountsPage({ business, accounts }: {
 
   return <>
     <div className="page-heading">
-      <div><p className="eyebrow">ADMINISTRACIÓN · EMPRESA DEMO</p>
+      <div><p className="eyebrow">ADMINISTRACIÓN - EMPRESA</p>
         <h1>Cuentas y medios de pago</h1>
         <p>Organizá cuentas bancarias y billeteras de referencia de «{business.name}».</p>
       </div>
-      <button className="button button-primary" type="button" disabled={busy}
+      <button className="button button-primary" type="button" disabled={busy || (!editingId && !canManageResources)}
         onClick={() => editingId ? setEditingId(null) : showForm('nueva')}>
         <Icon name={editingId ? 'close' : 'plus'} size={18}/>
         {editingId ? 'Cerrar formulario' : 'Agregar cuenta'}
@@ -103,8 +105,8 @@ export function FinancialAccountsPage({ business, accounts }: {
       <div><span className="feature-icon violet"><Icon name="wallet"/></span><small>Billeteras</small><strong>{walletCount}</strong></div>
     </section>
     <div className="informational-note"><Icon name="shield" size={19}/><span>
-      <strong>Directorio local, no conexión financiera.</strong> Usá únicamente datos ficticios.
-      Los alias y CBU/CVU no se verifican ni se envían a bancos o billeteras. No almacenes contraseñas, tokens, tarjetas o información financiera real.
+      <strong>Datos de referencia.</strong> {mode === 'demo' ? 'Se guardan en este navegador.' : 'Se guardan para esta empresa en el servidor.'}
+      Los alias y CBU/CVU no se verifican ni se envían a bancos o billeteras. No ingreses contraseñas ni datos de tarjetas.
       <strong> Caja</strong> es un registro de efectivo físico distinto; esta pantalla no calcula saldos ni acredita cobros.
       Una billetera virtual también puede seleccionarse para transferencias declaradas mediante alias o CVU, sin conexión externa.
     </span></div>
@@ -164,15 +166,15 @@ export function FinancialAccountsPage({ business, accounts }: {
           {account.status === 'INACTIVA' && <p className="financial-warning">Referencia inactiva: no usar para nuevos cobros.</p>}
           <div className="financial-card-actions">
             <button type="button" className="button button-secondary" onClick={() => void copy(account)}>
-              <Icon name="receipt" size={16}/> Copiar datos DEMO
+              <Icon name="receipt" size={16}/> Copiar datos
             </button>
             {account.status === 'ACTIVA' && <>
-              <button type="button" className="button button-secondary" onClick={() => showForm(account.id)}>
+              <button type="button" className="button button-secondary" disabled={!canManageResources} onClick={() => showForm(account.id)}>
                 Editar</button>
               {!account.isPrimary && <button type="button" className="button button-secondary"
-                disabled={busy} onClick={() => void setMain(account)}>Marcar principal</button>}
+                disabled={busy || !canManageResources} onClick={() => void setMain(account)}>Marcar principal</button>}
             </>}
-            <button type="button" disabled={busy} className="button button-secondary"
+            <button type="button" disabled={busy || !canManageResources} className="button button-secondary"
               onClick={() => setConfirmId(confirmId === account.id ? null : account.id)}>
               {account.status === 'ACTIVA' ? 'Desactivar' : 'Reactivar'}
             </button>
@@ -180,7 +182,7 @@ export function FinancialAccountsPage({ business, accounts }: {
           {confirmId === account.id && <div className="financial-confirm" role="group" aria-label="Confirmar cambio de estado">
             <p>{account.status === 'ACTIVA'
               ? '¿Desactivar esta cuenta? No se borrará su ficha ni se alterarán registros históricos.'
-              : '¿Reactivar esta cuenta de referencia DEMO?'}</p>
+              : '¿Reactivar esta cuenta de referencia?'}</p>
             <button type="button" className="button button-secondary" disabled={busy}
               onClick={() => setConfirmId(null)}>Cancelar</button>
             <button type="button" className="button button-primary" disabled={busy}
@@ -189,13 +191,13 @@ export function FinancialAccountsPage({ business, accounts }: {
         </article>)}</div> :
         <div className="sales-empty"><Icon name="credit" size={31}/>
           <h3>{accounts.length ? 'No hay cuentas con estos filtros' : 'Todavía no hay cuentas asociadas'}</h3>
-          <p>Agregá una cuenta o billetera DEMO para organizar tus referencias comerciales.</p>
+          <p>Agregá una cuenta o billetera para organizar tus referencias comerciales.</p>
           {!accounts.length && <button type="button" className="button button-primary"
-            onClick={() => showForm('nueva')}><Icon name="plus" size={17}/> Agregar primera cuenta</button>}
+            disabled={!canManageResources} onClick={() => showForm('nueva')}><Icon name="plus" size={17}/> Agregar primera cuenta</button>}
         </div>}
     </section>
     <div className="financial-future-note"><Icon name="shield" size={18}/><span>
-      <strong>Integraciones posteriores:</strong> asociar cuentas a cobros y pagos declarados, autorización por rol y conciliación.
+      <strong>Integraciones posteriores:</strong> conciliación y acreditaciones externas.
       Mercado Pago real requerirá que cada empresa conecte su propia cuenta mediante un backend seguro.
       Un QR de artículo no es un QR de cobro.
     </span></div>
@@ -203,7 +205,7 @@ export function FinancialAccountsPage({ business, accounts }: {
 }
 
 function FinancialAccountForm({ account, onSave, onCancel }: {
-  account?: DemoFinancialAccount
+  account?: FinancialAccount
   onSave: (input: FinancialAccountInput) => Promise<void>
   onCancel: () => void
 }) {
@@ -230,7 +232,7 @@ function FinancialAccountForm({ account, onSave, onCancel }: {
     } finally { setBusy(false) }
   }
 
-  return <section className="form-panel financial-form" aria-label={account ? 'Editar cuenta DEMO' : 'Agregar cuenta DEMO'}>
+  return <section className="form-panel financial-form" aria-label={account ? 'Editar cuenta' : 'Agregar cuenta'}>
     <div className="business-section-heading"><div><Icon name="credit" size={21}/>
       <h2>{account ? 'Editar cuenta de referencia' : 'Agregar cuenta o billetera'}</h2></div>
       <span>Sin conexión bancaria</span>
@@ -260,28 +262,28 @@ function FinancialAccountForm({ account, onSave, onCancel }: {
         </select></label>
         <label className="form-field"><span>Titular de referencia (opcional)</span>
           <input maxLength={90} value={holder} onChange={e => setHolder(e.target.value)}
-            placeholder="Sólo nombre ficticio para la DEMO"/></label>
-        <label className="form-field"><span>Alias ficticio (opcional)</span>
+            placeholder="Nombre del titular"/></label>
+        <label className="form-field"><span>Alias (opcional)</span>
           <input maxLength={20} value={alias} onChange={e => setAlias(e.target.value)}
             placeholder="Ej.: tienda.cobros.demo" autoComplete="off"/></label>
-        <label className="form-field"><span>{kind === 'BANCARIA' ? 'CBU' : 'CVU'} ficticio (opcional)</span>
+        <label className="form-field"><span>{kind === 'BANCARIA' ? 'CBU' : 'CVU'} (opcional)</span>
           <input inputMode="numeric" maxLength={22} value={identifier} autoComplete="off"
-            onChange={e => setIdentifier(e.target.value)} placeholder="22 dígitos inventados"/></label>
+            onChange={e => setIdentifier(e.target.value)} placeholder="22 dígitos"/></label>
         <label className="form-field"><span>Moneda</span>
-          <input value="Pesos argentinos (ARS) · DEMO" disabled readOnly/></label>
+          <input value="Pesos argentinos (ARS)" disabled readOnly/></label>
       </div>
       <label className="form-field"><span>Observaciones internas (opcional)</span>
         <textarea rows={2} maxLength={350} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder="Referencia administrativa sin contraseñas ni datos privados"/></label>
       <p className="cash-form-hint"><Icon name="shield" size={17}/>
-        Ingresá un alias de ejemplo (6 a 20 caracteres) o un {kind === 'BANCARIA' ? 'CBU' : 'CVU'} inventado de 22 dígitos.
-        Esta DEMO valida sólo el formato: no confirma que exista una cuenta ni que pertenezca a la empresa.
+        Ingresá un alias (6 a 20 caracteres) o un {kind === 'BANCARIA' ? 'CBU' : 'CVU'} de 22 dígitos.
+        Se valida sólo el formato: no confirma que exista una cuenta ni que pertenezca a la empresa.
       </p>
       {error && <p className="form-message error" role="alert">{error}</p>}
       <div className="form-actions"><button type="button" className="button button-secondary"
         onClick={onCancel} disabled={busy}>Cancelar</button>
         <button type="submit" className="button button-primary" disabled={busy}>
-          <Icon name="shield" size={17}/>{busy ? 'Guardando…' : (account ? 'Guardar cambios DEMO' : 'Registrar cuenta DEMO')}
+          <Icon name="shield" size={17}/>{busy ? 'Guardando…' : (account ? 'Guardar cambios' : 'Registrar cuenta')}
         </button>
       </div>
     </form>
