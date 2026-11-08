@@ -1,7 +1,7 @@
 # 05 — Matriz de API, permisos y trazabilidad
 
 **Proyecto:** Asistente PyME — Programación 2  
-**Versión:** 0.3 (E2-1.3C.3 — emisión de invitaciones sin incorporación)  
+**Versión:** 0.4 (E2-1 C.4a — aceptación autenticada de invitaciones)  
 **Fecha:** 7 de noviembre de 2026  
 **Estado:** publicación técnica incremental; aprobación académica del equipo pendiente  
 **Referencia:** `main` del repositorio, carpeta exclusiva `plataforma-pyme/`.
@@ -10,7 +10,7 @@
 
 Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisiones de arquitectura (04), endpoints, controles de acceso y pruebas reales. No confundir **IMPLEMENTADO** (código en Git), **VALIDADO LOCALMENTE** (evidencia del desarrollador), **CI VERIFICADO** (GitHub Actions comprobado en una ejecución concreta) y **PLANIFICADO** (TO-BE). El frontend React continúa como DEMO independiente del backend. WALOS es solo un cliente de ejemplo.
 
-**Evidencia contrastada al 8/11/2026:** C.1 **98 pruebas aprobadas** y C.2 **125 pruebas locales aprobadas**, Docker API/DB saludables y `/ready` correcto. C.3 **CI exitoso** (Python 3.12/3.14, PostgreSQL/Alembic, pytest y Docker) pero ejecución/migración local **pendientes**.
+**Evidencia contrastada al 8/11/2026:** C.1 **98 pruebas locales**, C.2 **125 locales** y C.3 **147 pruebas locales**, Docker API/DB saludables y `/ready` correcto, migración `e213c3_invitations` sin deriva. **C.4a publicación y CI aprobados, pendientes de validación local**.
 
 ## 2. Estado por requerimiento y caso de uso
 
@@ -19,7 +19,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | RF-01 | CU-01 | Implementado; validado localmente | `POST /api/v1/auth/register`; hash Argon2id, email único, 201/409/422 |
 | RF-01 | CU-02 | Implementado; validado localmente | `POST /api/v1/auth/login`, `GET /me`, `POST /logout`; sesiones revocables, 401 |
 | RF-02 | CU-03 | Alta/lectura validada; PATCH C.2 publicado pendiente de validar | Alta Empresa + Membresía inicial + idempotencia; lectura aislada y edición por rol/tenant |
-| RF-02 | CU-12a / CU-12b | **CU-12a emisión implementada y aprobada por CI**; CU-12b pendiente | `POST /api/v1/businesses/{business_id}/invitations` emite sin conceder membresía; aceptación y gestión en C.4 |
+| RF-02 | CU-12a / CU-12b | **CU-12a emisión validada localmente; CU-12b aceptación implementada y CI aprobado** | `POST /api/v1/businesses/{business_id}/invitations` emite y `POST /api/v1/invitations/accept` acepta; gestión de miembros C.4b pendiente |
 | RF-03 | CU-04 | Planificado | Ubicación y permisos, necesaria para recepción/venta de bienes físicos |
 | RF-04 | CU-05 | Planificado | Catálogo y SKU único dentro del tenant |
 | RF-05 | CU-06, CU-07 | Planificado | Compra separada de recepción física completa |
@@ -41,7 +41,8 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | GET | `/api/v1/businesses` | Bearer + filtro de membresía `ACTIVA` | 200 lista propia | `test_business_creation_integration.py` |
 | GET | `/api/v1/businesses/{business_id}` | Bearer + membresía activa en ese tenant | 200 propio; 404 ajeno | `test_business_creation_integration.py` |
 | PATCH | `/api/v1/businesses/{business_id}` | Bearer + revalidación transaccional de sesión y membresía + `business.profile.edit` | 200; 401/403/404/409/422 | `test_business_update_*.py`, **125 pruebas locales aprobadas en C.2** |
-| POST | `/api/v1/businesses/{business_id}/invitations` | Bearer + membresía activa/rol autorizado + empresa activa + correo/rol validado en transacción | 201; 401/403/404/409/422 | `test_business_invitation_schemas.py` y `test_business_invitation_integration.py`; **CI aprobado, validación local pendiente** |
+| POST | `/api/v1/businesses/{business_id}/invitations` | Bearer + membresía activa/rol autorizado + empresa activa + correo/rol validado en transacción | 201; 401/403/404/409/422 | `test_business_invitation_schemas.py` y `test_business_invitation_integration.py`; **147 pruebas locales aprobadas en C.3** |
+| POST | `/api/v1/invitations/accept` | Bearer + cuenta destinataria coincide con email invitado + invitación PENDIENTE no vencida + empresa ACTIVA; bloqueo y commit únicos | 200; 401/404/409/422 | `test_business_acceptance_schema.py`, `test_business_acceptance_integration.py`; **CI aprobado, validación local pendiente** |
 
 **Idempotencia CU-03:** `Idempotency-Key` UUID4, ámbito `actor_user_id` + clave; `business_creation_requests` conserva hash canónico y `business_id`. La **PK compuesta** mantiene la unicidad incluso con concurrencia. Reutilizar la clave con otro contenido devuelve 409; se corrigió la recuperación tras conflictos concurrentes sobre `pk_business_creation_requests` en E2-1.3C.1.
 
@@ -82,7 +83,8 @@ Los códigos precedentes están definidos en el router de C.2 y cuentan con prue
 | `e212b_sessions` | `auth_sessions`, token hash UNIQUE, FK y vencimiento | Validada |
 | `e213a_business_members` | `businesses`, `memberships`, UNIQUE empresa/usuario, índice titular activo único | Validada |
 | `e213b_business_creation` | `business_creation_requests`, PK compuesta actor/clave, digest SHA-256 y negocio único por comando | Validada |
-| `e213c3_invitations` | `business_invitations`, token SHA-256 único, FK empresa/invitador, estados, expiración e índice parcial correo pendiente por tenant | **CI validado; aplicación local pendiente** |
+| `e213c3_invitations` | `business_invitations`, token SHA-256 único, FK empresa/invitador, estados, expiración e índice parcial correo pendiente por tenant | Validada localmente C.3 |
+| `e213c4_acceptance` | Columnas `accepted_by_user_id`, `accepted_at`, FK usuario y CHECK de auditoría consistente | **CI validado; aplicación local pendiente** |
 
 En E2-1.3C.1 y C.2 **no se añadieron tablas ni migraciones**; C.3 incorpora la nueva tabla `business_invitations` mediante una migración aditiva. El UML 03A representa vínculos conceptuales; no debe dibujarse la política como una entidad persistente ni regenerar 03B por esta etapa.
 
@@ -110,8 +112,8 @@ En E2-1.3C.1 y C.2 **no se añadieron tablas ni migraciones**; C.3 incorpora la 
 
 1. **C.1 — publicado y validado localmente:** política pura RBAC, regresión de idempotencia, 98 pruebas aprobadas.
 2. **C.2 — validado localmente y por CI:** PATCH de perfil empresarial, permisos por rol/tenant y pruebas; 125 casos aprobados, Docker/DB saludables.
-3. **C.3 — publicado y aprobado por CI, pendiente de validar localmente:** emisión dirigida sin crear miembro, rol seguro, vencimiento de 7 días, hash de token e índice parcial de pendientes.
-4. **C.4:** aceptar invitación y administrar miembros con invariantes de titularidad; actualizar migraciones y UML 03A si cambia estructura.
+3. **C.3 — validado localmente:** emisión dirigida sin crear miembro, rol seguro, 7 días y 147 pruebas aprobadas.
+4. **C.4a — implementado y aprobado por CI, pendiente de validación local:** aceptación autenticada y atómica, auditoría de aceptación. **C.4b pendiente:** consulta y administración de membresías con invariantes de titularidad.
 5. **Cierre de RF-02:** actualizar contratos y diagramas 03A sobre implementación confirmada; posteriormente abordar RF-03 Ubicaciones y RF-04 Catálogo.
 
 Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas exactamente como están en `main` a la fecha del corte. No extrapolar funciones del frontend DEMO a endpoints inexistentes.
@@ -139,3 +141,13 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 **Tests:** `tests/test_business_invitation_schemas.py` y `tests/test_business_invitation_integration.py` comprueban normalización, roles, seguridad, pertenencia, duplicados, expiración, persistencia del hash, no alta de membresía y rollback. En CI aprobaron Pytest con PostgreSQL real, `alembic upgrade head` y `alembic check` en Python 3.12/3.14, además de Docker. **La cantidad de pruebas y la migración local deben confirmarse por el desarrollador** tras `git pull`.
 
 **Pendiente C.4:** validar secreto mediante comparación de hash, audiencia por correo de cuenta autenticada, estado/fecha, aceptación transaccional exactamente una vez, membresía única, activación de membresía inactiva y protección de concurrencia. El envío automático, reenvío/cancelación y protección antispam para producción quedan sin construir.
+
+## 10. Contrato de aceptación C.4a: invitar ≠ aceptar ≠ administrar
+
+**POST `/api/v1/invitations/accept`** — requiere `Authorization: Bearer` global y cuerpo exclusivamente `{"invitation_token":"<token-opaco>"}`. La cuenta debe tener exactamente el correo normalizado para el que se emitió la invitación. El servidor busca **SHA-256 del token**, no el texto claro, bloquea la invitación, comprueba `PENDIENTE` y expiración, bloquea empresa `ACTIVA`, y crea o reactiva una sola Membresía para `(business_id,user_id)` con el rol operativo que se propuso al emitir. Marca `ACEPTADA` y `accepted_by_user_id/accepted_at` en el mismo commit; responde `200 BusinessView`, sin token ni datos privados de otras empresas.
+
+**Errores:** 401 cuenta/sesión inválida, 404 token desconocido o ajeno al email (misma respuesta), 409 token vencido o consumido, negocio suspendido, membresía ya activa o rol histórico de titular administrativo inactivo incompatible, 422 formato de token inválido/campos extra. La operación no otorga permisos antes de confirmar aceptación. No se asignan `ADMINISTRADOR` ni `TITULAR_ADMINISTRATIVO` mediante invitación básica. Ante error después del `flush` se revierte membresía y aceptación. El reintento de token consumido da 409, sin duplicaciones.
+
+**Entidad y Alembic:** `business_invitations` suma `accepted_by_user_id` (FK a usuario, nullable), `accepted_at` (nullable) y CHECK `ck_business_invitation_acceptance_audit` que exige ambas columnas cuando `status=ACEPTADA` y prohíbe consignarlas en otro estado. Migración aditiva `e213c4_acceptance` (sin editar migraciones previas).
+
+**Evidencia:** código C.4a y tests de contrato/HTTP/PostgreSQL publicados. El CI confirmó migración desde cero, `alembic check`, Pytest en Python 3.12 y 3.14, y Docker. **Pruebas y migración local aún pendientes**; registrar la cantidad exacta tras ejecutarlas. **No implementado:** consulta/administración de miembros, cancelación/rechazo de invitaciones, correo automático/QR, verificación de propiedad del email, rate limiting para internet, reenvío seguro; quedan pendientes según alcance. En el cierre de E2-1 se actualizarán definitivamente UML 03A y hoja de auditoría al compañero.

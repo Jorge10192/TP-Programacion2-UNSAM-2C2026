@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1.3C.3: invitaciones con migración y CI exitoso, validación local pendiente. C.1 (98 pruebas) y C.2 (125 pruebas) validados localmente. Frontend React aún DEMO independiente.
+**Estado:** E2-1 C.4a: aceptación de invitaciones implementada y aprobada por CI, pendiente de migración/pruebas locales. C.3 validado localmente con 147 pruebas; React permanece DEMO independiente.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -487,3 +487,30 @@ Invoke-RestMethod http://127.0.0.1:18000/ready
 Esperado: `e213c3_invitations (head)`, sin deriva Alembic, suite aprobada y API/DB `healthy`. En Swagger `http://127.0.0.1:18000/docs` aparecerá el nuevo POST. **Advertencia:** usar Swagger para emitir invitación crea un registro real; las pruebas de integración revertibles son suficientes para este corte. No exponer tokens de invitación en capturas, logs ni documentación.
 
 **Documentación sincronizada:** 01 v0.5, 02 v0.6, 03 v0.6, 04 v0.7, 05 v0.3 e índice académico. **Siguiente:** C.4 aceptar y gestionar membresías; solo al cerrar E2-1 completo se genera el informe de traspaso a auditoría de tu compañero.
+
+## E2-1 C.4a — Aceptar invitación y habilitar membresía real
+
+**Contrato:** `POST /api/v1/invitations/accept` con Bearer del destinatario y JSON `{"invitation_token":"..."}`. Solo la cuenta cuyo correo normalizado coincide con la invitación puede consumirla. El servicio revalida usuario/sesión, comprueba huella de token y vencimiento, bloquea invitación/empresa/membresía, crea o reactiva una sola Membresía operativa, marca ACEPTADA y guarda usuario/fecha en **una transacción**. Responde 200 con `BusinessView`; 401 sesión inválida, 404 token inexistente/ajeno, 409 vencido/consumido, empresa suspendida o pertenencia ya activa, 422 cuerpo inválido. El cliente no elige empresa/rol al aceptar. El estado/rol histórico del titular administrativo inactivo está protegido. No hay token secreto en los DTO de respuesta de aceptación.
+
+**Nueva migración:** `e213c4_acceptance` agrega auditoría de aceptación a `business_invitations` (`accepted_by_user_id`, `accepted_at` y CHECK de coherencia con estado ACEPTADA). No modificar las migraciones aplicadas anteriormente. Las pruebas `test_business_acceptance_schema.py` y `test_business_acceptance_integration.py` comprueban receptor, cuenta creada después de la invitación, token ajeno/duplicado/vencido, empresa suspendida, rol, membresía reactivada, aislamiento multiempresa, sesión revocada y rollback después de un fallo. GitHub Actions aprobó migración, Pytest y Docker; falta validación local.
+
+**Verificar desde `plataforma-pyme/`** con Docker PostgreSQL saludable:
+
+```powershell
+git pull origin main
+cd backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -q
+Remove-Item Env:\RUN_DB_INTEGRATION
+cd ..
+docker compose --profile api up -d --build api
+docker compose ps
+Invoke-RestMethod http://127.0.0.1:18000/ready
+```
+
+Esperamos `e213c4_acceptance (head)`, sin operaciones nuevas de Alembic y todas las pruebas aprobadas; **no declarar cifra exacta hasta verificarla**. Una consulta a `/ready` inmediatamente después de reconstruir puede fallar mientras el contenedor muestra `health: starting`; repetir tras arrancar. No es necesario emitir invitaciones reales desde Swagger, porque las pruebas PostgreSQL crean y revierten los datos. La administración de miembros, cancelación/rechazo, validación de email y la entrega segura para producción permanecen pendientes del próximo corte C.4b y futuras etapas.
+
+**Documentos actualizados:** 01 v0.6, 02 v0.7, 03 v0.7, 04 v0.8 y 05 v0.4; UML 03A se revisará al concluir E2-1 completo. Sin cambios de frontend.

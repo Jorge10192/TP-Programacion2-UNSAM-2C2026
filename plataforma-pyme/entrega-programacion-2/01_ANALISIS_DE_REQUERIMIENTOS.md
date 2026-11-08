@@ -2,13 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.5 — requisitos originales + emisión de invitaciones C.3  
-**Estado:** **BORRADOR FUNCIONAL — con implementación parcial de RF-01/RF-02 verificada**  
+**Versión:** 0.6 — requisitos originales y aceptación de invitaciones C.4a  
+**Estado:** **BORRADOR FUNCIONAL — RF-01 validado; RF-02 parcialmente implementado y en ampliación**  
 **Fecha:** 7 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
 **Alcance de este documento:** análisis de producto y requisitos objetivo. **No equivale a afirmar que la API esté implementada.**
 
-> **Estado verificado el 8/11/2026:** infraestructura y autenticación reales; empresas y membresías, creación idempotente y lecturas aisladas. **C.1:** 98 pruebas locales aprobadas. **C.2:** 125 pruebas locales aprobadas, `alembic check` sin diferencias, Docker API/PostgreSQL `healthy` y `/ready` correcto. **C.3:** emisión de invitaciones implementada y aprobada en GitHub Actions (Python 3.12/3.14, migración, Alembic, Pytest y Docker); **pendiente de validar en PostgreSQL/Docker local del desarrollador**. La aceptación y gestión de miembros (C.4), módulos comerciales e integración React siguen pendientes. Consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para contratos y alcance exacto. Las descripciones antiguas TO-BE se mantienen como decisiones históricas, no evidencia vigente.
+> **Estado E2 al 8/11/2026:** backend FastAPI/PostgreSQL y autenticación reales. **C.1:** 98 pruebas locales aprobadas; **C.2:** 125 aprobadas, API/DB saludables; **C.3:** 147 pruebas locales aprobadas, migración `e213c3_invitations` sin deriva y API/DB saludables con `/ready`. **C.4a:** aceptación autenticada de invitaciones, membresía única/reactivada, auditoría de aceptación y nueva migración `e213c4_acceptance` implementadas; **CI aprobado en Python 3.12/3.14 y Docker, validación local pendiente**. **C.4b (administración del equipo), cierre UML 03A, módulos comerciales e integración React siguen pendientes.** Los apartados TO-BE antiguos son propuestas históricas, no funciones implementadas. Para contratos reales consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
 
 ## 1. Presentación del proyecto
 
@@ -195,7 +195,7 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 | RF | Código y evidencia verificada | Pendiente |
 |---|---|---|
 | RF-01 | `POST /api/v1/auth/register`, `login`, `GET /me`, `POST /logout`; Argon2id, sesiones persistentes y pruebas PostgreSQL | Endurecimiento público, recuperación de cuenta e integración de React |
-| RF-02 | Alta idempotente, lectura aislada y PATCH de perfil con RBAC validados localmente; **emisión de invitaciones C.3 implementada y aprobada por CI**; migración `e213c3_invitations` | Validación local C.3, aceptación de token, gestión de miembros y autorizaciones de operaciones futuras |
+| RF-02 | Crear, consultar y editar empresa con RBAC; **C.3 emisión validada localmente (147 tests)**; **C.4a aceptación publicada y CI aprobado**; migraciones hasta `e213c4_acceptance` | Validación local C.4a, administración de miembros C.4b, integración con React y controles públicos adicionales |
 | RF-03–RF-07 | Reglas planificadas, algunos comportamientos DEMO | Endpoints reales, tablas, transacciones y tests de negocio |
 | RF-08–RF-10 | Frontend DEMO o diseños diferidos | No comprometidos como backend del primer MVP |
 
@@ -214,3 +214,9 @@ Se implementó `POST /api/v1/businesses/{business_id}/invitations`, protegido po
 El token opaco aleatorio se entrega **una única vez en la respuesta 201** y solo su hash SHA-256 se guarda. Vence a los siete días. La base contiene una restricción UNIQUE parcial que impide dos invitaciones `PENDIENTE` al mismo correo normalizado dentro de la misma empresa. El servicio marca `EXPIRADA` una pendiente vencida antes de permitir una nueva; no existe tarea automática de expiración. Una solicitud duplicada mientras la primera está vigente responde 409. La confirmación ocurre en una transacción junto con la comprobación de identidad, membresía, permisos y empresa.
 
 **Fuera de C.3:** aceptación, listado de invitaciones, cancelación manual, reenvío, correo electrónico/QR públicos, generación de cuentas, modificaciones de roles e interfaz React. Estos puntos se evaluarán en C.4 y posteriores. La publicación en CI no equivale aún a validación local del desarrollador.
+
+### 13.3 C.4a — Aceptación de una invitación como identidad autenticada
+
+El destinatario puede aceptar exclusivamente una invitación cuyo correo normalizado coincida con el de su cuenta global autenticada. El token opaco se presenta mediante `POST /api/v1/invitations/accept`; la API usa únicamente `Authorization: Bearer` para obtener la identidad (no acepta `user_id`, rol o empresa enviados por el cliente). Se verifica por hash SHA-256 en PostgreSQL, estado `PENDIENTE`, vencimiento vigente y empresa `ACTIVA`. La operación crea una sola membresía o reactiva la anterior `INACTIVA` sin duplicar `(business_id,user_id)`; la nueva membresía utiliza el rol `ENCARGADO` o `TRABAJADOR` que fijó la invitación, nunca titularidad ni privilegios globales. La invitación pasa a `ACEPTADA` y registra `accepted_by_user_id` y `accepted_at` en el mismo commit. Repetir la aceptación no produce efectos.
+
+**Limitación funcional:** no hay aún pantalla de aceptación, envío de correo, gestión de equipo, cancelación/rechazo ni cambio de roles. En C.4b se definirá la administración del equipo. **Seguridad previa a producción:** la autenticación global todavía no incluye verificación del correo y deben diseñarse rate limits, entrega segura del token y protección de secretos; no describir esta funcionalidad como lista para internet público. Las pruebas del nuevo corte aprobaron CI, pero aún faltan las pruebas locales del desarrollador.

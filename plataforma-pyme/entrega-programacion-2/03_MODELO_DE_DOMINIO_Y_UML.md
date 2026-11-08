@@ -2,14 +2,14 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.6 — modelo conceptual + entidad de invitación C.3  
+**Versión:** 0.7 — aceptación de invitaciones y auditoría C.4a  
 **Estado:** **MODELO CONCEPTUAL REVISADO + ANEXO AS-IMPLEMENTED E2** — 03A/03B/03C no se rehicieron; subsistemas comerciales pendientes  
 **Fecha:** 7 de noviembre de 2026  
-**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.5), `02_CASOS_DE_USO.md` (v0.6), políticas del frontend DEMO E1-D2.  
+**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.6), `02_CASOS_DE_USO.md` (v0.7), políticas del frontend DEMO E1-D2.  
 
 > **Criterio de lectura:** AS-IS describe el modelo DEMO ya construido; TO-BE propone el dominio de la futura API FastAPI/SQLAlchemy/PostgreSQL. El diagrama conceptual **no es todavía el esquema SQL implementado**. Las extensiones posteriores aparecen separadas y no se incluyen en el núcleo evaluable.
 
-> **Estado verificado el 8/11/2026:** infraestructura y autenticación reales; empresas y membresías, creación idempotente y lecturas aisladas. **C.1:** 98 pruebas locales aprobadas. **C.2:** 125 pruebas locales aprobadas, `alembic check` sin diferencias, Docker API/PostgreSQL `healthy` y `/ready` correcto. **C.3:** emisión de invitaciones implementada y aprobada en GitHub Actions (Python 3.12/3.14, migración, Alembic, Pytest y Docker); **pendiente de validar en PostgreSQL/Docker local del desarrollador**. La aceptación y gestión de miembros (C.4), módulos comerciales e integración React siguen pendientes. Consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para contratos y alcance exacto. Las descripciones antiguas TO-BE se mantienen como decisiones históricas, no evidencia vigente.
+> **Estado E2 al 8/11/2026:** backend FastAPI/PostgreSQL y autenticación reales. **C.1:** 98 pruebas locales aprobadas; **C.2:** 125 aprobadas, API/DB saludables; **C.3:** 147 pruebas locales aprobadas, migración `e213c3_invitations` sin deriva y API/DB saludables con `/ready`. **C.4a:** aceptación autenticada de invitaciones, membresía única/reactivada, auditoría de aceptación y nueva migración `e213c4_acceptance` implementadas; **CI aprobado en Python 3.12/3.14 y Docker, validación local pendiente**. **C.4b (administración del equipo), cierre UML 03A, módulos comerciales e integración React siguen pendientes.** Los apartados TO-BE antiguos son propuestas históricas, no funciones implementadas. Para contratos reales consultar [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
 
 ## 1. Finalidad y alcance
 
@@ -341,3 +341,9 @@ La tabla real `business_invitations` implementa la **entidad Invitación ya prev
 **Relaciones:** cada invitación pertenece a una empresa, tiene un usuario invitador identificado y **no se vincula aún a un miembro invitado**. La invitación puede dirigirse a un correo sin cuenta global existente. El modelo de `Membership` y su unicidad `(business_id,user_id)` no cambió. Crear la invitación no concede permisos ni crea una segunda titularidad. En C.4 se concretará la aceptación con identidad autenticada y transición de estado.
 
 **UML:** 03A ya muestra la asociación conceptual de Invitación con Empresa. No se regeneran sus láminas por este corte intermedio; al cerrar E2-1 se revisarán atributos de invitador, estados y aceptación frente al esquema final. No se altera 03B (dominio comercial). El hash evita persistir el token en claro pero no sustituye TLS ni controles de entrega del secreto. El estado `PENDIENTE` con fecha pasada no implica vigencia: `expires_at` será obligatorio durante la aceptación.
+
+## 16. C.4a — Correspondencia entidad Invitación y alta de Membresía
+
+La invitación conceptual de 03A incorpora dos atributos técnicos de auditoría en la entidad real: `accepted_by_user_id` (FK opcional a Usuario) y `accepted_at` (fecha de aceptación). La migración aditiva `e213c4_acceptance` añade ambas columnas, FK y restricción de coherencia con `status=ACEPTADA`. **Relaciones:** Invitación sigue perteneciendo a una Empresa, fue emitida por un Usuario y, si está aceptada, conserva la identidad global de quien la consumió; la cuenta destinataria se identifica por correo normalizado. Una Membresía conecta exactamente un Usuario con una Empresa. Ninguna invitación pendiente concede acceso; el estado ACEPTADA y la membresía ACTIVA se confirman conjuntamente.
+
+Al aceptar se crea una nueva Membresía si no existía, o se reactiva la misma fila INACTIVA con rol operativo de la invitación. La PK/UNIQUE por empresa y usuario impide duplicados; se protege la titularidad administrativa histórica en una membresía inactiva. **No se modifica la cardinalidad conceptual, las relaciones de inventario ni 03B.** Al cerrar E2-1 se revisará la fuente editable/diagrama 03A, no se rehacen gráficas intermedias. La revisión local de C.4a todavía está pendiente; el CI del código sí aprobó.

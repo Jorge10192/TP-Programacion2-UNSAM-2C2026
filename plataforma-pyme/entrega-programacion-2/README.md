@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión para múltiples empresas y rubros.  
 **Ubicación prevista en el repositorio:** `plataforma-pyme/entrega-programacion-2/`.  
-**Estado de esta carpeta:** 01 v0.5, 02 v0.6, 03 v0.6 y 04 v0.7; conservan diseño conceptual y registran avances E2. 05 v0.3 documenta invitaciones C.3 (CI aprobado, validación local pendiente). 06 pruebas/despliegue aún pendiente. No sustituye `../docs/`.
+**Estado de esta carpeta:** 01 v0.6, 02 v0.7, 03 v0.7 y 04 v0.8; documentación conceptual y avances E2 sincronizados. 05 v0.4 documenta aceptación de invitaciones C.4a (CI aprobado, validación local pendiente). 06 pruebas/despliegue aún pendiente. No sustituye `../docs/`.
 
 ## Propósito
 
@@ -14,11 +14,11 @@ Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»*
 
 | Documento | Propósito | Estado |
 |---|---|---|
-| `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR funcional v0.5, emisión de invitaciones C.3** |
-| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.6 — CU-12a implementado, CU-12b pendiente** |
-| [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO v0.6 — Invitación materializada en C.3** |
-| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v0.7 — seguridad de invitaciones C.3** |
-| [`05_MATRIZ_API_Y_TRAZABILIDAD.md`](05_MATRIZ_API_Y_TRAZABILIDAD.md) | RF → CU → endpoints reales → pruebas/roles/evidencia/pendientes | **PUBLICADO v0.3 — E2-1.3C.3** |
+| `01_ANALISIS_DE_REQUERIMIENTOS.md` | Problema, objetivos, actores, alcance RF/RNF, reglas, criterios de aceptación y prioridad del backend | **BORRADOR funcional v0.6, aceptación C.4a** |
+| `02_CASOS_DE_USO.md` | 12 casos de uso del backend propuesto, flujos, errores, idempotencia, concurrencia y trazabilidad | **REVISADO v0.7 — CU-12b aceptación C.4a implementada** |
+| [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO v0.7 — auditoría de aceptación C.4a** |
+| [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v0.8 — aceptación transaccional C.4a** |
+| [`05_MATRIZ_API_Y_TRAZABILIDAD.md`](05_MATRIZ_API_Y_TRAZABILIDAD.md) | RF → CU → endpoints reales → pruebas/roles/evidencia/pendientes | **PUBLICADO v0.4 — E2-1 C.4a** |
 | `06_PRUEBAS_Y_DESPLIEGUE.md` | Estrategia de pruebas, GitHub Actions, Docker, despliegue y evidencias | Pendiente |
 | [`diagramas/`](diagramas/) | SVG vectoriales aprobados, fuentes PlantUML editables y tres guías detalladas | **03A / 03B / 03C publicados** |
 | `presentacion/` | Diapositivas de defensa final | A crear |
@@ -59,7 +59,7 @@ Cada explicación enlaza la **lámina SVG vectorial** (visualización de present
 
 **Regla operativa:** ninguna entrega mayor se considera cerrada solo por compilar. La misma entrega debe enlazar código, contratos HTTP, pruebas, versión Alembic si corresponde y documentos académicos. En cada corte se revisa 05 y `../backend/README.md`; 01/02 cambian al concretar RF/CU, 03 y el UML 03A al modificar entidades/reglas/cardinalidades, y 04 al modificar arquitectura/seguridad/patrones. El 03B no se regenera por cambios de identidad o autorización.
 
-**Orden acordado:** C.1 matriz RBAC (validado) → C.2 edición empresarial (validado) → C.3 emisión de invitaciones (CI aprobado, validar en local) → C.4 aceptación y administración de membresías (pendiente) → cierre E2-1 y revisión final de 03A/Documento 05 → RF-03 ubicaciones. Cada paso exige tests locales y CI verificables antes de avanzar; un código publicado no equivale por sí solo a etapa validada.
+**Orden acordado:** C.1 matriz RBAC (validado) → C.2 edición empresarial (validado) → C.3 emisión (validado: 147 pruebas) → C.4a aceptación de invitaciones (CI aprobado; validar local) → C.4b consulta y administración de membresías (pendiente) → cierre E2-1 y revisión final del 03A/Documento 05 → RF-03 ubicaciones. Cada paso exige tests locales y CI verificables antes de avanzar; un código publicado no equivale por sí solo a etapa validada.
 
 ### Estado de E2-1.3C.2 (corte del 8/11/2026)
 
@@ -68,3 +68,7 @@ Se publicó `PATCH /api/v1/businesses/{business_id}` con validaciones de datos y
 ### Estado C.3, corte del 8/11/2026
 
 Emisión segura de invitaciones `POST /api/v1/businesses/{business_id}/invitations` implementada y probada en CI. Existe nueva migración `e213c3_invitations`; la invitación no crea membresía, el token se entrega una sola vez y se persiste únicamente su hash. Aceptación y administración de miembros siguen pendientes. Validación de Alembic/PostgreSQL/Docker local requerida antes de cerrar C.3. La hoja formal de auditoría para el compañero se prepara solo al cerrar **E2-1** completo, no por cada subpaso.
+
+### C.4a — Aceptación de invitaciones, 8/11/2026
+
+Se implementó `POST /api/v1/invitations/accept`: el destinatario autenticado consume la invitación con el token de C.3, crea o reactiva una sola Membresía y confirma estado ACEPTADA + traza de usuario/fecha en una sola transacción. Migración `e213c4_acceptance`. CI aprobado en Python 3.12/3.14/PostgreSQL y Docker, **validación local pendiente**. C.4b (administración del equipo) y cierre UML 03A quedan pendientes. No generar todavía la entrega de auditoría por bloque E2-1; se confeccionará al cerrar todos sus pasos.
