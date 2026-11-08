@@ -169,7 +169,6 @@ def test_mixed_purchase_snapshots_are_persistent_and_no_stock_is_created(isolate
                                    headers=auth, json={"name": "Harina nueva"})
     assert changed_supplier.status_code == 200, changed_supplier.text
     assert changed_catalog.status_code == 200, changed_catalog.text
-    db.expire_all() if hasattr(db, "expire_all") else None
     assert db.execute(select(Purchase.supplier_name_snapshot).where(
         Purchase.id == pid,
     )).scalar_one() == "Proveedor histórico"
