@@ -131,3 +131,32 @@ class BusinessRepository:
                 Membership.user_id == user_id,
             ).with_for_update().execution_options(populate_existing=True)
         )
+
+    def team_members(
+        self, business_id: UUID,
+    ) -> list[tuple[Membership, User]]:
+        """Equipo de un tenant concreto, incluyendo miembros INACTIVOS."""
+        statement = (
+            select(Membership, User)
+            .join(User, Membership.user_id == User.id)
+            .where(Membership.business_id == business_id)
+            .order_by(Membership.created_at, Membership.id)
+        )
+        return [(member, user) for member, user in self.db.execute(statement).all()]
+
+    def team_member_for_update(
+        self, business_id: UUID, membership_id: UUID,
+    ) -> tuple[Membership, User] | None:
+        """Bloquea la membresía identificada DENTRO del tenant solicitado."""
+        statement = (
+            select(Membership, User)
+            .join(User, Membership.user_id == User.id)
+            .where(
+                Membership.business_id == business_id,
+                Membership.id == membership_id,
+            )
+            .with_for_update(of=Membership)
+            .execution_options(populate_existing=True)
+        )
+        row = self.db.execute(statement).first()
+        return (row[0], row[1]) if row is not None else None

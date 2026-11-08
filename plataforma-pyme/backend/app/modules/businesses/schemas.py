@@ -141,3 +141,43 @@ class AcceptBusinessInvitationRequest(BaseModel):
         max_length=43,
         pattern=r"^[a-zA-Z0-9_-]{43}$",
     )
+
+
+class BusinessTeamMemberView(BaseModel):
+    """Información básica del equipo visible solo a titulares/administradores."""
+    id: UUID
+    user_id: UUID
+    email: str
+    display_name: str
+    role: str
+    status: str
+    job_title: str | None
+
+    @classmethod
+    def from_records(cls, member: object, user: object) -> "BusinessTeamMemberView":
+        return cls(
+            id=member.id,
+            user_id=member.user_id,
+            email=user.email_normalizado,
+            display_name=user.display_name,
+            role=member.role,
+            status=member.status,
+            job_title=member.job_title,
+        )
+
+
+class UpdateBusinessTeamMemberRequest(BaseModel):
+    """Titular: cambiar rol operativo o activar/desactivar, sin transferir dueño."""
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["ADMINISTRADOR", "ENCARGADO", "TRABAJADOR"] | None = None
+    status: Literal["ACTIVA", "INACTIVA"] | None = None
+
+    @model_validator(mode="after")
+    def require_update(self) -> Self:
+        if not self.model_fields_set:
+            raise ValueError("Se requiere rol o estado para actualizar")
+        for key in self.model_fields_set:
+            if getattr(self, key) is None:
+                raise ValueError("No se permiten campos null")
+        return self

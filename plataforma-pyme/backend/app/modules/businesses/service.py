@@ -25,6 +25,7 @@ from app.modules.businesses.schemas import (
     BusinessView, CreateBusinessRequest, UpdateBusinessProfileRequest,
     CreateBusinessInvitationRequest, BusinessInvitationIssued,
     AcceptBusinessInvitationRequest,
+    BusinessTeamMemberView, UpdateBusinessTeamMemberRequest,
 )
 
 
@@ -63,6 +64,14 @@ class BusinessPermissionDenied(Exception):
 
 class BusinessSuspended(Exception):
     """Empresa visible para el actor, pero no editable en su estado actual."""
+
+
+class TeamMemberNotFound(Exception):
+    """Membresía objetivo inexistente o fuera de la empresa autorizada."""
+
+
+class ProtectedMembership(Exception):
+    """Titular administrativo no editable por gestión ordinaria de equipo."""
 
 
 @dataclass(frozen=True)
@@ -341,6 +350,81 @@ class BusinessService:
             body = BusinessView.from_records(company, member)
             self.db.commit()
             return body
+        except Exception:
+            self.db.rollback()
+            raise
+
+
+    def _require_team_permission(
+        self, company: Business, member: Membership, permission: BusinessPermission,
+    ) -> None:
+        if has_business_permission(
+            role=member.role, membership_status=member.status,
+            business_status=company.status, permission=permission,
+        ):
+            return
+        if company.status == "SUSPENDIDA" and has_business_permission(
+            role=member.role, membership_status=member.status,
+            business_status="ACTIVA", permission=permission,
+        ):
+            raise BusinessSuspended()
+        raise BusinessPermissionDenied()
+
+    def list_team(
+        self, actor_id: UUID, auth_session_id: UUID, business_id: UUID,
+    ) -> list[BusinessTeamMemberView]:
+        """GET de equipo; no exponer emails/cargos a trabajadores sin permiso."""
+        try:
+            self._revalidate_actor(actor_id, auth_session_id)
+            pair = self.repository.lock_active_member_business(actor_id, business_id)
+            if pair is None:
+                raise BusinessUnavailable()
+            company, actor_membership = pair
+            self._require_team_permission(
+                company, actor_membership, BusinessPermission.READ_MEMBERS,
+            )
+            result = [
+                BusinessTeamMemberView.from_records(member, user)
+                for member, user in self.repository.team_members(business_id)
+            ]
+            self.db.rollback()  # liberar bloqueos; GET nunca escribe
+            return result
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def update_team_member(
+        self, actor_id: UUID, auth_session_id: UUID,
+        business_id: UUID, membership_id: UUID,
+        changes: UpdateBusinessTeamMemberRequest,
+    ) -> BusinessTeamMemberView:
+        """Solo titular vigente; preserva su propia titularidad y la ajena."""
+        try:
+            self._revalidate_actor(actor_id, auth_session_id)
+            pair = self.repository.lock_active_member_business(actor_id, business_id)
+            if pair is None:
+                raise BusinessUnavailable()
+            company, actor_membership = pair
+            self._require_team_permission(
+                company, actor_membership, BusinessPermission.MANAGE_MEMBERS,
+            )
+            target = self.repository.team_member_for_update(
+                business_id, membership_id,
+            )
+            if target is None:
+                raise TeamMemberNotFound()
+            target_member, target_user = target
+            if (
+                target_member.id == actor_membership.id
+                or target_member.role == "TITULAR_ADMINISTRATIVO"
+            ):
+                raise ProtectedMembership()
+            for field, value in changes.model_dump(exclude_unset=True).items():
+                setattr(target_member, field, value)
+            self.db.flush()
+            result = BusinessTeamMemberView.from_records(target_member, target_user)
+            self.db.commit()
+            return result
         except Exception:
             self.db.rollback()
             raise

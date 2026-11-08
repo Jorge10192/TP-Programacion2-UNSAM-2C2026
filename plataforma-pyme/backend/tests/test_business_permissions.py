@@ -19,6 +19,7 @@ from app.modules.businesses.permissions import (
                 BusinessPermission.VIEW,
                 BusinessPermission.EDIT_PROFILE,
                 BusinessPermission.INVITE_MEMBERS,
+                BusinessPermission.READ_MEMBERS,
             }),
         ),
         (BusinessRole.ENCARGADO, frozenset({BusinessPermission.VIEW})),

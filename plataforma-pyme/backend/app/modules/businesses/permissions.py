@@ -21,6 +21,7 @@ class BusinessPermission(StrEnum):
     VIEW = "business.view"
     EDIT_PROFILE = "business.profile.edit"
     INVITE_MEMBERS = "members.invite"
+    READ_MEMBERS = "members.read"
     MANAGE_MEMBERS = "members.manage"
 
 
@@ -30,6 +31,7 @@ ROLE_PERMISSIONS: Final[dict[BusinessRole, frozenset[BusinessPermission]]] = {
         BusinessPermission.VIEW,
         BusinessPermission.EDIT_PROFILE,
         BusinessPermission.INVITE_MEMBERS,
+        BusinessPermission.READ_MEMBERS,
     }),
     BusinessRole.ENCARGADO: frozenset({BusinessPermission.VIEW}),
     BusinessRole.TRABAJADOR: frozenset({BusinessPermission.VIEW}),
