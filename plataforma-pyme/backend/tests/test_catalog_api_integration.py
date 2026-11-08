@@ -550,3 +550,153 @@ def test_status_flush_exception_rollback_prevents_partial_update(isolated, monke
     assert db.execute(select(CatalogItem.status).where(
         CatalogItem.id == item,
     )).scalar_one() == "ACTIVO"
+
+
+# E2-3 D — regresiones de integridad y fallos transaccionales.
+def test_unicode_name_and_sku_duplicates_are_atomic(isolated):
+    client, db = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    made = create(client, bid, auth, payload("Straße", sku="ａｂｃ-１２３"))
+    assert made.status_code == 201, made.text
+    assert made.json()["sku"] == "ABC-123"
+    assert create(client, bid, auth, payload(
+        "STRASSE", sku="DISTINTO-1")).status_code == 409
+    assert create(client, bid, auth, payload(
+        "Otra ficha", sku="abc-123")).status_code == 409
+    assert create(client, bid, auth, payload(
+        "Sin conflicto", sku="OK-2")).status_code == 201
+    assert len(client.get(endpoint(bid), headers=auth).json()) == 2
+    assert db.execute(select(CatalogItem.sku).where(
+        CatalogItem.id == UUID(made.json()["id"])
+    )).scalar_one() == "ABC-123"
+
+
+def test_inactive_unicode_names_remain_reserved_in_same_company(isolated):
+    client, _ = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    item = create(client, bid, auth, payload("Café en grano", sku="CAF-01"))
+    assert item.status_code == 201
+    item_id = UUID(item.json()["id"])
+    assert set_status(client, bid, item_id, auth, "INACTIVO").status_code == 200
+    assert create(client, bid, auth, payload(
+        "CAFE\u0301 EN GRANO", sku="CAF-02"
+    )).status_code == 409
+    assert create(client, bid, auth, payload(
+        "Café tostado", sku="ｃａｆ-０１"
+    )).status_code == 409
+    assert client.get(endpoint(bid, item_id), headers=auth).json()["status"] == "INACTIVO"
+
+
+def test_optional_fields_can_be_cleared_without_changing_item_identity(isolated):
+    client, db = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    original = create(client, bid, auth, payload(
+        "Mate de cerámica", sku="MAT-10",
+        price_cents=1000, reference_cost_cents=600, sellable=True,
+    ))
+    assert original.status_code == 201
+    item_id = UUID(original.json()["id"])
+    changed = client.patch(endpoint(bid, item_id), headers=auth, json={
+        "sku": None, "price_cents": None, "reference_cost_cents": None,
+        "sellable": False,
+    })
+    assert changed.status_code == 200, changed.text
+    record = changed.json()
+    assert record["sku"] is None
+    assert record["price_cents"] is None
+    assert record["reference_cost_cents"] is None
+    assert record["sellable"] is False
+    for name in ("id", "business_id", "kind", "unit", "name", "status"):
+        assert record[name] == original.json()[name]
+    assert db.execute(select(CatalogItem.name_key).where(
+        CatalogItem.id == item_id,
+    )).scalar_one() == "mate de cerámica"
+
+
+def test_incompatible_partial_type_changes_do_not_corrupt_service(isolated):
+    client, db = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    result = create(client, bid, auth, payload(
+        "Servicio técnico", kind="SERVICIO", unit="SERVICIO",
+    ))
+    assert result.status_code == 201
+    item_id = UUID(result.json()["id"])
+    for bad in ({"kind": "REVENTA"}, {"unit": "GRAMO"}):
+        denied = client.patch(endpoint(bid, item_id), headers=auth, json=bad)
+        assert denied.status_code == 422, denied.text
+    assert client.get(endpoint(bid, item_id), headers=auth).json()["kind"] == "SERVICIO"
+    good = client.patch(endpoint(bid, item_id), headers=auth, json={
+        "kind": "INSUMO", "unit": "GRAMO",
+    })
+    assert good.status_code == 200, good.text
+    assert good.json()["item_type"] == "BIEN"
+    assert db.execute(select(CatalogItem.unit).where(
+        CatalogItem.id == item_id,
+    )).scalar_one() == "GRAMO"
+
+
+def test_same_user_cannot_mix_artifacts_of_two_tenants(isolated):
+    client, db = isolated
+    auth, _ = actor(client)
+    a, b = business(client, auth), business(client, auth)
+    one = create(client, a, auth, payload("Producto", sku="SAME-1"))
+    two = create(client, b, auth, payload("Producto", sku="SAME-1"))
+    assert one.status_code == two.status_code == 201
+    aid, bid = UUID(one.json()["id"]), UUID(two.json()["id"])
+    assert client.get(endpoint(b, aid), headers=auth).status_code == 404
+    assert client.patch(endpoint(b, aid), headers=auth,
+                        json={"name": "Intrusión"}).status_code == 404
+    assert set_status(client, b, aid, auth, "INACTIVO").status_code == 404
+    assert client.get(endpoint(a, bid), headers=auth).status_code == 404
+    for item_id in (aid, bid):
+        assert db.execute(select(CatalogItem.status).where(
+            CatalogItem.id == item_id,
+        )).scalar_one() == "ACTIVO"
+
+
+@pytest.mark.parametrize("operation", ["create", "edit"])
+def test_failed_serialization_after_flush_rolls_back_operation(isolated, monkeypatch, operation):
+    from app.modules.catalog.schemas import CatalogItemView
+
+    client, db = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    first = create(client, bid, auth, payload("Original", sku="ORIG-1"))
+    assert first.status_code == 201
+    item_id = UUID(first.json()["id"])
+    expected = client.get(endpoint(bid), headers=auth).json()
+
+    def failure(row):
+        raise RuntimeError("Error simulado tras flush")
+
+    with monkeypatch.context() as patcher:
+        patcher.setattr(CatalogItemView, "from_record", failure)
+        with pytest.raises(RuntimeError, match="tras flush"):
+            if operation == "create":
+                create(client, bid, auth, payload("Nueva ficha", sku="NUEVA-1"))
+            else:
+                client.patch(endpoint(bid, item_id), headers=auth,
+                             json={"name": "Nueva ficha", "sku": "NUEVA-1"})
+    assert client.get(endpoint(bid), headers=auth).json() == expected
+    assert db.execute(select(CatalogItem.name).where(
+        CatalogItem.id == item_id,
+    )).scalar_one() == "Original"
+
+
+@pytest.mark.parametrize("status", ["ACTIVO", "INACTIVO"])
+def test_status_repetition_is_idempotent_on_entire_response(isolated, status):
+    client, _ = isolated
+    auth, _ = actor(client)
+    bid = business(client, auth)
+    made = create(client, bid, auth)
+    assert made.status_code == 201
+    item_id = UUID(made.json()["id"])
+    first = set_status(client, bid, item_id, auth, status)
+    second = set_status(client, bid, item_id, auth, status)
+    assert first.status_code == second.status_code == 200
+    assert first.json() == second.json()
+    assert first.json()["updated_at"] == second.json()["updated_at"]
