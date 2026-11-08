@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 1.6 — E2-3 D, refuerzo de integridad de catálogo (CI 580)
+**Versión:** 1.7 — E2-3 E, catálogo real y 580 pruebas Windows
 **Estado:** **BORRADOR FUNCIONAL — RF-01/RF-02 núcleo implementado; RF-03 API de ubicaciones E2-2 C disponible con límites declarados**  
 **Fecha:** 8 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
@@ -296,3 +296,11 @@ Se incorporó `CASA` como sexto tipo de ubicación, sin cambiar el contrato de c
 **Alcance y límites:** las UNIQUE por `(business_id,name_key)` y `(business_id,sku)` y las transacciones/bloqueos existentes protegen ante colisiones; los tests ejercen duplicados y recuperaciones reales en PostgreSQL, **pero no son una prueba simultánea de carga/concurrencia con múltiples conexiones independientes**. Esta última queda registrada como verificación futura antes de producción. No hay aún compras, ventas, movimientos ni snapshots, por lo que no se puede comprobar una regla de cambio de unidad/estado con historial comercial real. `sellable` no sustituye `status`. No conectar frontend DEMO ni E2-1/E2-2 para este corte.
 
 **Evidencia CI del código D:** commit `bf4fd3fa809c9f4e6afdeb064a155acf233b1722`, [GitHub Actions run 42508771222](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42508771222): **3/3 trabajos aprobados**, **580 passed** en Python 3.12 y Python 3.14 con PostgreSQL, Docker build/liveness aprobado, `e23a_catalog (head)` y `alembic check` sin diferencias. **Validación local Windows E2-3 C:** 527 passed in 59.60s, contenedores saludables y `/ready` correcto. **Validación local Windows E2-3 D:** todavía pendiente. No confundir CI remoto con pruebas ejecutadas en la computadora del autor.
+
+## E2-3 E — RF-04: modelo, pruebas y límites reconciliados
+
+**E2-3 E (08/11/2026) — cierre funcional:** E2-3 A/B/C/D implementó `CatalogItem`/`catalog_items`, migración `e23a_catalog`, cinco operaciones REST (GET/POST colección, GET/PATCH detalle, PATCH estado), permisos por tenant y rol, nombre canónico y SKU únicos dentro de la empresa, cuatro clases ELABORADO/REVENTA/INSUMO/SERVICIO, tipo BIEN/SERVICIO derivado sin columna duplicada, importes opcionales en centavos y desactivación reversible sin borrar fichas ni liberar claves. No se crean existencias al registrar un artículo. **La fuente PlantUML 03A v0.7 y su SVG editorial ya se conciliaron** con el Catálogo real; `Proveedor` sigue TO-BE.
+
+**Windows D comprobado por el desarrollador:** 580 passed in 66.45 s, `e23a_catalog (head)`, `No new upgrade operations detected.`, API y PostgreSQL Docker `healthy`, `/ready` → `ready/ok`. **CI D:** [run 42508771222](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42508771222), SHA `bf4fd3fa809c9f4e6afdeb064a155acf233b1722`, 580 tests Python 3.12 y 3.14, 3/3 jobs aprobados. Cambios posteriores solo de UML/documentos no constituyen nueva ejecución CI.
+
+**Pendientes explícitos:** no se ejecutó una prueba de doble alta concurrente con dos conexiones independientes ni carga sostenida. Aún no hay compras, stock, ventas, snapshots comerciales ni uso de permisos SELL/STORE en operaciones reales. Las reglas sobre cambios de tipo/unidad con historial comercial deberán aplicarse cuando existan esos módulos. React continúa DEMO sin integración HTTP. E2-1/E2-2 y diagramas 03B/03C permanecen fuera del alcance. El bloque está preparado para **auditoría independiente** y no se declara auditado ni listo para producción.
