@@ -51,9 +51,10 @@ def committed_company():
                     for model in (
                         StockMovement, StockBalance, PurchaseReceipt, PurchaseLine,
                         Purchase, CatalogItem, LocationAssignment, Location, Supplier,
-                        BusinessCreationRequest, Membership, Business,
+                        BusinessCreationRequest, Membership,
                     ):
                         db.execute(delete(model).where(model.business_id == bid))
+                    db.execute(delete(Business).where(Business.id == bid))
                 if user_id is not None:
                     db.execute(delete(AuthSession).where(AuthSession.user_id == user_id))
                     db.execute(delete(User).where(User.id == user_id))
@@ -85,23 +86,22 @@ def test_two_simultaneous_first_entries_sum_on_absent_balance(committed_company)
     responses = parallel_requests(headers, bid, loc, [(p1, uuid4()), (p2, uuid4())])
     assert sorted(code for code, _ in responses) == [201, 201], responses
     with get_engine().connect() as db:
-        rows = db.execute(select(StockBalance).where(
+        rows = db.execute(select(StockBalance.quantity_milli, StockBalance.version).where(
             StockBalance.business_id == bid,
             StockBalance.location_id == loc,
             StockBalance.catalog_item_id == iid,
         )).all()
         assert len(rows) == 1
-        balance = rows[0][0]
-        assert balance.quantity_milli == 30000
-        assert balance.version == 2
-        moves = db.execute(select(StockMovement).where(
+        assert rows[0].quantity_milli == 30000
+        assert rows[0].version == 2
+        moves = db.execute(select(StockMovement.delta_milli).where(
             StockMovement.business_id == bid,
         )).scalars().all()
         assert len(moves) == 2
-        assert sum(x.delta_milli for x in moves) == 30000
-        receipts = db.execute(select(PurchaseReceipt).where(
+        assert sum(moves) == 30000
+        receipts = db.execute(select(PurchaseReceipt.id).where(
             PurchaseReceipt.business_id == bid,
-        )).scalars().all()
+        )).all()
         assert len(receipts) == 2
 
 
