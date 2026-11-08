@@ -11,7 +11,7 @@ class PurchaseRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def list(self, business_id: UUID, *, offset: int, limit: int) -> list[Purchase]:
+    def list_for_business(self, business_id: UUID, *, offset: int, limit: int) -> list[Purchase]:
         return list(self.db.scalars(
             select(Purchase).where(Purchase.business_id == business_id)
             .order_by(Purchase.created_at.desc(), Purchase.id.desc())
