@@ -151,10 +151,14 @@ def test_mixed_purchase_snapshots_are_persistent_and_no_stock_is_created(isolate
     for item in lines:
         db.execute(insert(PurchaseLine).values(**item))
 
-    purchase = db.execute(select(Purchase).where(Purchase.id == pid)).scalar_one()
-    stored = db.execute(select(PurchaseLine).where(
-        PurchaseLine.purchase_id == pid,
-    ).order_by(PurchaseLine.line_number)).scalars().all()
+    purchase = db.execute(select(
+        Purchase.total_cents, Purchase.status, Purchase.supplier_name_snapshot,
+    ).where(Purchase.id == pid)).one()
+    stored = db.execute(select(
+        PurchaseLine.kind_snapshot, PurchaseLine.quantity_milli,
+        PurchaseLine.unit_snapshot, PurchaseLine.catalog_item_id,
+        PurchaseLine.line_total_cents,
+    ).where(PurchaseLine.purchase_id == pid).order_by(PurchaseLine.line_number)).all()
     assert purchase.total_cents == sum(line.line_total_cents for line in stored) == 8403
     assert purchase.status == "REGISTRADA" and len(stored) == 3
     assert [l.kind_snapshot for l in stored] == ["BIEN", "SERVICIO", "CONCEPTO"]
@@ -187,7 +191,9 @@ def test_concept_only_purchase_needs_no_supplier_catalog_or_location(isolated):
         bid, values["id"], description_snapshot="Tasa administrativa",
         quantity_milli=1000, unit_cost_cents=250, line_total_cents=250,
     )))
-    saved = db.execute(select(Purchase).where(Purchase.id == values["id"])).scalar_one()
+    saved = db.execute(select(
+        Purchase.supplier_id, Purchase.supplier_name_snapshot, Purchase.status,
+    ).where(Purchase.id == values["id"])).one()
     assert saved.supplier_id is None and saved.supplier_name_snapshot == ""
     assert saved.status == "CERRADA_SIN_RECEPCION"
     assert db.execute(select(CatalogItem.id).where(CatalogItem.business_id == bid)).all() == []
