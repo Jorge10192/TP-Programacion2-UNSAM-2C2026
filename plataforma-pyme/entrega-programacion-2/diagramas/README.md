@@ -1,12 +1,12 @@
 # Diagramas 03A, 03B y 03C — Asistente PyME
 
-**Estado E2-2 C:** identidad, empresas, equipo, invitaciones y Ubicación tienen backend real; Catálogo y Proveedor continúan TO-BE. **Las asignaciones por ubicación están implementadas en E2-2 D; el uso de su política en compras/stock/ventas sigue pendiente**. Los diagramas no representan por sí solos permisos implementados.
+**Estado E2-3 E (08/11/2026):** identidad, empresas, equipo e invitaciones (E2-1), ubicaciones y asignaciones (E2-2), y Catálogo (E2-3) disponen de backend real. **Proveedor continúa TO-BE**; compras, stock y ventas todavía no consumen el catálogo ni la política operacional de sedes. Las láminas son representaciones del modelo y no sustituyen la autorización de servidor.
 
 El [Documento 03](../03_MODELO_DE_DOMINIO_Y_UML.md) describe el modelo completo, estados, transacciones y restricciones. Cada diagrama posee una **explicación detallada en Markdown**, una **lámina SVG vectorial** para GitHub/presentación y una **fuente PlantUML** para revisar su semántica.
 
 | Diagrama | Explicación | Lámina vectorial | Fuente PlantUML |
 |---|---|---|---|
-| **03A — Identidad y catálogo** | [Guía v0.6 E2-2 D](03A_EXPLICACION_IDENTIDAD_EMPRESAS_CATALOGO.md) | [SVG editorial actualizado](03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg) | [PUML emisor/aceptante](03A_CLASES_IDENTIDAD_Y_CATALOGO.puml) |
+| **03A — Identidad y catálogo** | [Guía v0.7 E2-3 E](03A_EXPLICACION_IDENTIDAD_EMPRESAS_CATALOGO.md) | [SVG editorial actualizado](03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg) | [PUML emisor/aceptante](03A_CLASES_IDENTIDAD_Y_CATALOGO.puml) |
 | **03B — Comercio e inventario** | [Guía completa](03B_EXPLICACION_COMPRAS_INVENTARIO_VENTAS.md) | [SVG](03B_COMERCIO_INVENTARIO_REDISENADO.svg) | [PUML](03B_CLASES_COMERCIO_E_INVENTARIO.puml) |
 | **03C — Casos de uso** | [Guía completa](03C_EXPLICACION_CASOS_DE_USO.md) | [SVG](03C_CASOS_DE_USO_REDISENADO.svg) | [PUML](03C_CASOS_DE_USO.puml) |
 
@@ -21,3 +21,5 @@ Para dar clase o exponer, abrir el SVG. Para preparar SQLAlchemy, leer el Docume
 **Actualización E2-2 C:** fuente 03A y SVG editorial reconciliados con `locations`, incluyendo `CASA`, `ACTIVA/PAUSADA`, permisos de gestión por rol empresarial y principal única activa por empresa. La guía explica que asignaciones de personal y autorización granular por ubicación aún **no están implementadas**. 03B/03C permanecen sin cambios.
 
 **E2-2 D:** la fuente 03A PlantUML suma `AsignacionUbicacion` con relaciones a Membresía y Ubicación y reglas FK por tenant. El SVG es una lámina editorial resumida sin esa caja adicional, cuyo detalle está documentado en la guía. E2-1 y 03B/03C no fueron modificados; validación local D pendiente.
+
+**E2-3 E (cierre Catálogo):** 03A PUML contiene `ArticuloCatalogo` real con clasificación `kind` (ELABORADO/REVENTA/INSUMO/SERVICIO), tipo BIEN/SERVICIO **derivado y no almacenado**, SKU/nombre normalizados, unidad y restricciones, importes BIGINT opcionales, estado ACTIVO/INACTIVO y cinco operaciones REST. El SVG mantiene una selección editorial compacta de atributos; la guía 03A registra correspondencia completa. **580 pruebas locales Windows aprobadas** y CI 3/3 sobre código D. `Proveedor` permanece TO-BE, 03B y 03C no fueron modificados. Las secciones históricas anteriores describen sus respectivos cortes.

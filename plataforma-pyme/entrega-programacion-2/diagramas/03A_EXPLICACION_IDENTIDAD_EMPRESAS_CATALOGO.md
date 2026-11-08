@@ -1,6 +1,6 @@
 # 03A — Guía detallada: identidad, empresas y catálogo
 
-**Proyecto:** Asistente PyME · **Documento asociado:** [Modelo de dominio y UML](../03_MODELO_DE_DOMINIO_Y_UML.md) · **Versión:** 0.6 (E2-2 D, 08/11/2026) · **Estado:** UML conceptual conciliado con RF-01/RF-02 y ubicaciones RF-03 (API real de seis rutas); Artículos y Proveedores permanecen TO-BE. Asignación de miembros a sedes y política operativa incorporadas en E2-2 D; consumo por compras, stock y ventas pendiente.
+**Proyecto:** Asistente PyME · **Documento asociado:** [Modelo de dominio y UML](../03_MODELO_DE_DOMINIO_Y_UML.md) · **Versión:** 0.7 (E2-3 E, 08/11/2026) · **Estado:** UML 03A conciliado con E2-1 identidad, E2-2 ubicaciones/asignaciones y **E2-3 Catálogo real (cinco rutas HTTP, 580 pruebas Windows)**. Proveedor permanece TO-BE; compras, stock y ventas aún no consumen estas entidades. Fuente PUML completa y SVG editorial resumido.
 
 ![03A — Identidad, empresas y catálogo](03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg)
 
@@ -25,10 +25,10 @@ La lámina se divide en **Identidad y acceso** (izquierda) y **Empresa y recurso
 | **Empresa** | Espacio independiente de gestión (*tenant*) | Nace ACTIVA, con una membresía administrativa inicial; puede tener cero ubicaciones y cero artículos |
 | **Invitacion** | `business_invitations` emitida por Usuario y dirigida a correo/rol | Emisor obligatorio y aceptante opcional; PENDIENTE no concede acceso, el secreto solo se conserva como SHA-256 |
 | **Ubicacion** | Entidad SQL `locations`: local, feria, depósito, oficina, **casa** u otro espacio; venta y almacenamiento independientes | Pertenece a una sola empresa; cero al crearla, principal activa a lo sumo una; gestión REST E2-2 B/C ya implementada |
-| **ArticuloCatalogo** | Bien físico o servicio, con SKU, unidad y precio/costo informativos | No crea existencias al registrarse; los servicios no consumen stock automáticamente en MVP |
+| **ArticuloCatalogo** | Tabla real `catalog_items` del tenant; ELABORADO/REVENTA/INSUMO/SERVICIO, SKU y nombre canónico, unidad y precios opcionales | Backend E2-3 A/B/C/D: cinco rutas, sin stock automático; `BIEN/SERVICIO` es derivado de `kind`, no columna duplicada |
 | **Proveedor** | Referencia comercial para adquisiciones | Pertenece a una empresa y puede quedar inactivo sin borrar historial |
 
-Las clases son conceptuales: Usuario, Empresa, Membresía, Invitación **y Ubicacion** ya tienen persistencia SQL; ArticuloCatalogo y Proveedor siguen planificados para backend. Las FK no necesitan duplicarse en las cajas UML si la asociación es inequívoca.
+Las clases combinan entidades conceptuales y reales: Usuario, Empresa, Membresía, Invitación, Ubicacion, AsignacionUbicacion **y ArticuloCatalogo** tienen persistencia SQL; **Proveedor** sigue planificado para otro bloque. Las FK no necesitan duplicarse en las cajas UML si la asociación es inequívoca.
 
 ## 3. Cómo leer las cardinalidades
 
@@ -54,12 +54,12 @@ Convenciones: **0..1** = cero o uno; **1** = exactamente uno; **0..*** = cero o 
 5. **No aparecen depósitos, ubicaciones ni existencias ficticias**. Una empresa exclusivamente de servicios puede comenzar sin ellos.
 6. En futuras solicitudes se comprueba la membresía correspondiente a la empresa indicada, no solo la identidad del token.
 
-### 4.2 Ubicaciones y artículos (CU-04 implementado parcialmente; CU-05 TO-BE)
+### 4.2 Ubicaciones y artículos (CU-04 y CU-05 con API real; comercio posterior)
 
 1. El titular o administrador crea, consulta, edita, pausa/reactiva o cambia la principal de una ubicación mediante la API E2-2 B/C. Todo acceso se acota a la empresa y la membresía actuales; al pausar una principal se revoca ese indicador, y reactivar no lo restituye.
-2. **Futuro E2-3:** registrar un artículo como bien físico o servicio; la API de catálogo todavía no existe y deberá validar SKU por empresa.
+2. **E2-3 implementado:** un titular/administrador crea, lista, consulta, edita, desactiva o reactiva un artículo por API. `POST/GET /catalog`, `GET/PATCH /catalog/{item_id}` y `PATCH /catalog/{item_id}/status`; nombre normalizado y SKU único por empresa.
 3. Un bien físico puede existir en catálogo con stock cero; solo recepciones/ajustes válidos incrementarán sus existencias.
-4. Si un artículo tiene precio de referencia no informado, al vender se pide precio explícito en el renglón.
+4. Si un artículo no tiene precio de lista, una futura venta deberá exigir el importe explícito del renglón; aún no hay API de ventas.
 5. Un servicio puede venderse sin depósito; no descuenta insumos de forma automática durante el MVP.
 
 ### 4.3 Invitación y aceptación (CU-12, soporte propuesto)
@@ -96,7 +96,7 @@ Este diagrama **no** modela compras, recepciones, ventas ni movimientos: eso se 
 
 **¿Por qué SKU por empresa?** Distintas empresas pueden utilizar el mismo código, pero dentro de una debe identificar de forma inequívoca al artículo.
 
-**Estado tras E2-2 C:** 03A incluye entidades reales de identidad/empresa/invitación y `Ubicacion`, que ya tiene SQL y API con seis rutas; ArticuloCatalogo y Proveedor siguen TO-BE. **Pertenecer a una empresa no equivale a estar asignado a una ubicación**: solo hay permisos por rol empresarial para administrar la ubicación, no asignaciones individuales de usuarios a sedes. El SVG es un resumen visual; el PlantUML conserva todas las asociaciones. No existe transferencia de titularidad ni verificación de email.
+**Registro histórico tras E2-2 C (superado por cortes D y E2-3):** 03A incluía entonces identidad, invitaciones y ubicaciones con seis rutas, mientras que ArticuloCatalogo y Proveedor eran TO-BE y las asignaciones de sede no existían. **Hoy las asignaciones están implementadas en E2-2 D y el Catálogo en E2-3**; el SVG sigue siendo un resumen, mientras PUML conserva todas las asociaciones. No existe transferencia de titularidad ni verificación de email.
 
 ## 8. Contraste final con SQLAlchemy — C.5
 
@@ -125,3 +125,26 @@ E2-2 B/C agrega **seis rutas**: POST y GET de colección; GET y PATCH de detalle
 **Permiso operacional:** la función `can_operate_at_location` exige empresa, membresía y sede ACTIVA, capacidad `can_sell` para SELL o `can_store` para STORE; encargados/trabajadores necesitan asignación ACTIVA. Titular/administrador mantienen autorización administrativa empresarial sin depender de asignaciones. **Esta función aún no controla HTTP de venta/stock porque RF-05/06/07 siguen por implementar**; nunca afirmar lo contrario. El SVG editorial conserva la representación compacta de Empresa–Ubicación, mientras que la fuente PlantUML contiene además `AsignacionUbicacion` y sus dos asociaciones con multiplicidad; no interpretar la simplificación SVG como ausencia de la clase.
 
 **Evidencia:** 371 pruebas aprobadas en GitHub Actions Python 3.12/3.14 y Docker, commit `3cd7bce71d951218e8c77da58d147e78fb0d426e`, [run 42497556047](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), Alembic `e22d_assignments (head)` sin deriva. **Windows local de E2-2 D aprobado**: 371 pruebas en 47.57s, `e22d_assignments (head)` y Docker API/DB healthy. 03B y 03C permanecen intactos.
+
+## 11. E2-3 E — Conciliación actual del Catálogo con SQL, API y diagrama 03A (08/11/2026)
+
+**Estado realmente implementado:** `CatalogItem` es una clase SQLAlchemy registrada en los metadatos Alembic, con tabla `catalog_items` y migración aditiva `e23a_catalog`. Cada ficha pertenece a exactamente una Empresa (`business_id` FK `RESTRICT`); una Empresa puede tener cero o muchas fichas. `UNIQUE(business_id,id)` facilita referencias compuestas futuras. La lectura y escritura siempre filtran por tenant, revisan sesión y membresía activa; titular/administrador modifican y demás roles activos consultan.
+
+| Campo de 03A (conceptual) | Columna o comportamiento real | Observación |
+|---|---|---|
+| `id`, `empresaId` | `id`, `business_id` | Identidad UUID y FK empresarial |
+| `nombre`, `claveNombreNormalizada` | `name`, `name_key` | NFKC, espacios colapsados, `casefold`; UNIQUE por empresa incluso INACTIVO |
+| `clase` | `kind` | `ELABORADO`, `REVENTA`, `INSUMO`, `SERVICIO` |
+| `tipoDerivado` | propiedad `item_type` (no columna) | `SERVICIO` solo para clase SERVICIO; otras clases = `BIEN` |
+| `categoria` | `category` | Texto no nulo, valor inicial `General` |
+| `skuNormalizado` | `sku` | `NULL` posible, UNIQUE parcial por empresa donde no NULL; NFKC y mayúsculas, ASCII |
+| `unidad` | `unit` | `SERVICIO` exclusivo de clase SERVICIO; bienes usan unidades físicas enumeradas |
+| `descripcion`, `observaciones`, `vendible` | `description`, `observations`, `sellable` | Vendible no determina automáticamente `status` |
+| `precioCentavos`, `costoReferenciaCentavos` | `price_cents`, `reference_cost_cents` | BIGINT opcionales de 0 a 99.999.999.999; sin Float |
+| `estado`, `creadaEn`, `actualizadaEn` | `status`, `created_at`, `updated_at` | ACTIVO/INACTIVO, no DELETE; repetición idempotente de estado no cambia marca |
+
+**Cinco rutas reales, prefijo `/api/v1/businesses/{business_id}`:** `GET /catalog` (offset/limit), `POST /catalog`, `GET /catalog/{item_id}`, `PATCH /catalog/{item_id}` y `PATCH /catalog/{item_id}/status`. El último acepta solo `ACTIVO/INACTIVO`; el PATCH genérico rechaza estado y campos protegidos. La API impone normalización, permiso empresarial, aislamiento de inactivos y rollback. `offset` debe estar entre cero y máximo BIGINT firmado; `limit` entre 1 y 500.
+
+**Diferencia gráfica deliberada:** el SVG editorial reproduce una **selección abreviada** de atributos para lectura rápida; la fuente PUML detalla clasificación, tipo derivado y campos de persistencia. Como ocurría con `AsignacionUbicacion` y aceptante de invitación, las omisiones editoriales no representan pérdida de asociaciones ni permisos. `Proveedor` es el único recurso empresarial de este bloque que continúa TO-BE. No modificar los UML 03B/03C durante este cierre.
+
+**Pruebas:** E2-3 A 407, B 498, C 527 y D **580 passed en Windows (66.45 s)**, `e23a_catalog (head)` sin deriva, API/DB Docker healthy y `/ready` `ready/ok`; CI D [3/3, 580 pruebas Python 3.12/3.14](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42508771222), código `bf4fd3fa809c9f4e6afdeb064a155acf233b1722`. No equivale a prueba de carrera entre dos conexiones independientes ni a historial comercial; esas dependencias siguen registradas en [E2-3 D](../../docs/E2-3_D_INTEGRIDAD_CATALOGO.md).

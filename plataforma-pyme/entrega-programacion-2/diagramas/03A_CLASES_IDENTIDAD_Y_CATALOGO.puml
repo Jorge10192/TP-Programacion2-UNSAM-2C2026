@@ -1,5 +1,5 @@
 @startuml
-' 03A v0.6 E2-2 D / Asistente PyME · identidad, ubicaciones y asignaciones.
+' 03A v0.7 E2-3 E / Asistente PyME · identidad, ubicaciones, asignaciones y catálogo real.
 ' La fuente PUML conserva TODAS las asociaciones y multiplicidades.
 ' El SVG/PNG corresponde a la composición editorial optimizada: PlantUML
 ' aplica su propio motor de distribución y no replica la misma maquetación.
@@ -19,7 +19,7 @@ skinparam NoteBorderColor #C4D4E2
 hide empty methods
 left to right direction
 
-title Asistente PyME | Identidad, ubicaciones y asignaciones: catálogo TO-BE
+title Asistente PyME | Identidad, ubicaciones, asignaciones y catálogo implementado; proveedor TO-BE
 
 package "Identidad y acceso" #EAF4FD {
   class Usuario <<Entidad global>> {
@@ -71,15 +71,24 @@ package "Empresa y recursos" #E8F7F3 {
     +estado: EstadoAsignacion
     +revocadoEn: DateTime?
   }
-  class ArticuloCatalogo {
+  class ArticuloCatalogo <<Backend E2-3 A/B/C/D>> {
     +id: UUID
+    +empresaId: UUID
     +nombre: String
-    +tipo: TipoArticulo
+    +claveNombreNormalizada: String
+    +clase: ClaseArticulo
+    +tipoDerivado: BIEN o SERVICIO
+    +categoria: String
     +skuNormalizado: String?
     +unidad: UnidadControl
+    +descripcion: String
+    +observaciones: String
+    +vendible: Boolean
     +precioCentavos: Long?
     +costoReferenciaCentavos: Long?
     +estado: EstadoArticulo
+    +creadaEn: DateTime
+    +actualizadaEn: DateTime
   }
   class Proveedor {
     +id: UUID
@@ -134,10 +143,18 @@ note bottom of AsignacionUbicacion
   activa para ENCARGADO/TRABAJADOR.
 end note
 note bottom of ArticuloCatalogo
-  SKU único por empresa si está informado.
-  Precio NULL => informar precio al vender.
-  Costo de referencia es informativo.
-  Servicio no descuenta stock físico en MVP.
+  SQL: CatalogItem, business_id FK y UNIQUE(empresaId,id).
+  Clase: ELABORADO/REVENTA/INSUMO/SERVICIO.
+  tipoDerivado BIEN/SERVICIO NO es columna SQL.
+  NameKey NFKC+casefold; UNIQUE(empresaId,nameKey).
+  SKU opcional ASCII canonico: UNIQUE por empresa
+  solo si NO NULL, tambien con ficha INACTIVO.
+  Unidad SERVICIO solo con clase SERVICIO.
+  Precio y costo referencia: BIGINT centavos o NULL.
+  ACTIVO/INACTIVO sin DELETE fisico.
+  Cinco rutas HTTP E2-3 B/C; gestiona titular/admin.
+  Registrar ficha no genera stock, venta ni compra.
+  Historial y regla comercial SELL: E2-4/5/6.
 end note
 note bottom of Invitacion
   Emisor obligatorio; aceptante opcional.
