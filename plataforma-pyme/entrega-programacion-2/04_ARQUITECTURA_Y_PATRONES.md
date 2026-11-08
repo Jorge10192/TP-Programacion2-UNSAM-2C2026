@@ -30,6 +30,9 @@ Esta revisión precisa nueve decisiones importantes:
 
 **Al preparar la base v0.4 todavía no se habían ejecutado pruebas de backend**; el anexo E2 al final registra la implementación y resultados locales posteriores, sin atribuirlos a aquel commit.
 
+> **Estado vigente E2-2 (08/11/2026):** RF-03/CU-04 y E2-2 A/A.1/B/C/D implementados, con ubicaciones, asignaciones de colaboradores, autorización por tenant y política operacional reutilizable. **371/371 pruebas en Windows (47.57s)**; `e22d_assignments (head)`; Alembic sin operaciones pendientes; Docker FastAPI/PostgreSQL `healthy` y `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 y 371 pruebas en Python 3.12 y 3.14](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047). **No** existe todavía integración React–API ni operaciones comerciales de compras/stock/ventas que consuman la política; corresponden a bloques posteriores. Los párrafos de cortes previos que mencionan validaciones o funciones «pendientes» se conservan como **histórico**, no como estado actual. El TP integral no se declara terminado.
+
+
 ## 1. Propósito y criterios de diseño
 
 Este documento explica **cómo se construirá** la primera API de Asistente PyME y cómo convivirá con el frontend que ya funciona. Complementa el Documento 01 (qué necesita el sistema), el Documento 02 (qué objetivos cumplen sus actores) y el Documento 03 (qué entidades y reglas componen el dominio). No reemplaza al futuro Documento 05, que fijará contratos HTTP verificables, ni al Documento 06, que reunirá pruebas y evidencias de despliegue.
