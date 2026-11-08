@@ -1,9 +1,11 @@
-# E2-2 D — Alcance pendiente: asignaciones y autorización por ubicación
+# E2-2 D — Plan previo y registro de implementación
 
-**Proyecto:** Asistente PyME · **Fecha:** 08/11/2026 · **Estado:** PLAN TÉCNICO / NO IMPLEMENTADO  
+**Proyecto:** Asistente PyME · **Fecha:** 08/11/2026 · **Estado:** IMPLEMENTADO Y VALIDADO EN CI; VALIDACIÓN LOCAL WINDOWS PENDIENTE  
 **Bloque:** E2-2 — Ubicaciones empresariales y autorización por ubicación  
 **Corte verificado:** código E2-2 C en `7abafd8208965cd99b0116e02ffc5240d23f218f` (CI 3/3), documentación/03A sincronizados luego.  
 **Evidencia local:** Windows: **325 passed in 36.91s**, Alembic `e22b_location_casa (head)` sin deriva, Docker API y PostgreSQL `healthy`, `/ready` = `ready/ok`.
+
+> **Nota:** los apartados 1–5 son el plan histórico anterior a la implementación, por lo que sus expresiones «pendiente» se leen en ese contexto. La sección 6 registra el estado del código vigente.
 
 ## 1. Motivo de esta fase
 
@@ -66,3 +68,11 @@ Estas reglas son **propuesta de diseño** para E2-2 D, no funcionalidad probada 
 | E2-3 Catálogo | Sin iniciar; no anticipar código |
 
 **Alcance cerrado hasta C:** ubicación de empresa con controles efectivos por tenant y rol administrativo. **Brecha reconocida:** permisos por ubicación para operadores y futuros módulos comerciales. Una matriz de pruebas exitosa no demuestra una funcionalidad ausente.
+
+## 6. Implementación confirmada de E2-2 D (08/11/2026)
+
+**E2-2 D AS-IMPLEMENTED:** `LocationAssignment` con clave `(business_id,location_id,user_id)` y FK compuesta hacia `Location` y `Membership` del MISMO tenant. Migración aditiva `e22d_assignments`, índice único auxiliar de ubicación `(business_id,id)`. Estados administrativos `ACTIVA`/`REVOCADA`; fecha `revoked_at`, sin borrado físico. `GET /api/v1/businesses/{business_id}/locations/{location_id}/assignments` lista asignaciones de una sede (titular/administrador); `PUT /api/v1/businesses/{business_id}/locations/{location_id}/assignments/{membership_id}` recibe JSON `{"status":"ACTIVA"}` o `{"status":"REVOCADA"}` y activa/revoca idempotentemente. Solo se activa una membresía ENCARGADO/TRABAJADOR activa hacia ubicación ACTIVA; revocar permite sede pausada o miembro inactivo. Empresa SUSPENDIDA solo lectura. La política pura `can_operate_at_location` obliga a tenant, membresía, sede y capacidad `SELL/STORE` vigentes, además de asignación ACTIVA a encargados/trabajadores. **La política todavía no se consume en compras, inventario ni ventas**, fuera de este corte. Sin nuevas funciones de E2-1 ni conexión del frontend.
+
+**CI comprobado para código funcional `3cd7bce71d951218e8c77da58d147e78fb0d426e`:** [run 42497556047](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371/371 tests Python 3.12 y 3.14, 3/3 trabajos aprobados**, Alembic `e22d_assignments (head)` sin deriva y Docker saludable. **Windows local E2-2 D está pendiente:** la última ejecución aportada corresponde a E2-2 C, 325 passed. No atribuir al último commit documental ejecución propia de tests.
+
+**Próximo paso:** validar 371 pruebas en Windows, Alembic y Docker; luego cerrar documentación/UML y generar hoja de revisión E2-2 con SHA fijo y rama `review/e2-2-ubicaciones`. El compañero elaborará informe y PR sin merge, siguiendo la guía maestra.

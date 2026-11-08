@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado (08/11/2026):** E2-1 validado localmente con **195 pruebas**. Se inició **E2-2 A**: tabla/modelo `Location`, migración aditiva `e22a_locations`, pruebas de metadatos/integridad PostgreSQL; **CI del código del corte aprobado**, validación local Windows del corte A aprobada con 212 pruebas; ampliación CASA pendiente local. **E2-2 B ya incorpora POST/GET lista/GET detalle de ubicaciones**, con roles y tenant revalidados; edición/pausa/principal añadidas en E2-2 C; integración React y permisos granulares siguen pendientes. E2-1 permanece intacto.
+**Estado (08/11/2026):** E2-1 validado localmente con **195 pruebas**. Se inició **E2-2 A**: tabla/modelo `Location`, migración aditiva `e22a_locations`, pruebas de metadatos/integridad PostgreSQL; **CI del código del corte aprobado**, validación local Windows del corte A aprobada con 212 pruebas; ampliación CASA pendiente local. **E2-2 B ya incorpora POST/GET lista/GET detalle de ubicaciones**, con roles y tenant revalidados; edición/pausa/principal añadidas en E2-2 C; integración React y uso de permisos por ubicación en módulos comerciales futuros siguen pendientes; las asignaciones y la política están implementadas en E2-2 D. E2-1 permanece intacto.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -592,3 +592,22 @@ El head esperado ahora es **`e22b_location_casa (head)`** (el head anterior era 
 **Evidencia:** código funcional `7abafd8208965cd99b0116e02ffc5240d23f218f`, [GitHub Actions E2-2 C](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42495567321) **3/3 exitoso**, 325/325 pruebas en Python 3.12 y 3.14 con PostgreSQL, Alembic `e22b_location_casa (head)` sin deriva y Docker correcto. Windows había validado previamente E2-2 B (`277 passed in 31.22s`, `/ready` = `ready`/`ok`). **Los 325 tests todavía deben reproducirse en Windows para dar por cerrado localmente E2-2 C.** La integración React/API, la asignación individual de miembros a ubicaciones, control de existencias al quitar `can_store`, recepciones/ventas y gestión de cajas operativas son trabajos futuros; no se atribuyen a este incremento. E2-1 y UML 03B/03C no fueron modificados.
 
 **Validación Windows:** desde `plataforma-pyme/backend/`, ejecutar `alembic current`, `alembic check`, y `RUN_DB_INTEGRATION=1 pytest -q` con el mismo intérprete `.venv` de cortes previos. Reconstruir con Docker Compose y consultar `/ready`. Head esperado `e22b_location_casa (head)`, total esperado **325 pruebas**, pendiente de confirmación por el desarrollador. No tocar la rama de revisión de E2-1, ni ejecutar downgrades ni borrar volúmenes.
+
+## E2-2 D — Asignaciones operativas por sede
+
+**E2-2 D AS-IMPLEMENTED:** `LocationAssignment` con clave `(business_id,location_id,user_id)` y FK compuesta hacia `Location` y `Membership` del MISMO tenant. Migración aditiva `e22d_assignments`, índice único auxiliar de ubicación `(business_id,id)`. Estados administrativos `ACTIVA`/`REVOCADA`; fecha `revoked_at`, sin borrado físico. `GET /api/v1/businesses/{business_id}/locations/{location_id}/assignments` lista asignaciones de una sede (titular/administrador); `PUT /api/v1/businesses/{business_id}/locations/{location_id}/assignments/{membership_id}` recibe JSON `{"status":"ACTIVA"}` o `{"status":"REVOCADA"}` y activa/revoca idempotentemente. Solo se activa una membresía ENCARGADO/TRABAJADOR activa hacia ubicación ACTIVA; revocar permite sede pausada o miembro inactivo. Empresa SUSPENDIDA solo lectura. La política pura `can_operate_at_location` obliga a tenant, membresía, sede y capacidad `SELL/STORE` vigentes, además de asignación ACTIVA a encargados/trabajadores. **La política todavía no se consume en compras, inventario ni ventas**, fuera de este corte. Sin nuevas funciones de E2-1 ni conexión del frontend.
+
+**CI comprobado para código funcional `3cd7bce71d951218e8c77da58d147e78fb0d426e`:** [run 42497556047](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371/371 tests Python 3.12 y 3.14, 3/3 trabajos aprobados**, Alembic `e22d_assignments (head)` sin deriva y Docker saludable. **Windows local E2-2 D está pendiente:** la última ejecución aportada corresponde a E2-2 C, 325 passed. No atribuir al último commit documental ejecución propia de tests.
+
+**Comprobación local con PostgreSQL de desarrollo (PowerShell desde `backend/`):**
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+try { .\.venv\Scripts\python.exe -m pytest -q }
+finally { Remove-Item Env:\RUN_DB_INTEGRATION -ErrorAction SilentlyContinue }
+```
+
+Esperado: `e22d_assignments (head)` y **371 passed**. La migración agrega tabla e índice único, sin tocar datos anteriores. No usar `stamp`, `downgrade`, `down -v` ni comandos destructivos. Reconstruir contenedores y verificar `/ready` tras sincronizar.

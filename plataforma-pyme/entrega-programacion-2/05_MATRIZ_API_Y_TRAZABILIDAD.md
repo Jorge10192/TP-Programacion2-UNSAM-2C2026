@@ -1,7 +1,7 @@
 # 05 — Matriz de API, permisos y trazabilidad
 
 **Proyecto:** Asistente PyME — Programación 2  
-**Versión:** 0.9 — E2-2 C, edición y transiciones de ubicaciones
+**Versión:** 1.0 — E2-2 D, asignaciones por sede y política operacional
 **Fecha:** 8 de noviembre de 2026  
 **Estado:** publicación técnica incremental; aprobación académica del equipo pendiente  
 **Referencia:** `main` del repositorio, carpeta exclusiva `plataforma-pyme/`.
@@ -20,7 +20,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | RF-01 | CU-02 | Implementado; validado localmente | `POST /api/v1/auth/login`, `GET /me`, `POST /logout`; sesiones revocables, 401 |
 | RF-02 | CU-03 | Alta, lectura y PATCH empresarial validados localmente | Empresa con titular inicial, idempotencia y edición autorizada por tenant/rol |
 | RF-02 | CU-12a / CU-12b y gestión | Emisión/aceptación validadas localmente; **equipo C.4b validado localmente con 195 pruebas y CI 3/3** | Emitir, aceptar, consultar equipo y editar roles/estados operativos con titularidad protegida |
-| RF-03 | CU-04 | **E2-2 B/C: seis rutas HTTP en API, 325 pruebas CI** | Alta/consulta/edición/pausa/reactivación/designación de principal con tenant y RBAC; sin DELETE; uso comercial y permisos por ubicación pendientes |
+| RF-03 | CU-04 | **E2-2 B/C/D: ubicación y asignaciones por sede con 371 pruebas CI** | Seis rutas de ubicación + GET/PUT de asignaciones; FK compuesta por empresa; uso comercial de la política aún pendiente |
 | RF-04 | CU-05 | Planificado | Catálogo y SKU único dentro del tenant |
 | RF-05 | CU-06, CU-07 | Planificado | Compra separada de recepción física completa |
 | RF-06 | CU-08, CU-09 | Planificado | Saldos, movimientos, stock no negativo, concurrencia |
@@ -51,6 +51,8 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | PATCH | `/api/v1/businesses/{business_id}/locations/{location_id}` | Bearer + rol titular/administrador, empresa activa; DTO parcial sin campos protegidos | 200; 401/403/404/409/422 | `test_location_schemas.py`, `test_location_http.py`, `test_location_api_integration.py` |
 | PATCH | `/api/v1/businesses/{business_id}/locations/{location_id}/status` | Bearer + rol autorizado; `ACTIVA/PAUSADA`; pausar revoca principal | 200; 401/403/404/409/422 | `test_location_schemas.py`, `test_location_api_integration.py` |
 | PUT | `/api/v1/businesses/{business_id}/locations/{location_id}/primary` | Bearer + rol autorizado; ubicación ACTIVA; transferencia dentro de un tenant y una transacción | 200; 401/403/404/409 | `test_location_http.py`, `test_location_api_integration.py` |
+| GET | `/api/v1/businesses/{business_id}/locations/{location_id}/assignments` | Bearer + titular/administrador; sede del mismo tenant | 200; 401/403/404 | `test_location_assignment_http.py`, `test_location_assignment_integration.py` |
+| PUT | `/api/v1/businesses/{business_id}/locations/{location_id}/assignments/{membership_id}` | Bearer + titular/administrador; `status` ACTIVA/REVOCADA; objetivo del mismo tenant | 200; 401/403/404/409/422 | `test_location_assignment_schemas.py`, `test_location_assignment_integration.py` |
 
 **Idempotencia CU-03:** `Idempotency-Key` UUID4, ámbito `actor_user_id` + clave; `business_creation_requests` conserva hash canónico y `business_id`. La **PK compuesta** mantiene la unicidad incluso con concurrencia. Reutilizar la clave con otro contenido devuelve 409; se corrigió la recuperación tras conflictos concurrentes sobre `pk_business_creation_requests` en E2-1.3C.1.
 
@@ -96,6 +98,7 @@ Los códigos precedentes están definidos en el router de C.2 y cuentan con prue
 | `e213c4_acceptance` | Columnas `accepted_by_user_id`, `accepted_at`, FK usuario y CHECK de auditoría consistente | Localmente validada C.4a; C.4b sin migraciones |
 | `e22a_locations` | Tabla `locations`, FK a empresa, CHECK de estados/tipos/principal, índice parcial único de principal por empresa | E2-2 A: 212 pruebas locales aprobadas, CI 3/3 |
 | `e22b_location_casa` | Amplía CHECK de tipo para admitir `CASA` sin modificar esquema previo | E2-2 A.1: 217 pruebas CI backend; frontend 2/2; Windows pendiente |
+| `e22d_assignments` | Tabla `location_assignments`, FK compuestas, UNIQUE auxiliar en `locations` y CHECK de revocación | 371 pruebas CI / Windows por comprobar |
 
 En E2-1.3C.1 y C.2 **no se añadieron tablas ni migraciones**; C.3 incorpora la nueva tabla `business_invitations` mediante una migración aditiva. El UML 03A representa vínculos conceptuales; no debe dibujarse la política como una entidad persistente ni regenerar 03B por esta etapa.
 
@@ -224,3 +227,9 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 | Designar principal ACTIVA | Sí | Sí | No | No |
 
 **Evidencia:** código funcional `7abafd8208965cd99b0116e02ffc5240d23f218f`, [GitHub Actions E2-2 C](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42495567321) **3/3 exitoso**, 325/325 pruebas en Python 3.12 y 3.14 con PostgreSQL, Alembic `e22b_location_casa (head)` sin deriva y Docker correcto. Windows había validado previamente E2-2 B (`277 passed in 31.22s`, `/ready` = `ready`/`ok`). **Los 325 tests todavía deben reproducirse en Windows para dar por cerrado localmente E2-2 C.** La integración React/API, la asignación individual de miembros a ubicaciones, control de existencias al quitar `can_store`, recepciones/ventas y gestión de cajas operativas son trabajos futuros; no se atribuyen a este incremento. E2-1 y UML 03B/03C no fueron modificados.
+
+## 16. E2-2 D — Trazabilidad de asignaciones por ubicación
+
+**E2-2 D AS-IMPLEMENTED:** `LocationAssignment` con clave `(business_id,location_id,user_id)` y FK compuesta hacia `Location` y `Membership` del MISMO tenant. Migración aditiva `e22d_assignments`, índice único auxiliar de ubicación `(business_id,id)`. Estados administrativos `ACTIVA`/`REVOCADA`; fecha `revoked_at`, sin borrado físico. `GET /api/v1/businesses/{business_id}/locations/{location_id}/assignments` lista asignaciones de una sede (titular/administrador); `PUT /api/v1/businesses/{business_id}/locations/{location_id}/assignments/{membership_id}` recibe JSON `{"status":"ACTIVA"}` o `{"status":"REVOCADA"}` y activa/revoca idempotentemente. Solo se activa una membresía ENCARGADO/TRABAJADOR activa hacia ubicación ACTIVA; revocar permite sede pausada o miembro inactivo. Empresa SUSPENDIDA solo lectura. La política pura `can_operate_at_location` obliga a tenant, membresía, sede y capacidad `SELL/STORE` vigentes, además de asignación ACTIVA a encargados/trabajadores. **La política todavía no se consume en compras, inventario ni ventas**, fuera de este corte. Sin nuevas funciones de E2-1 ni conexión del frontend.
+
+**CI comprobado para código funcional `3cd7bce71d951218e8c77da58d147e78fb0d426e`:** [run 42497556047](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371/371 tests Python 3.12 y 3.14, 3/3 trabajos aprobados**, Alembic `e22d_assignments (head)` sin deriva y Docker saludable. **Windows local E2-2 D está pendiente:** la última ejecución aportada corresponde a E2-2 C, 325 passed. No atribuir al último commit documental ejecución propia de tests.
