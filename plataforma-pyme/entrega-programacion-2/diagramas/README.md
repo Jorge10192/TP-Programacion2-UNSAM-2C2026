@@ -1,12 +1,12 @@
 # Diagramas 03A, 03B y 03C — Asistente PyME
 
-**Estado:** modelo conceptual revisado para la entrega académica (TO-BE). **No** significa que FastAPI/PostgreSQL ya estén implementados.
+**Estado E2-2 C:** identidad, empresas, equipo, invitaciones y Ubicación tienen backend real; Catálogo y Proveedor continúan TO-BE. **La autorización granular por ubicación/asignación de colaboradores sigue pendiente**. Los diagramas no representan por sí solos permisos implementados.
 
 El [Documento 03](../03_MODELO_DE_DOMINIO_Y_UML.md) describe el modelo completo, estados, transacciones y restricciones. Cada diagrama posee una **explicación detallada en Markdown**, una **lámina SVG vectorial** para GitHub/presentación y una **fuente PlantUML** para revisar su semántica.
 
 | Diagrama | Explicación | Lámina vectorial | Fuente PlantUML |
 |---|---|---|---|
-| **03A — Identidad y catálogo** | [Guía v0.4 C.5](03A_EXPLICACION_IDENTIDAD_EMPRESAS_CATALOGO.md) | [SVG editorial actualizado](03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg) | [PUML emisor/aceptante](03A_CLASES_IDENTIDAD_Y_CATALOGO.puml) |
+| **03A — Identidad y catálogo** | [Guía v0.5 E2-2 C](03A_EXPLICACION_IDENTIDAD_EMPRESAS_CATALOGO.md) | [SVG editorial actualizado](03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg) | [PUML emisor/aceptante](03A_CLASES_IDENTIDAD_Y_CATALOGO.puml) |
 | **03B — Comercio e inventario** | [Guía completa](03B_EXPLICACION_COMPRAS_INVENTARIO_VENTAS.md) | [SVG](03B_COMERCIO_INVENTARIO_REDISENADO.svg) | [PUML](03B_CLASES_COMERCIO_E_INVENTARIO.puml) |
 | **03C — Casos de uso** | [Guía completa](03C_EXPLICACION_CASOS_DE_USO.md) | [SVG](03C_CASOS_DE_USO_REDISENADO.svg) | [PUML](03C_CASOS_DE_USO.puml) |
 
@@ -17,3 +17,5 @@ El [Documento 03](../03_MODELO_DE_DOMINIO_Y_UML.md) describe el modelo completo,
 Para dar clase o exponer, abrir el SVG. Para preparar SQLAlchemy, leer el Documento 03 y las guías; no convertir un diagrama conceptual directamente en tablas sin validar permisos y restricciones.
 
 **Sincronización C.5 (08/11/2026):** 03A corresponde a la identidad, empresas, membresías e invitaciones reales de E2-1. La relación Usuario–Invitación del SVG representa al **emisor obligatorio**; la fuente PlantUML incluye también al **aceptante opcional**. El destinatario se identifica por correo sin FK previa. Ubicaciones, catálogo y proveedores siguen TO-BE para backend. 03B y 03C se conservan sin modificaciones.
+
+**Actualización E2-2 C:** fuente 03A y SVG editorial reconciliados con `locations`, incluyendo `CASA`, `ACTIVA/PAUSADA`, permisos de gestión por rol empresarial y principal única activa por empresa. La guía explica que asignaciones de personal y autorización granular por ubicación aún **no están implementadas**. 03B/03C permanecen sin cambios.

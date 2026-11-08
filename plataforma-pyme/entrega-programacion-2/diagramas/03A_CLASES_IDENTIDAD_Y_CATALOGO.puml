@@ -1,5 +1,5 @@
 @startuml
-' 03A v0.4 C.5 / Asistente PyME · identidad, empresas y catálogo.
+' 03A v0.5 E2-2 C / Asistente PyME · identidad, empresas y catálogo.
 ' La fuente PUML conserva TODAS las asociaciones y multiplicidades.
 ' El SVG/PNG corresponde a la composición editorial optimizada: PlantUML
 ' aplica su propio motor de distribución y no replica la misma maquetación.
@@ -19,7 +19,7 @@ skinparam NoteBorderColor #C4D4E2
 hide empty methods
 left to right direction
 
-title Asistente PyME | Identidad, empresas y catálogo (MVP TO-BE)
+title Asistente PyME | Identidad y ubicaciones implementadas, catálogo TO-BE
 
 package "Identidad y acceso" #EAF4FD {
   class Usuario <<Entidad global>> {
@@ -51,13 +51,18 @@ package "Empresa y recursos" #E8F7F3 {
     +tipoActividad: TipoActividad
     +estado: EstadoEmpresa
   }
-  class Ubicacion {
+  class Ubicacion <<Backend E2-2 C>> {
     +id: UUID
     +nombre: String
     +tipo: TipoUbicacion
+    +direccion: String?
+    +urlMapa: String?
     +canSell: Boolean
     +canStore: Boolean
+    +esPrincipal: Boolean
     +estado: EstadoUbicacion
+    +creadaEn: DateTime
+    +actualizadaEn: DateTime
   }
   class ArticuloCatalogo {
     +id: UUID
@@ -98,6 +103,16 @@ note bottom of Empresa
   SUSPENDIDA existe en SQL, sin cambio publico.
   Fundador histórico: founderUserId en SQL.
   Empresa nueva: 0 ubicaciones, sin stock ficticio.
+end note
+note bottom of Ubicacion
+  SQL: Location, business_id FK obligatoria.
+  Tipos: LOCAL/FERIA/DEPOSITO/OFICINA/CASA/OTRO.
+  ACTIVA / PAUSADA, sin borrado fisico.
+  Unica principal ACTIVA por empresa (a lo sumo 1).
+  Pausar revoca principal; reactivar no la restaura.
+  E2-2 C: permisos de administracion por rol empresa.
+  Asignacion granular de miembros: pendiente E2-2 D.
+  No crea stock, venta o deposito ficticio.
 end note
 note bottom of ArticuloCatalogo
   SKU único por empresa si está informado.

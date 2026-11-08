@@ -1,6 +1,6 @@
 # 03A — Guía detallada: identidad, empresas y catálogo
 
-**Proyecto:** Asistente PyME · **Documento asociado:** [Modelo de dominio y UML](../03_MODELO_DE_DOMINIO_Y_UML.md) · **Versión:** 0.4 (C.5, 08/11/2026) · **Estado:** UML conceptual conciliado con núcleo RF-01/RF-02 implementado; Ubicaciones, Artículos y Proveedores permanecen TO-BE.
+**Proyecto:** Asistente PyME · **Documento asociado:** [Modelo de dominio y UML](../03_MODELO_DE_DOMINIO_Y_UML.md) · **Versión:** 0.5 (E2-2 C, 08/11/2026) · **Estado:** UML conceptual conciliado con RF-01/RF-02 y ubicaciones RF-03 (API real de seis rutas); Artículos y Proveedores permanecen TO-BE. Autorización granular por ubicación/asignación individual: pendiente.
 
 ![03A — Identidad, empresas y catálogo](03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg)
 
@@ -22,11 +22,11 @@ La lámina se divide en **Identidad y acceso** (izquierda) y **Empresa y recurso
 | **Membresia** | Relación real Usuario–Empresa con rol, estado y puesto opcional | UNIQUE por empresa/usuario; C.4b protege al titular y edita solo roles/estados operativos autorizados |
 | **Empresa** | Espacio independiente de gestión (*tenant*) | Nace ACTIVA, con una membresía administrativa inicial; puede tener cero ubicaciones y cero artículos |
 | **Invitacion** | `business_invitations` emitida por Usuario y dirigida a correo/rol | Emisor obligatorio y aceptante opcional; PENDIENTE no concede acceso, el secreto solo se conserva como SHA-256 |
-| **Ubicacion** | Local, feria, depósito u otro espacio con capacidades de venta o almacenamiento | Pertenece a una empresa y no se crea automáticamente al crearla |
+| **Ubicacion** | Entidad SQL `locations`: local, feria, depósito, oficina, **casa** u otro espacio; venta y almacenamiento independientes | Pertenece a una sola empresa; cero al crearla, principal activa a lo sumo una; gestión REST E2-2 B/C ya implementada |
 | **ArticuloCatalogo** | Bien físico o servicio, con SKU, unidad y precio/costo informativos | No crea existencias al registrarse; los servicios no consumen stock automáticamente en MVP |
 | **Proveedor** | Referencia comercial para adquisiciones | Pertenece a una empresa y puede quedar inactivo sin borrar historial |
 
-Las clases son conceptuales: Usuario, Empresa, Membresía e Invitación ya tienen sus FK reales en SQL; Ubicacion, ArticuloCatalogo y Proveedor siguen planificados para backend. Las FK no necesitan duplicarse en las cajas UML si la asociación es inequívoca.
+Las clases son conceptuales: Usuario, Empresa, Membresía, Invitación **y Ubicacion** ya tienen persistencia SQL; ArticuloCatalogo y Proveedor siguen planificados para backend. Las FK no necesitan duplicarse en las cajas UML si la asociación es inequívoca.
 
 ## 3. Cómo leer las cardinalidades
 
@@ -52,10 +52,10 @@ Convenciones: **0..1** = cero o uno; **1** = exactamente uno; **0..*** = cero o 
 5. **No aparecen depósitos, ubicaciones ni existencias ficticias**. Una empresa exclusivamente de servicios puede comenzar sin ellos.
 6. En futuras solicitudes se comprueba la membresía correspondiente a la empresa indicada, no solo la identidad del token.
 
-### 4.2 Ubicaciones y artículos (CU-04, CU-05)
+### 4.2 Ubicaciones y artículos (CU-04 implementado parcialmente; CU-05 TO-BE)
 
-1. Un administrador con autorización registra una ubicación indicando si permite vender, almacenar o ambas operaciones.
-2. Registra un artículo del catálogo como bien físico o servicio. La API verifica el SKU dentro de esa empresa.
+1. El titular o administrador crea, consulta, edita, pausa/reactiva o cambia la principal de una ubicación mediante la API E2-2 B/C. Todo acceso se acota a la empresa y la membresía actuales; al pausar una principal se revoca ese indicador, y reactivar no lo restituye.
+2. **Futuro E2-3:** registrar un artículo como bien físico o servicio; la API de catálogo todavía no existe y deberá validar SKU por empresa.
 3. Un bien físico puede existir en catálogo con stock cero; solo recepciones/ajustes válidos incrementarán sus existencias.
 4. Si un artículo tiene precio de referencia no informado, al vender se pide precio explícito en el renglón.
 5. Un servicio puede venderse sin depósito; no descuenta insumos de forma automática durante el MVP.
@@ -94,7 +94,7 @@ Este diagrama **no** modela compras, recepciones, ventas ni movimientos: eso se 
 
 **¿Por qué SKU por empresa?** Distintas empresas pueden utilizar el mismo código, pero dentro de una debe identificar de forma inequívoca al artículo.
 
-**Estado C.5:** 03A actualizado con entidades reales RF-01/RF-02; autenticación, empresa, membresías e invitación/aceptación son API implementada y probada. Ubicacion, ArticuloCatalogo y Proveedor no se convierten por ello en tablas existentes. El SVG es un resumen visual; el PlantUML conserva todas las asociaciones. No existe transferencia de titularidad ni verificación de email.
+**Estado tras E2-2 C:** 03A incluye entidades reales de identidad/empresa/invitación y `Ubicacion`, que ya tiene SQL y API con seis rutas; ArticuloCatalogo y Proveedor siguen TO-BE. **Pertenecer a una empresa no equivale a estar asignado a una ubicación**: solo hay permisos por rol empresarial para administrar la ubicación, no asignaciones individuales de usuarios a sedes. El SVG es un resumen visual; el PlantUML conserva todas las asociaciones. No existe transferencia de titularidad ni verificación de email.
 
 ## 8. Contraste final con SQLAlchemy — C.5
 
@@ -103,3 +103,13 @@ Los modelos `User`, `Business`, `Membership` y `BusinessInvitation` se compararo
 `BusinessInvitation` exige `invited_by_user_id` (FK obligatoria), guarda `email_normalizado` como destinatario sin cuenta vinculada antes de aceptar y solo usa `accepted_by_user_id` (FK opcional) con `accepted_at` cuando el estado es ACEPTADA, según su CHECK. El token nunca se persiste en claro; la aceptación confirma membresía e invitación en un mismo commit. El SVG resume la relación con emisor y la fuente PUML incluye además el aceptante.
 
 **Evidencias C.5:** en Windows `195 passed in 23.86s`, Alembic `e213c4_acceptance (head)` sin deriva, Docker API/DB `healthy` y `/ready` = `ready`/`ok`; CI funcional C.4b 3/3. C.5 solo actualiza documentos y diagramas, **sin repetir tests ni modificar SQL**.
+
+## 9. Contraste E2-2 C con el backend de ubicaciones (08/11/2026)
+
+La clase `Ubicacion` del PUML representa `Location` de SQLAlchemy: `id`, `business_id` (FK a Empresa), `name`, `kind` (`LOCAL/FERIA/DEPOSITO/OFICINA/CASA/OTRO`), `address`, `map_url`, `can_sell`, `can_store`, `is_primary`, `status` (`ACTIVA/PAUSADA`), `created_at` y `updated_at`. Los campos del diagrama son nombres conceptuales, no contratos JSON literales. El SVG editorial muestra los atributos esenciales; el PlantUML conserva la correspondencia completa.
+
+E2-2 B/C agrega **seis rutas**: POST y GET de colección; GET y PATCH de detalle; PATCH `/status`; PUT `/primary`. La primera ubicación se crea principal, sin generar un depósito ficticio al crear Empresa. La pausa quita el indicador principal, reactivar no lo restaura y el cambio de principal desmarca el anterior dentro de una sola transacción. PostgreSQL impone un máximo de una principal activa por empresa. Esas operaciones revalidan sesión y membresía del tenant, con escritura limitada a titular/administrador y lectura para miembros activos.
+
+**Pendiente real frente a la guía maestra E2-2:** no hay tabla ni endpoint para asociar colaboradores a sedes concretas, ni autorización granular por ubicación para futuros comandos de stock/ventas. El RBAC empresarial actual **no** reemplaza ese alcance: proponer y validar un contrato E2-2 D antes de afirmar cierre funcional completo. Los controles de saldos al quitar `can_store`, las recepciones y las ventas requieren módulos comerciales posteriores. Ninguno de estos pendientes invalida los resultados actuales de regresión, pero impide declarar esa capacidad como implementada.
+
+**Evidencia:** 325/325 pruebas Windows (08/11/2026), `e22b_location_casa (head)`, `alembic check` sin deriva, Docker API/DB `healthy` y `/ready` = `ready`/`ok`; CI del código E2-2 C 3/3, SHA `7abafd8208965cd99b0116e02ffc5240d23f218f`. 03B y 03C no se modifican.
