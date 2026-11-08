@@ -1,7 +1,7 @@
 # 05 — Matriz de API, permisos y trazabilidad
 
 **Proyecto:** Asistente PyME — Programación 2  
-**Versión:** 1.2 — E2-3 B, API real de Catálogo (CI 498, Windows pendiente)
+**Versión:** 1.3 — E2-3 C, estado reversible de catálogo (527 pruebas CI)
 **Fecha:** 8 de noviembre de 2026  
 **Estado:** publicación técnica incremental; aprobación académica del equipo pendiente  
 **Referencia:** `main` del repositorio, carpeta exclusiva `plataforma-pyme/`.
@@ -60,6 +60,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | GET | `/api/v1/businesses/{business_id}/catalog` | Bearer + membresía ACTIVA; empresa propia, permite suspendida | 200; 401/403/404/422 | `test_catalog_http.py`, `test_catalog_api_integration.py` |
 | GET | `/api/v1/businesses/{business_id}/catalog/{item_id}` | Bearer + membresía ACTIVA, UUID artículo dentro de la empresa | 200; 401/403/404 | `test_catalog_api_integration.py` |
 | PATCH | `/api/v1/businesses/{business_id}/catalog/{item_id}` | Bearer + titular/administrador, empresa ACTIVA; DTO parcial sin estado ni tenant | 200; 401/403/404/409/422 | `test_catalog_schemas.py`, `test_catalog_api_integration.py` |
+| PATCH | `/api/v1/businesses/{business_id}/catalog/{item_id}/status` | Bearer + titular/administrador, tenant ACTIVO, status ACTIVO/INACTIVO exclusivo | 200; 401/403/404/409/422 | `test_catalog_schemas.py`, `test_catalog_http.py`, `test_catalog_api_integration.py` |
 
 **Idempotencia CU-03:** `Idempotency-Key` UUID4, ámbito `actor_user_id` + clave; `business_creation_requests` conserva hash canónico y `business_id`. La **PK compuesta** mantiene la unicidad incluso con concurrencia. Reutilizar la clave con otro contenido devuelve 409; se corrigió la recuperación tras conflictos concurrentes sobre `pk_business_creation_requests` en E2-1.3C.1.
 
@@ -266,3 +267,11 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 | Editar estado ACTIVO/INACTIVO | **Pendiente E2-3 C** | **Pendiente E2-3 C** | No | No |
 
 **Límites explícitos:** E2-3 B no expone todavía `PATCH /status` ni borrado físico (se evaluarán en E2-3 C). No existe integración del frontend React con esta API; no se implementan recepción, ventas, snapshots comerciales ni protección de edición de unidad con historia, pues esos módulos son posteriores. Los tests nuevos comprueban permisos, rollback de duplicados, SKU/nombres normalizados, aislamiento multiempresa, lectura bajo suspensión y fallas 401/403/404/409/422. **Evidencia CI E2-3 B:** [GitHub Actions 42506409757](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42506409757) finalizó **3/3 trabajos exitosos**, **498 pruebas aprobadas** tanto en Python 3.12 (53.96s) como Python 3.14 (50.12s), PostgreSQL 16, `e23a_catalog (head)` y `alembic check` sin operaciones, imagen Docker/liveness aprobado. Código funcional validado: `35ff901855397c024cee50fa590c6c05a7f04cfe`. El CI anterior `42506050141` había detectado dos fallos de mapeo HTTP en PATCH con tipo/unidad incompatible; se corrigieron y ambos casos pasan ahora. **La validación Windows local de E2-3 B sigue pendiente**; el último resultado local confirmado es 407/407 de E2-3 A.
+
+## 19. E2-3 C — Matriz HTTP de estado
+
+**E2-3 C (08/11/2026):** se implementó `PATCH /api/v1/businesses/{business_id}/catalog/{item_id}/status` con cuerpo exclusivo `{"status":"ACTIVO"}` o `{"status":"INACTIVO"}`, validación estricta y rechazo de atributos extra (422). La ruta revalida sesión y membresía y exige titular/administrador de empresa ACTIVA para escribir (401/403/404/409 según caso). El artículo se bloquea dentro del tenant y se cambia de estado en una sola transacción. El cambio repetido es idempotente, sin alterar `updated_at`. El artículo inactivo continúa visible en GET/listados, con UUID, nombre y SKU reservados incluso ante altas duplicadas; no hay DELETE ni stock ficticio. El PATCH genérico mantiene `status` protegido. Esta funcionalidad tampoco modifica el campo independiente `sellable`.
+
+**Dependencias:** las futuras compras/ventas deben prohibir nuevos movimientos con fichas INACTIVO y conservar snapshots históricos reales. Todavía no hay operaciones comerciales ni frontend integrado; por lo tanto, tampoco existe una restricción real de cambio de unidad por transacciones anteriores. Ninguna migración nueva: se reutiliza CHECK `ACTIVO/INACTIVO` de `e23a_catalog`.
+
+**Pruebas:** [CI E2-3 C](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42507243181) **3/3 trabajos aprobados**, **527 passed** en Python 3.12 y 3.14 con PostgreSQL, `e23a_catalog (head)`, `alembic check` sin operaciones y Docker correcto; código `c2153ab9b65b265eb46b3081079e0f3f15002215`. E2-3 B: **498 passed en Windows (55.79s)**, Docker/API/DB saludables. **E2-3 C: Windows pendiente**. El commit documental posterior no equivale a otra ejecución CI.

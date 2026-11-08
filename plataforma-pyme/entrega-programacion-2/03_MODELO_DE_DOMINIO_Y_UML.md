@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 1.5 — E2-3 B, API real de Catálogo (CI 498, Windows pendiente)
+**Versión:** 1.6 — E2-3 C, estado reversible de catálogo (527 pruebas CI)
 **Estado:** **MODELO CONCEPTUAL + ANEXO AS-IMPLEMENTED E2-1** — 03A sincronizado con API y esquema SQL; 03B/03C preservados, comerciales pendientes  
 **Fecha:** 8 de noviembre de 2026  
 **Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.7), `02_CASOS_DE_USO.md` (v0.8), políticas del frontend DEMO E1-D2.  
@@ -419,3 +419,11 @@ Se incorporó `CASA` como sexto tipo de ubicación, sin cambiar el contrato de c
 **Modelo real:** `CatalogItem` conserva PK UUID global, FK empresarial y UNIQUE `(business_id,id)` para futuras referencias compuestas. `item_type` es calculado desde `kind`; `name_key` es columna materializada generada **por el servicio**, no columna calculada de PostgreSQL. La unicidad SQL final se aplica a los valores normalizados efectivamente persistidos. El campo `status` permanece fuera del PATCH genérico; su transición requiere endpoint explícito futuro. UML 03A continúa siendo el artefacto conceptual hasta cerrar E2-3; 03B/03C siguen sin cambios.
 
 **Límites explícitos:** E2-3 B no expone todavía `PATCH /status` ni borrado físico (se evaluarán en E2-3 C). No existe integración del frontend React con esta API; no se implementan recepción, ventas, snapshots comerciales ni protección de edición de unidad con historia, pues esos módulos son posteriores. Los tests nuevos comprueban permisos, rollback de duplicados, SKU/nombres normalizados, aislamiento multiempresa, lectura bajo suspensión y fallas 401/403/404/409/422. **Evidencia CI E2-3 B:** [GitHub Actions 42506409757](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42506409757) finalizó **3/3 trabajos exitosos**, **498 pruebas aprobadas** tanto en Python 3.12 (53.96s) como Python 3.14 (50.12s), PostgreSQL 16, `e23a_catalog (head)` y `alembic check` sin operaciones, imagen Docker/liveness aprobado. Código funcional validado: `35ff901855397c024cee50fa590c6c05a7f04cfe`. El CI anterior `42506050141` había detectado dos fallos de mapeo HTTP en PATCH con tipo/unidad incompatible; se corrigieron y ambos casos pasan ahora. **La validación Windows local de E2-3 B sigue pendiente**; el último resultado local confirmado es 407/407 de E2-3 A.
+
+## 24. E2-3 C — Ciclo de vida de CatalogItem
+
+**E2-3 C (08/11/2026):** se implementó `PATCH /api/v1/businesses/{business_id}/catalog/{item_id}/status` con cuerpo exclusivo `{"status":"ACTIVO"}` o `{"status":"INACTIVO"}`, validación estricta y rechazo de atributos extra (422). La ruta revalida sesión y membresía y exige titular/administrador de empresa ACTIVA para escribir (401/403/404/409 según caso). El artículo se bloquea dentro del tenant y se cambia de estado en una sola transacción. El cambio repetido es idempotente, sin alterar `updated_at`. El artículo inactivo continúa visible en GET/listados, con UUID, nombre y SKU reservados incluso ante altas duplicadas; no hay DELETE ni stock ficticio. El PATCH genérico mantiene `status` protegido. Esta funcionalidad tampoco modifica el campo independiente `sellable`.
+
+**Dependencias:** las futuras compras/ventas deben prohibir nuevos movimientos con fichas INACTIVO y conservar snapshots históricos reales. Todavía no hay operaciones comerciales ni frontend integrado; por lo tanto, tampoco existe una restricción real de cambio de unidad por transacciones anteriores. Ninguna migración nueva: se reutiliza CHECK `ACTIVO/INACTIVO` de `e23a_catalog`.
+
+**Pruebas:** [CI E2-3 C](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42507243181) **3/3 trabajos aprobados**, **527 passed** en Python 3.12 y 3.14 con PostgreSQL, `e23a_catalog (head)`, `alembic check` sin operaciones y Docker correcto; código `c2153ab9b65b265eb46b3081079e0f3f15002215`. E2-3 B: **498 passed en Windows (55.79s)**, Docker/API/DB saludables. **E2-3 C: Windows pendiente**. El commit documental posterior no equivale a otra ejecución CI.
