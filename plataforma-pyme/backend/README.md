@@ -426,11 +426,11 @@ Desde `plataforma-pyme/`:
 ```powershell
 git pull origin main
 cd backend
-.\\.venv\\Scripts\\python.exe -m alembic current
-.\\.venv\\Scripts\\python.exe -m alembic check
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
 $env:RUN_DB_INTEGRATION = "1"
-.\\.venv\\Scripts\\python.exe -m pytest -v
-Remove-Item Env:\\RUN_DB_INTEGRATION
+.\.venv\Scripts\python.exe -m pytest -v
+Remove-Item Env:\RUN_DB_INTEGRATION
 ```
 
 La versión sigue siendo `e213b_business_creation (head)`; Alembic no debe detectar operaciones pendientes. Se espera conservar los **80 tests existentes** y aprobar además los nuevos casos de matriz RBAC y recuperación de idempotencia. No hace falta reconstruir Docker porque no hay un cambio HTTP efectivo en C.1. **E2-1.3C.2** conectará esta política a una operación real autorizada por rol, con pruebas de 401/403/404/409 y pertenencia a la empresa.

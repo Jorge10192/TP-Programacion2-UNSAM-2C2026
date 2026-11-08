@@ -190,7 +190,7 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 
 **Este documento permanece en borrador hasta su aprobación.**
 
-## 11. Seguimiento de RF implementados y trazabilidad E2
+## 13. Seguimiento de RF implementados y trazabilidad E2
 
 | RF | Código y evidencia verificada | Pendiente |
 |---|---|---|

@@ -5,7 +5,7 @@
 **Versión:** 0.4 — modelo conceptual y correspondencia parcial con E2 real  
 **Estado:** **MODELO CONCEPTUAL REVISADO + ANEXO AS-IMPLEMENTED E2** — 03A/03B/03C no se rehicieron; subsistemas comerciales pendientes  
 **Fecha:** 7 de noviembre de 2026  
-**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.2), `02_CASOS_DE_USO.md` (v0.3), políticas del frontend DEMO E1-D2.  
+**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.3), `02_CASOS_DE_USO.md` (v0.4), políticas del frontend DEMO E1-D2.  
 
 > **Criterio de lectura:** AS-IS describe el modelo DEMO ya construido; TO-BE propone el dominio de la futura API FastAPI/SQLAlchemy/PostgreSQL. El diagrama conceptual **no es todavía el esquema SQL implementado**. Las extensiones posteriores aparecen separadas y no se incluyen en el núcleo evaluable.
 
@@ -313,7 +313,7 @@ En el MVP, CU-11 permite registrar **ajustes justificados** de inventario según
 - Se conserva sin alterar el diseño visual aprobado; las diferencias deliberadas entre SVG editorial y PUML se describen en cada guía.
 - No se extiende el MVP con recepción parcial, servicios con consumo automático, cobros reales ni procesos de suspensión de empresas.
 
-## 12. Correspondencia conceptual ↔ esquema implementado (E2-1.3C.1)
+## 13. Correspondencia conceptual ↔ esquema implementado (E2-1.3C.1)
 
 | Concepto de 03A | Implementación SQLAlchemy/PostgreSQL actual | Matiz |
 |---|---|---|
