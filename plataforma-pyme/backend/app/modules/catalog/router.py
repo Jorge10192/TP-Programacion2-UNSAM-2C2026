@@ -45,7 +45,7 @@ def _as_http(error: Exception) -> HTTPException:
     summary="Listar catálogo propio, incluidas fichas inactivas, con paginación",
 )
 def list_catalog(
-    business_id: UUID, offset: int = Query(0, ge=0),
+    business_id: UUID, offset: int = Query(0, ge=0, le=9_223_372_036_854_775_807),
     limit: int = Query(100, ge=1, le=500),
     context: AuthContext = Depends(current_auth),
     db: Session = Depends(get_db),

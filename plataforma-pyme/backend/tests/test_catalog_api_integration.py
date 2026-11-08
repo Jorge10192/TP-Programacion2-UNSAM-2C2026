@@ -368,6 +368,10 @@ def test_list_pagination_is_stable_and_invalid_query_is_422(isolated):
     assert client.get(endpoint(bid), headers=auth, params={"limit": 0}).status_code == 422
     assert client.get(endpoint(bid), headers=auth, params={"limit": 501}).status_code == 422
     assert client.get(endpoint(bid), headers=auth, params={"offset": -1}).status_code == 422
+    # PostgreSQL OFFSET solo soporta BIGINT con signo; no producir 500 por exceso.
+    assert client.get(endpoint(bid), headers=auth, params={
+        "offset": "9223372036854775808",
+    }).status_code == 422
 
 
 # E2-3 C — transición reversible de estado y efectos en el catálogo.
