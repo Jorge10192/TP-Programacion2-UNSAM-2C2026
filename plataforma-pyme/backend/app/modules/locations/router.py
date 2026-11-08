@@ -1,4 +1,4 @@
-"""RF-03 E2-2 B: endpoints de lectura y alta de ubicaciones por tenant."""
+"""RF-03 E2-2 B/C: consulta y administración de ubicaciones por tenant."""
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,10 +7,14 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
 from app.modules.auth.dependencies import current_auth, unauthorized
 from app.modules.auth.session_service import AuthContext
-from app.modules.locations.schemas import CreateLocationRequest, LocationView
+from app.modules.locations.schemas import (
+    CreateLocationRequest, LocationView, UpdateLocationRequest,
+    ChangeLocationStatusRequest,
+)
 from app.modules.locations.service import (
     LocationBusinessSuspended, LocationBusinessUnavailable,
     LocationNotFound, LocationPermissionDenied, LocationService,
+    LocationConflict,
     LocationSessionInvalid,
 )
 
@@ -24,6 +28,8 @@ def _location_http_error(error: Exception) -> HTTPException:
         return HTTPException(403, detail="Operacion no permitida")
     if isinstance(error, LocationBusinessSuspended):
         return HTTPException(409, detail="Empresa suspendida")
+    if isinstance(error, LocationConflict):
+        return HTTPException(409, detail="Ubicacion no apta para principal")
     raise TypeError("Excepción no administrada")
 
 
@@ -98,4 +104,92 @@ def create_location(
     except LocationSessionInvalid:
         raise unauthorized() from None
     except (LocationBusinessUnavailable, LocationPermissionDenied, LocationBusinessSuspended) as error:
+        raise _location_http_error(error) from None
+
+
+@router.patch(
+    "/{location_id}", response_model=LocationView,
+    responses={
+        401: {"description": "Sesión inválida"},
+        403: {"description": "Rol sin permiso de edición"},
+        404: {"description": "Empresa o ubicación ajena/inexistente"},
+        409: {"description": "Empresa suspendida"},
+        422: {"description": "Cambios inválidos o atributos protegidos"},
+    },
+    summary="Editar únicamente datos y capacidades de una ubicación propia",
+)
+def update_location(
+    business_id: UUID, location_id: UUID, changes: UpdateLocationRequest,
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> LocationView:
+    try:
+        return LocationService(db).update(
+            context.user.id, context.auth_session.id,
+            business_id, location_id, changes,
+        )
+    except LocationSessionInvalid:
+        raise unauthorized() from None
+    except (
+        LocationBusinessUnavailable, LocationNotFound,
+        LocationPermissionDenied, LocationBusinessSuspended,
+    ) as error:
+        raise _location_http_error(error) from None
+
+
+@router.patch(
+    "/{location_id}/status", response_model=LocationView,
+    responses={
+        401: {"description": "Sesión inválida"},
+        403: {"description": "Sin permiso de administración"},
+        404: {"description": "Empresa o ubicación ajena/inexistente"},
+        409: {"description": "Empresa suspendida"},
+        422: {"description": "Estado inválido"},
+    },
+    summary="Pausar/reactivar; al pausar se revoca el indicador principal",
+)
+def change_location_status(
+    business_id: UUID, location_id: UUID, command: ChangeLocationStatusRequest,
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> LocationView:
+    try:
+        return LocationService(db).change_status(
+            context.user.id, context.auth_session.id,
+            business_id, location_id, command,
+        )
+    except LocationSessionInvalid:
+        raise unauthorized() from None
+    except (
+        LocationBusinessUnavailable, LocationNotFound,
+        LocationPermissionDenied, LocationBusinessSuspended,
+    ) as error:
+        raise _location_http_error(error) from None
+
+
+@router.put(
+    "/{location_id}/primary", response_model=LocationView,
+    responses={
+        401: {"description": "Sesión inválida"},
+        403: {"description": "Sin permiso de administración"},
+        404: {"description": "Empresa o ubicación ajena/inexistente"},
+        409: {"description": "Empresa suspendida o ubicación pausada"},
+    },
+    summary="Elegir una única ubicación principal ACTIVA sin cambiar otros tenants",
+)
+def make_location_primary(
+    business_id: UUID, location_id: UUID,
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> LocationView:
+    try:
+        return LocationService(db).designate_primary(
+            context.user.id, context.auth_session.id, business_id, location_id,
+        )
+    except LocationSessionInvalid:
+        raise unauthorized() from None
+    except (
+        LocationBusinessUnavailable, LocationNotFound,
+        LocationPermissionDenied, LocationBusinessSuspended, LocationConflict,
+    ) as error:
         raise _location_http_error(error) from None

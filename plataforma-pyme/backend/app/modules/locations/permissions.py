@@ -1,7 +1,7 @@
 """Autorización de ubicaciones, separada de E2-1 para no alterar su RBAC.
 
-E2-2 B: cualquier miembro activo lee; titular/admin crea.
-Las asignaciones de usuarios a ubicaciones se definirán en E2-2 C.
+E2-2 B/C: cualquier miembro activo lee; titular/admin gestiona.
+Las asignaciones por ubicación operativa quedan fuera de este corte.
 """
 from app.modules.businesses.permissions import BusinessPermission, has_business_permission
 
