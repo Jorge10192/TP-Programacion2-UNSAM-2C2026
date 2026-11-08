@@ -4,7 +4,7 @@ from typing import Literal
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 
 
 LocationKind = Literal["LOCAL", "FERIA", "DEPOSITO", "OFICINA", "CASA", "OTRO"]
@@ -87,3 +87,46 @@ class LocationView(BaseModel):
             is_primary=record.is_primary, status=record.status,
             created_at=record.created_at, updated_at=record.updated_at,
         )
+
+
+class UpdateLocationRequest(BaseModel):
+    """Campos operativos únicamente; status y principal tienen rutas separadas."""
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=2, max_length=80)
+    kind: LocationKind | None = None
+    address: str | None = Field(default=None, max_length=160)
+    map_url: str | None = Field(default=None, max_length=2048)
+    can_sell: StrictBool | None = None
+    can_store: StrictBool | None = None
+
+    @field_validator("name", "address")
+    @classmethod
+    def trim_optional_text(cls, value: str | None, info) -> str | None:
+        if value is None:
+            return value
+        cleaned = value.strip()
+        if info.field_name == "name" and len(cleaned) < 2:
+            raise ValueError("Nombre de ubicación demasiado corto")
+        return cleaned
+
+    @field_validator("map_url")
+    @classmethod
+    def validate_optional_map_link(cls, value: str | None) -> str | None:
+        return validate_maps_link(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def validate_nonempty_update(self):
+        if not self.model_fields_set:
+            raise ValueError("Debe enviar al menos un campo editable")
+        for name in self.model_fields_set:
+            if getattr(self, name) is None:
+                raise ValueError("La edición no admite null")
+        return self
+
+
+class ChangeLocationStatusRequest(BaseModel):
+    """Estado explícito. No se puede modificar principal en este cuerpo."""
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["ACTIVA", "PAUSADA"]

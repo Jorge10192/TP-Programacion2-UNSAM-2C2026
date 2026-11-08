@@ -1,4 +1,4 @@
-"""RF-03 E2-2 B: creación/lectura de ubicaciones con autorización real por tenant.
+"""RF-03 E2-2 B/C: administración de ubicaciones con autorización real por tenant.
 
 Se bloquea la sesión y el usuario (como E2-1) en cada operación y la
 empresa+membresía en una misma transacción. El bloqueo empresarial serializa
@@ -14,7 +14,10 @@ from app.modules.auth.tokens import now_utc
 from app.modules.businesses.repository import BusinessRepository
 from app.modules.locations.permissions import can_create_locations, can_read_locations
 from app.modules.locations.repository import LocationRepository
-from app.modules.locations.schemas import CreateLocationRequest, LocationView
+from app.modules.locations.schemas import (
+    CreateLocationRequest, LocationView, UpdateLocationRequest,
+    ChangeLocationStatusRequest,
+)
 
 
 class LocationSessionInvalid(Exception):
@@ -35,6 +38,10 @@ class LocationPermissionDenied(Exception):
 
 class LocationBusinessSuspended(Exception):
     """Empresa suspendida; se permite la consulta pero no su modificación."""
+
+
+class LocationConflict(Exception):
+    """Ubicación PAUSADA no puede ser principal u otro estado incompatible."""
 
 
 class LocationService:
@@ -128,6 +135,81 @@ class LocationService:
             body = LocationView.from_record(item)
             self.db.commit()
             return body
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def update(
+        self, actor_id: UUID, session_id: UUID, business_id: UUID,
+        location_id: UUID, changes: UpdateLocationRequest,
+    ) -> LocationView:
+        """Editar atributos operativos; no modifica estado, principal ni tenant."""
+        try:
+            self._authorize(actor_id, session_id, business_id, writing=True)
+            item = self.locations.get_for_update(business_id, location_id)
+            if item is None:
+                raise LocationNotFound()
+            for key, value in changes.model_dump(exclude_unset=True).items():
+                setattr(item, key, value)
+            self.db.flush()
+            view = LocationView.from_record(item)
+            self.db.commit()
+            return view
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def change_status(
+        self, actor_id: UUID, session_id: UUID, business_id: UUID,
+        location_id: UUID, command: ChangeLocationStatusRequest,
+    ) -> LocationView:
+        """PAUSADA revoca principal; reactivar no restaura principal anterior."""
+        try:
+            self._authorize(actor_id, session_id, business_id, writing=True)
+            item = self.locations.get_for_update(business_id, location_id)
+            if item is None:
+                raise LocationNotFound()
+            if item.status != command.status:
+                if command.status == "PAUSADA":
+                    item.is_primary = False
+                item.status = command.status
+                self.db.flush()
+                view = LocationView.from_record(item)
+                self.db.commit()
+            else:
+                view = LocationView.from_record(item)
+                self.db.rollback()  # no-op idempotente, sin updated_at artificial
+            return view
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def designate_primary(
+        self, actor_id: UUID, session_id: UUID, business_id: UUID,
+        location_id: UUID,
+    ) -> LocationView:
+        """Cambio de principal serializado por bloqueo de empresa.
+
+        El índice parcial único de PostgreSQL es la última defensa. Nunca se
+        promueve una ubicación PAUSADA ni se toca una empresa diferente.
+        """
+        try:
+            self._authorize(actor_id, session_id, business_id, writing=True)
+            item = self.locations.get_for_update(business_id, location_id)
+            if item is None:
+                raise LocationNotFound()
+            if item.status != "ACTIVA":
+                raise LocationConflict()
+            if item.is_primary:
+                result = LocationView.from_record(item)
+                self.db.rollback()  # idempotente
+                return result
+            self.locations.clear_primary(business_id)
+            item.is_primary = True
+            self.db.flush()
+            result = LocationView.from_record(item)
+            self.db.commit()
+            return result
         except Exception:
             self.db.rollback()
             raise
