@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
 from app.infrastructure.db import get_engine
 from app.infrastructure.models import (
-    AuthSession, Business, CatalogItem, Location, Membership, Purchase, PurchaseLine, Supplier,
+    AuthSession, Business, CatalogItem, Location, Membership, Purchase, PurchaseLine, Supplier, StockBalance, StockMovement,
 )
 from app.main import create_app
 
@@ -137,7 +137,8 @@ def test_mixed_purchase_and_snapshots_survive_catalog_supplier_edits(isolated):
     assert data["lines"][0]["sku_snapshot"] == "PRU-01"
     assert data["lines"][2]["catalog_item_id"] is None
     assert db.execute(select(Location.id).where(Location.business_id == bid)).all() == []
-    assert "stock_balances" not in Purchase.metadata.tables
+    assert db.execute(select(StockBalance).where(StockBalance.business_id == bid)).all() == []
+    assert db.execute(select(StockMovement).where(StockMovement.business_id == bid)).all() == []
     assert client.get(path(bid, data["id"]), headers=auth).json() == data
     assert client.get(path(bid), headers=auth).json() == [data]
     changed = client.patch(f"/api/v1/businesses/{bid}/suppliers/{sid}",
