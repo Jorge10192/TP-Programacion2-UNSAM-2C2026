@@ -233,6 +233,13 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 
 ## 16. E2-2 D — Trazabilidad de asignaciones por ubicación
 
+**Precisiones del contrato E2-2:**
+
+- Crear o editar una ubicación rechaza NUL en `name`, `address` o `map_url` con 422, sin cambios parciales (`test_location_api_integration.py`).
+- `revoked_at` se devuelve en UTC: revocar, repetir el PUT y consultar por GET conservan su representación, independientemente de la zona horaria de PostgreSQL (`test_location_assignment_integration.py`).
+- Pausar una sede o inactivar una membresía puede conservar la asignación `ACTIVA` pero sin eficacia; reactivar puede devolverle eficacia. Revocarla explícitamente retira esa asignación. La política sigue destinada a módulos comerciales futuros (`test_location_concurrency_integration.py`).
+- Una ubicación nueva nace principal si no existe otra principal ACTIVA; reactivar una sede anterior no la convierte en principal. Las creaciones y cambios de principal simultáneos se serializan por empresa (`test_location_concurrency_integration.py`).
+
 **E2-2 D AS-IMPLEMENTED:** `LocationAssignment` con clave `(business_id,location_id,user_id)` y FK compuesta hacia `Location` y `Membership` del MISMO tenant. Migración aditiva `e22d_assignments`, índice único auxiliar de ubicación `(business_id,id)`. Estados administrativos `ACTIVA`/`REVOCADA`; fecha `revoked_at`, sin borrado físico. `GET /api/v1/businesses/{business_id}/locations/{location_id}/assignments` lista asignaciones de una sede (titular/administrador); `PUT /api/v1/businesses/{business_id}/locations/{location_id}/assignments/{membership_id}` recibe JSON `{"status":"ACTIVA"}` o `{"status":"REVOCADA"}` y activa/revoca idempotentemente. Solo se activa una membresía ENCARGADO/TRABAJADOR activa hacia ubicación ACTIVA; revocar permite sede pausada o miembro inactivo. Empresa SUSPENDIDA solo lectura. La política pura `can_operate_at_location` obliga a tenant, membresía, sede y capacidad `SELL/STORE` vigentes, además de asignación ACTIVA a encargados/trabajadores. **La política todavía no se consume en compras, inventario ni ventas**, fuera de este corte. Sin nuevas funciones de E2-1 ni conexión del frontend.
 
 **CI comprobado para código funcional `3cd7bce71d951218e8c77da58d147e78fb0d426e`:** [run 42497556047](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371/371 tests Python 3.12 y 3.14, 3/3 trabajos aprobados**, Alembic `e22d_assignments (head)` sin deriva y Docker saludable. **Windows local E2-2 D está pendiente:** la última ejecución aportada corresponde a E2-2 C, 325 passed. No atribuir al último commit documental ejecución propia de tests.
