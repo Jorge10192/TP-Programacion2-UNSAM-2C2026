@@ -88,16 +88,20 @@ def test_independent_capabilities_kind_and_optional_fields_persist() -> None:
             office = _location(conn, company, name="Oficina", kind="OFICINA",
                                can_sell=False, can_store=False)
             rows = {
-                row.id: row for row in conn.execute(
-                    select(Location).where(Location.business_id == company)
-                ).scalars()
+                row["id"]: row for row in conn.execute(
+                    select(
+                        Location.id, Location.can_sell, Location.can_store,
+                        Location.address, Location.map_url,
+                        Location.status, Location.is_primary,
+                    ).where(Location.business_id == company)
+                ).mappings()
             }
-            assert (rows[sell].can_sell, rows[sell].can_store) == (True, False)
-            assert (rows[store].can_sell, rows[store].can_store) == (False, True)
-            assert (rows[office].can_sell, rows[office].can_store) == (False, False)
-            assert rows[sell].address == "" and rows[sell].map_url == ""
-            assert rows[sell].status == "ACTIVA"
-            assert rows[sell].is_primary is False
+            assert (rows[sell]["can_sell"], rows[sell]["can_store"]) == (True, False)
+            assert (rows[store]["can_sell"], rows[store]["can_store"]) == (False, True)
+            assert (rows[office]["can_sell"], rows[office]["can_store"]) == (False, False)
+            assert rows[sell]["address"] == "" and rows[sell]["map_url"] == ""
+            assert rows[sell]["status"] == "ACTIVA"
+            assert rows[sell]["is_primary"] is False
         finally:
             tx.rollback()
 
