@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     BigInteger, CheckConstraint, ForeignKeyConstraint, SmallInteger, String,
-    UniqueConstraint, Uuid, text,
+    UniqueConstraint, Uuid,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
