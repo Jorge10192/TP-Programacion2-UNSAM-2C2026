@@ -1,7 +1,7 @@
 # 05 — Matriz de API, permisos y trazabilidad
 
 **Proyecto:** Asistente PyME — Programación 2  
-**Versión:** 1.1 — E2-3 A, esquema del catálogo (RF-04 parcial)
+**Versión:** 1.2 — E2-3 B, API real de Catálogo (validación pendiente)
 **Fecha:** 8 de noviembre de 2026  
 **Estado:** publicación técnica incremental; aprobación académica del equipo pendiente  
 **Referencia:** `main` del repositorio, carpeta exclusiva `plataforma-pyme/`.
@@ -24,7 +24,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | RF-02 | CU-03 | Alta, lectura y PATCH empresarial validados localmente | Empresa con titular inicial, idempotencia y edición autorizada por tenant/rol |
 | RF-02 | CU-12a / CU-12b y gestión | Emisión/aceptación validadas localmente; **equipo C.4b validado localmente con 195 pruebas y CI 3/3** | Emitir, aceptar, consultar equipo y editar roles/estados operativos con titularidad protegida |
 | RF-03 | CU-04 | **E2-2 B/C/D: ubicación y asignaciones por sede con 371 pruebas CI** | Seis rutas de ubicación + GET/PUT de asignaciones; FK compuesta por empresa; uso comercial de la política aún pendiente |
-| RF-04 | CU-05 | **E2-3 A: modelo y migración SQL; rutas HTTP pendientes** | `CatalogItem`/`catalog_items`, nombre y SKU únicos por tenant, unidad servicio y precios en centavos; CRUD/RBAC faltan E2-3 B/C |
+| RF-04 | CU-05 | **E2-3 B: POST/GET lista/GET detalle/PATCH implementados, validación CI final pendiente** | Catálogo empresarial, RBAC, nombre/SKU únicos, bienes/servicios y precio nullable; activar/desactivar pendiente C |
 | RF-05 | CU-06, CU-07 | Planificado | Compra separada de recepción física completa |
 | RF-06 | CU-08, CU-09 | Planificado | Saldos, movimientos, stock no negativo, concurrencia |
 | RF-07 | CU-10, CU-11 | Planificado | Ventas, pagos declarados y restricciones monetarias |
@@ -56,6 +56,10 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | PUT | `/api/v1/businesses/{business_id}/locations/{location_id}/primary` | Bearer + rol autorizado; ubicación ACTIVA; transferencia dentro de un tenant y una transacción | 200; 401/403/404/409 | `test_location_http.py`, `test_location_api_integration.py` |
 | GET | `/api/v1/businesses/{business_id}/locations/{location_id}/assignments` | Bearer + titular/administrador; sede del mismo tenant | 200; 401/403/404 | `test_location_assignment_http.py`, `test_location_assignment_integration.py` |
 | PUT | `/api/v1/businesses/{business_id}/locations/{location_id}/assignments/{membership_id}` | Bearer + titular/administrador; `status` ACTIVA/REVOCADA; objetivo del mismo tenant | 200; 401/403/404/409/422 | `test_location_assignment_schemas.py`, `test_location_assignment_integration.py` |
+| POST | `/api/v1/businesses/{business_id}/catalog` | Bearer + titular/administrador + empresa ACTIVA; SKU/nombre normalizados | 201; 401/403/404/409/422 | `test_catalog_schemas.py`, `test_catalog_http.py`, `test_catalog_api_integration.py` |
+| GET | `/api/v1/businesses/{business_id}/catalog` | Bearer + membresía ACTIVA; empresa propia, permite suspendida | 200; 401/403/404/422 | `test_catalog_http.py`, `test_catalog_api_integration.py` |
+| GET | `/api/v1/businesses/{business_id}/catalog/{item_id}` | Bearer + membresía ACTIVA, UUID artículo dentro de la empresa | 200; 401/403/404 | `test_catalog_api_integration.py` |
+| PATCH | `/api/v1/businesses/{business_id}/catalog/{item_id}` | Bearer + titular/administrador, empresa ACTIVA; DTO parcial sin estado ni tenant | 200; 401/403/404/409/422 | `test_catalog_schemas.py`, `test_catalog_api_integration.py` |
 
 **Idempotencia CU-03:** `Idempotency-Key` UUID4, ámbito `actor_user_id` + clave; `business_creation_requests` conserva hash canónico y `business_id`. La **PK compuesta** mantiene la unicidad incluso con concurrencia. Reutilizar la clave con otro contenido devuelve 409; se corrigió la recuperación tras conflictos concurrentes sobre `pk_business_creation_requests` en E2-1.3C.1.
 
@@ -250,3 +254,15 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 **Corte E2-3 A (08/11/2026), persistencia parcial de RF-04/CU-05:** clase SQLAlchemy `CatalogItem` y tabla `catalog_items` con `business_id` obligatorio, FK a Empresa (`RESTRICT`) y par UNIQUE `(business_id,id)` para futuras FK comerciales del mismo tenant. Cuatro clases de ficha según la DEMO: `ELABORADO`, `REVENTA`, `INSUMO` (bienes físicos) y `SERVICIO` (conceptualmente un servicio). Un servicio obliga unidad `SERVICIO`; un bien físico la prohíbe. Unidades físicas: `UNIDAD`, `GRAMO`, `KILOGRAMO`, `MILILITRO`, `LITRO`, `PAQUETE`, `CAJA`. Se almacenan nombre, clave normalizada `name_key`, categoría, SKU opcional, descripción, observaciones internas, estado `ACTIVO`/`INACTIVO`, condición `sellable`, `price_cents` y `reference_cost_cents` opcionales. Importes enteros BIGINT entre 0 y 99.999.999.999 centavos, sin Float. Dos restricciones independientes impiden repetir `name_key` y SKU no nulo **dentro de la empresa**, también en fichas inactivas; distintos tenants pueden reutilizarlos. En E2-3 B el servicio deberá calcular `name_key` de forma canónica (NFKC, espacios colapsados, equivalencia de mayúsculas) y normalizar SKU a mayúsculas **antes de insertar/editar**: SQL impone la unicidad de las claves guardadas y el formato de SKU, pero no deriva `name_key` automáticamente. Crear ficha no crea ubicación, stock, compras, ventas ni movimientos.
 
 **Evidencia:** corte de código/pruebas `79c2071f4e5192be95d75c78d5b1e9a75492a645`; [GitHub Actions E2-3 A](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42504783843) **3/3**, **407 pruebas aprobadas** en Python 3.12 y Python 3.14 con PostgreSQL 16, Docker liveness aprobado y `e23a_catalog (head)` sin cambios pendientes de Alembic. **Validación local de Windows pendiente para E2-3 A**; los 371 tests anteriores corresponden al cierre de E2-2. **No existen rutas HTTP de Catálogo** en este corte; CRUD, RBAC de catálogo, SKU/name normalization de entrada y protección de historias comerciales se implementarán en E2-3 B/C/D. No hay integración React API ni revisión independiente de E2-3 todavía. No se modificó E2-1 ni E2-2 ni frontend DEMO.
+
+## 18. E2-3 B — Trazabilidad HTTP Catálogo
+
+**E2-3 B — API real de Catálogo (RF-04/CU-05, 08/11/2026):** cuatro rutas bajo `/api/v1/businesses/{business_id}/catalog`: `POST /catalog` (201 alta), `GET /catalog` (200 lista con `offset>=0`, `1<=limit<=500`; por defecto `limit=100`), `GET /catalog/{item_id}` (200 detalle) y `PATCH /catalog/{item_id}` (200 edición parcial). Cada operación requiere Bearer válido, revalidación de sesión, usuario y membresía de la empresa solicitada. Titular/administrador pueden leer y escribir; encargado/trabajador con membresía activa solo leen; empresa SUSPENDIDA solo lectura; empresa o artículo ajenos/inexistentes 404. El servidor normaliza los nombres Unicode NFKC, colapsa espacios y genera `name_key` con `casefold`; normaliza SKU a mayúsculas ASCII y convierte SKU vacío en NULL. PostgreSQL conserva la unicidad por empresa de `name_key`/SKU incluso con fichas INACTIVO, y la API traduce esa colisión a 409. Datos inválidos o campos protegidos (id, tenant, status, clave derivada) reciben 422. Tipo SERVICIO exige unidad SERVICIO; ninguna otra clasificación puede usarla. Son válidos `price_cents` y `reference_cost_cents` NULL o enteros desde 0 hasta 99.999.999.999. El PATCH permite eliminar SKU/precio/costo con NULL, pero no editar estado. La ficha conserva su `status` y timestamps SQL. La creación no crea ubicación, saldo de stock, compras, ventas ni movimientos.
+
+| Capacidad | Titular | Administrador | Encargado | Trabajador |
+|---|---|---|---|---|
+| Crear / editar ficha | Sí | Sí | No | No |
+| Listar / consultar ficha propia | Sí | Sí | Sí | Sí |
+| Editar estado ACTIVO/INACTIVO | **Pendiente E2-3 C** | **Pendiente E2-3 C** | No | No |
+
+**Límites explícitos:** E2-3 B no expone todavía `PATCH /status` ni borrado físico (se evaluarán en E2-3 C). No existe integración del frontend React con esta API; no se implementan recepción, ventas, snapshots comerciales ni protección de edición de unidad con historia, pues esos módulos son posteriores. Los tests nuevos comprueban permisos, rollback de duplicados, SKU/nombres normalizados, aislamiento multiempresa, lectura bajo suspensión y fallas 401/403/404/409/422. La suite de CI para el último commit de pruebas está **en ejecución**; hasta comprobarla no declarar E2-3 B validado. La última verificación Windows comunicada es **407 passed para E2-3 A**.
