@@ -2,18 +2,26 @@
 import re
 from datetime import datetime
 from uuid import UUID
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, SecretStr, field_validator
 
 _PHONE = re.compile(r"^[+()\d\s.\-]+$")
+
+
+def _protect_password_input(value: object) -> object:
+    """Ocultar el string antes de validar longitud, también en errores HTTP 422."""
+    return SecretStr(value) if isinstance(value, str) else value
+
+
+PasswordInput = Annotated[SecretStr, BeforeValidator(_protect_password_input)]
 
 
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: EmailStr
-    password: SecretStr = Field(min_length=15, max_length=128)
+    password: PasswordInput = Field(min_length=15, max_length=128)
     display_name: str = Field(min_length=2, max_length=70)
     contact_phone: str | None = Field(default=None, max_length=30)
 
@@ -77,7 +85,7 @@ class LoginRequest(BaseModel):
     """Login: credenciales incorrectas reciben 401, sin regla de alta."""
     model_config = ConfigDict(extra="forbid")
     email: EmailStr
-    password: SecretStr = Field(min_length=1, max_length=1024)
+    password: PasswordInput = Field(min_length=1, max_length=1024)
 
     @field_validator("email", mode="before")
     @classmethod
