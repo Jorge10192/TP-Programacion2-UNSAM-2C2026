@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 1.5 — E2-3 B, API real de Catálogo (validación pendiente)
+**Versión:** 1.5 — E2-3 B, API real de Catálogo (CI 498, Windows pendiente)
 **Estado:** **REVISADO PARA ENTREGA — especificación TO-BE, con decisiones de E2 todavía abiertas**  
 **Fecha:** 8 de noviembre de 2026  
 **Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.8)  
@@ -560,4 +560,4 @@ Se prueban la ausencia de ubicaciones al dar de alta una empresa, la elección a
 
 **Contratos de CU-05:** alta requiere `name`, `kind`, `unit` y `sellable` explícitos; SKU, categoría, precio/costo, descripción y observaciones tienen valores opcionales. La API devuelve la ficha con `id`, `business_id`, clasificación conceptual `item_type=BIEN|SERVICIO`, estado y fechas. Las ediciones parciales comprueban `kind`/`unit` en combinación con los valores existentes, dentro de una transacción. Dos SKU iguales en empresas distintas son válidos; dentro de una misma empresa no se duplican ni cuando el registro original está inactivo.
 
-**Límites explícitos:** E2-3 B no expone todavía `PATCH /status` ni borrado físico (se evaluarán en E2-3 C). No existe integración del frontend React con esta API; no se implementan recepción, ventas, snapshots comerciales ni protección de edición de unidad con historia, pues esos módulos son posteriores. Los tests nuevos comprueban permisos, rollback de duplicados, SKU/nombres normalizados, aislamiento multiempresa, lectura bajo suspensión y fallas 401/403/404/409/422. La suite de CI para el último commit de pruebas está **en ejecución**; hasta comprobarla no declarar E2-3 B validado. La última verificación Windows comunicada es **407 passed para E2-3 A**.
+**Límites explícitos:** E2-3 B no expone todavía `PATCH /status` ni borrado físico (se evaluarán en E2-3 C). No existe integración del frontend React con esta API; no se implementan recepción, ventas, snapshots comerciales ni protección de edición de unidad con historia, pues esos módulos son posteriores. Los tests nuevos comprueban permisos, rollback de duplicados, SKU/nombres normalizados, aislamiento multiempresa, lectura bajo suspensión y fallas 401/403/404/409/422. **Evidencia CI E2-3 B:** [GitHub Actions 42506409757](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42506409757) finalizó **3/3 trabajos exitosos**, **498 pruebas aprobadas** tanto en Python 3.12 (53.96s) como Python 3.14 (50.12s), PostgreSQL 16, `e23a_catalog (head)` y `alembic check` sin operaciones, imagen Docker/liveness aprobado. Código funcional validado: `35ff901855397c024cee50fa590c6c05a7f04cfe`. El CI anterior `42506050141` había detectado dos fallos de mapeo HTTP en PATCH con tipo/unidad incompatible; se corrigieron y ambos casos pasan ahora. **La validación Windows local de E2-3 B sigue pendiente**; el último resultado local confirmado es 407/407 de E2-3 A.

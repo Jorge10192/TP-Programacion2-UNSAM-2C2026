@@ -1,7 +1,7 @@
 # 05 — Matriz de API, permisos y trazabilidad
 
 **Proyecto:** Asistente PyME — Programación 2  
-**Versión:** 1.2 — E2-3 B, API real de Catálogo (validación pendiente)
+**Versión:** 1.2 — E2-3 B, API real de Catálogo (CI 498, Windows pendiente)
 **Fecha:** 8 de noviembre de 2026  
 **Estado:** publicación técnica incremental; aprobación académica del equipo pendiente  
 **Referencia:** `main` del repositorio, carpeta exclusiva `plataforma-pyme/`.
@@ -24,7 +24,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | RF-02 | CU-03 | Alta, lectura y PATCH empresarial validados localmente | Empresa con titular inicial, idempotencia y edición autorizada por tenant/rol |
 | RF-02 | CU-12a / CU-12b y gestión | Emisión/aceptación validadas localmente; **equipo C.4b validado localmente con 195 pruebas y CI 3/3** | Emitir, aceptar, consultar equipo y editar roles/estados operativos con titularidad protegida |
 | RF-03 | CU-04 | **E2-2 B/C/D: ubicación y asignaciones por sede con 371 pruebas CI** | Seis rutas de ubicación + GET/PUT de asignaciones; FK compuesta por empresa; uso comercial de la política aún pendiente |
-| RF-04 | CU-05 | **E2-3 B: POST/GET lista/GET detalle/PATCH implementados, validación CI final pendiente** | Catálogo empresarial, RBAC, nombre/SKU únicos, bienes/servicios y precio nullable; activar/desactivar pendiente C |
+| RF-04 | CU-05 | **E2-3 B: cuatro rutas CRUD iniciales, CI 498 pruebas aprobado; Windows pendiente** | Catálogo empresarial, RBAC, nombre/SKU únicos, bienes/servicios y precio nullable; activar/desactivar pendiente C |
 | RF-05 | CU-06, CU-07 | Planificado | Compra separada de recepción física completa |
 | RF-06 | CU-08, CU-09 | Planificado | Saldos, movimientos, stock no negativo, concurrencia |
 | RF-07 | CU-10, CU-11 | Planificado | Ventas, pagos declarados y restricciones monetarias |
@@ -265,4 +265,4 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 | Listar / consultar ficha propia | Sí | Sí | Sí | Sí |
 | Editar estado ACTIVO/INACTIVO | **Pendiente E2-3 C** | **Pendiente E2-3 C** | No | No |
 
-**Límites explícitos:** E2-3 B no expone todavía `PATCH /status` ni borrado físico (se evaluarán en E2-3 C). No existe integración del frontend React con esta API; no se implementan recepción, ventas, snapshots comerciales ni protección de edición de unidad con historia, pues esos módulos son posteriores. Los tests nuevos comprueban permisos, rollback de duplicados, SKU/nombres normalizados, aislamiento multiempresa, lectura bajo suspensión y fallas 401/403/404/409/422. La suite de CI para el último commit de pruebas está **en ejecución**; hasta comprobarla no declarar E2-3 B validado. La última verificación Windows comunicada es **407 passed para E2-3 A**.
+**Límites explícitos:** E2-3 B no expone todavía `PATCH /status` ni borrado físico (se evaluarán en E2-3 C). No existe integración del frontend React con esta API; no se implementan recepción, ventas, snapshots comerciales ni protección de edición de unidad con historia, pues esos módulos son posteriores. Los tests nuevos comprueban permisos, rollback de duplicados, SKU/nombres normalizados, aislamiento multiempresa, lectura bajo suspensión y fallas 401/403/404/409/422. **Evidencia CI E2-3 B:** [GitHub Actions 42506409757](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42506409757) finalizó **3/3 trabajos exitosos**, **498 pruebas aprobadas** tanto en Python 3.12 (53.96s) como Python 3.14 (50.12s), PostgreSQL 16, `e23a_catalog (head)` y `alembic check` sin operaciones, imagen Docker/liveness aprobado. Código funcional validado: `35ff901855397c024cee50fa590c6c05a7f04cfe`. El CI anterior `42506050141` había detectado dos fallos de mapeo HTTP en PATCH con tipo/unidad incompatible; se corrigieron y ambos casos pasan ahora. **La validación Windows local de E2-3 B sigue pendiente**; el último resultado local confirmado es 407/407 de E2-3 A.
