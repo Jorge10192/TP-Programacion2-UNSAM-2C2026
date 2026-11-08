@@ -205,7 +205,7 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 
 Se publicó `PATCH /api/v1/businesses/{business_id}`: permite modificar parcialmente `name`, `category` y `activity_kind`. No puede modificar fundador, estado, titularidad, rol ni membresía. El actor se deriva del Bearer de la sesión, nunca de campos del cliente. La ejecución bloquea y vuelve a comprobar la identidad, sesión, empresa y membresía en PostgreSQL antes de escribir; titular y administrador pueden editar. Encargado y trabajador no reciben privilegios de modificación. Empresa ajena/no miembro activo responde 404; rol sin permiso, 403; empresa suspendida con rol autorizado, 409; cuerpo inválido, vacío o con campos prohibidos, 422. Todo ocurre en una única transacción, con rollback ante errores.
 
-**Estado de evidencia:** código y nuevas pruebas publicados, todavía no ejecutados en el equipo de desarrollo tras C.2. El último resultado **verificado** corresponde a C.1 (98 pruebas). No hay migración adicional ni cambios de cardinalidad. Este paso realiza solo una parte de RF-02; CU-12 (invitaciones) permanece pendiente.
+**Estado de evidencia actualizado en C.5:** C.2 quedó validado con **125 pruebas locales** y las regresiones C.3/C.4a/C.4b finalizaron en **195/195**. El PATCH no requirió migración ni cambió cardinalidades. El circuito CU-12, pendiente cuando se cerró C.2, fue implementado posteriormente en C.3/C.4a/C.4b.
 
 ### 13.2 E2-1.3C.3 — RF-02: invitación dirigida sin alta automática de membresía
 

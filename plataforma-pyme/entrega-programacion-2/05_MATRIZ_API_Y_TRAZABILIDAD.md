@@ -153,7 +153,7 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 
 **Entidad y Alembic:** `business_invitations` suma `accepted_by_user_id` (FK a usuario, nullable), `accepted_at` (nullable) y CHECK `ck_business_invitation_acceptance_audit` que exige ambas columnas cuando `status=ACEPTADA` y prohíbe consignarlas en otro estado. Migración aditiva `e213c4_acceptance` (sin editar migraciones previas).
 
-**Evidencia:** código C.4a y tests de contrato/HTTP/PostgreSQL publicados. El CI confirmó migración desde cero, `alembic check`, Pytest en Python 3.12 y 3.14, y Docker. **Pruebas y migración locales verificadas (171 pruebas en C.4a; 195 al cerrar C.4b)**; registrar la cantidad exacta tras ejecutarlas. **No implementado:** consulta/administración de miembros, cancelación/rechazo de invitaciones, correo automático/QR, verificación de propiedad del email, rate limiting para internet, reenvío seguro; quedan pendientes según alcance. En el cierre de E2-1 se actualizarán definitivamente UML 03A y hoja de auditoría al compañero.
+**Evidencia:** C.4a se probó localmente con **171 pruebas** y en CI con PostgreSQL/Alembic (Python 3.12/3.14, Docker); C.4b amplió la validación local a **195 pruebas**, CI funcional **3/3** y Docker saludable, sin nueva migración. La consulta y administración básica del equipo **sí están implementadas** desde C.4b. Permanecen pendientes la cancelación/rechazo/reenvío de invitaciones, correo/QR automático, verificación del email, rate limiting para internet y transferencia de titularidad. El UML 03A ya fue actualizado en C.5; la hoja para el compañero se redactará después, por separado.
 
 ## 11. C.4b — Contrato de equipo y decisiones de autorización
 
