@@ -110,7 +110,7 @@ def create_catalog_item(
         raise unauthorized() from None
     except (
         CatalogBusinessUnavailable, CatalogPermissionDenied,
-        CatalogBusinessSuspended, CatalogConflict, CatalogInvalidChange,
+        CatalogBusinessSuspended, CatalogConflict,
     ) as error:
         raise _as_http(error) from None
 
@@ -140,6 +140,6 @@ def update_catalog_item(
         raise unauthorized() from None
     except (
         CatalogBusinessUnavailable, CatalogItemNotFound, CatalogPermissionDenied,
-        CatalogBusinessSuspended, CatalogConflict,
+        CatalogBusinessSuspended, CatalogConflict, CatalogInvalidChange,
     ) as error:
         raise _as_http(error) from None
