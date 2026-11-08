@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado (08/11/2026):** E2-1 validado localmente con **195 pruebas**. Se inició **E2-2 A**: tabla/modelo `Location`, migración aditiva `e22a_locations`, pruebas de metadatos/integridad PostgreSQL; **CI del código del corte aprobado**, validación local Windows nueva pendiente. Sin API de ubicaciones ni integración React; E2-1 permanece intacto.
+**Estado (08/11/2026):** E2-1 validado localmente con **195 pruebas**. Se inició **E2-2 A**: tabla/modelo `Location`, migración aditiva `e22a_locations`, pruebas de metadatos/integridad PostgreSQL; **CI del código del corte aprobado**, validación local Windows del corte A aprobada con 212 pruebas; ampliación CASA pendiente local. Sin API de ubicaciones ni integración React; E2-1 permanece intacto.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -552,7 +552,7 @@ No se alteró React ni ningún proyecto hermano. **C.5 consolidó el UML 03A y l
 
 ## E2-2 A — Modelo de ubicaciones y validación incremental
 
-**E2-2 A — persistencia de Ubicaciones (08/11/2026):** se publicó `Location`/`locations` con FK obligatoria `business_id → businesses.id` (`RESTRICT`), cinco tipos, `can_sell`/`can_store` independientes, campos de referencia opcionales, `ACTIVA/PAUSADA`, `is_primary`, índice parcial que permite como máximo una principal activa por tenant y CHECK que impide principal pausada. Migración aditiva `20261108_0008_business_locations.py` (`e22a_locations`, descendiente de `e213c4_acceptance`). La empresa continúa iniciándose **sin ubicaciones**. **No hay todavía rutas HTTP de ubicaciones**, ni inventario/compra/venta conectado, ni permisos de ubicación; esos cambios pertenecen a E2-2 B/C y bloques siguientes. El CI del código del corte se verificó en `300fa6f` (GitHub Actions [run 42491816481](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42491816481)): resultado `success`. La validación local Windows del nuevo corte aún se requiere; los 195 tests anteriores correspondían a E2-1.
+**E2-2 A — persistencia de Ubicaciones (08/11/2026):** se publicó `Location`/`locations` con FK obligatoria `business_id → businesses.id` (`RESTRICT`), seis tipos, `can_sell`/`can_store` independientes, campos de referencia opcionales, `ACTIVA/PAUSADA`, `is_primary`, índice parcial que permite como máximo una principal activa por tenant y CHECK que impide principal pausada. Migración aditiva `20261108_0008_business_locations.py` (`e22a_locations`, descendiente de `e213c4_acceptance`). La empresa continúa iniciándose **sin ubicaciones**. **No hay todavía rutas HTTP de ubicaciones**, ni inventario/compra/venta conectado, ni permisos de ubicación; esos cambios pertenecen a E2-2 B/C y bloques siguientes. El CI del código del corte se verificó en `300fa6f` (GitHub Actions [run 42491816481](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42491816481)): resultado `success`. La validación local Windows del nuevo corte aún se requiere; los 195 tests anteriores correspondían a E2-1.
 
 **Desde `plataforma-pyme/backend/` luego de `git pull`:**
 
@@ -568,4 +568,11 @@ try {
 }
 ```
 
-El head esperado ahora es **`e22a_locations (head)`**. La migración agrega únicamente la tabla `locations`; no crea registros por defecto ni elimina datos anteriores. Los tests de integridad usan transacciones exteriores y SAVEPOINT. **No correr contra una base productiva; no ejecutar `downgrade`, `stamp` ni `docker compose down -v`.** El test de control de versión Alembic se ajustó al head nuevo, sin modificar las reglas de E2-1. La siguiente etapa implementará API/DTO/servicios/autorización; no atribuir CRUD a este incremento.
+El head esperado ahora es **`e22b_location_casa (head)`** (el head anterior era `e22a_locations`). La migración agrega únicamente la tabla `locations`; no crea registros por defecto ni elimina datos anteriores. Los tests de integridad usan transacciones exteriores y SAVEPOINT. **No correr contra una base productiva; no ejecutar `downgrade`, `stamp` ni `docker compose down -v`.** El test de control de versión Alembic se ajustó al head nuevo, sin modificar las reglas de E2-1. La siguiente etapa implementará API/DTO/servicios/autorización; no atribuir CRUD a este incremento.
+
+
+### E2-2 A.1 — CASA y nuevo head (08/11/2026)
+
+`CASA` se añade a los tipos admitidos; las capacidades `can_sell`/`can_store` continúan independientes. Migración aditiva `e22b_location_casa` tras `e22a_locations`, sin cambios a datos anteriores, y reversión protegida cuando existen ubicaciones CASA. **CI backend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492475011)): **217 pruebas aprobadas, Python 3.12/3.14, Alembic `e22b_location_casa (head)` sin deriva, Docker 3/3**. **CI frontend** ([run](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492474999)): **2/2 trabajos exitosos, incluidos build/lint y E2E**. Resultado Windows precedente de E2-2 A: 212 pruebas; **la migración adicional CASA y los 217 tests todavía deben reproducirse localmente**. Sin endpoints de ubicación hasta E2-2 B/C y sin conexión React–API.
+
+**Comando seguro desde `plataforma-pyme/backend/`:** primero `python -m alembic upgrade head`, después `python -m alembic current`, `python -m alembic check`, y `RUN_DB_INTEGRATION=1` con `pytest -q` en una DB local conocida. No ejecutar downgrade sobre datos reales.

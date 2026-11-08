@@ -51,3 +51,7 @@ npm.cmd run dev
 ## Lo que NO implementa
 
 No hay API, permisos efectivos, geolocalización, inventario, caja, ubicaciones asignadas a colaboradores ni bloqueo de pausa con operaciones pendientes. La integración con TP3, roles por ubicación, ledger de stock y ventas viene en posteriores incrementos. Antes de usar pausas con operaciones reales, agregar validaciones de stock y caja del servidor, no confiar en controles visuales.
+
+## Actualización E2-2 A.1 — CASA en la DEMO (08/11/2026)
+
+Se agregó la opción **CASA — Casa o domicilio particular** al selector de ubicaciones existente, conservando `LOCAL`, `FERIA`, `DEPOSITO`, `OFICINA` y `OTRO`. El tipo `LocationKind`, las etiquetas y ambas validaciones (entrada y recuperación del almacenamiento local) aceptan CASA. `canSell` y `canStore` continúan independientes y se mantienen todos los comandos y datos previos. La pantalla genera sus opciones a partir de `locationKindLabels`, por lo que no requiere otra implementación visual. **No se geolocaliza, publica ni verifica automáticamente el domicilio** y no hay sincronización con FastAPI. Los CI del cambio CASA aprobaron: backend 217 tests, frontend build/lint/E2E 2/2. Para comprobación manual: crear CASA en el selector, guardar, recargar y constatar persistencia; verificar también que ubicaciones de tipos anteriores siguen visibles.
