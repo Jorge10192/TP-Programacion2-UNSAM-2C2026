@@ -1,5 +1,5 @@
 @startuml
-' 03A v0.5 E2-2 C / Asistente PyME · identidad, empresas y catálogo.
+' 03A v0.6 E2-2 D / Asistente PyME · identidad, ubicaciones y asignaciones.
 ' La fuente PUML conserva TODAS las asociaciones y multiplicidades.
 ' El SVG/PNG corresponde a la composición editorial optimizada: PlantUML
 ' aplica su propio motor de distribución y no replica la misma maquetación.
@@ -19,7 +19,7 @@ skinparam NoteBorderColor #C4D4E2
 hide empty methods
 left to right direction
 
-title Asistente PyME | Identidad y ubicaciones implementadas, catálogo TO-BE
+title Asistente PyME | Identidad, ubicaciones y asignaciones: catálogo TO-BE
 
 package "Identidad y acceso" #EAF4FD {
   class Usuario <<Entidad global>> {
@@ -64,6 +64,13 @@ package "Empresa y recursos" #E8F7F3 {
     +creadaEn: DateTime
     +actualizadaEn: DateTime
   }
+  class AsignacionUbicacion <<Backend E2-2 D>> {
+    +empresaId: UUID
+    +ubicacionId: UUID
+    +usuarioId: UUID
+    +estado: EstadoAsignacion
+    +revocadoEn: DateTime?
+  }
   class ArticuloCatalogo {
     +id: UUID
     +nombre: String
@@ -88,6 +95,8 @@ Usuario "1" -- "0..*" Invitacion : emisor (invited_by_user_id)
 Usuario "0..1" -- "0..*" Invitacion : aceptante (accepted_by_user_id)
 Empresa "1" -- "0..*" Invitacion
 Empresa "1" -- "0..*" Ubicacion
+Membresia "1" -- "0..*" AsignacionUbicacion : miembro de este tenant
+Ubicacion "1" -- "0..*" AsignacionUbicacion : sede del mismo tenant
 Empresa "1" -- "0..*" ArticuloCatalogo
 Empresa "1" -- "0..*" Proveedor
 
@@ -111,8 +120,18 @@ note bottom of Ubicacion
   Unica principal ACTIVA por empresa (a lo sumo 1).
   Pausar revoca principal; reactivar no la restaura.
   E2-2 C: permisos de administracion por rol empresa.
-  Asignacion granular de miembros: pendiente E2-2 D.
+  Asignacion granular implementada en E2-2 D.
+  Uso comercial de politica: futuro E2-4/5/6.
   No crea stock, venta o deposito ficticio.
+end note
+note bottom of AsignacionUbicacion
+  FK compuesta (empresaId,usuarioId) a Membresia.
+  FK compuesta (empresaId,ubicacionId) a Ubicacion.
+  ACTIVA / REVOCADA sin borrar fila.
+  No otorga un rol empresarial adicional.
+  Solo titular/admin gestiona asignaciones.
+  SELL/STORE futuro requiere capacidad y asignacion
+  activa para ENCARGADO/TRABAJADOR.
 end note
 note bottom of ArticuloCatalogo
   SKU único por empresa si está informado.
