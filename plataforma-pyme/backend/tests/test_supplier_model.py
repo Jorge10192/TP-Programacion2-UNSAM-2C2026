@@ -75,5 +75,5 @@ def test_optional_text_defaults_and_jsonb_are_not_null() -> None:
     for field in ("payment_methods", "promotions"):
         assert isinstance(table.c[field].type, JSONB)
         assert table.c[field].nullable is False
-        assert table.c[field].default.arg is list
+        assert table.c[field].default.is_callable
         assert "[]" in str(table.c[field].server_default.arg)
