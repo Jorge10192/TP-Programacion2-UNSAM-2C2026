@@ -44,7 +44,9 @@ class Purchase(Base):
             name="ck_purchases_total_cents",
         ),
         CheckConstraint(
-            "supplier_id IS NOT NULL OR supplier_name_snapshot = ''",
+            "(supplier_id IS NULL AND supplier_name_snapshot = '') OR "
+            "(supplier_id IS NOT NULL AND "
+            "length(btrim(supplier_name_snapshot)) BETWEEN 2 AND 90)",
             name="ck_purchases_supplier_snapshot_optional",
         ),
     )
