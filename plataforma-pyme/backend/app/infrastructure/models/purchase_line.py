@@ -70,6 +70,10 @@ class PurchaseLine(Base):
             "line_total_cents BETWEEN 0 AND 99999999999",
             name="ck_purchase_lines_total_cents",
         ),
+        CheckConstraint(
+            "line_total_cents = floor((quantity_milli::numeric * unit_cost_cents + 500) / 1000)",
+            name="ck_purchase_lines_half_up_total",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
