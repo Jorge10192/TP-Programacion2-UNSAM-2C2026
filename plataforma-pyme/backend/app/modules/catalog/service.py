@@ -40,6 +40,10 @@ class CatalogConflict(Exception):
     """Clave de nombre o SKU ya existente en este tenant."""
 
 
+class CatalogInvalidChange(Exception):
+    """Combinación de tipo y unidad incompatible en una edición parcial."""
+
+
 class CatalogService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -164,7 +168,10 @@ class CatalogService:
             changes = command.model_dump(exclude_unset=True)
             new_kind = changes.get("kind", item.kind)
             new_unit = changes.get("unit", item.unit)
-            ensure_kind_unit(new_kind, new_unit)
+            try:
+                ensure_kind_unit(new_kind, new_unit)
+            except ValueError as error:
+                raise CatalogInvalidChange() from error
             if "name" in changes:
                 changes["name_key"] = normalized_name_key(changes["name"])
             for key, value in changes.items():
