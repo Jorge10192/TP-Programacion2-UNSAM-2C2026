@@ -1,6 +1,6 @@
 # 03A — Guía detallada: identidad, empresas y catálogo
 
-**Proyecto:** Asistente PyME · **Documento asociado:** [Modelo de dominio y UML](../03_MODELO_DE_DOMINIO_Y_UML.md) · **Versión:** 0.3 · **Estado:** modelo conceptual TO-BE, no API implementada.
+**Proyecto:** Asistente PyME · **Documento asociado:** [Modelo de dominio y UML](../03_MODELO_DE_DOMINIO_Y_UML.md) · **Versión:** 0.4 (C.5, 08/11/2026) · **Estado:** UML conceptual conciliado con núcleo RF-01/RF-02 implementado; Ubicaciones, Artículos y Proveedores permanecen TO-BE.
 
 ![03A — Identidad, empresas y catálogo](03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg)
 
@@ -12,21 +12,21 @@ El diagrama responde tres preguntas: **quién usa la plataforma**, **a qué empr
 
 La lámina se divide en **Identidad y acceso** (izquierda) y **Empresa y recursos** (derecha). Las cajas son clases y sus atributos; las líneas indican asociaciones y cardinalidades. Los recuadros de reglas son notas editoriales, no entidades adicionales.
 
-**Simplificación gráfica:** la relación «fundador histórico» aparece como nota en el SVG para evitar una conexión que atraviese toda la lámina. La fuente PlantUML incluye esa asociación. En SQL se propone conservarla mediante una referencia de Empresa a Usuario.
+**Simplificación gráfica:** la asociación «fundador histórico» se presenta como nota en el SVG para evitar una conexión larga; en SQL ya está `businesses.founder_user_id`. El vínculo Usuario–Invitación que muestra el SVG representa al **emisor obligatorio**; el vínculo adicional del **aceptante opcional** consta en PlantUML y en esta guía, sin sobrecargar la lámina editorial.
 
 ## 2. Entidades y responsabilidades
 
 | Clase | Propósito | Regla principal |
 |---|---|---|
 | **Usuario** | Identidad personal y global: correo normalizado, hash de contraseña y estado | Puede formar parte de cero, una o varias empresas; no contiene un rol empresarial global |
-| **Membresia** | Vínculo entre Usuario y Empresa, con rol y estado propios | La API valida su vigencia y los permisos necesarios para cada operación empresarial |
+| **Membresia** | Relación real Usuario–Empresa con rol, estado y puesto opcional | UNIQUE por empresa/usuario; C.4b protege al titular y edita solo roles/estados operativos autorizados |
 | **Empresa** | Espacio independiente de gestión (*tenant*) | Nace ACTIVA, con una membresía administrativa inicial; puede tener cero ubicaciones y cero artículos |
-| **Invitacion** | Propuesta de incorporación dirigida a un correo y rol | Estar PENDIENTE no concede acceso; aceptar requiere autenticación y validaciones |
+| **Invitacion** | `business_invitations` emitida por Usuario y dirigida a correo/rol | Emisor obligatorio y aceptante opcional; PENDIENTE no concede acceso, el secreto solo se conserva como SHA-256 |
 | **Ubicacion** | Local, feria, depósito u otro espacio con capacidades de venta o almacenamiento | Pertenece a una empresa y no se crea automáticamente al crearla |
 | **ArticuloCatalogo** | Bien físico o servicio, con SKU, unidad y precio/costo informativos | No crea existencias al registrarse; los servicios no consumen stock automáticamente en MVP |
 | **Proveedor** | Referencia comercial para adquisiciones | Pertenece a una empresa y puede quedar inactivo sin borrar historial |
 
-Los campos son conceptuales. Las claves foráneas que se deducen de las asociaciones se concretarán al diseñar el esquema SQL; no todas tienen que aparecer duplicadas dentro de las cajas UML.
+Las clases son conceptuales: Usuario, Empresa, Membresía e Invitación ya tienen sus FK reales en SQL; Ubicacion, ArticuloCatalogo y Proveedor siguen planificados para backend. Las FK no necesitan duplicarse en las cajas UML si la asociación es inequívoca.
 
 ## 3. Cómo leer las cardinalidades
 
@@ -35,7 +35,9 @@ Los campos son conceptuales. Las claves foráneas que se deducen de las asociaci
 - **Usuario 1 — 0..* Empresas como fundador:** cada empresa registra su fundador histórico; una persona puede fundar varias. Fundador no equivale a propietario legal ni implica permisos perpetuos.
 - **Empresa 1 — 0..* Ubicaciones / Articulos / Proveedores:** los recursos empresariales pertenecen a una empresa, pero son opcionales inicialmente.
 - **Empresa 1 — 0..* Invitaciones:** una empresa puede emitir invitaciones. Emitirlas no modifica membresías.
-- **Usuario 0..1 — 0..* Invitaciones:** puede invitarse a un correo sin cuenta preexistente; la asociación a una identidad existente es opcional.
+- **Usuario emisor 1 — 0..* Invitaciones:** cada invitación registra `invited_by_user_id NOT NULL`; el emisor es una cuenta global autenticada.
+- **Usuario aceptante 0..1 — 0..* Invitaciones:** la invitación guarda `accepted_by_user_id` solo cuando fue consumida; una cuenta puede aceptar varias invitaciones, pero cada una tiene como máximo un aceptante.
+- **Destinatario por email, sin asociación FK previa:** `email_normalizado` es un dato textual, no una FK a Usuario. Puede emitirse antes de que la persona tenga cuenta.
 
 Convenciones: **0..1** = cero o uno; **1** = exactamente uno; **0..*** = cero o muchos; **1..*** = uno o muchos.
 
@@ -92,4 +94,12 @@ Este diagrama **no** modela compras, recepciones, ventas ni movimientos: eso se 
 
 **¿Por qué SKU por empresa?** Distintas empresas pueden utilizar el mismo código, pero dentro de una debe identificar de forma inequívoca al artículo.
 
-**Estado:** diseño TO-BE aprobado como referencia conceptual; no acredita autenticación ni autorización de backend ya implementadas.
+**Estado C.5:** 03A actualizado con entidades reales RF-01/RF-02; autenticación, empresa, membresías e invitación/aceptación son API implementada y probada. Ubicacion, ArticuloCatalogo y Proveedor no se convierten por ello en tablas existentes. El SVG es un resumen visual; el PlantUML conserva todas las asociaciones. No existe transferencia de titularidad ni verificación de email.
+
+## 8. Contraste final con SQLAlchemy — C.5
+
+Los modelos `User`, `Business`, `Membership` y `BusinessInvitation` se compararon con el esquema vigente de E2-1. `Membership` mantiene UNIQUE `(business_id,user_id)` y el índice `uq_memberships_one_active_owner` que garantiza **como máximo un titular administrativo ACTIVO** por empresa; la creación de empresa lo incorpora en su transacción y C.4b impide alterar titulares actuales o históricos.
+
+`BusinessInvitation` exige `invited_by_user_id` (FK obligatoria), guarda `email_normalizado` como destinatario sin cuenta vinculada antes de aceptar y solo usa `accepted_by_user_id` (FK opcional) con `accepted_at` cuando el estado es ACEPTADA, según su CHECK. El token nunca se persiste en claro; la aceptación confirma membresía e invitación en un mismo commit. El SVG resume la relación con emisor y la fuente PUML incluye además el aceptante.
+
+**Evidencias C.5:** en Windows `195 passed in 23.86s`, Alembic `e213c4_acceptance (head)` sin deriva, Docker API/DB `healthy` y `/ready` = `ready`/`ok`; CI funcional C.4b 3/3. C.5 solo actualiza documentos y diagramas, **sin repetir tests ni modificar SQL**.

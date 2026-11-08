@@ -1,5 +1,5 @@
 @startuml
-' 03A v0.3 / Asistente PyME · identidad, empresas y catálogo.
+' 03A v0.4 C.5 / Asistente PyME · identidad, empresas y catálogo.
 ' La fuente PUML conserva TODAS las asociaciones y multiplicidades.
 ' El SVG/PNG corresponde a la composición editorial optimizada: PlantUML
 ' aplica su propio motor de distribución y no replica la misma maquetación.
@@ -32,14 +32,16 @@ package "Identidad y acceso" #EAF4FD {
     +id: UUID
     +rol: RolEmpresa
     +estado: EstadoMembresia
+    +puestoTrabajo: String?
   }
-  class Invitacion <<Soporte propuesto>> {
+  class Invitacion <<Núcleo E2-1 implementado>> {
     +id: UUID
     +emailDestinatario: String
     +rolPropuesto: RolEmpresa
     +estado: EstadoInvitacion
     +venceEn: DateTime
     +tokenHash: String
+    +fechaAceptacion: DateTime?
   }
 }
 package "Empresa y recursos" #E8F7F3 {
@@ -77,7 +79,8 @@ package "Empresa y recursos" #E8F7F3 {
 Usuario "1" -- "0..*" Membresia
 Empresa "1" -- "1..*" Membresia
 Usuario "1" -- "0..*" Empresa : fundador histórico
-Usuario "0..1" -- "0..*" Invitacion : destinatario registrado
+Usuario "1" -- "0..*" Invitacion : emisor (invited_by_user_id)
+Usuario "0..1" -- "0..*" Invitacion : aceptante (accepted_by_user_id)
 Empresa "1" -- "0..*" Invitacion
 Empresa "1" -- "0..*" Ubicacion
 Empresa "1" -- "0..*" ArticuloCatalogo
@@ -86,11 +89,13 @@ Empresa "1" -- "0..*" Proveedor
 note bottom of Membresia
   UNIQUE(empresa, usuario).
   Rol según membresía activa del tenant.
-  Titular administrativo inicial único.
+  Alta: 1 titular ACTIVO inicial.
+  Indice SQL: a lo sumo 1 titular ACTIVO.
+  C.4b protege titulares actuales/historicos.
 end note
 note bottom of Empresa
   Estado inicial ACTIVA.
-  SUSPENDIDA: prevista, sin endpoint MVP.
+  SUSPENDIDA existe en SQL, sin cambio publico.
   Fundador histórico: founderUserId en SQL.
   Empresa nueva: 0 ubicaciones, sin stock ficticio.
 end note
@@ -101,7 +106,10 @@ note bottom of ArticuloCatalogo
   Servicio no descuenta stock físico en MVP.
 end note
 note bottom of Invitacion
-  Crear invitación NO concede acceso.
-  Aceptarla requiere identidad autenticada.
+  Emisor obligatorio; aceptante opcional.
+  Destinatario por email, sin FK previa a Usuario.
+  Crear invitacion NO concede acceso.
+  Aceptacion + Membresia en una transaccion.
+  Token solamente persistido como SHA-256.
 end note
 @enduml
