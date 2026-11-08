@@ -2,14 +2,14 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.4 — modelo conceptual y correspondencia parcial con E2 real  
+**Versión:** 0.5 — UML conceptual y contrato de edición empresarial E2  
 **Estado:** **MODELO CONCEPTUAL REVISADO + ANEXO AS-IMPLEMENTED E2** — 03A/03B/03C no se rehicieron; subsistemas comerciales pendientes  
 **Fecha:** 7 de noviembre de 2026  
-**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.3), `02_CASOS_DE_USO.md` (v0.4), políticas del frontend DEMO E1-D2.  
+**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.4), `02_CASOS_DE_USO.md` (v0.5), políticas del frontend DEMO E1-D2.  
 
 > **Criterio de lectura:** AS-IS describe el modelo DEMO ya construido; TO-BE propone el dominio de la futura API FastAPI/SQLAlchemy/PostgreSQL. El diagrama conceptual **no es todavía el esquema SQL implementado**. Las extensiones posteriores aparecen separadas y no se incluyen en el núcleo evaluable.
 
-> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
+> **Avance vigente al 8/11/2026 (E2-1, en `main`):** infraestructura FastAPI/PostgreSQL 16, autenticación Argon2id, sesiones revocables, empresas, membresías, alta idempotente y consulta aislada ya fueron verificadas. **E2-1.3C.1 se validó localmente con 98/98 pruebas aprobadas y `alembic check` sin diferencias**. **E2-1.3C.2 publica ahora `PATCH /api/v1/businesses/{business_id}` con autorización real por rol/tenant y pruebas nuevas, pero está PENDIENTE de ejecutar y validar localmente y en CI.** Invitaciones, gestión de miembros, módulos comerciales e integración React permanecen pendientes. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md). Las descripciones TO-BE históricas de versiones anteriores deben leerse como propuestas, no como estado vigente.
 
 ## 1. Finalidad y alcance
 
@@ -325,3 +325,11 @@ En el MVP, CU-11 permite registrar **ajustes justificados** de inventario según
 | Invitación | **No implementada** en SQL | Permanece conceptual y depende de futura autorización |
 
 La futura actualización del **03A** deberá distinguir los conceptos de dominio de las clases técnicas (sesiones, registro idempotente, políticas). En E2-1.3C.1 no hay cambios en cardinalidades ni entidades SQL: **no es necesario regenerar 03A**, y expresamente **no se rehace 03B**. La política pure-function `has_business_permission` no es una clase persistente del UML de dominio; se documenta en 04/05. Se exige verificar la pertenencia real de cada Membresía a la Empresa consultada al aplicar la política en endpoints; el rol de otra empresa no autoriza esta.
+
+## 14. Correspondencia E2-1.3C.2 con modelo y UML
+
+La edición del perfil de Empresa reutiliza exactamente `users`, `auth_sessions`, `businesses` y `memberships` vigentes. **No altera columnas, FK, cardinalidades, migraciones ni estados**; por eso no es correcto rehacer los diagramas 03A o 03B en este corte. El campo `businesses.founder_user_id` permanece histórico e inmutable por la nueva API; las atribuciones se comprueban por rol de la membresía vigente, no por fundador ni rol global.
+
+El servicio de escritura bloquea con SQL las filas de identidad/sesión y el par empresa/membresía del mismo tenant. La matriz de permisos implementada en C.1 es una **política de aplicación**, no entidad persistente del modelo; en C.2 empieza a decidir realmente la autorización de una operación HTTP. El modelo conceptual 03A se revisará al cerrar el bloque funcional E2-1 y cuando se incorpore invitación/membresía completa.
+
+**Validación C.2:** por ejecutar (el último control local verificado corresponde a 98 pruebas de C.1). Contrato y escenarios detallados en Documento 02 v0.5 y Documento 05 v0.2.

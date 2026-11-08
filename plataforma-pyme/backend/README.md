@@ -1,6 +1,6 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado:** E2-1.3C.1 (matriz RBAC pura y pruebas, todavía sin nuevos endpoints autorizados por rol), sobre E2-1.3B verificado con 80 pruebas locales. Frontend DEMO independiente.
+**Estado:** E2-1.3C.2 (PATCH de empresa con RBAC real, código y pruebas publicados; validación local/CI pendiente). C.1 validado con 98 pruebas. Frontend DEMO independiente.
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
 
@@ -434,3 +434,27 @@ Remove-Item Env:\RUN_DB_INTEGRATION
 ```
 
 La versión sigue siendo `e213b_business_creation (head)`; Alembic no debe detectar operaciones pendientes. Se espera conservar los **80 tests existentes** y aprobar además los nuevos casos de matriz RBAC y recuperación de idempotencia. No hace falta reconstruir Docker porque no hay un cambio HTTP efectivo en C.1. **E2-1.3C.2** conectará esta política a una operación real autorizada por rol, con pruebas de 401/403/404/409 y pertenencia a la empresa.
+
+## E2-1.3C.2 — Editar datos de empresa con autorización efectiva
+
+**Nuevo endpoint:** `PATCH /api/v1/businesses/{business_id}`. Recibe exclusivamente campos opcionales `name`, `category` y `activity_kind`. Al menos un campo obligatorio por petición; `null`, campos extra, nombre/rubro inválido o `activity_kind` fuera de `PRODUCTOS/SERVICIOS/MIXTO` producen HTTP 422. Los campos omitidos no se modifican.
+
+**Permisos reales:** el servicio revalida el usuario y token de sesión con bloqueo SQL, luego obtiene y bloquea `Business` y `Membership` del mismo tenant con miembro `ACTIVA`, y aplica `BusinessPermission.EDIT_PROFILE`. Titular administrativo y administrador pueden editar; encargado y trabajador, no. Códigos: 401 sesión inválida, 404 empresa ajena/inexistente/membresía inactiva, 403 rol sin permiso, 409 empresa suspendida con rol apto, 200 edición exitosa. Ninguna solicitud puede alterar estado, fundador, membresía o rol. Una única transacción `flush/commit`, con rollback ante excepción; respuesta tipo `BusinessView`.
+
+**Pruebas nuevas:** `tests/test_business_update_schemas.py`, `tests/test_business_update_http.py`, `tests/test_business_update_integration.py`. Se usan la misma base PostgreSQL y transacciones reversibles de los cortes anteriores: no crear empresas manuales desde Swagger para verificar. Los datos de prueba no deben quedar persistidos.
+
+**Validación en Windows:** desde `plataforma-pyme/`, ejecutar:
+
+```powershell
+git pull origin main
+cd backend
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+.\.venv\Scripts\python.exe -m pytest -q
+Remove-Item Env:\RUN_DB_INTEGRATION
+```
+
+Esperado: misma revisión `e213b_business_creation (head)`, `No new upgrade operations detected` y suite completa aprobada. **No afirmar una cifra final hasta ejecutarla**. Para ver PATCH en Swagger de Docker, desde `plataforma-pyme/` volver a construir **solo la API** con `docker compose --profile api up -d --build api`, comprobar `docker compose ps`, `Invoke-RestMethod http://127.0.0.1:18000/ready` y abrir `http://127.0.0.1:18000/docs`. Esta actualización no necesita nuevas tablas ni migraciones.
+
+**Documentación:** 01 v0.4, 02 v0.5, 03 v0.5, 04 v0.6, 05 v0.2, índice académico. La etapa siguiente dentro de E2-1 será C.3 (emisión de invitaciones), seguida de C.4 (aceptación/gestión de membresías). La hoja formal de auditoría para tu compañero se creará al cerrar el bloque funcional grande **E2-1**, no al completar este subpaso.

@@ -2,7 +2,7 @@
 
 **Proyecto:** Asistente PyME — plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.5 — propuesta original v0.4 y anexo técnico E2 comprobado  
+**Versión:** 0.6 — arquitectura E2 con autorización corporativa aplicada en C.2  
 **Estado:** **PROPUESTA BASE + ANEXO DE COMPONENTES BACKEND REALMENTE IMPLEMENTADOS** — aprobación académica del equipo pendiente  
 **Fecha:** 7 de noviembre de 2026  
 **Base de contraste:** `main` del repositorio `Jorge10192/TP-Programacion2-UNSAM-2C2026`, commit `764ba20674f14621e381a4e9753017070943f2e3` (frontend y documentos 01–03). Esta referencia de commit documenta el **baseline histórico** previo a E2; el estado implementado actual se registra en el anexo E2 de este documento.  
@@ -10,7 +10,7 @@
 
 > **Alcance y lectura obligatoria.** **AS-IS** indica funcionalidades verificables en el frontend DEMO; **TO-BE** identifica decisiones y arquitectura que deberán implementarse en FastAPI; **DIFERIDO** representa evolución posterior. Los esquemas, carpetas, interfaces, fragmentos Python y endpoints propuestos en este documento **no son código de backend existente ni pruebas de backend ejecutadas**. Esta versión se somete a revisión antes de subirla a GitHub.
 
-> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
+> **Avance vigente al 8/11/2026 (E2-1, en `main`):** infraestructura FastAPI/PostgreSQL 16, autenticación Argon2id, sesiones revocables, empresas, membresías, alta idempotente y consulta aislada ya fueron verificadas. **E2-1.3C.1 se validó localmente con 98/98 pruebas aprobadas y `alembic check` sin diferencias**. **E2-1.3C.2 publica ahora `PATCH /api/v1/businesses/{business_id}` con autorización real por rol/tenant y pruebas nuevas, pero está PENDIENTE de ejecutar y validar localmente y en CI.** Invitaciones, gestión de miembros, módulos comerciales e integración React permanecen pendientes. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md). Las descripciones TO-BE históricas de versiones anteriores deben leerse como propuestas, no como estado vigente.
 
 ## Resumen de decisiones de esta revisión
 
@@ -994,3 +994,13 @@ Se incorporó la bibliografía *Head First Design Patterns* y se diferenciaron l
 - **E2-1.3C.3/C.4:** invitación segura; aceptación y gestión de miembros con protección adicional del titular, en incrementos separados. No inferir que los permisos de invitar/administrar están operativos antes de exponer y verificar esos endpoints.
 
 La aplicación de los patrones **Repository**, **Service Layer** y **Observer** se describe con evidencias específicas, mientras que las propuestas **Factory**/**Decorator** continúan TO-BE hasta contar con clases ejecutadas en el módulo comercial apropiado. No forzar su adopción para cumplir nomenclatura.
+
+## 20. E2-1.3C.2 — autorización real RBAC en transacciones empresariales
+
+Se incorporó `PATCH /api/v1/businesses/{business_id}` en el módulo `businesses`. La estructura sigue el flujo **Router → Service → Repository → SQLAlchemy/PostgreSQL**: la capa HTTP autentica Bearer y traduce errores; el servicio, dentro de una transacción, revalida usuario y sesión bloqueando sus filas, obtiene el par empresa–membresía **filtrado por actor y empresa con `SELECT ... FOR UPDATE`**, aplica `has_business_permission(... EDIT_PROFILE)`, cambia solo campos permitidos, ejecuta `flush()` y hace `commit()` único. `rollback()` ante cualquier excepción. La misma transacción evita tomar permisos de una empresa y ejecutar la escritura en otra, y serializa cambios relevantes de membresía/empresa.
+
+No basta con pasar un `role` en el cuerpo; este valor se consulta exclusivamente en DB. El API rechaza `founder_user_id`, `status`, `role` y `membership` mediante Pydantic `extra=forbid`. `ADMINISTRADOR` y `TITULAR_ADMINISTRATIVO` pueden editar nombre, rubro y actividad; `ENCARGADO` y `TRABAJADOR` no. Con rol apto pero negocio `SUSPENDIDA`, la respuesta es 409; empresa ajena o membresía inactiva, 404. Auth no disponible, 401; rol insuficiente, 403. No se habilitan cambios de titularidad o de estado.
+
+**Pruebas publicadas en este corte:** `test_business_update_schemas.py`, `test_business_update_http.py` y `test_business_update_integration.py`; la última usa transacciones externas y SAVEPOINTs para no dejar registros. La validación local y CI de **estas nuevas pruebas todavía está pendiente**. El último resultado comprobado es C.1, 98 tests. Sin cambios Alembic ni frontend; el pipeline backend ya existente debe ejecutarse sobre el commit C.2.
+
+**Continuidad:** futuras invitaciones C.3 y membresías C.4 usarán este mismo modelo de autorización por tenant, relectura transaccional, políticas sin acceso SQL y manejo explícito de estados. No introducir patrones decorativos ni nuevos frameworks para RBAC.

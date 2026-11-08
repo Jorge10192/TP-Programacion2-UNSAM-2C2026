@@ -1,7 +1,7 @@
 # 05 — Matriz de API, permisos y trazabilidad
 
 **Proyecto:** Asistente PyME — Programación 2  
-**Versión:** 0.1 (E2-1.3C.1)  
+**Versión:** 0.2 (E2-1.3C.2 — edición empresarial RBAC real)  
 **Fecha:** 7 de noviembre de 2026  
 **Estado:** publicación técnica incremental; aprobación académica del equipo pendiente  
 **Referencia:** `main` del repositorio, carpeta exclusiva `plataforma-pyme/`.
@@ -10,7 +10,7 @@
 
 Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisiones de arquitectura (04), endpoints, controles de acceso y pruebas reales. No confundir **IMPLEMENTADO** (código en Git), **VALIDADO LOCALMENTE** (evidencia del desarrollador), **CI VERIFICADO** (GitHub Actions comprobado en una ejecución concreta) y **PLANIFICADO** (TO-BE). El frontend React continúa como DEMO independiente del backend. WALOS es solo un cliente de ejemplo.
 
-**Evidencia recibida previa a C.1:** `e213b_business_creation (head)`, `alembic check` sin diferencias, **80 Pytest aprobados**, Docker `api` y `db` saludables, `GET /ready` 200. La política E2-1.3C.1 y su regresión de idempotencia requieren ejecución local y CI antes de etiquetarlas como validadas.
+**Evidencia local verificada hasta C.1:** `e213b_business_creation (head)`, `alembic check` sin diferencias, **98 Pytest aprobados** (8/11/2026), API y PostgreSQL con `/ready` 200 en la validación anterior. **C.2 está publicado con tests nuevos, pero todavía sin ejecución local/CI confirmada.**
 
 ## 2. Estado por requerimiento y caso de uso
 
@@ -18,7 +18,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 |---|---|---|---|
 | RF-01 | CU-01 | Implementado; validado localmente | `POST /api/v1/auth/register`; hash Argon2id, email único, 201/409/422 |
 | RF-01 | CU-02 | Implementado; validado localmente | `POST /api/v1/auth/login`, `GET /me`, `POST /logout`; sesiones revocables, 401 |
-| RF-02 | CU-03 | Implementado; validado localmente | Alta Empresa + Membresía inicial + idempotencia en una transacción; listado y lectura de empresas con membresía activa |
+| RF-02 | CU-03 | Alta/lectura validada; PATCH C.2 publicado pendiente de validar | Alta Empresa + Membresía inicial + idempotencia; lectura aislada y edición por rol/tenant |
 | RF-02 | CU-12 | Planificado | Invitación emitida, aceptada y gestión de miembros; todavía no hay endpoints |
 | RF-03 | CU-04 | Planificado | Ubicación y permisos, necesaria para recepción/venta de bienes físicos |
 | RF-04 | CU-05 | Planificado | Catálogo y SKU único dentro del tenant |
@@ -40,17 +40,18 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | POST | `/api/v1/businesses` | Bearer vigente, usuario global activo; **sin membresía previa** | 201 nuevo; 200 reintento; 409 payload diferente | `test_business_creation_integration.py` |
 | GET | `/api/v1/businesses` | Bearer + filtro de membresía `ACTIVA` | 200 lista propia | `test_business_creation_integration.py` |
 | GET | `/api/v1/businesses/{business_id}` | Bearer + membresía activa en ese tenant | 200 propio; 404 ajeno | `test_business_creation_integration.py` |
+| PATCH | `/api/v1/businesses/{business_id}` | Bearer + revalidación transaccional de usuario/sesión + empresa y membresía bloqueadas + `business.profile.edit` | 200; 401/403/404/409/422 | `test_business_update_schemas.py`, `test_business_update_http.py`, `test_business_update_integration.py` **(publicadas, pendientes de ejecutar)** |
 
 **Idempotencia CU-03:** `Idempotency-Key` UUID4, ámbito `actor_user_id` + clave; `business_creation_requests` conserva hash canónico y `business_id`. La **PK compuesta** mantiene la unicidad incluso con concurrencia. Reutilizar la clave con otro contenido devuelve 409; se corrigió la recuperación tras conflictos concurrentes sobre `pk_business_creation_requests` en E2-1.3C.1.
 
 **Sesiones:** El token Bearer es un secreto; se guarda solo la huella SHA-256 para buscar/revocar sesiones. La cuenta deshabilitada o sesión vencida no puede leer ni crear empresas.
 
-## 4. Política mínima RBAC E2-1.3C.1 (implementada como función, sin endpoints nuevos)
+## 4. Política RBAC E2-1.3C.1 y primera aplicación real E2-1.3C.2
 
 | Capacidad | TITULAR_ADMINISTRATIVO | ADMINISTRADOR | ENCARGADO | TRABAJADOR | Estado HTTP |
 |---|---|---|---|---|---|
 | `business.view` | Sí | Sí | Sí | Sí | Lectura vigente filtra por membresía activa; integración de política pura en C.2 |
-| `business.profile.edit` | Sí | Sí | No | No | Planificado: operación PATCH + control de roles C.2 |
+| `business.profile.edit` | Sí | Sí | No | No | **Implementado en PATCH C.2; pendiente de validación local/CI** |
 | `members.invite` | Sí | Sí | No | No | Planificado: CU-12 C.3 |
 | `members.manage` | Sí | No | No | No | Planificado: gestión sensible C.4 |
 
@@ -58,7 +59,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 
 **Decisión MVP:** el rol `ENCARGADO` no es un permiso universal. Las capacidades futuras de catálogo, inventario, compras y ventas deberán tener permisos específicos propios, con pruebas y documentación por CU; no se deducen automáticamente de este cuadro.
 
-### Comportamiento HTTP previsto para C.2 (aún no implementado)
+### Comportamiento HTTP implementado en C.2 (pruebas pendientes de verificar)
 
 | Caso | HTTP esperado | Motivo |
 |---|---|---|
@@ -69,7 +70,7 @@ Este archivo une requisitos (01), casos de uso (02), modelos/UML (03), decisione
 | Titular/administrador, empresa activa, cambios válidos | 200 | Actualización atómica |
 | Datos inválidos / cuerpo vacío | 422 | Validación de contrato |
 
-Los códigos precedentes se convertirán en contrato **solo al implementar y probar C.2**.
+Los códigos precedentes están definidos en el router de C.2 y cuentan con pruebas escritas; **su conformidad real depende de ejecutarlas y validarlas localmente y en CI**. Para 403 se exige una membresía activa sin permiso; para 409 se exige rol apto pero empresa `SUSPENDIDA`.
 
 ## 5. Entidades, migraciones y reglas de integridad
 
@@ -81,7 +82,7 @@ Los códigos precedentes se convertirán en contrato **solo al implementar y pro
 | `e213a_business_members` | `businesses`, `memberships`, UNIQUE empresa/usuario, índice titular activo único | Validada |
 | `e213b_business_creation` | `business_creation_requests`, PK compuesta actor/clave, digest SHA-256 y negocio único por comando | Validada |
 
-En E2-1.3C.1 **no se añadió ninguna tabla ni migración**. El UML 03A representa vínculos conceptuales; no debe dibujarse la política como una entidad persistente ni regenerar 03B por esta etapa.
+En E2-1.3C.1 y E2-1.3C.2 **no se añadieron tablas ni migraciones**. El UML 03A representa vínculos conceptuales; no debe dibujarse la política como una entidad persistente ni regenerar 03B por esta etapa.
 
 ## 6. Estrategia de pruebas y cumplimiento académico
 
@@ -105,10 +106,20 @@ En E2-1.3C.1 **no se añadió ninguna tabla ni migración**. El UML 03A represen
 
 ### Próximos pasos cerrados
 
-1. **C.1 — ejecutado en GitHub, pendiente de ejecutar en el equipo:** política pura RBAC y ajuste de reintento idempotente (PK).
-2. **C.2 — siguiente corte:** autorización real del perfil empresarial, con PATCH, permisos por rol y pruebas 401/403/404/409; sincronizar 02/04/05.
+1. **C.1 — publicado y validado localmente:** política pura RBAC, regresión de idempotencia, 98 pruebas aprobadas.
+2. **C.2 — publicado, pendiente de validar:** PATCH de perfil empresarial, permisos por rol/tenant y pruebas de 200/401/403/404/409/422, aislamiento y rollback; documentación 01–05 sincronizada.
 3. **C.3:** emitir invitaciones seguras, vencimiento, hash de token y pruebas.
 4. **C.4:** aceptar invitación y administrar miembros con invariantes de titularidad; actualizar migraciones y UML 03A si cambia estructura.
 5. **Cierre de RF-02:** actualizar contratos y diagramas 03A sobre implementación confirmada; posteriormente abordar RF-03 Ubicaciones y RF-04 Catálogo.
 
 Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas exactamente como están en `main` a la fecha del corte. No extrapolar funciones del frontend DEMO a endpoints inexistentes.
+
+## 8. Evidencia específica para verificar E2-1.3C.2
+
+**Objeto de prueba:** `PATCH /api/v1/businesses/{business_id}` con JSON de una o varias claves (`name`, `category`, `activity_kind`). Todos los demás campos, `null`, y el objeto vacío devuelven 422. Se deriva el actor del Bearer; ninguna petición permite asignar rol/fundador/estado. Se devuelve `BusinessView` con la membresía que habilitó la edición.
+
+**Evidencia de autorización:** `test_business_update_integration.py` ensaya titular y administrador con escritura persistida, encargado/trabajador con 403, empresa ajena con 404, membresía inactiva con 404, empresa suspendida con 409, sesión revocada y usuario deshabilitado con 401, DTO inválido con 422 y rollback si falla la respuesta después del `flush`. Los datos de prueba se revierten con una transacción externa. Se complementa con `test_business_update_schemas.py` y `test_business_update_http.py`.
+
+**Estado actual:** las pruebas están publicadas, **no se pueden declarar aprobadas hasta que se ejecuten**. El control local anterior (98 passed, `alembic check` sin diferencia) corresponde a C.1. Para C.2 se debe actualizar el resultado con SHA, cantidad exacta, fecha y evidencia CI cuando se disponga de ellos. No corresponde crear una nueva migración. `GET` de lectura sigue filtrando membresía activa; la nueva política RBAC se invoca efectivamente en `PATCH`.
+
+**Dependencias:** C.3 emisión de invitaciones y C.4 aceptación/gestión de membresías usarán políticas `members.invite` / `members.manage`, sin dar permiso tácito a trabajador o encargado. El código React sigue exclusivamente DEMO.

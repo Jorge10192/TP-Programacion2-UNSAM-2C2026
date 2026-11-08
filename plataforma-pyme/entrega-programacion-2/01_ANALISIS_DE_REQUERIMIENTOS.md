@@ -2,13 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.3 — requisitos originales + seguimiento de implementación E2  
+**Versión:** 0.4 — requisitos originales + seguimiento E2-1.3C.2  
 **Estado:** **BORRADOR FUNCIONAL — con implementación parcial de RF-01/RF-02 verificada**  
 **Fecha:** 7 de noviembre de 2026  
 **Fuente de requisitos académicos:** consigna oficial «Desarrollo de una API RESTful».  
 **Alcance de este documento:** análisis de producto y requisitos objetivo. **No equivale a afirmar que la API esté implementada.**
 
-> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
+> **Avance vigente al 8/11/2026 (E2-1, en `main`):** infraestructura FastAPI/PostgreSQL 16, autenticación Argon2id, sesiones revocables, empresas, membresías, alta idempotente y consulta aislada ya fueron verificadas. **E2-1.3C.1 se validó localmente con 98/98 pruebas aprobadas y `alembic check` sin diferencias**. **E2-1.3C.2 publica ahora `PATCH /api/v1/businesses/{business_id}` con autorización real por rol/tenant y pruebas nuevas, pero está PENDIENTE de ejecutar y validar localmente y en CI.** Invitaciones, gestión de miembros, módulos comerciales e integración React permanecen pendientes. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md). Las descripciones TO-BE históricas de versiones anteriores deben leerse como propuestas, no como estado vigente.
 
 ## 1. Presentación del proyecto
 
@@ -195,8 +195,14 @@ El diseño definitivo de métodos, rutas, estados HTTP y schemas se hará en el 
 | RF | Código y evidencia verificada | Pendiente |
 |---|---|---|
 | RF-01 | `POST /api/v1/auth/register`, `login`, `GET /me`, `POST /logout`; Argon2id, sesiones persistentes y pruebas PostgreSQL | Endurecimiento público, recuperación de cuenta e integración de React |
-| RF-02 | `businesses`, `memberships`, alta idempotente y listados filtrados por miembro activo; migración `e213b_business_creation` | Autorización por rol en mutaciones, invitaciones y gestión de miembros |
+| RF-02 | Alta idempotente, lista/lectura aislada y **PATCH de perfil empresarial con RBAC real, publicado y pendiente de validar**; migración `e213b_business_creation` | Invitaciones, gestión de miembros, permisos en futuros comandos y validación C.2 |
 | RF-03–RF-07 | Reglas planificadas, algunos comportamientos DEMO | Endpoints reales, tablas, transacciones y tests de negocio |
 | RF-08–RF-10 | Frontend DEMO o diseños diferidos | No comprometidos como backend del primer MVP |
 
 **Política documental:** cada entrega E2 grande debe revisar sus RF y RNF, el caso de uso, las entidades UML si cambiaron, la arquitectura, el Documento 05 y la evidencia de pruebas. `03B` no se regenera por cambios de permisos de identidad; se conserva su trabajo conceptual. La matriz de permisos de E2-1.3C.1 es código de política testeable, **no equivale aún a un endpoint protegido por rol**.
+
+### 13.1 E2-1.3C.2 — requisito RF-02: edición de perfil con autorización
+
+Se publicó `PATCH /api/v1/businesses/{business_id}`: permite modificar parcialmente `name`, `category` y `activity_kind`. No puede modificar fundador, estado, titularidad, rol ni membresía. El actor se deriva del Bearer de la sesión, nunca de campos del cliente. La ejecución bloquea y vuelve a comprobar la identidad, sesión, empresa y membresía en PostgreSQL antes de escribir; titular y administrador pueden editar. Encargado y trabajador no reciben privilegios de modificación. Empresa ajena/no miembro activo responde 404; rol sin permiso, 403; empresa suspendida con rol autorizado, 409; cuerpo inválido, vacío o con campos prohibidos, 422. Todo ocurre en una única transacción, con rollback ante errores.
+
+**Estado de evidencia:** código y nuevas pruebas publicados, todavía no ejecutados en el equipo de desarrollo tras C.2. El último resultado **verificado** corresponde a C.1 (98 pruebas). No hay migración adicional ni cambios de cardinalidad. Este paso realiza solo una parte de RF-02; CU-12 (invitaciones) permanece pendiente.

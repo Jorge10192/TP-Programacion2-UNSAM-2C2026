@@ -2,13 +2,13 @@
 
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
-**Versión:** 0.4 — casos de uso originales + trazabilidad de implementación E2  
+**Versión:** 0.5 — casos de uso originales + operación RBAC real C.2  
 **Estado:** **REVISADO PARA ENTREGA — especificación TO-BE, con decisiones de E2 todavía abiertas**  
 **Fecha:** 7 de noviembre de 2026  
-**Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.3)  
+**Documento de referencia:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.4)  
 **Alcance:** casos de uso del **núcleo propuesto** del backend RESTful (TO-BE), contrastados con los comportamientos del frontend DEMO (AS-IS). Las operaciones previstas NO implican endpoints implementados. La lista definitiva de permisos, campos y códigos HTTP se formalizará posteriormente. Esta revisión incorpora CU-12 como soporte para membresías reales, sin ampliar el alcance a envíos de correo o acceso público por QR.
 
-> **Avance de implementación E2 (7/11/2026, fuente: código en `main`).** El frontend sigue siendo DEMO local, **pero ya existe un backend ejecutable**: FastAPI, SQLAlchemy/PostgreSQL 16, Docker, migraciones, registro/login Argon2id, sesiones revocables, tablas de empresa/membresía, alta idempotente de empresa y consultas aisladas por membresía. La última validación comunicada fue **80 pruebas aprobadas** y `alembic check` sin diferencias para E2-1.3B. Se inició E2-1.3C.1 con **política pura de permisos y pruebas**; todavía NO se aplica esa política a operaciones nuevas. Ver [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) para la trazabilidad exacta y sus pendientes. El estado histórico TO-BE de las secciones originales se conserva como referencia de diseño, no como afirmación del estado actual.
+> **Avance vigente al 8/11/2026 (E2-1, en `main`):** infraestructura FastAPI/PostgreSQL 16, autenticación Argon2id, sesiones revocables, empresas, membresías, alta idempotente y consulta aislada ya fueron verificadas. **E2-1.3C.1 se validó localmente con 98/98 pruebas aprobadas y `alembic check` sin diferencias**. **E2-1.3C.2 publica ahora `PATCH /api/v1/businesses/{business_id}` con autorización real por rol/tenant y pruebas nuevas, pero está PENDIENTE de ejecutar y validar localmente y en CI.** Invitaciones, gestión de miembros, módulos comerciales e integración React permanecen pendientes. Véase [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md). Las descripciones TO-BE históricas de versiones anteriores deben leerse como propuestas, no como estado vigente.
 
 ## 1. Finalidad y metodología
 
@@ -458,8 +458,18 @@ Esta versión se considera base revisada para entrega. El equipo deberá confirm
 |---|---|---|
 | CU-01 Registro | Implementado y probado localmente | `POST /api/v1/auth/register` |
 | CU-02 Login/perfil/salida | Implementado y probado localmente | `POST /login`, `GET /me`, `POST /logout` bajo `/api/v1/auth` |
-| CU-03 Crear empresa | Implementado y probado localmente | `POST /api/v1/businesses`; empresa + titular inicial + idempotencia atómica; `GET` filtra membresía activa |
+| CU-03 Crear y administrar perfil de empresa | Alta y lectura verificadas; edición C.2 publicada, aún sin pruebas locales confirmadas | `POST/GET /api/v1/businesses`, `GET/PATCH /api/v1/businesses/{business_id}`; RBAC empresarial en PATCH |
 | CU-04–CU-11 | Pendiente backend | Plan conceptual y experiencia frontend DEMO; todavía no hay endpoint real |
-| CU-12 Invitaciones | Pendiente backend | Invitación, aceptación y gestión de membresías previstas para E2-1.3C.2/C.3 |
+| CU-12 Invitaciones | Pendiente backend | Emisión prevista en C.3; aceptación y administración de miembros en C.4 |
 
 **Política E2-1.3C.1:** se implementa la **matriz RBAC pura** con cuatro roles de membresía; para consulta empresarial todos los miembros activos pueden leer, mientras que la configuración se reserva al titular y administrador. `ENCARGADO` y `TRABAJADOR` no reciben facultad general para editar empresa, invitar ni administrar miembros. **Esta primera entrega define y prueba la política; la aplicación efectiva a la primera mutación protegida es el siguiente corte.** Identificador empresarial ajeno o membresía inactiva no deben otorgar acceso. Para un miembro activo de una empresa suspendida se prevé lectura informativa, no cambios. Véase Documento 05 para el detalle y los errores HTTP previstos.
+
+## 11. Complemento CU-03 — editar el perfil de una empresa (E2-1.3C.2)
+
+**Actor:** usuario autenticado con membresía `ACTIVA` en la empresa objetivo y rol `TITULAR_ADMINISTRATIVO` o `ADMINISTRADOR`. **Precondiciones:** sesión vigente y cuenta activa; empresa existente, propia y `ACTIVA`; cuerpo de PATCH con al menos uno de `name`, `category`, `activity_kind`.
+
+**Flujo principal:** (1) cliente envía `PATCH /api/v1/businesses/{business_id}` con Bearer y campos permitidos; (2) FastAPI valida forma y valores, y el servidor autentica; (3) el servicio vuelve a bloquear/comprobar usuario y sesión; (4) consulta y bloquea el par `Business`–`Membership` del mismo tenant con membresía activa; (5) evalúa `BusinessPermission.EDIT_PROFILE`; (6) modifica solo campos presentes y confirma una única transacción; (7) responde 200 con `BusinessView` actualizado y la membresía que autorizó.
+
+**Alternativas:** sesión inválida `401`; empresa ajena, inexistente o sin membresía activa `404`; miembro válido sin facultad `403`; titular/administrador de empresa suspendida `409`; campos prohibidos, `null`, nombres no válidos o cuerpo vacío `422`. Toda excepción antes del commit revierte la actualización. El rol de una empresa nunca habilita modificar otra. El estado no se actualiza por esta API.
+
+**Pruebas introducidas (pendientes de validar):** flujo exitoso del titular, administrador, denegación a encargado/trabajador, aislamiento entre empresas, empresa suspendida, sesión revocada, membresía inactiva, validación del cuerpo y rollback inducido tras `flush`. Este complemento no crea una entidad nueva ni exige regenerar 03A/03B.
