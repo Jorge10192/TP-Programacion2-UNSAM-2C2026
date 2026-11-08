@@ -99,3 +99,65 @@ def test_location_permissions_are_independent_from_e2_1_roles(role: str, can_cre
     assert not can_create_locations(role, "ACTIVA", "SUSPENDIDA")
     assert not can_create_locations(role, "INACTIVA", "ACTIVA")
     assert not can_read_locations(role, "INACTIVA", "ACTIVA")
+
+
+# E2-2 C — Contratos de edición, estado y elección de principal.
+from app.modules.locations.schemas import UpdateLocationRequest, ChangeLocationStatusRequest
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"name": "  Casa de trabajo  "},
+        {"kind": "CASA"},
+        {"can_sell": False},
+        {"can_store": True},
+        {"address": ""},
+        {"map_url": ""},
+        {"map_url": "https://www.google.com/maps/place/Casa"},
+    ],
+)
+def test_update_location_schema_accepts_partial_changes(payload) -> None:
+    command = UpdateLocationRequest.model_validate(payload)
+    assert command.model_fields_set == set(payload)
+    key = next(iter(payload))
+    assert getattr(command, key) == (
+        "Casa de trabajo" if key == "name" else payload[key]
+    )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"name": None},
+        {"kind": None},
+        {"can_sell": None},
+        {"can_store": "true"},
+        {"name": " "},
+        {"name": "x"},
+        {"kind": "MERCADO"},
+        {"map_url": "javascript:alert(1)"},
+        {"is_primary": True},
+        {"business_id": "some-id"},
+        {"status": "PAUSADA"},
+        {"updated_at": "2026-11-08"},
+    ],
+)
+def test_update_location_rejects_unsafe_or_protected_payload(payload) -> None:
+    with pytest.raises(ValidationError):
+        UpdateLocationRequest.model_validate(payload)
+
+
+@pytest.mark.parametrize("status", ["ACTIVA", "PAUSADA"])
+def test_change_status_schema_allows_only_known_states(status) -> None:
+    assert ChangeLocationStatusRequest.model_validate({"status": status}).status == status
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [{}, {"status": "BORRADA"}, {"status": None}, {"status": "ACTIVA", "is_primary": True}],
+)
+def test_change_status_schema_forbids_invalid_payloads(payload) -> None:
+    with pytest.raises(ValidationError):
+        ChangeLocationStatusRequest.model_validate(payload)
