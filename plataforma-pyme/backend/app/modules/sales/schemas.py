@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, m
 
 from app.modules.catalog.schemas import clean_text
 from app.modules.purchases.schemas import line_total_cents
+from app.modules.purchases.receipt_schemas import BalanceAfterView
 
 MAX_CENTS = 99_999_999_999
 Cents = Annotated[StrictInt, Field(ge=0, le=MAX_CENTS)]
@@ -118,7 +119,7 @@ class SaleView(BaseModel):
     notes: str
     created_by_id: UUID
     created_at: datetime
-    balances_after: list
+    balances_after: list[BalanceAfterView]
     lines: list[SaleLineView]
     payments: list[SalePaymentView]
 

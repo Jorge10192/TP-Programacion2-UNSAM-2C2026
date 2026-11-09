@@ -47,3 +47,14 @@ def test_sales_input_excludes_server_owned_fields():
     for field in ("kind_snapshot", "line_total_cents", "sku_snapshot"):
         assert field not in line
     assert "credited" not in payment and "confirmed" not in payment
+
+
+def test_sales_openapi_describes_balance_snapshot_fields():
+    with TestClient(create_app()) as client:
+        schemas = client.get("/openapi.json").json()["components"]["schemas"]
+    snapshot = schemas["SaleView"]["properties"]["balances_after"]["items"]
+    assert "$ref" in snapshot
+    fields = schemas[snapshot["$ref"].rsplit("/", 1)[-1]]["properties"]
+    assert fields["catalog_item_id"]["format"] == "uuid"
+    assert fields["quantity_milli"]["minimum"] == 0
+    assert fields["version"]["minimum"] == 1
