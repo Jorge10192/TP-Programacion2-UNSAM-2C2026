@@ -104,3 +104,35 @@ def test_missing_stock_sale_cannot_leave_payments_or_movements(isolated):
         assert db.execute(select(model.business_id).where(
             model.business_id == bid,
         )).first() is None
+
+
+def test_replay_keeps_historical_stock_snapshot_after_later_receipt(isolated):
+    client, _ = isolated
+    headers = auth(client)
+    bid = business(client, headers)
+    lid = location(client, bid, headers)
+    good = item(client, bid, headers, kind="REVENTA", name="Producto historico")
+    p1 = physical(client, bid, headers, good, amount=5000)
+    assert receive(client, bid, p1, lid, headers).status_code == 201
+
+    body = payload(good, quantity=2000, cents=200)
+    body["location_id"] = str(lid)
+    key = uuid4()
+    first = post(client, bid, headers, body, key=key)
+    assert first.status_code == 201, first.text
+    historic = first.json()
+    assert historic["balances_after"] == [{
+        "catalog_item_id": str(good), "quantity_milli": 3000, "version": 2,
+    }]
+
+    p2 = physical(client, bid, headers, good, amount=4000)
+    assert receive(client, bid, p2, lid, headers).status_code == 201
+    assert view_balances(client, bid, headers)[str(lid), str(good)] == (7000, 3)
+
+    replay = post(client, bid, headers, body, key=key)
+    assert replay.status_code == 200, replay.text
+    assert replay.json() == historic
+    assert view_balances(client, bid, headers)[str(lid), str(good)] == (7000, 3)
+    assert [m["event_type"] for m in view_movements(client, bid, headers)].count(
+        "VENTA_SALIDA",
+    ) == 1
