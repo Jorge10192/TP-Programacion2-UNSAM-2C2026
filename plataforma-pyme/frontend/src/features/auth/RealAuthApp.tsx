@@ -1,18 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiHttpError } from '../../api/httpClient'
+import { RealBusinessesPage } from '../businesses/RealBusinessesPage'
+import type { BusinessRoute, PendingBusinessCreation } from '../businesses/RealBusinessesPage'
+import { UUID_PATTERN } from '../businesses/businessGateway'
 import { authErrorMessage, createAuthGateway } from './authGateway'
 import type { AuthUser, LoginInput, RegisterInput } from './authGateway'
 import './auth.css'
 
 type Session = { token: string; expiresAt: string; user: AuthUser }
-type Route = '/real/login' | '/real/registro' | '/real/perfil'
+type Route = '/real/login' | '/real/registro' | '/real/perfil' | '/real/empresas' | '/real/empresas/nueva' | `/real/empresas/${string}`
 
 const gateway = createAuthGateway()
 
 function routeFromPath(path: string): Route {
   if (path === '/real/perfil') return '/real/perfil'
   if (path === '/real/registro') return '/real/registro'
+  if (path === '/real/empresas' || path === '/real/empresas/nueva') return path
+  const detailMatch = /^\/real\/empresas\/([^/]+)$/.exec(path)
+  if (detailMatch && UUID_PATTERN.test(detailMatch[1])) return path as Route
   return '/real/login'
 }
 
@@ -20,6 +26,7 @@ function routeFromPath(path: string): Route {
 export function RealAuthApp() {
   const [path, setPath] = useState<Route>(() => routeFromPath(window.location.pathname))
   const [session, setSession] = useState<Session | null>(null)
+  const [pendingCreation, setPendingCreation] = useState<PendingBusinessCreation | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [warning, setWarning] = useState(false)
@@ -91,6 +98,7 @@ export function RealAuthApp() {
         setMessage('No fue posible validar esta sesión.'); setWarning(true)
         return
       }
+      setPendingCreation(null)
       setSession({ token: result.access_token, expiresAt: result.expires_at, user })
       setLoginInput((old) => ({ ...old, password: '' }))
       go('/real/perfil', true)
@@ -148,6 +156,7 @@ export function RealAuthApp() {
     const token = session.token
     const current = ++generation.current
     setSession(null)
+    setPendingCreation(null)
     setBusy(false)
     setMessage('')
     go('/real/login', true)
@@ -159,8 +168,24 @@ export function RealAuthApp() {
     })
   }
 
-  // A valid session always renders the protected profile, even if browser Back changes the URL.
-  const isProfile = session !== null
+  function onBusinessAuthLost() {
+    generation.current++
+    setSession(null)
+    setPendingCreation(null)
+    go('/real/login', true)
+    setMessage('La sesión ya no es válida. Iniciá sesión nuevamente.')
+    setWarning(true)
+  }
+
+  const businessRoute: BusinessRoute | null =
+    path === '/real/empresas' ? { kind: 'list' }
+    : path === '/real/empresas/nueva' ? { kind: 'create' }
+    : path.startsWith('/real/empresas/') ? { kind: 'detail', businessId: path.slice('/real/empresas/'.length) }
+    : null
+  const showBusinesses = session !== null && businessRoute !== null
+
+  // A valid session never reveals the login form, even if browser Back changes the URL.
+  const isProfile = session !== null && !showBusinesses
   const isRegistration = path === '/real/registro' && !session
   const showLogin = !session && !isRegistration
 
@@ -169,12 +194,23 @@ export function RealAuthApp() {
       <div className="real-auth-brand"><span className="real-auth-logo" aria-hidden="true">▦</span><div><strong>Asistente PyME</strong><small>Acceso conectado a FastAPI</small></div></div>
       <div className="real-auth-header-actions"><span className="real-auth-badge">REAL · Identidad</span><a href="/inicio">Entrar a DEMO</a></div>
     </header>
-    <main className="real-auth-main">
-      <section className="real-auth-card" aria-label="Autenticación real">
+    <main className={'real-auth-main' + (showBusinesses ? ' real-business-main' : '')}>
+      {showBusinesses && session && businessRoute
+        ? <RealBusinessesPage
+          key={session.user.id + ':' + path}
+          token={session.token}
+          userId={session.user.id}
+          route={businessRoute}
+          onNavigate={(next) => go(next as Route)}
+          onUnauthorized={onBusinessAuthLost}
+          pendingCreation={pendingCreation}
+          setPendingCreation={setPendingCreation}
+        />
+        : <section className="real-auth-card" aria-label="Autenticación real">
         <span className="real-auth-eyebrow">E2-7 · T02</span>
         {isProfile ? <>
           <h1>Mi perfil real</h1>
-          <p>Identidad obtenida desde FastAPI y PostgreSQL. Las empresas y los módulos comerciales se conectarán en los próximos incrementos.</p>
+          <p>Identidad obtenida desde FastAPI y PostgreSQL. Ahora podés gestionar tus empresas REAL, sin mezclar datos de demostración.</p>
           <dl className="real-auth-profile">
             <div><dt>Nombre</dt><dd>{session.user.display_name}</dd></div>
             <div><dt>Correo</dt><dd>{session.user.email}</dd></div>
@@ -184,7 +220,8 @@ export function RealAuthApp() {
           </dl>
           <p className="real-auth-note">La sesión se guarda solo en memoria. Si actualizás la página con F5, tendrás que volver a ingresar.</p>
           <div className="real-auth-actions">
-            <button type="button" className="real-auth-primary" onClick={() => void onRefreshProfile()} disabled={busy}>{busy ? 'Consultando…' : 'Actualizar desde API'}</button>
+            <button type="button" className="real-auth-primary" onClick={() => go('/real/empresas')}>Mis empresas reales</button>
+            <button type="button" className="real-auth-secondary" onClick={() => void onRefreshProfile()} disabled={busy}>{busy ? 'Consultando…' : 'Actualizar desde API'}</button>
             <button type="button" className="real-auth-secondary" onClick={onLogout}>Cerrar sesión</button>
           </div>
         </> : isRegistration ? <>
@@ -210,13 +247,13 @@ export function RealAuthApp() {
           <button type="button" className="real-auth-link" onClick={() => go('/real/registro')}>Crear una cuenta nueva</button>
         </> : null}
         {message && <p role={warning ? 'alert' : 'status'} className={warning ? 'real-auth-message real-auth-error' : 'real-auth-message'}>{message}</p>}
-      </section>
+      </section>}
       <aside className="real-auth-aside">
         <h2>Una plataforma, diferentes negocios</h2>
-        <p>Estamos conectando identidad y sesiones reales. Las empresas se integrarán en T03; compras, inventario y ventas continuarán después.</p>
+        <p>Tu identidad y tus empresas se consultan desde FastAPI y PostgreSQL. Las ubicaciones, el equipo y los módulos comerciales reales se conectarán por incrementos posteriores.</p>
         <div className="real-auth-state">Esta vista no accede a `demoStore`, cuentas, caja ni stock ficticio.</div>
       </aside>
     </main>
-    <footer className="real-auth-footer">Modo REAL · Autenticación E2-7 T02 · Sin persistencia local del token</footer>
+    <footer className="real-auth-footer">Modo REAL · E2-7 T03 · Token solo en memoria · Empresas verificadas por membresía</footer>
   </div>
 }
