@@ -1,6 +1,6 @@
 # E2-7 — Estrategia QA integral, pruebas E2E, riesgos y puertas de salida
 
-**Tipo:** diseño de QA, no ejecución de pruebas.  
+**Tipo:** diseño de QA, no ejecución de pruebas. Complemento operativo: [decisiones T00 post revisión](E2-7_T00_DECISIONES_Y_ORDEN_DE_EJECUCION.md).  
 **Versión inicial:** 2026-11-09. **Base:** `main` `9a7a66394daf5a96b18b9ce796a2fe9ec92a4068`.  
 **Dependencias:** [plan rector](E2-7_PLAN_RECTOR_INTEGRACION_Y_CIERRE.md) · [matriz de integración](E2-7_MATRIZ_FRONTEND_BACKEND_Y_CONTRATOS.md).  
 **Objetivo:** impedir una integración «visual» que simule persistencia, permisos, dinero o stock sin conexión verdadera.
@@ -158,3 +158,12 @@ Las pruebas full-stack con Playwright exigen configurar/iniciar backend real y b
 La revisión de Astra sobre este plan **no es un test real**. Cada observación requiere: código/contrato de referencia, riesgo, propuesta mínima, prueba de aceptación y compatibilidad con E2-1–E2-6. No introducir cambios de estilo o dependencias por gusto si no reducen riesgo verificable. Un hallazgo bloqueante confirmado suspende la transición al siguiente incremento hasta su resolución o decisión documentada del responsable.
 
 **Conclusión QA:** E2-7 puede considerarse cerrado solo si **los datos comerciales reales cruzan la frontera React–FastAPI–PostgreSQL** en flujos reproducibles, sin perder autenticación, tenancy, atomicidad ni trazabilidad.
+
+## 9. Casos incorporados a partir de la revisión externa (planificados, no ejecutados)
+
+- **Paginación:** 101 y 501 artículos, falla de segunda página, cambio de empresa en medio de la descarga; no contar colección parcial como total ni inferir saldo cero por página incompleta.
+- **Token opaco:** login no interpreta JWT; logout 204 sin intentar parsear JSON; un 401 de sesión antigua no destruye una sesión nueva.
+- **Resultado incierto:** POST confirmado pero respuesta perdida; F5 + re-login; recuperar la misma intención sin nueva clave y sin efecto duplicado; falla de almacenamiento durable y usuario diferente.
+- **Conteo:** saldo 10→7, 10→0, saldo cero con historia, versión obsoleta, venta intermedia y conteo múltiple no atómico deshabilitado en REAL.
+- **Venta:** replay tras sede pausada/rol cambiado/membresía revocada conforme política aprobada, y precio/descuento según regla comercial final.
+- **Alcance:** estas pruebas se agregan a la planificación; no acreditar su aprobación hasta ejecutar el escenario contra el SHA y entorno correspondientes.
