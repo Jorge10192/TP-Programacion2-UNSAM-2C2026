@@ -49,17 +49,22 @@ def test_balance_is_atomic_triplet_without_negative_amounts():
     }
 
 
-def test_movements_are_physical_receipt_only_and_tenant_referenced():
+def test_receipt_movements_are_still_tenant_referenced_after_e25a():
     t = StockMovement.__table__
     fks = {x.name for x in t.constraints if isinstance(x, ForeignKeyConstraint)}
     assert fks == {
         "fk_stock_movements_business", "fk_stock_movements_location_tenant",
         "fk_stock_movements_catalog_tenant", "fk_stock_movements_receipt_tenant",
         "fk_stock_movements_line_tenant", "fk_stock_movements_actor_tenant",
+        "fk_stock_movements_operation_kind_tenant",
     }
     checks = {x.name: str(x.sqltext) for x in t.constraints if isinstance(x, CheckConstraint)}
-    assert "BETWEEN 1 AND 999999999" in checks["ck_stock_movements_positive_entry"]
-    assert "'COMPRA_RECEPCION'" in checks["ck_stock_movements_receipt_only"]
+    assert "COMPRA_RECEPCION" in checks["ck_stock_movements_origin_and_sign"]
+    assert "TRASLADO_SALIDA" in checks["ck_stock_movements_origin_and_sign"]
+    assert "BETWEEN -999999999 AND -1" in checks["ck_stock_movements_origin_and_sign"]
     uniques = {x.name for x in t.constraints if isinstance(x, UniqueConstraint)}
     assert "uq_stock_movements_receipt_line" in uniques
-    assert t.c.receipt_id.nullable is False
+    assert t.c.receipt_id.nullable is True
+    assert t.c.purchase_line_id.nullable is True
+    assert t.c.inventory_operation_id.nullable is True
+    assert t.c.operation_kind.nullable is True
