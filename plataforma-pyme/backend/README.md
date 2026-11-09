@@ -1,8 +1,11 @@
 # Asistente PyME — Backend FastAPI
 
-**Estado vigente (08/11/2026):** E2-1 y E2-2 preservados; E2-3 A/B/C/D validado localmente (580 pruebas), E2-3 E documentación y UML 03A conciliados. Alembic `e23a_catalog (head)` sin deriva; API/DB healthy. Cinco rutas de Catálogo protegidas por empresa; frontend DEMO y operaciones comerciales pendientes. Entrega E2-3 de auditoría pendiente.
+> **ESTADO DE REFERENCIA — E2-4 (08–09/11/2026):** Proveedores y Compras con snapshots, recepción completa y única, movimiento por línea física, saldo atómico por empresa/ubicación/artículo. Migración `e24e_receipt_stock` (sin deriva), **797/797 tests en Windows y Python 3.12/3.14 CI**, Docker saludable, bitácora Swagger de 17 casos. Código de corte: `4f88416141c09a82e744990b1aee8c00b9f31dfd`. **Fuente vigente:** [cierre E2-4 documentado](../docs/revisiones/E2-4_CIERRE/00_LEEME.md); [hoja para auditor independiente](../docs/revisiones/E2-4_ENTREGA_PARA_REVISION.md). El resto de este README conserva notas **históricas** por incremento, que pueden presentar módulos de E2-4 como futuros a fecha de redacción. No confundir con el estado actual ni con un despliegue productivo.
 
-> **Estado vigente E2-2 (08/11/2026):** E2-2 A/A.1/B/C/D implementado y validado: **371 pruebas Windows aprobadas en 47.57s**, Alembic `e22d_assignments (head)` sin deriva, API y PostgreSQL en Docker `healthy`, `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), 371 pruebas Python 3.12/3.14 y Docker. **La política por sede aún no se aplica a inventario/compras/ventas**, que son bloques futuros; frontend React permanece DEMO. Los estados parciales descritos en notas de A/B/C constituyen histórico.
+
+**Estado histórico previo (08/11/2026):** E2-1 y E2-2 preservados; E2-3 A/B/C/D validado localmente (580 pruebas), E2-3 E documentación y UML 03A conciliados. Alembic `e23a_catalog (head)` sin deriva; API/DB healthy. Cinco rutas de Catálogo protegidas por empresa; frontend DEMO y operaciones comerciales pendientes. Entrega E2-3 de auditoría pendiente.
+
+> **Estado histórico E2-2 (08/11/2026):** E2-2 A/A.1/B/C/D implementado y validado: **371 pruebas Windows aprobadas en 47.57s**, Alembic `e22d_assignments (head)` sin deriva, API y PostgreSQL en Docker `healthy`, `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), 371 pruebas Python 3.12/3.14 y Docker. **La política por sede aún no se aplica a inventario/compras/ventas**, que son bloques futuros; frontend React permanece DEMO. Los estados parciales descritos en notas de A/B/C constituyen histórico.
 
 
 **Fuente arquitectónica:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
@@ -670,3 +673,13 @@ Esperado **`e23a_catalog (head)`** y **407 passed**. Es una tabla nueva sin dato
 **E2-3 E cerrado funcional y documentalmente (08/11/2026):** catálogo `CatalogItem` con migración `e23a_catalog`, cinco rutas REST reales, verificación de tenant/RBAC y estado ACTIVO/INACTIVO. **580 passed en Windows (66.45s)**, Alembic sin deriva, API y DB Docker healthy, `/ready` ready/ok. CI D [3/3 y 580 tests en Python 3.12/3.14](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42508771222) sobre `bf4fd3fa809c9f4e6afdeb064a155acf233b1722`. UML 03A v0.7 (PUML, guía y SVG editorial) actualizado; Proveedor TO-BE, 03B/03C preservados. No hay aún compras, inventario, ventas ni integración React/API. **Pendiente: entrega formal al revisor, sin merge de PR**. Los estados A/B/C/D más abajo corresponden a cortes históricos.
 
 **Validación D ya reportada desde Windows:** `580 passed in 66.45s`, Alembic `e23a_catalog (head)` sin operaciones y `/ready` `ready/ok`. Un commit solo documental no obliga a repetir el conjunto de pruebas. La auditoría independiente deberá distinguir pruebas propias de pruebas suministradas.
+
+## E2-4 — Referencia de validación y entrega consolidada (corte 08/11/2026)
+
+- **API:** cinco operaciones de Proveedores, tres de Compras, recepción `POST /purchases/{purchase_id}/receive`, consulta de recibo y consultas de `inventory/balances` / `inventory/movements`.
+- **Migraciones aditivas:** `e24a_suppliers` → `e24c_purchases` → `e24d_purchase_hash` → `e24e_receipt_stock`.
+- **Pruebas:** commit `4f88416141c09a82e744990b1aee8c00b9f31dfd`; `20 passed` archivo afectado y `797 passed` suite total en Windows sobre DB poblada; [CI run 42530739959](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42530739959), tres trabajos exitosos.
+- **QA manual:** compra de concepto libre 12505 centavos; compra física de 10 unidades por 1000000 centavos; depósito real activo; recepción 201, replay 200, segundo intento con clave distinta 409, saldo 10000 milésimas/versión 1 y un único movimiento de entrada. [Detalle exacto, sin claves ni tokens](../docs/revisiones/E2-4_CIERRE/02_BITACORA_PRUEBAS_SWAGGER.md).
+- **Pendientes no implementados:** cancelación por API, parcial 1:N, devoluciones, ajustes, transferencias, ventas, multimoneda, permisos DB de inmutabilidad, separación completa de DB de tests, frontend React integrado, producción. [Trazabilidad](../docs/revisiones/E2-4_CIERRE/05_TRAZABILIDAD_Y_PENDIENTES.md).
+
+**Cómo revalidar:** seguir [guía segura E2-4](../docs/revisiones/E2-4_CIERRE/07_GUIA_REPRODUCCION_SEGURA.md). **No borrar volúmenes** para ejecutar pruebas ni reutilizar identificadores históricos como nuevas claves.

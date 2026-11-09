@@ -1,0 +1,218 @@
+{
+  "schema_version": "1.1",
+  "bloque": "E2-4",
+  "tipo": "EVIDENCIA_QA_SANITIZADA",
+  "fecha": "2026-11-08",
+  "commit_codigo_cierre": "4f88416141c09a82e744990b1aee8c00b9f31dfd",
+  "clasificacion_evidencia": "capturas y respuestas Swagger aportadas por desarrollador; ejecuciones CI verificadas",
+  "secrets_policy": [
+    "no passwords",
+    "no bearer tokens",
+    "no Idempotency-Key values",
+    "no request_id digests or values",
+    "no database credentials"
+  ],
+  "entorno": {
+    "api": "http://127.0.0.1:18000/api/v1",
+    "sistema": "Windows",
+    "postgres": "16"
+  },
+  "recursos": {
+    "business": {
+      "name": "Comercio de Prueba QA",
+      "id": "bd4d4e42-4ff6-403a-8633-59cbc001487d"
+    },
+    "actor_id": "0e0fc877-c3d4-45dd-9813-2501596baee0",
+    "supplier": {
+      "name": "Distribuidora QA",
+      "id": "4a9e7618-6388-4765-a8e7-0d7338becd6d"
+    },
+    "catalog_item": {
+      "id": "881fdae2-18c5-46ae-8037-44a500ca96c0",
+      "name": "Alimento balanceado QA",
+      "sku": "ALIM-QA-001",
+      "kind": "REVENTA",
+      "item_type": "BIEN",
+      "unit": "UNIDAD",
+      "price_cents": 150000,
+      "reference_cost_cents": 100000
+    },
+    "location": {
+      "id": "2d6761c4-efec-4b3e-925c-a24ceab8ce9c",
+      "name": "Depósito QA",
+      "kind": "DEPOSITO",
+      "status": "ACTIVA",
+      "can_store": true,
+      "can_sell": false,
+      "is_primary": true
+    },
+    "concept_purchase": {
+      "id": "b6646fcd-428f-4b9b-ab80-83e7ffb14827",
+      "reference": "QA-COMPRA-001",
+      "supplier_id": null,
+      "status": "CERRADA_SIN_RECEPCION",
+      "total_cents": 12505,
+      "line_id": "914048a7-3c08-4fc1-bc32-16f833906cf7",
+      "line": {
+        "catalog_item_id": null,
+        "description": "Servicio de limpieza externo",
+        "unit": "CONCEPTO",
+        "quantity_milli": 1000,
+        "unit_cost_cents": 12505
+      }
+    },
+    "physical_purchase": {
+      "id": "3e50aff2-c895-49d9-8fe5-d5843438f109",
+      "reference": "QA-COMPRA-002",
+      "supplier_id": "4a9e7618-6388-4765-a8e7-0d7338becd6d",
+      "status_before": "REGISTRADA",
+      "status_after": "RECIBIDA",
+      "total_cents": 1000000,
+      "line_id": "fc2226e3-0205-4354-860e-73bb5376eec7",
+      "line": {
+        "catalog_item_id": "881fdae2-18c5-46ae-8037-44a500ca96c0",
+        "unit": "UNIDAD",
+        "quantity_milli": 10000,
+        "unit_cost_cents": 100000
+      }
+    },
+    "receipt": {
+      "id": "266bd03e-763b-4f29-8f12-c19c9bc59066",
+      "status": "RECIBIDA",
+      "confirmed_at": "2026-11-08T22:51:29.200944Z",
+      "location_id": "2d6761c4-efec-4b3e-925c-a24ceab8ce9c",
+      "balances_after": {
+        "quantity_milli": 10000,
+        "version": 1
+      }
+    },
+    "movement": {
+      "id": "9d72f578-c54f-4250-accb-995d712958d8",
+      "event_type": "COMPRA_RECEPCION",
+      "delta_milli": 10000,
+      "receipt_id": "266bd03e-763b-4f29-8f12-c19c9bc59066",
+      "catalog_item_id": "881fdae2-18c5-46ae-8037-44a500ca96c0",
+      "purchase_line_id": "fc2226e3-0205-4354-860e-73bb5376eec7",
+      "actor_id": "0e0fc877-c3d4-45dd-9813-2501596baee0"
+    }
+  },
+  "casos": [
+    {
+      "id": "U-01",
+      "accion": "POST /purchases concepto libre",
+      "http": 201,
+      "detalle": "alta sin proveedor, estado CERRADA_SIN_RECEPCION, 12505 centavos"
+    },
+    {
+      "id": "U-02",
+      "accion": "POST /purchases replay idéntico",
+      "http": 200,
+      "detalle": "mismo purchase_id y línea, sin duplicado"
+    },
+    {
+      "id": "U-03",
+      "accion": "POST /purchases misma clave distinta carga",
+      "http": 409,
+      "detalle": "Clave de compra reutilizada con contenido diferente"
+    },
+    {
+      "id": "U-04",
+      "accion": "GET /purchases",
+      "http": 200,
+      "detalle": "lista con compra original"
+    },
+    {
+      "id": "U-05",
+      "accion": "GET /purchases/{id}",
+      "http": 200,
+      "detalle": "compra concepto intacta"
+    },
+    {
+      "id": "U-06",
+      "accion": "POST /catalog",
+      "http": 201,
+      "detalle": "Alimento balanceado QA"
+    },
+    {
+      "id": "U-07",
+      "accion": "POST /purchases bien físico",
+      "http": 201,
+      "detalle": "REGISTRADA, proveedor snapshot, 10000 milésimas"
+    },
+    {
+      "id": "U-08",
+      "accion": "GET /locations inicial",
+      "http": 200,
+      "detalle": "lista vacía"
+    },
+    {
+      "id": "U-09",
+      "accion": "POST /locations",
+      "http": 201,
+      "detalle": "Depósito QA activo can_store"
+    },
+    {
+      "id": "U-10",
+      "accion": "GET /locations posterior",
+      "http": 200,
+      "detalle": "un depósito QA"
+    },
+    {
+      "id": "U-11",
+      "accion": "GET /purchases/{id} antes de receive",
+      "http": 200,
+      "detalle": "REGISTRADA"
+    },
+    {
+      "id": "U-12",
+      "accion": "POST /purchases/{id}/receive",
+      "http": 201,
+      "detalle": "RECIBIDA, un movimiento, saldo version 1"
+    },
+    {
+      "id": "U-13",
+      "accion": "POST /receive clave diferente en compra recibida",
+      "http": 409,
+      "detalle": "rechazo esperado, sin segundo ingreso"
+    },
+    {
+      "id": "U-14",
+      "accion": "POST /receive replay misma clave/cuerpo/actor",
+      "http": 200,
+      "detalle": "mismo recibo, movimiento y snapshot"
+    },
+    {
+      "id": "U-15",
+      "accion": "GET /inventory/balances con location_id incorrecto",
+      "http": 200,
+      "detalle": "[] por filtro sin coincidencia"
+    },
+    {
+      "id": "U-16",
+      "accion": "GET /inventory/balances con location_id real",
+      "http": 200,
+      "detalle": "quantity_milli 10000, version 1"
+    },
+    {
+      "id": "U-17",
+      "accion": "GET /inventory/movements con filtros reales",
+      "http": 200,
+      "detalle": "un movimiento delta_milli 10000"
+    }
+  ],
+  "pruebas": {
+    "local_sobre_db_con_datos": {
+      "primera": "781 passed, 15 failed",
+      "correccion_compra": "20 passed in 6.54s",
+      "final": "797 passed in 95.24s"
+    },
+    "ci_final": {
+      "run": 42530739959,
+      "python312_passed": 797,
+      "python314_passed": 797,
+      "jobs_success": 3,
+      "alembic": "e24e_receipt_stock"
+    }
+  },
+  "ausencias": "CRUD completo de Proveedores no transcripto manualmente; otras rutas y errores tienen pruebas automatizadas pero no evidencias Swagger completas."
+}

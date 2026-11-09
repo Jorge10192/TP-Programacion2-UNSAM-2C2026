@@ -1,0 +1,131 @@
+# VS Code REST Client / colección parametrizada E2-4.
+# NO es un guion ejecutado como evidencia; son ejemplos para un revisor.
+# ATENCIÓN: los POST/PATCH escriben datos. Usar SOLO un tenant QA separado.
+# Nunca versionar el token ni claves de idempotencia.
+# Crear la variable de entorno PYME_QA_TOKEN en la sesión local privada
+# antes de abrir VS Code; no compartir el valor con repositorio ni capturas.
+# Completar UUID de recursos NUEVOS creados para esta sesión.
+@baseUrl = http://127.0.0.1:18000/api/v1
+@businessId = REEMPLAZAR_ID_EMPRESA_QA
+@supplierId = REEMPLAZAR_ID_PROVEEDOR_CREADO
+@catalogItemId = REEMPLAZAR_ID_ARTICULO_QA
+@locationId = REEMPLAZAR_ID_DEPOSITO_QA
+@purchaseId = REEMPLAZAR_ID_COMPRA_RECIEN_CREADA
+@purchaseKey = REEMPLAZAR_UUID4_PRIVADO_COMPRA
+@receiptKey = REEMPLAZAR_UUID4_PRIVADO_RECEPCION
+
+### P01 — Proveedor: crear en QA (201)
+POST {{baseUrl}}/businesses/{{businessId}}/suppliers
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+Content-Type: application/json
+
+{"name":"Proveedor prueba manual E2-4 - usar nombre unico"}
+
+### P02 — Proveedor: listar (200)
+GET {{baseUrl}}/businesses/{{businessId}}/suppliers?offset=0&limit=100
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+
+### P03 — Proveedor: detalle (200)
+GET {{baseUrl}}/businesses/{{businessId}}/suppliers/{{supplierId}}
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+
+### P04 — Proveedor: editar (200)
+PATCH {{baseUrl}}/businesses/{{businessId}}/suppliers/{{supplierId}}
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+Content-Type: application/json
+
+{"notes":"Cambio ficticio para auditoría manual"}
+
+### P05 — Proveedor: desactivar (200)
+PATCH {{baseUrl}}/businesses/{{businessId}}/suppliers/{{supplierId}}/status
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+Content-Type: application/json
+
+{"status":"INACTIVO"}
+
+### P06 — Proveedor: reactivar (200)
+PATCH {{baseUrl}}/businesses/{{businessId}}/suppliers/{{supplierId}}/status
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+Content-Type: application/json
+
+{"status":"ACTIVO"}
+
+### C01 — Crear compra de concepto libre con CLAVE NUEVA (201)
+POST {{baseUrl}}/businesses/{{businessId}}/purchases
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+Idempotency-Key: {{purchaseKey}}
+Content-Type: application/json
+
+{
+  "purchased_on": "2026-11-08",
+  "supplier_id": null,
+  "reference": "REVISION-E24-CONCEPTO-UNICO",
+  "notes": "Solo en tenant QA aislado",
+  "lines": [{"catalog_item_id":null,"description":"Concepto para revisión","unit":"CONCEPTO","quantity_milli":1000,"unit_cost_cents":12505}]
+}
+
+### C02 — Reintento EXACTO mismo actor/key/body: 200, mismo ID
+POST {{baseUrl}}/businesses/{{businessId}}/purchases
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+Idempotency-Key: {{purchaseKey}}
+Content-Type: application/json
+
+{
+  "purchased_on": "2026-11-08",
+  "supplier_id": null,
+  "reference": "REVISION-E24-CONCEPTO-UNICO",
+  "notes": "Solo en tenant QA aislado",
+  "lines": [{"catalog_item_id":null,"description":"Concepto para revisión","unit":"CONCEPTO","quantity_milli":1000,"unit_cost_cents":12505}]
+}
+
+### C03 — MISMA clave y payload distinto: 409
+POST {{baseUrl}}/businesses/{{businessId}}/purchases
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+Idempotency-Key: {{purchaseKey}}
+Content-Type: application/json
+
+{
+  "purchased_on": "2026-11-08",
+  "supplier_id": null,
+  "reference": "REVISION-E24-CONCEPTO-UNICO",
+  "notes": "Solo en tenant QA aislado",
+  "lines": [{"catalog_item_id":null,"description":"Concepto para revisión","unit":"CONCEPTO","quantity_milli":1000,"unit_cost_cents":20000}]
+}
+
+### C04 — Listar compras propias (200)
+GET {{baseUrl}}/businesses/{{businessId}}/purchases?offset=0&limit=100
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+
+### C05 — Consultar detalle de COMPRA FISICA QA recién creada (200)
+GET {{baseUrl}}/businesses/{{businessId}}/purchases/{{purchaseId}}
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+
+# Para R01 usar purchaseId de una compra NUEVA con BIEN y status REGISTRADA.
+# No usar la compra histórica QA-COMPRA-002, que ya está RECIBIDA.
+### R01 — Recibir la compra nueva (201)
+POST {{baseUrl}}/businesses/{{businessId}}/purchases/{{purchaseId}}/receive
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+Idempotency-Key: {{receiptKey}}
+Content-Type: application/json
+
+{"location_id":"{{locationId}}"}
+
+### R02 — Repetir exacto: 200, mismo recibo y saldo histórico
+POST {{baseUrl}}/businesses/{{businessId}}/purchases/{{purchaseId}}/receive
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+Idempotency-Key: {{receiptKey}}
+Content-Type: application/json
+
+{"location_id":"{{locationId}}"}
+
+### R03 — Consultar comprobante (200)
+GET {{baseUrl}}/businesses/{{businessId}}/purchases/{{purchaseId}}/receipt
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+
+### S01 — Saldos del artículo (200)
+GET {{baseUrl}}/businesses/{{businessId}}/inventory/balances?location_id={{locationId}}&catalog_item_id={{catalogItemId}}&offset=0&limit=100
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
+
+### S02 — Movimientos del artículo (200)
+GET {{baseUrl}}/businesses/{{businessId}}/inventory/movements?location_id={{locationId}}&catalog_item_id={{catalogItemId}}&offset=0&limit=100
+Authorization: Bearer {{$processEnv PYME_QA_TOKEN}}
