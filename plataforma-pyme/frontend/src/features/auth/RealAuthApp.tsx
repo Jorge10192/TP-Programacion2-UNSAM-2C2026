@@ -149,7 +149,8 @@ export function RealAuthApp() {
     })
   }
 
-  const isProfile = path === '/real/perfil' && session !== null
+  // A valid session always renders the protected profile, even if browser Back changes the URL.
+  const isProfile = session !== null
   const isRegistration = path === '/real/registro' && !session
   const showLogin = !session && !isRegistration
 
