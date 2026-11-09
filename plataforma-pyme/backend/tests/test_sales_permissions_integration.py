@@ -57,7 +57,8 @@ def test_operational_role_requires_active_location_assignment(isolated, role):
     db.execute(insert(LocationAssignment).values(
         business_id=bid, location_id=lid, user_id=operator_id, status="ACTIVA",
     ))
-    created = post(client, bid, employee, body)
+    sale_key = uuid4()
+    created = post(client, bid, employee, body, key=sale_key)
     assert created.status_code == 201, created.text
     assert created.json()["location_id"] == str(lid)
     assert post(client, bid, employee, payload(iid)).status_code == 403
@@ -67,8 +68,10 @@ def test_operational_role_requires_active_location_assignment(isolated, role):
         LocationAssignment.location_id == lid,
         LocationAssignment.user_id == operator_id,
     ).values(status="REVOCADA", revoked_at=func.now()))
-    replay = post(client, bid, employee, body, key=uuid4())
-    assert replay.status_code == 403
+    denied_new = post(client, bid, employee, body, key=uuid4())
+    assert denied_new.status_code == 403
+    denied_replay = post(client, bid, employee, body, key=sale_key)
+    assert denied_replay.status_code == 403
     assert count_sales(db, bid) == 1
 
 
