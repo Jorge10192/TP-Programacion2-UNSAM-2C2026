@@ -65,7 +65,7 @@ def test_initial_stock_on_new_pair_and_exact_idempotent_replay(isolated):
     bid = business(client, auth)
     loc = location(client, bid, auth)
     iid = item(client, bid, auth)
-    assert view_balances(client, bid, auth) == []
+    assert view_balances(client, bid, auth) == {}
     body = command(
         iid, loc, kind="STOCK_INICIAL", amount=7000, version=0,
         reason="Conteo inicial de siete unidades",
@@ -306,5 +306,5 @@ def test_no_prior_balance_cannot_be_adjusted_without_stock_initial(isolated):
         iid, loc, kind="AJUSTE_SALIDA", version=0,
     ))
     assert plus.status_code == minus.status_code == 409
-    assert view_balances(client, bid, auth) == []
+    assert view_balances(client, bid, auth) == {}
     assert view_movements(client, bid, auth) == []
