@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
@@ -167,3 +167,108 @@ def test_invalid_amount_does_not_persist(isolated):
     assert db.scalar(select(func.count()).select_from(Sale).where(
         Sale.business_id == bid,
     )) == 0
+
+
+def location(client, bid, headers, *, can_sell=True, can_store=True):
+    response = client.post(f"/api/v1/businesses/{bid}/locations",
+        headers=headers, json={
+            "name": "Local Ventas", "kind": "LOCAL",
+            "can_sell": can_sell, "can_store": can_store,
+        })
+    assert response.status_code == 201, response.text
+    return UUID(response.json()["id"])
+
+
+def seed_balance(db, bid, lid, iid, milli=3000):
+    db.execute(insert(StockBalance).values(
+        business_id=bid, location_id=lid, catalog_item_id=iid,
+        quantity_milli=milli, version=1,
+    ))
+
+
+def test_physical_and_service_mixed_sale_debits_once(isolated):
+    client, db = isolated
+    headers = auth(client)
+    bid = business(client, headers)
+    lid = location(client, bid, headers)
+    good = item(client, bid, headers, kind="REVENTA", name="Bolsa")
+    service = item(client, bid, headers, kind="SERVICIO", name="Entrega")
+    seed_balance(db, bid, lid, good, milli=5000)
+    body = {
+        "location_id": str(lid),
+        "lines": [
+            {"catalog_item_id": str(good), "quantity_milli": 1000, "unit_price_cents": 900},
+            {"catalog_item_id": str(service), "quantity_milli": 1000, "unit_price_cents": 100},
+            {"catalog_item_id": str(good), "quantity_milli": 2000, "unit_price_cents": 900},
+        ],
+        "payments": [{"method": "EFECTIVO", "amount_cents": 2800}],
+    }
+    key = uuid4()
+    first = post(client, bid, headers, body, key=key)
+    assert first.status_code == 201, first.text
+    data = first.json()
+    assert data["total_cents"] == 2800
+    assert [line["kind_snapshot"] for line in data["lines"]] == [
+        "BIEN", "SERVICIO", "BIEN",
+    ]
+    assert len(data["balances_after"]) == 1
+    assert data["balances_after"][0]["quantity_milli"] == 2000
+    assert data["balances_after"][0]["version"] == 2
+    stock = db.execute(select(StockBalance).where(
+        StockBalance.business_id == bid,
+        StockBalance.location_id == lid,
+        StockBalance.catalog_item_id == good,
+    )).scalar_one()
+    assert stock.quantity_milli == 2000 and stock.version == 2
+    moves = db.execute(select(StockMovement).where(
+        StockMovement.business_id == bid,
+        StockMovement.sale_id == UUID(data["id"]),
+    ).order_by(StockMovement.delta_milli)).scalars().all()
+    assert [m.delta_milli for m in moves] == [-2000, -1000]
+    assert all(m.event_type == "VENTA_SALIDA" for m in moves)
+    replay = post(client, bid, headers, body, key=key)
+    assert replay.status_code == 200
+    assert replay.json() == data
+    stock = db.execute(select(StockBalance).where(
+        StockBalance.business_id == bid, StockBalance.location_id == lid,
+        StockBalance.catalog_item_id == good,
+    )).scalar_one()
+    assert stock.quantity_milli == 2000 and stock.version == 2
+
+
+def test_insufficient_stock_rolls_back_everything(isolated):
+    client, db = isolated
+    headers = auth(client)
+    bid = business(client, headers)
+    lid = location(client, bid, headers)
+    good = item(client, bid, headers, kind="REVENTA", name="Producto")
+    seed_balance(db, bid, lid, good, milli=1000)
+    body = payload(good, quantity=2000, cents=150)
+    body["location_id"] = str(lid)
+    failed = post(client, bid, headers, body)
+    assert failed.status_code == 409, failed.text
+    assert db.scalar(select(func.count()).select_from(Sale).where(
+        Sale.business_id == bid)) == 0
+    assert db.scalar(select(func.count()).select_from(SalePayment).where(
+        SalePayment.business_id == bid)) == 0
+    assert db.scalar(select(func.count()).select_from(StockMovement).where(
+        StockMovement.business_id == bid)) == 0
+    stock = db.execute(select(StockBalance).where(
+        StockBalance.business_id == bid, StockBalance.location_id == lid,
+        StockBalance.catalog_item_id == good,
+    )).scalar_one()
+    assert stock.quantity_milli == 1000 and stock.version == 1
+
+
+def test_physical_requires_sell_and_store(isolated):
+    client, db = isolated
+    headers = auth(client)
+    bid = business(client, headers)
+    sell_only = location(client, bid, headers, can_sell=True, can_store=False)
+    good = item(client, bid, headers, kind="REVENTA", name="Producto")
+    seed_balance(db, bid, sell_only, good)
+    body = payload(good)
+    body["location_id"] = str(sell_only)
+    assert post(client, bid, headers, body).status_code == 409
+    assert db.scalar(select(func.count()).select_from(Sale).where(
+        Sale.business_id == bid)) == 0
