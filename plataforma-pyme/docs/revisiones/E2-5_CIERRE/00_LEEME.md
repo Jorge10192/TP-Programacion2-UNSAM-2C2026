@@ -11,7 +11,7 @@
 
 ## Propósito y límites de esta entrega
 
-Este directorio contiene **el cierre documental preliminar de E2-5**, procedente del ZIP v1 y revisado a la luz de observaciones de otra IA contrastadas con el código. Se publica solo en una **rama y PR documental**, sin modificar código, tablas, datos ni `main`. La publicación definitiva requiere revisar y fusionar el PR; la hoja específica de auditoría se preparará por separado, una vez aprobado el cierre. **Esta evaluación no es una auditoría independiente ni una aprobación de producción.**
+Este directorio contiene **el cierre documental preliminar de E2-5**, procedente del ZIP v1 y revisado a la luz de observaciones de otra IA contrastadas con el código. Se publica solo en una **rama y PR documental**, sin modificar código, tablas, datos ni `main`. La publicación definitiva requiere revisar y fusionar el PR; la hoja específica y el paquete técnico de auditoría se **prepararon después de la revisión interna**, pero **no se envían ni se ejecutan** hasta aprobar/publicar este cierre. **Esta evaluación no es una auditoría independiente ni una aprobación de producción.**
 
 ### Índice
 
@@ -30,6 +30,7 @@ Este directorio contiene **el cierre documental preliminar de E2-5**, procedente
 | `11_EVIDENCIA_ESTRUCTURADA.json` | Resumen legible por herramientas de QA, con resultados y sin secretos |
 | `12_MANIFIESTO_GIT_BLOBS.md` | Identificadores Git blob verificados en el PR; sustituyen hashes del ZIP anterior que ya no corresponden al contenido revisado |
 | `13_EVALUACION_OBSERVACIONES_IA.md` | Contraste razonado de 14 observaciones externas, decisiones y prioridades sin cambiar código |
+| `14_REVISION_INTEGRAL_DOCUMENTAL.md` | Acta de control editorial/técnico, correcciones y alcance explícito del OK documental |
 
 ## Política estricta de seguridad
 
@@ -55,6 +56,8 @@ Se cotejó el repositorio público (documentos E2-5 A/B/C, routers, servicios, O
 
 **Ubicación de esta versión propuesta:** `plataforma-pyme/docs/revisiones/E2-5_CIERRE/` en la rama `docs/e2-5-cierre-revision-critica`. **El PR no equivale al merge** ni a auditoría independiente. El commit funcional examinado sigue siendo `748e69319d8d04900c009d5184168a264a9deeac`.
 
-## Cambios de esta revisión (v1.1)
+## Cambios de esta revisión (v1.2, sobre v1.1)
 
-Se incorporó un **dictamen crítico documentado** sobre concurrencia, semántica de stock inicial, reversos, autorización, auditoría SQL, reservas, errores HTTP y límites comerciales. Los comentarios recibidos son **hipótesis y propuestas**, no pruebas de un bug por sí mismos. Ver [13_EVALUACION_OBSERVACIONES_IA.md](13_EVALUACION_OBSERVACIONES_IA.md) y [09_RIESGOS_DEUDAS_Y_DECISIONES.md](09_RIESGOS_DEUDAS_Y_DECISIONES.md). La documentación v1.0 permanece como antecedente de lectura, pero los hashes del ZIP v1.0 no validan esta revisión versionada.
+Se incorporó un **dictamen crítico documentado** sobre concurrencia, semántica de stock inicial, reversos, autorización, auditoría SQL, reservas, errores HTTP y límites comerciales. Los comentarios recibidos son **hipótesis y propuestas**, no pruebas de un bug por sí mismos. Ver [13_EVALUACION_OBSERVACIONES_IA.md](13_EVALUACION_OBSERVACIONES_IA.md) y [09_RIESGOS_DEUDAS_Y_DECISIONES.md](09_RIESGOS_DEUDAS_Y_DECISIONES.md). La documentación v1.0 permanece como antecedente de lectura, pero los hashes del ZIP v1.0 no validan esta revisión versionada. Se corrigieron términos de autenticación, referencias a manifiesto, checklist e índice académico; ver [acta 14](14_REVISION_INTEGRAL_DOCUMENTAL.md).
+
+La [hoja formal de entrega](../E2-5_ENTREGA_PARA_REVISION.md) y el [paquete de auditoría técnica](../E2-5_AUDITORIA/00_LEEME_Y_PRECONDICIONES.md) están **preparados en el PR**, no constituyen la auditoría realizada; el auditor debe partir de los SHAs verificados cuando se apruebe y publique esta documentación.
