@@ -65,3 +65,10 @@ Esta revisión editorial/técnica cotejó:
 Este **OK es editorial y de preparación técnica**: el paquete es internamente útil, describe lo implementado con trazabilidad y provee una agenda de auditoría ejecutable por un revisor humano/IA. **No implica que la implementación de E2-5 haya superado una auditoría nueva**, ni autoriza alterar el backend, aplicar migraciones nuevas, revisar otros módulos en profundidad o fusionar por sí solo un PR.
 
 Para pasar de `OK documental` a `CIERRE AUDITADO` faltan, en orden: aprobar y publicar PR documental, compartir encargo con revisor, recibir informe independiente con pruebas reales, revisar/corregir únicamente defectos confirmados y decidir merge de ese PR por el equipo.
+
+
+## 6. Addenda de publicación posterior al dictamen original
+
+El acta precedente refleja el estado **previo al merge** del PR #24, por lo que sus menciones a «Draft», «pendiente de aprobación/merge» y «no publicado en `main`» son históricas. El responsable autorizó el cierre y la conservación de UUID de recursos QA; [PR #24](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/24) fue **fusionado en `main`** con el SHA documental original `c66df2f8ddaa8179ca12e342bd3099348bc6b155` el 09/11/2026. La sesión QA expuesta fue revocada según la respuesta de Swagger `POST /api/v1/auth/logout` `204` aportada por el desarrollador, sin divulgar el token.
+
+La publicación NO implica una auditoría independiente ejecutada: esta seguirá su proceso formal, con su propia rama, pruebas y PR. Las referencias al SHA documental original se mantienen **estables** aunque exista un commit posterior de errata para completar referencias; el revisor debe registrar también el HEAD realmente inspeccionado.
