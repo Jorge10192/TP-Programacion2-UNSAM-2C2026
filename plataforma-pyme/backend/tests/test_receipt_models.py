@@ -57,6 +57,7 @@ def test_receipt_movements_are_still_tenant_referenced_after_e25a():
         "fk_stock_movements_catalog_tenant", "fk_stock_movements_receipt_tenant",
         "fk_stock_movements_line_tenant", "fk_stock_movements_actor_tenant",
         "fk_stock_movements_operation_kind_tenant",
+        "fk_stock_movements_sale_line_tenant",
     }
     checks = {x.name: str(x.sqltext) for x in t.constraints if isinstance(x, CheckConstraint)}
     assert "COMPRA_RECEPCION" in checks["ck_stock_movements_origin_and_sign"]
@@ -68,3 +69,6 @@ def test_receipt_movements_are_still_tenant_referenced_after_e25a():
     assert t.c.purchase_line_id.nullable is True
     assert t.c.inventory_operation_id.nullable is True
     assert t.c.operation_kind.nullable is True
+    assert t.c.sale_id.nullable is True
+    assert t.c.sale_line_id.nullable is True
+    assert "VENTA_SALIDA" in checks["ck_stock_movements_origin_and_sign"]
