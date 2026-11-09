@@ -72,6 +72,7 @@ test('creación exige Idempotency-Key UUID y envía cuerpo exacto', async () => 
   assert.equal((await api.create(input, key)).id, businessId)
   assert.equal(calls, 2)
   await assert.rejects(api.create(input, 'otra-clave'), TypeError)
+  await assert.rejects(api.create(input, '14401a24-37b6-17db-8986-8a048edc005a'), TypeError)
   assert.equal(calls, 2)
 })
 
@@ -131,4 +132,29 @@ test('datos parciales, UUID incorrecto y membresía cruzada no son válidos', ()
   assert.throws(() => parseRealBusiness({ ...company(), id: 'demo-walos' }, userId), ApiTransportError)
   assert.throws(() => parseRealBusiness({ ...company(), membership: null }, userId), ApiTransportError)
   assert.throws(() => parseRealBusiness({ ...company(), status: 'FICTICIA' }, userId), ApiTransportError)
+})
+
+test('un 201 con DTO inválido no permite asumir que la creación fue fallida', async () => {
+  const api = createBusinessGateway('token', userId, async () => json({ id: businessId }, 201))
+  await assert.rejects(api.create({ name: 'TEST', category: 'Rubro', activity_kind: 'PRODUCTOS' }, key),
+    error => error instanceof ApiTransportError && error.reason === 'invalid-response')
+})
+
+test('cambio A a B permite cancelar lectura antigua y consultar solo B', async () => {
+  const api = createBusinessGateway('token', userId, async (url, opts) => {
+    if (url.endsWith(businessId)) {
+      return new Promise((_, reject) => {
+        opts.signal.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')))
+      })
+    }
+    assert.equal(url, '/api/v1/businesses/' + otherBusinessId)
+    return json(company(otherBusinessId))
+  })
+  const ctrl = new AbortController()
+  const older = api.get(businessId, ctrl.signal)
+  ctrl.abort()
+  await assert.rejects(older,
+    err => err instanceof ApiTransportError && err.reason === 'aborted')
+  const newer = await api.get(otherBusinessId)
+  assert.equal(newer.id, otherBusinessId)
 })
