@@ -16,7 +16,7 @@
 
 ## B. Control de secretos y datos antes de distribuir
 
-- [ ] Confirmar **revocación del token Bearer previamente expuesto**; no anexar su valor.
+- [x] Confirmar **revocación de la sesión del token Bearer expuesto**: `POST /api/v1/auth/logout` devolvió **204** usando el mismo token (09/11/2026, 15:23:37 GMT; **SWAGGER-REPORTADO**, no inspección SQL). No anexar su valor. Este cierre es **de esa sesión**, no de todas las posibles sesiones de la cuenta.
 - [x] Verificar que el paquete no contiene contraseñas, emails QA, tokens, claves idempotentes reales, `request_id` de comandos, `.env` ni bases de datos exportadas.
 - [ ] Decidir si los **UUID de recursos QA** de `07_FICHA_QA_SANITIZADA.md` deben permanecer en la futura versión pública; no son credenciales, pero su publicación es una elección editorial.
 - [ ] Controlar capturas nuevas: Swagger incluye `curl` con cabeceras; publicar solo **Server response** saneada.
