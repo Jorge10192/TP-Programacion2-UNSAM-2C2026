@@ -95,3 +95,29 @@ Los movimientos por venta conservan FK al renglón comercial y no a una compra o
 6. Abrir **un PR** de toda E2-6; fusionar una sola vez después de aprobación — **pendiente**.
 
 **Regla:** no usar este documento como evidencia de auditoría externa completada ni de que el PR ya está listo.
+
+## 8. Validación manual Swagger (2026-11-09)
+
+**Fuente:** respuestas HTTP reales proporcionadas por el operador desde Swagger local (`127.0.0.1:8000`) sobre la base temporal utilizada para E2-6. Esta evidencia no reemplaza las pruebas de concurrencia con PostgreSQL.
+
+**Empresa exclusiva de prueba:** `fc37e4ff-9e26-423b-946e-a9cc0b662360`.  
+**Ubicación SELL/STORE:** `013860da-e39b-4028-a080-1ae0638ae482`.  
+**Artículo físico:** `dfbef980-9d7b-4810-9d04-ab0e4f51c86f`.  
+**Servicio:** `740f0ed2-4371-4de3-bd0d-d218f9b53c34`.
+
+| Operación | HTTP observado | Resultado observado |
+|---|---:|---|
+| Registrar usuario y empresa | 201 / 201 | Titular administrativo activo |
+| Crear producto, servicio y ubicación | 201 / 201 / 201 | Ubicación activa con `can_sell` y `can_store` |
+| Registrar `STOCK_INICIAL` | 201 | +10000 milésimas, saldo 10000/version 1 |
+| Consultar inventario del producto | 200 | 10000/version 1 |
+| Crear venta física de 2 unidades | 201 | Venta `def970fc-6b45-48cb-ba65-a5ca994c3fdd`; 1000000 centavos; saldo 8000/version 2 |
+| Crear venta mixta (1 bien + 1 servicio) | 201 | Venta `61108b12-df7e-4da6-8046-ddde75eedba4`; 650000 centavos; dos pagos; saldo 7000/version 3 |
+| Repetir venta mixta con misma clave y cuerpo | 200 | Mismo `sale_id`, fecha, líneas, pagos y snapshot de 7000/version 3 |
+| Intentar vender 10 unidades con stock de 7 | 409 | `Stock insuficiente para confirmar la venta` |
+| Consultar saldo tras rechazo | 200 | 7000/version 3, sin cambios |
+| Consultar ledger con filtro de producto/ubicación | 200 | **Exactamente 3 movimientos:** `STOCK_INICIAL +10000`, `VENTA_SALIDA -2000` y `VENTA_SALIDA -1000` |
+
+**Conciliación:** `10000 - 2000 - 1000 = 7000` milésimas. Los dos movimientos de venta están ligados a sus respectivos `sale_id` y `sale_line_id`. No aparecen movimientos físicos por el servicio, el replay ni la venta rechazada.
+
+**Precisión del alcance:** los resultados acreditan el circuito manual principal sobre la empresa de prueba. No constituyen auditoría independiente ni prueba manual exhaustiva de permisos, fraudes, infraestructura o pagos externos. Los medios de pago solo son declarados. Se conserva pendiente la auditoría selectiva y el PR único hacia `main`.
