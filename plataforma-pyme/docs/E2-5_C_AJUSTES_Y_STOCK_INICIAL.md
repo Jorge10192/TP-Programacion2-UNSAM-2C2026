@@ -1,6 +1,6 @@
 # E2-5 C — Ajustes de inventario y stock inicial (CU-11)
 
-**Fecha:** 09/11/2026. **Estado:** implementación propuesta en PR; CI y validación local se registran por separado.
+**Fecha:** 09/11/2026. **Estado:** implementación verificada en CI; pendiente de merge y validación local Windows.
 **Base de integración:** `main` `4f992b3beb8dda732e4cd752f828b375f240e13d` (E2-5 B; 826 tests y QA manual).
 **Scope:** RF-06 / CU-11, operaciones físicas de un artículo en una ubicación, auditoría, idempotencia y versión de saldo. **No** se tocan frontend, compras, transferencias, ventas ni migraciones anteriores.
 
@@ -68,7 +68,10 @@ Códigos: `401` sin sesión; `403` sin rol/asignación; `404` empresa, ficha o u
 
 Se reutiliza la migración ya validada `e25a_inventory_ops`. E2-5 C **no exige otra migración**. La tabla soporta exactamente los tipos usados; no se cambia el contrato E2-4 de compras, recibos, `POST /receive`, ni E2-5 B de traslados. La lectura general del ledger ya admite los tres nuevos eventos desde E2-5 B.
 
-## 5. Matriz de pruebas
+## 5. Evidencia y matriz de pruebas
+
+**CI de código E2-5 C verificado:** [GitHub Actions #42616213215](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42616213215), **3/3 trabajos exitosos**: **840 pruebas aprobadas** con Python 3.12 (2 advertencias) y **840** con Python 3.14 (3 advertencias); PostgreSQL 16, `e25a_inventory_ops (head)`, `alembic check` sin deriva, Docker build y liveness saludables. Las advertencias no afectaron el estado de CI; analizarlas como deuda técnica, no ocultarlas. **Ejecución Windows aún pendiente.**
+
 
 - Postgres FastAPI con rollback `isolated`: inicial positivo, replay y conflicto, veto al segundo inicial incluso tras agotarse saldo a cero, entrada/salida de saldo y ledger firmado, rechazo de cantidad insuficiente, versión obsoleta y cambio de versión posterior a traslado, unidad discreta, rango, campos desconocidos, servicio inmaterial, autorización por rol/ubicación, tenant ajeno, idempotencia compartida con transferencia y compatibilidad de `PurchaseReceiptView`.
 - Tres pruebas PostgreSQL con **conexiones HTTP independientes** y tenant efímero propio: dos salidas competidoras de una misma versión (201/409), mismo request simultáneo (201/200), dos iniciales simultáneos (201/409). Sin borrar datos ajenos.
