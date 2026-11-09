@@ -1,6 +1,6 @@
 # E2-5 A — Modelo de operaciones de inventario y ampliación compatible del ledger
 
-**Fecha:** 09/11/2026 · **Estado:** implementación propuesta en PR, pendiente de CI y validación local.
+**Fecha:** 09/11/2026 · **Estado:** implementación validada en CI; pendiente de merge y validación local Windows.
 **Base exacta:** `main` `1a188f9a596f4674ca121806ecb92e6a96abf294` (cierre documental E2-4).
 **Ámbito:** RF-06, CU-09 (traslados), CU-11 (ajustes), soporte de CU-07/08 (recepción/lectura). Desarrollo backend solamente, **sin nuevos endpoints HTTP en este corte**.
 
@@ -104,4 +104,4 @@ try {
 cd ..
 ```
 
-**Esperado:** `e25a_inventory_ops (head)`, sin deriva de migración y suite sin fallos. El conteo y duración solo se registrarán como hechos cuando termine CI/Windows, no antes.
+**Esperado:** `e25a_inventory_ops (head)`, sin deriva de migración y suite sin fallos. CI confirmó 816 pruebas aprobadas; la ejecución Windows debe documentarse por separado, sin atribuir a la máquina local resultados aún no ejecutados.
