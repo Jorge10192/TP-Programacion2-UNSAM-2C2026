@@ -23,9 +23,10 @@ import { inventoryHistoryEntries } from './data/demo/inventoryPolicy'
 import type { Navigate } from './app/types'
 import { Welcome, BusinessDashboard } from './features/dashboard/Dashboards'
 import { ComingSoon, NotFound } from './features/common/Feedback'
+import { RealAuthApp } from './features/auth/RealAuthApp'
 import './App.css'
 
-function App() {
+function DemoApp() {
   const snapshot = useDemoSnapshot()
   const businesses = listDemoBusinesses(snapshot)
   const [pathname, setPathname] = useState(() => window.location.pathname || '/')
@@ -146,9 +147,15 @@ function App() {
     <div className="main-column" inert={menuOpen}>
       <Topbar business={business} businesses={businesses} profile={snapshot.profile} title={pageTitle} navigate={navigate} sidebarMode={sidebarMode} menuOpen={menuOpen} showBack={showBack} onBack={goBack} onToggleSidebar={toggleDesktopSidebar} onHideSidebar={() => setSidebarMode('hidden')} onToggleMenu={() => setMenuOpen((open) => !open)} />
       <main id="main-content" className="main-content">{content}</main>
-      <footer className="app-footer"><span>Asistente PyME · Prototipo E1-D2</span><span>Sin autenticación ni pagos reales · Datos locales DEMO</span></footer>
+      <footer className="app-footer"><span>Asistente PyME · Prototipo E1-D2</span><span>Sin autenticación ni pagos reales · Datos locales DEMO · <a href="/real/login">Acceso REAL (T02)</a></span></footer>
     </div>
   </div>
+}
+
+function App() {
+  // Separate React trees: REAL never mounts DEMO store, commercial fixtures or business pages.
+  if (window.location.pathname.startsWith('/real/')) return <RealAuthApp />
+  return <DemoApp />
 }
 
 export default App

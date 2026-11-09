@@ -1,0 +1,38 @@
+.real-auth-layout{min-height:100vh;display:flex;flex-direction:column;background:#f5f7fb;color:#14233f}
+.real-auth-header{min-height:80px;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:15px clamp(20px,4vw,68px);background:#fff;border-bottom:1px solid #e2e8f2}
+.real-auth-brand{display:flex;gap:13px;align-items:center}
+.real-auth-brand strong,.real-auth-brand small{display:block}
+.real-auth-brand strong{font-weight:800;font-size:19px}
+.real-auth-brand small{color:#65748e;margin-top:3px;font-size:12px}
+.real-auth-logo{width:46px;height:46px;border-radius:14px;background:#3c7bdb;color:white;font-size:32px;display:grid;place-items:center}
+.real-auth-header-actions{display:flex;gap:20px;align-items:center}
+.real-auth-header-actions a{font-size:13px;font-weight:700;color:#315fa8}
+.real-auth-badge{padding:8px 12px;border-radius:9px;background:#e5f4ef;color:#16644c;font-size:12px;font-weight:800;white-space:nowrap}
+.real-auth-main{flex:1;max-width:1190px;width:100%;margin:0 auto;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);gap:38px;align-items:center;padding:48px 25px}
+.real-auth-card,.real-auth-aside{background:#fff;border:1px solid #e0e8f3;border-radius:22px;padding:clamp(24px,4vw,48px);box-shadow:0 10px 35px #1b325b09}
+.real-auth-eyebrow{text-transform:uppercase;letter-spacing:2px;color:#3b6fbd;font-size:11px;font-weight:900}
+.real-auth-card h1{font-size:clamp(25px,3vw,35px);line-height:1.15;margin:13px 0}
+.real-auth-card>p,.real-auth-aside p{color:#647590;line-height:1.65;font-size:14px}
+.real-auth-form{display:grid;gap:18px;margin:28px 0 14px}
+.real-auth-form label{display:grid;gap:8px;font-weight:700;font-size:13px;color:#294369}
+.real-auth-form input{width:100%;min-height:46px;padding:10px 13px;border-radius:10px;border:1px solid #cfdcf0;background:#fff;color:#14233f}
+.real-auth-form input:focus{border-color:#3477dd}
+.real-auth-primary{background:#356fce;color:#fff;border:0;border-radius:10px;padding:13px 20px;font-weight:800;min-height:46px}
+.real-auth-primary:hover:not(:disabled){background:#255bae}
+.real-auth-primary:disabled{opacity:.6;cursor:not-allowed}
+.real-auth-secondary{background:#eef3fb;color:#244b8b;border:1px solid #d3e1f5;border-radius:10px;padding:12px 20px;font-weight:800}
+.real-auth-link{border:none;background:none;color:#315fa8;font-weight:700;padding:10px 0;text-decoration:underline}
+.real-auth-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+.real-auth-message{border-radius:10px;padding:13px 15px;background:#edf8f0;color:#176048;font-size:13px;line-height:1.5}
+.real-auth-error{background:#fcebea;color:#9b3434}
+.real-auth-note{border-left:3px solid #8cb5ed;background:#f1f6fd;padding:12px 14px}
+.real-auth-profile{display:grid;margin:22px 0;gap:0}
+.real-auth-profile div{padding:14px 0;border-bottom:1px solid #e6edf5}
+.real-auth-profile dt{color:#647590;font-size:12px}
+.real-auth-profile dd{margin:4px 0 0;font-weight:750;overflow-wrap:anywhere}
+.real-auth-id{font-size:12px}
+.real-auth-aside{background:linear-gradient(145deg,#f8fbff,#e9f1ff)}
+.real-auth-aside h2{font-size:25px;line-height:1.25}
+.real-auth-state{border-radius:10px;background:#fff;padding:16px;color:#425b82;font-size:13px;line-height:1.5}
+.real-auth-footer{text-align:center;color:#647590;font-size:12px;padding:23px}
+@media(max-width:820px){.real-auth-main{grid-template-columns:1fr;gap:18px;padding:24px 16px}.real-auth-aside{order:2}.real-auth-header{padding:14px 17px}.real-auth-badge{display:none}.real-auth-card,.real-auth-aside{padding:24px}.real-auth-header-actions{gap:9px}}
