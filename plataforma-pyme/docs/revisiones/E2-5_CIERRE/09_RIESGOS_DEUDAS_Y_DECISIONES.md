@@ -39,7 +39,7 @@
 
 ## 4. Dependencias para una eventual auditoría formal
 
-Se recomienda fijar: commit exacto, alcance solo E2-5 A–C, base anterior E2-4 como dependencia, consigna y documentos 01–05, ADR-004, archivos de tests/servicios y esta evidencia QA saneada. La guía general existente es `docs/revisiones/GUIA_MAESTRA_REVISION_BLOQUES_E2_ASISTENTE_PYME.md`. **El documento específico de encargo al auditor todavía no se genera**, conforme al orden indicado: primero revisar este paquete, después formalizar el cierre y recién entonces entregar la hoja de auditoría.
+Se recomienda fijar: commit exacto, alcance solo E2-5 A–C, base anterior E2-4 como dependencia, consigna y documentos 01–05, ADR-004, archivos de tests/servicios y esta evidencia QA saneada. La guía general existente es `docs/revisiones/GUIA_MAESTRA_REVISION_BLOQUES_E2_ASISTENTE_PYME.md`. **El documento específico de encargo ahora está preparado** en [E2-5_ENTREGA_PARA_REVISION.md](../E2-5_ENTREGA_PARA_REVISION.md) y [E2-5_AUDITORIA/](../E2-5_AUDITORIA/00_LEEME_Y_PRECONDICIONES.md), pero **no aprobado, enviado ni ejecutado**; debe revisarse y publicarse el cierre antes de entregarlo.
 
 ## 5. Repriorización v1.1 a raíz de revisión externa asistida por IA
 
@@ -59,3 +59,14 @@ Esta revisión **no es evidencia de nuevos bugs reproducidos**. Para cada propue
 | E25-P22 | P2 solo si reservas son requisito | Estudiar reservas de stock ligadas a pedido con vencimiento/idempotencia para RF-07 futuro. Un débito de venta **atómico condicional** puede evitar overselling incluso sin `reserved_milli`; reserva es otro requisito de negocio. |
 
 **No adoptar:** imponer `expected_version` obligatorio a los dos extremos de cada traslado sin justificar cambio contractual; reejecutar `STOCK_INICIAL` sobre saldo 0 con historial; sustituir `Session` síncrona por ejemplos `AsyncSession` ajenos al código; cambiar `409` por `422` indiscriminadamente; eliminar límite de 30 líneas sin política de tamaño/atomicidad; aplicar `total_cents` redondeado en global mientras líneas se redondean por separado sin regla de conciliación.
+
+
+## 6. Relación entre deudas duplicadas para evitar implementaciones redundantes (v1.2)
+
+- **Integridad SQL:** `E25-P03` es el riesgo inicial; `E25-P13` desarrolla una propuesta de mitigación. **Es una sola familia de trabajo**, no dos features independientes.
+- **Operaciones compensatorias:** `E25-P07` agrupa procesos por lote y reversión como deuda general; `E25-P16` concreta la reversión vinculada. Si se aprueba, **unificar en un único requerimiento de reversión**, independiente del trabajo de lotes.
+- **Reconciliación ledger/saldos:** `E25-P04` es un problema distinto de los permisos SQL de `P03/P13`: detectar divergencias no reemplaza impedir alteración y viceversa.
+- **RF-07:** `E25-P05` cubre venta confirmada y egreso atómico; `E25-P22` evalúa reservas solamente si se aprueban pedidos o carritos. **No son requisitos intercambiables.**
+- **Presentación de errores:** `E25-P17` corresponde al contrato de integración frontend y no debe corregirse cambiando masivamente HTTP 409 por 422 sin versionado.
+
+**No abrir cinco PR sobre la misma causa raíz**: el auditor debe cotejar estos IDs, aportar evidencia y proponer plan/ADR con criterios de aceptación antes de modificar el backend.
