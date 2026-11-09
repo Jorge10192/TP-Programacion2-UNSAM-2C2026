@@ -5,8 +5,9 @@
 ## 1. Comprobación previa del código y la base
 
 ```powershell
-git switch main
-git pull --ff-only origin main
+git fetch origin
+# Hacer checkout del SHA de código que efectivamente se audita en CLON AISLADO:
+git switch --detach 748e69319d8d04900c009d5184168a264a9deeac
 git rev-parse HEAD
 cd backend
 .\.venv\Scripts\python.exe -m alembic current
@@ -16,7 +17,7 @@ docker compose --profile api up -d --build --wait api
 Invoke-RestMethod http://127.0.0.1:18000/ready
 ```
 
-Comprobar que el `HEAD` coincida con el commit que se desea revisar (en este paquete: `748e69319d8d04900c009d5184168a264a9deeac`). En una revisión posterior, fijar el **nuevo SHA** si `main` avanzó y declarar la diferencia. La migración vigente esperada es `e25a_inventory_ops (head)`, sin operaciones pendientes; DB/API `healthy`, `/ready` = `ready/ok`.
+Este bloque debe ejecutarse en **un clon de auditoría aislado**, no en el workspace con cambios del desarrollador; `--detach` es intencional para congelar la revisión funcional. Comprobar que el `HEAD` coincida con el commit que se desea revisar (en este paquete: `748e69319d8d04900c009d5184168a264a9deeac`). En una revisión posterior, fijar el **nuevo SHA** si `main` avanzó y declarar la diferencia. La migración vigente esperada es `e25a_inventory_ops (head)`, sin operaciones pendientes; DB/API `healthy`, `/ready` = `ready/ok`.
 
 **No ejecutar** `down`, `-v`, `TRUNCATE`, `DROP`, `DELETE` global, `alembic downgrade`, `stamp` ni restauraciones que alteren datos comerciales. Antes de aplicar cualquier nueva migración, revisar la secuencia y disponer de un backup de trabajo cuando corresponda. En el último cierre Windows no fue necesario `upgrade head` porque ya estaba migrada.
 
@@ -80,7 +81,7 @@ El recurso `GET /inventory/adjustments/{adjustment_id}` permite verificar el com
 
 - Leer `00_LEEME.md` primero y los casos B/C junto a la tabla QA.
 - No ejecutar solicitudes POST directamente contra los IDs históricos de `07_FICHA_QA_SANITIZADA.md`: esos datos se conservan como evidencia.
-- Para verificar integridad del paquete, calcular SHA-256 por archivo y contrastar con `12_MANIFIESTO_SHA256.txt`. Después de editar cualquier documento, regenerar el manifiesto.
+- En esta versión **versionada en Git**, verificar cada archivo con `git hash-object -- <ruta>` y contrastar el OID con `12_MANIFIESTO_GIT_BLOBS.md`; comprobar además el SHA del commit de la rama/PR. El manifiesto viejo `12_MANIFIESTO_SHA256.txt` correspondía al ZIP v1.0 **y no sirve para la revisión v1.1**. Ante cambios posteriores, regenerar los OID del manifiesto al final.
 - Si el revisor trabaja con otra versión del repositorio, registrar **nuevo SHA** en su informe; jamás atribuirle resultados de CI de una versión distinta.
 
 ## 7. Lo que esta guía no permite inferir
