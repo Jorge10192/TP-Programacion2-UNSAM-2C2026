@@ -60,3 +60,8 @@ Se contrastó una revisión asistida por IA que propuso cambiar concurrencia, re
 Se consideran **deudas reales**, sujetas a diseño y validación separada: control de alteración directa del ledger SQL, conciliación balances/ledger, reversos compensatorios vinculados, políticas de ajustes negativos, categorías de motivo y ergonomía de conflictos de versión. Reservas, recepción parcial, moneda y cambios de redondeo pertenecen a otros bloques y requieren decisión de producto; no justifican reescribir E2-5 o migraciones ya aplicadas en este cierre. [Dictamen y evidencias](13_EVALUACION_OBSERVACIONES_IA.md) · [Backlog priorizado](09_RIESGOS_DEUDAS_Y_DECISIONES.md).
 
 El **cierre funcional A–C** se mantiene respaldado por los resultados reportados y CI, pero **la auditoría independiente, el hardening previo a producción y la publicación definitiva** siguen pendientes de aprobación explícita. No se ejecutaron nuevos tests de backend por la edición documental.
+
+
+## 7. Estado de publicación (adenda de cierre)
+
+El cierre documental y su encargo de auditoría fueron **aprobados y publicados** en `main` mediante [PR #24](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/24), SHA original `c66df2f8ddaa8179ca12e342bd3099348bc6b155`. Este documento conserva resultados y decisiones obtenidos en etapas anteriores, pero cualquier indicación antigua de «borrador sin merge» quedó superada por esa publicación. **La auditoría independiente todavía debe ejecutarse**; la aprobación documental no equivale a aprobación de producción.

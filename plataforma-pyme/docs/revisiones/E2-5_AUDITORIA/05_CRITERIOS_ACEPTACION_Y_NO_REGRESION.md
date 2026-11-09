@@ -9,7 +9,7 @@
 | Puerta | Obligatorio | Si falla |
 |---|---|---|
 | P-01 | Acceso real a código, documentos, migración, tests y `main` SHA exacto | Detener conclusiones sobre componentes inaccesibles |
-| P-02 | PR #24 documental revisado y fusionado; nuevo SHA documental registrado | No enviar instrucciones externas todavía; si se revisa borrador, declararlo explícitamente |
+| P-02 | **Cumplido:** PR #24 fusionado y cierre publicado con SHA `c66df2f8ddaa8179ca12e342bd3099348bc6b155`; antes de comenzar, registrar además el HEAD efectivo | Si se detectan nuevos cambios funcionales posteriores al corte E2-5, aclarar alcance o congelar nuevo SHA antes de ejecutar |
 | P-03 | Rama del revisor desde `main` publicado; no commits directos a `main` | Rehacer preparación de rama |
 | P-04 | Base PostgreSQL 16 **aislada/efímera** y configuración de tests verificada | No ejecutar `RUN_DB_INTEGRATION=1` ni ensayos destructivos |
 | P-05 | Sin credenciales expuestas en prompts, archivos, CI, logs o capturas | Sanear antes de enviar; revocar sesiones afectadas |

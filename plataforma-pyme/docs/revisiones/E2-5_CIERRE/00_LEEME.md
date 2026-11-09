@@ -3,7 +3,7 @@
 **Proyecto:** Asistente PyME · Programación 2 (UNSAM, 2C2026)  
 **Bloque:** E2-5 — Inventario · cortes A (modelo), B (traslados), C (ajustes y stock inicial)  
 **Fecha del corte documental:** 9 de noviembre de 2026  
-**Versión documental:** 1.1 — **BORRADOR VERSIONADO EN RAMA DOCUMENTAL**, pendiente de revisión y merge; no auditoría independiente  
+**Versión documental:** 1.2 — **PUBLICADA EN `main` mediante PR #24**, SHA del cierre original `c66df2f8ddaa8179ca12e342bd3099348bc6b155`; auditoría independiente todavía no realizada  
 **Repositorio:** https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026  
 **Área examinada:** `plataforma-pyme/` · **rama:** `main`  
 **Commit exacto de cierre funcional:** `748e69319d8d04900c009d5184168a264a9deeac`  
@@ -11,7 +11,7 @@
 
 ## Propósito y límites de esta entrega
 
-Este directorio contiene **el cierre documental preliminar de E2-5**, procedente del ZIP v1 y revisado a la luz de observaciones de otra IA contrastadas con el código. Se publica solo en una **rama y PR documental**, sin modificar código, tablas, datos ni `main`. La publicación definitiva requiere revisar y fusionar el PR; la hoja específica y el paquete técnico de auditoría se **prepararon después de la revisión interna**, pero **no se envían ni se ejecutan** hasta aprobar/publicar este cierre. **Esta evaluación no es una auditoría independiente ni una aprobación de producción.**
+Este directorio contiene el **cierre documental E2-5 publicado**, procedente del ZIP v1 y revisado frente al código y las observaciones de otra IA. Fue incorporado a `main` por el [PR #24](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/24), sin cambios funcionales. La hoja y el paquete de auditoría independiente también están publicados y pueden entregarse al revisor. **La auditoría aún no ocurrió y la publicación no constituye aprobación de producción.**
 
 ### Índice
 
@@ -54,7 +54,7 @@ Un total de **840 pruebas aprobadas no significa 840 pruebas exclusivamente de i
 
 Se cotejó el repositorio público (documentos E2-5 A/B/C, routers, servicios, ORM, migración, tests y PR #21–#23), las ejecuciones de GitHub Actions y el registro Swagger/PowerShell de esta conversación. **El código del commit es fuente de verdad para el comportamiento implementado**; los documentos de incremento A/B/C que todavía dicen «pendiente de merge» describen el estado de aquel momento, no el estado actual. Este paquete aclara esa evolución sin reescribir los documentos históricos.
 
-**Ubicación de esta versión propuesta:** `plataforma-pyme/docs/revisiones/E2-5_CIERRE/` en la rama `docs/e2-5-cierre-revision-critica`. **El PR no equivale al merge** ni a auditoría independiente. El commit funcional examinado sigue siendo `748e69319d8d04900c009d5184168a264a9deeac`.
+**Ubicación definitiva:** `plataforma-pyme/docs/revisiones/E2-5_CIERRE/` en `main`. **SHA documental original:** `c66df2f8ddaa8179ca12e342bd3099348bc6b155`; **SHA funcional examinado:** `748e69319d8d04900c009d5184168a264a9deeac`. Un commit posterior que actualice estos textos no cambia el SHA del cierre original. La auditoría independiente sigue pendiente.
 
 ## Cambios de esta revisión (v1.2, sobre v1.1)
 

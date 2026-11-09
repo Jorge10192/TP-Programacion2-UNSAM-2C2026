@@ -1,11 +1,11 @@
 # E2-5 — Paquete de auditoría técnica independiente
 
-**Estado:** documentación de **encargo preparada**, aún NO es auditoría ejecutada, NO está aprobada para producción y NO habilita merge automático.  
+**Estado:** encargo **publicado en `main`**, listo para entregar a revisor independiente. NO es auditoría ejecutada, NO está aprobado para producción y NO habilita merge automático.  
 **Fecha:** 09/11/2026.  
 **Repositorio:** https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026  
-**Rama/PR documental preparatorio:** `docs/e2-5-cierre-revision-critica`, [PR #24 (draft)](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/24).  
+**Cierre documental publicado:** [PR #24 (fusionado)](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/24), antes en `docs/e2-5-cierre-revision-critica`.  
 **SHA funcional inmutable de E2-5:** `748e69319d8d04900c009d5184168a264a9deeac`.  
-**SHA documental de publicación:** **PENDIENTE**, completar tras revisar/fusionar PR #24.  
+**SHA documental original de publicación:** `c66df2f8ddaa8179ca12e342bd3099348bc6b155` (merge del PR #24). **HEAD efectivo:** registrar el último SHA del repositorio al empezar la auditoría; podrá ser posterior por correcciones solo documentales.  
 **Directorios autorizados:** `plataforma-pyme/`, especialmente `backend/` y documentación.  
 **Guía rectora:** [Guía maestra revisiones E2](../GUIA_MAESTRA_REVISION_BLOQUES_E2_ASISTENTE_PYME.md), con precedencia de [entrega E2-5](../E2-5_ENTREGA_PARA_REVISION.md) para este bloque.
 
@@ -42,7 +42,7 @@ Si una fuente está ausente/inaccesible, **registrarlo** y limitar las conclusio
 
 ## 4. Preparación del ambiente del auditor
 
-- **Código congelado:** E2-5 C `748e69319d8d04900c009d5184168a264a9deeac`. La rama de auditoría se crea desde el **main ya publicado con documentación**, pero el revisor identifica claramente si el código entre ambos SHAs es idéntico; si no, compara y solicita decisión del equipo.
+- **Código congelado:** E2-5 C `748e69319d8d04900c009d5184168a264a9deeac`. La rama de auditoría se crea desde el **`main` vigente ya publicado**, registrando también el SHA documental original `c66df2f8ddaa8179ca12e342bd3099348bc6b155`; el revisor verifica que no existan cambios posteriores de backend y, si los hay, solicita decisión del equipo.
 - **Ambiente:** PostgreSQL **16 separado/efímero**, Python 3.12/3.14 cuando sea posible, Docker/Compose y Alembic. Verificar la base conectada y **fail-closed** antes de habilitar tests de integración.
 - **Seguridad:** credenciales y tokens de QA quedan fuera del informe. No usar los UUID QA históricos para nuevos POST o ejercicios destructivos.
 - **No borrar ni migrar a la baja** el volumen/DB QA del desarrollador; no ejecutar tests contra producción.
@@ -57,10 +57,10 @@ Por cada dimensión: `Aprobado`, `Aprobado con observaciones`, `No aprobado` o `
 | Etapa | Responsable | Estado |
 |---|---|---|
 | Cierre funcional E2-5 A/B/C | Equipo de desarrollo | Implementado en `main` SHA funcional |
-| Cierre documental, control editorial | Equipo de desarrollo | PR #24 draft, revisión previa |
-| Aprobación/merge de PR documental | Responsable del equipo | **Pendiente** |
+| Cierre documental, control editorial | Equipo de desarrollo | **PR #24 fusionado**, SHA `c66df2f8ddaa8179ca12e342bd3099348bc6b155` |
+| Aprobación/merge de PR documental | Responsable del equipo | **Completado** |
 | Auditoría técnica independiente | Compañero/IA revisora | **No iniciada** |
 | Correcciones justificadas y PR del auditor | Compañero/IA revisora | **No iniciadas** |
 | Revisión, decisión y merge de correcciones | Responsable del equipo | **Pendiente** |
 
-**Este paquete está listo para ser leído y revisado. Su utilización operativa por el auditor externo depende de publicar primero la documentación aprobada.**
+**Este paquete ya está publicado** y puede entregarse al auditor independiente. Su trabajo sigue pendiente y debe realizarse en rama propia sobre base de pruebas aislada.

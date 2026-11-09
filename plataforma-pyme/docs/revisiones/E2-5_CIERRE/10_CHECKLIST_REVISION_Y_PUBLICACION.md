@@ -1,6 +1,6 @@
 # E2-5 — Checklist de revisión, cierre final y publicación controlada
 
-**Estado de revisión v1.1:** documentación fuente subida **solo a la rama documental** `docs/e2-5-cierre-revision-critica`, con PR hacia `main` pendiente de revisión. No se alteró código ni `main`, y el cierre/auditoría definitivos siguen pendientes.
+**Estado actualizado tras publicación:** cierre documental **aprobado y fusionado** mediante PR #24, SHA original `c66df2f8ddaa8179ca12e342bd3099348bc6b155`. Backend sin cambios; **auditoría independiente pendiente de ejecución**, no confundir cierre documental con validación de producción.
 
 ## A. Revisión técnica de los documentos de este paquete
 
@@ -18,7 +18,7 @@
 
 - [x] Confirmar **revocación de la sesión del token Bearer expuesto**: `POST /api/v1/auth/logout` devolvió **204** usando el mismo token (09/11/2026, 15:23:37 GMT; **SWAGGER-REPORTADO**, no inspección SQL). No anexar su valor. Este cierre es **de esa sesión**, no de todas las posibles sesiones de la cuenta.
 - [x] Verificar que el paquete no contiene contraseñas, emails QA, tokens, claves idempotentes reales, `request_id` de comandos, `.env` ni bases de datos exportadas.
-- [ ] Decidir si los **UUID de recursos QA** de `07_FICHA_QA_SANITIZADA.md` deben permanecer en la futura versión pública; no son credenciales, pero su publicación es una elección editorial.
+- [x] **UUID QA autorizados por el responsable** para permanecer como evidencia de trazabilidad en el repositorio público; no equivalen a credenciales.
 - [ ] Controlar capturas nuevas: Swagger incluye `curl` con cabeceras; publicar solo **Server response** saneada.
 - [x] Regenerar **al final** el manifiesto de OID Git `12_MANIFIESTO_GIT_BLOBS.md` después de las ediciones del PR; el SHA-256 del ZIP v1.0 no aplica. **Si se edita algo después, regenerarlo de nuevo.**
 
@@ -30,15 +30,15 @@
 - [ ] Mantener la auditoría **separada** del cierre interno: la opinión de un revisor externo no se anticipa ni se inventa.
 - [ ] Fijar criterios para corregir hallazgos P0/P1 en rama específica y PR sin fusionar automáticamente.
 
-## D. Publicación — **solo después de aprobación**
+## D. Publicación — **completada; auditoría independiente posterior**
 
-Ubicación efectivamente utilizada para este PR: `plataforma-pyme/docs/revisiones/E2-5_CIERRE/`. Índice general actualizado en `plataforma-pyme/docs/revisiones/README.md`. Se suben fuentes Markdown/JSON, **no ZIP ni PDFs binarios**. El merge se decide solo tras revisar.
+Ubicación efectivamente utilizada para este PR: `plataforma-pyme/docs/revisiones/E2-5_CIERRE/`. Índice general actualizado en `plataforma-pyme/docs/revisiones/README.md`. Se suben fuentes Markdown/JSON, **no ZIP ni PDFs binarios**. El PR #24 fue revisado por el equipo y se fusionó en `main` al SHA `c66df2f8ddaa8179ca12e342bd3099348bc6b155`.
 
 - [x] Confirmar rama de trabajo documental específica, sin edición directa no revisada de `main`.
 - [x] Comprobar que solo cambian archivos Markdown/JSON/índices autorizados; **no** tocar código, migraciones, tests, datos QA ni backend/frontend durante un cierre solo documental.
 - [x] Abrir PR de documentación con índice, manifiesto de Git blobs y changelog de la propuesta, sin presumir aprobación definitiva.
 - [x] Verificar enlaces, referencias relativas, estado de CI y que el SHA no cambió por debajo de las pruebas declaradas.
-- [ ] Revisar el PR, obtener conformidad y **recién entonces** decidir el merge/publicación.
+- [x] Revisar el PR, obtener conformidad y realizar merge/publicación: PR #24, SHA `c66df2f8ddaa8179ca12e342bd3099348bc6b155`.
 - [ ] Entregar al auditor la hoja de revisión y el commit **ya publicado**; no atribuirle hallazgos antes de que trabaje.
 
 ## E. Revisión de coherencia con documentos anteriores
@@ -57,9 +57,9 @@ Cotejar `docs/E2-5_A_MODELO_OPERACIONES_INVENTARIO.md`, `docs/E2-5_B_TRASLADOS_A
 - [x] Priorizar revisión de privilegios SQL y aprobaciones por merma antes de producción, sin declarar incidente real no demostrado.
 - [x] Corregir referencia normativa: **RFC 9457** (no 7807) para futura interfaz de errores; no cambiar códigos HTTP mediante documentación.
 - [ ] Agregar/correr en PR de código futuro la carrera cruzada Ajuste vs Traslado al mismo destino y los controles de permisos SQL.
-- [ ] Obtener revisión y conformidad antes del merge; la hoja de encargo ya está preparada pero **no enviada ni ejecutada**.
+- [x] Obtener conformidad documental y fusionar el PR; la hoja de encargo está publicada, pero la **auditoría independiente aún no fue ejecutada**.
 
 
 ## G. Resultado de revisión interna v1.2
 
-El [acta de control editorial y técnico](14_REVISION_INTEGRAL_DOCUMENTAL.md) emite **OK para revisión del equipo y preparación de auditoría**, pero **NO** para producción ni merge automático. La [hoja E2-5](../E2-5_ENTREGA_PARA_REVISION.md) y el [paquete del auditor](../E2-5_AUDITORIA/00_LEEME_Y_PRECONDICIONES.md) están preparados. Falta aprobación del equipo, merge documental y completar el SHA de documentación publicada antes de entregarlos al auditor.
+El [acta de control editorial y técnico](14_REVISION_INTEGRAL_DOCUMENTAL.md) emite **OK para revisión del equipo y preparación de auditoría**, pero **NO** para producción ni merge automático. La [hoja E2-5](../E2-5_ENTREGA_PARA_REVISION.md) y el [paquete del auditor](../E2-5_AUDITORIA/00_LEEME_Y_PRECONDICIONES.md) están preparados. **Aprobación y merge documental completados**, SHA original `c66df2f8ddaa8179ca12e342bd3099348bc6b155` ya conocido. Falta únicamente ejecutar la auditoría independiente con el HEAD que corresponda.
