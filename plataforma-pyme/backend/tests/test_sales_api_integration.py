@@ -222,12 +222,14 @@ def test_physical_and_service_mixed_sale_debits_once(isolated):
         StockBalance.catalog_item_id == good,
     )).one()
     assert (quantity, version) == (2000, 2)
-    moves = db.execute(select(StockMovement).where(
+    moves = db.execute(select(
+        StockMovement.delta_milli, StockMovement.event_type,
+    ).where(
         StockMovement.business_id == bid,
         StockMovement.sale_id == UUID(data["id"]),
-    ).order_by(StockMovement.delta_milli)).scalars().all()
-    assert [m.delta_milli for m in moves] == [-2000, -1000]
-    assert all(m.event_type == "VENTA_SALIDA" for m in moves)
+    ).order_by(StockMovement.delta_milli)).all()
+    assert [delta for delta, _ in moves] == [-2000, -1000]
+    assert all(event_type == "VENTA_SALIDA" for _, event_type in moves)
     replay = post(client, bid, headers, body, key=key)
     assert replay.status_code == 200
     assert replay.json() == data
