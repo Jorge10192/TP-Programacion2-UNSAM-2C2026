@@ -1,4 +1,4 @@
-"""RF-06 lectura: proyección actual y ledger de entradas dentro del tenant."""
+"""RF-06 lectura: balances y ledger general de recepciones y operaciones manuales."""
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
 from app.modules.auth.dependencies import current_auth, unauthorized
 from app.modules.auth.session_service import AuthContext
-from app.modules.purchases.receipt_schemas import StockBalanceView, StockMovementView
+from app.modules.purchases.receipt_schemas import StockBalanceView, InventoryMovementView
 from app.modules.purchases.receipt_service import ReceiptService
 from app.modules.purchases.service import (
     PurchaseBusinessUnavailable, PurchasePermissionDenied, PurchaseSessionInvalid,
@@ -50,8 +50,8 @@ def get_balances(
 
 
 @router.get(
-    "/movements", response_model=list[StockMovementView],
-    summary="Consultar ledger inmutable de entradas fisicas por recepcion",
+    "/movements", response_model=list[InventoryMovementView], response_model_exclude_none=True,
+    summary="Consultar ledger firmado de recepciones y traslados",
 )
 def get_movements(
     business_id: UUID,
@@ -61,7 +61,7 @@ def get_movements(
     limit: int = Query(100, ge=1, le=500),
     context: AuthContext = Depends(current_auth),
     db: Session = Depends(get_db),
-) -> list[StockMovementView]:
+) -> list[InventoryMovementView]:
     try:
         return ReceiptService(db).list_movements(
             context.user.id, context.auth_session.id, business_id,

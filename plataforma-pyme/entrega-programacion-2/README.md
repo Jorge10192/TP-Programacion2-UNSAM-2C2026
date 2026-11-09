@@ -1,3 +1,5 @@
+> **E2-5 B — nuevo corte propuesto (09/11/2026):** transferencias físicas entre ubicaciones propias con permiso STORE y stock no negativo, sobre modelo E2-5 A. [Especificación y pasos QA](../docs/E2-5_B_TRASLADOS_ATOMICOS.md). CI y Windows deben verificarse después de publicar el cambio.
+
 > **Actualización incremental E2-5 A (09/11/2026):** tras [cierre validado de E2-4](../docs/revisiones/E2-4_CIERRE/), se prepara la estructura SQL para traslados y ajustes (`inventory_operations` y eventos firmados); **E2-5 B/C y RF-06 completo siguen pendientes**. Ver [E2-5 A](../docs/E2-5_A_MODELO_OPERACIONES_INVENTARIO.md). Las tablas y cifras E2-2/E2-3 que siguen describen cortes históricos y no sustituyen este estado.
 
 # Documentación de entrega — Programación 2

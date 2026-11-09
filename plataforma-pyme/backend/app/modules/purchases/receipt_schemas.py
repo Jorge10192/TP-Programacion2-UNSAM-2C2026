@@ -56,6 +56,33 @@ class StockMovementView(BaseModel):
         return cls.model_validate({name: getattr(row, name) for name in cls.model_fields})
 
 
+class InventoryMovementView(BaseModel):
+    """Lectura general del ledger. Los campos NULL se omiten en HTTP.
+
+    StockMovementView continua reservado al comprobante de compra E2-4,
+    conservando su forma original y los tests de compatibilidad.
+    """
+    id: UUID
+    business_id: UUID
+    location_id: UUID
+    catalog_item_id: UUID
+    receipt_id: UUID | None
+    purchase_line_id: UUID | None
+    inventory_operation_id: UUID | None
+    operation_kind: str | None
+    actor_id: UUID
+    event_type: Literal[
+        "COMPRA_RECEPCION", "TRASLADO_ENTRADA", "TRASLADO_SALIDA",
+        "AJUSTE_ENTRADA", "AJUSTE_SALIDA", "STOCK_INICIAL",
+    ]
+    delta_milli: int
+    occurred_at: datetime
+
+    @classmethod
+    def from_record(cls, row: object) -> "InventoryMovementView":
+        return cls.model_validate({name: getattr(row, name) for name in cls.model_fields})
+
+
 class PurchaseReceiptView(BaseModel):
     id: UUID
     business_id: UUID

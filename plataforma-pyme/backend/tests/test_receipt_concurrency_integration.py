@@ -15,7 +15,7 @@ from sqlalchemy import delete, select
 
 from app.infrastructure.db import get_engine
 from app.infrastructure.models import (
-    AuthSession, Business, BusinessCreationRequest, CatalogItem, Location,
+    AuthSession, Business, BusinessCreationRequest, CatalogItem, InventoryOperation, Location,
     LocationAssignment, Membership, Purchase, PurchaseLine, PurchaseReceipt,
     StockBalance, StockMovement, Supplier, User,
 )
@@ -49,7 +49,7 @@ def committed_company():
             with get_engine().begin() as db:
                 if bid is not None:
                     for model in (
-                        StockMovement, StockBalance, PurchaseReceipt, PurchaseLine,
+                        StockMovement, StockBalance, InventoryOperation, PurchaseReceipt, PurchaseLine,
                         Purchase, CatalogItem, LocationAssignment, Location, Supplier,
                         BusinessCreationRequest, Membership,
                     ):
