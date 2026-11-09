@@ -18,6 +18,7 @@ from app.modules.purchases.receipt_router import router as receipt_router
 from app.modules.purchases.inventory_router import router as inventory_router
 from app.modules.purchases.transfer_router import router as transfer_router
 from app.modules.purchases.adjustment_router import router as adjustment_router
+from app.modules.sales.router import router as sales_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(auth_router)
@@ -33,3 +34,4 @@ api_v1_router.include_router(receipt_router)
 api_v1_router.include_router(inventory_router)
 api_v1_router.include_router(transfer_router)
 api_v1_router.include_router(adjustment_router)
+api_v1_router.include_router(sales_router)
