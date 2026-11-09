@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import Session
 
 from app.infrastructure.models import (
@@ -47,6 +47,10 @@ class SaleIdempotencyConflict(Exception):
 
 class SaleInsufficientStock(Exception):
     pass
+
+
+class SaleBalanceOverflow(Exception):
+    """El saldo no admite otra versión dentro del rango BIGINT."""
 
 
 @dataclass(frozen=True)
@@ -229,9 +233,12 @@ class SaleService:
             body = SaleView.from_records(row, lines, payments)
             self.db.commit()
             return SaleCreated(body, replayed=False)
-        except IntegrityError as error:
+        except (IntegrityError, DataError) as error:
             self.db.rollback()
             constraint = getattr(getattr(error.orig, "diag", None), "constraint_name", None)
+            if (getattr(error.orig, "sqlstate", None) == "22003"
+                    or constraint == "ck_stock_balances_version"):
+                raise SaleBalanceOverflow() from error
             if constraint != "uq_sales_business_request":
                 raise
             # Defensa adicional ante reintentos concurrentes / unicidad de SQL.
