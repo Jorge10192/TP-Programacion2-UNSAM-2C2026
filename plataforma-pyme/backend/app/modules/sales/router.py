@@ -1,4 +1,4 @@
-"""E2-6 B: API de ventas de servicios sin descuento físico de stock."""
+"""E2-6 C: API de ventas de servicios, bienes y mixtas con stock atomico."""
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
@@ -14,7 +14,7 @@ from app.modules.purchases.service import (
 from app.modules.sales.schemas import CreateSaleRequest, SaleView
 from app.modules.sales.service import (
     SaleService, SaleBusinessSuspended, SaleIdempotencyConflict, SaleInvalidReference,
-    SaleLocationNotEnabled, SaleNotFound, SalePermissionDenied, SalePhysicalNotEnabled,
+    SaleLocationNotEnabled, SaleNotFound, SalePermissionDenied, SaleInsufficientStock,
 )
 
 router = APIRouter(prefix="/businesses/{business_id}/sales", tags=["ventas"])
@@ -29,8 +29,10 @@ def _http(error: Exception) -> HTTPException:
         return HTTPException(409, detail="Empresa suspendida")
     if isinstance(error, SaleIdempotencyConflict):
         return HTTPException(409, detail="Clave de venta reutilizada con otro contenido o actor")
-    if isinstance(error, (SalePhysicalNotEnabled, SaleLocationNotEnabled)):
-        return HTTPException(409, detail="Venta fisica, mixta o con ubicacion disponible en E2-6 C")
+    if isinstance(error, SaleLocationNotEnabled):
+        return HTTPException(409, detail="Ubicacion inexistente o no habilitada para la venta")
+    if isinstance(error, SaleInsufficientStock):
+        return HTTPException(409, detail="Stock insuficiente para confirmar la venta")
     if isinstance(error, SaleInvalidReference):
         return HTTPException(422, detail="Articulo no disponible, no vendible o cantidad invalida")
     raise TypeError("Excepcion de ventas sin mapeo HTTP")
@@ -43,10 +45,10 @@ def _http(error: Exception) -> HTTPException:
         401: {"description": "Sesion no valida"},
         403: {"description": "Rol sin permiso de venta"},
         404: {"description": "Empresa no disponible"},
-        409: {"description": "Clave en conflicto, empresa suspendida o venta fisica no habilitada"},
+        409: {"description": "Clave en conflicto, empresa o ubicacion suspendida, stock insuficiente"},
         422: {"description": "Campos, pagos, importe o articulo invalidos"},
     },
-    summary="Registrar venta exclusiva de servicios y pagos declarados",
+    summary="Registrar ventas de bienes, servicios o mixtas con stock atomico",
 )
 def create_sale(
     business_id: UUID, command: CreateSaleRequest, response: Response,
@@ -63,7 +65,7 @@ def create_sale(
     except (
         PurchaseBusinessUnavailable, PurchasePermissionDenied, SalePermissionDenied,
         SaleBusinessSuspended, SaleIdempotencyConflict, SaleInvalidReference,
-        SalePhysicalNotEnabled, SaleLocationNotEnabled,
+        SaleInsufficientStock, SaleLocationNotEnabled,
     ) as error:
         raise _http(error) from None
     response.status_code = 200 if result.replayed else 201
