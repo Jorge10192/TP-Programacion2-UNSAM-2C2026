@@ -30,7 +30,7 @@ def test_sale_after_receipt_before_transfer_and_adjustment(isolated):
     headers = auth(client)
     bid = business(client, headers)
     src = location(client, bid, headers)
-    dst = location(client, bid, headers)
+    dst = location(client, bid, headers, name="Deposito Destino")
     good = item(client, bid, headers, kind="REVENTA", name="Alimento")
     purchase_id = physical(client, bid, headers, good, amount=10000)
     receipt = receive(client, bid, purchase_id, src, headers)
