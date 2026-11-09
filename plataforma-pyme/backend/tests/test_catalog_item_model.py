@@ -5,10 +5,13 @@ from app.infrastructure.models import CatalogItem
 from app.infrastructure.models.base import Base
 
 
-def test_catalog_registered_independently_from_stock_and_sales() -> None:
+def test_catalog_registered_independently_from_stock_and_sale_documents() -> None:
     assert Base.metadata.tables["catalog_items"] is CatalogItem.__table__
     assert "stock_balances" in Base.metadata.tables
-    assert "sales" not in Base.metadata.tables
+    # E2-6 A incorporó ventas sin añadirles stock/venta mutable al catálogo.
+    assert "sales" in Base.metadata.tables
+    assert "sale_id" not in CatalogItem.__table__.c
+    assert "stock_quantity" not in CatalogItem.__table__.c
 
 
 def test_catalog_business_fk_and_immutable_id_scope() -> None:
