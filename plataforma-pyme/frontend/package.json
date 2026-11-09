@@ -19,7 +19,8 @@
     "test:cash": "node --test tests/cash-policy.test.mjs",
     "test:accounts": "node --test tests/financial-account-policy.test.mjs",
     "test:qr": "node --test tests/qr-demo-policy.test.mjs",
-    "test:api": "node --test tests/http-client.test.mjs"
+    "test:api": "node --test tests/http-client.test.mjs",
+    "test:auth": "node --test tests/auth-api.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
