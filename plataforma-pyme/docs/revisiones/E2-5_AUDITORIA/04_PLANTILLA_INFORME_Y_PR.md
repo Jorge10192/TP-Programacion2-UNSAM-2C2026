@@ -1,6 +1,6 @@
 # E2-5 — Plantilla del informe del auditor independiente y PR
 
-**IMPORTANTE:** esta es **solo una plantilla**. El informe `E2-5_INFORME_DE_REVISION.md` debe ser creado **por el auditor**, con resultados nuevos y evidencia. Los campos `<...>` no se deben sustituir por cifras inventadas ni por resultados de otro SHA.
+**IMPORTANTE:** esta es **solo una plantilla**. La referencia documental original está fijada, pero el auditor debe consignar el commit exacto que realmente lea. El informe `E2-5_INFORME_DE_REVISION.md` debe ser creado **por el auditor**, con resultados nuevos y evidencia. Los campos `<...>` no se deben sustituir por cifras inventadas ni por resultados de otro SHA.
 
 **Ruta del entregable final del auditor:** `plataforma-pyme/docs/revisiones/E2-5_INFORME_DE_REVISION.md`, versionado en **su propia rama de revisión**.
 
@@ -17,7 +17,8 @@
 | Repositorio | `Jorge10192/TP-Programacion2-UNSAM-2C2026` |
 | Rama de revisión y commit | `<RAMA>` / `<SHA_DEL_AUDITOR>` |
 | SHA funcional E2-5 de referencia | `748e69319d8d04900c009d5184168a264a9deeac` |
-| SHA documental aprobado realmente auditado | `<SHA_REAL_POST_MERGE_DOCS>` |
+| SHA documental del cierre original publicado | `c66df2f8ddaa8179ca12e342bd3099348bc6b155` |
+| SHA efectivo del HEAD de documentación auditada | `<SHA_HEAD_REAL_VERIFICADO_POR_AUDITOR>` |
 | PR del auditor | `<URL_O_PENDIENTE>` |
 | Acceso al código y documentos | `<ACCESO_REAL: OK/PARCIAL/NO>` |
 | PostgreSQL / Python / Alembic | `<VERSIONES_VERIFICADAS>` |
