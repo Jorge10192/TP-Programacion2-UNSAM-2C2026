@@ -1,7 +1,9 @@
-"""Hecho histórico inmutable de entrada física, trazable hasta su línea de Compra.
+"""Hecho histórico firmado de stock, con origen explícito y verificable.
 
-E2-4 E incorpora el primer origen: RECEPCION. Venta y operación manual todavía
-no existen; un futuro corte ampliará FK y CHECK al XOR de tres orígenes.
+E2-4 E: COMPRA_RECEPCION. E2-5 A prepara una FK opcional a
+inventory_operations para traslado/ajustes/stock inicial. Aún no se publican
+comandos ni lecturas de operaciones manuales; se implementarán en E2-5 B/C.
+La ejecución futura debe actualizar el saldo y el ledger en la misma transacción.
 """
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -35,28 +37,71 @@ class StockMovement(Base):
             name="fk_stock_movements_line_tenant", ondelete="RESTRICT",
         ),
         ForeignKeyConstraint(
+            ["business_id", "inventory_operation_id", "operation_kind"],
+            ["inventory_operations.business_id", "inventory_operations.id", "inventory_operations.kind"],
+            name="fk_stock_movements_operation_kind_tenant", ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
             ["business_id", "actor_id"], ["memberships.business_id", "memberships.user_id"],
             name="fk_stock_movements_actor_tenant", ondelete="RESTRICT",
         ),
-        UniqueConstraint("business_id", "receipt_id", "purchase_line_id",
-                         name="uq_stock_movements_receipt_line"),
-        CheckConstraint("delta_milli BETWEEN 1 AND 999999999", name="ck_stock_movements_positive_entry"),
-        CheckConstraint("event_type = 'COMPRA_RECEPCION'", name="ck_stock_movements_receipt_only"),
-        Index("ix_stock_movements_business_location_item",
-              "business_id", "location_id", "catalog_item_id"),
+        UniqueConstraint(
+            "business_id", "receipt_id", "purchase_line_id",
+            name="uq_stock_movements_receipt_line",
+        ),
+        UniqueConstraint(
+            "business_id", "inventory_operation_id", "event_type",
+            name="uq_stock_movements_operation_event",
+        ),
+        CheckConstraint(
+            "("
+            "event_type = 'COMPRA_RECEPCION' AND receipt_id IS NOT NULL "
+            "AND purchase_line_id IS NOT NULL AND inventory_operation_id IS NULL "
+            "AND operation_kind IS NULL AND delta_milli BETWEEN 1 AND 999999999"
+            ") OR ("
+            "event_type = 'TRASLADO_ENTRADA' AND receipt_id IS NULL "
+            "AND purchase_line_id IS NULL AND inventory_operation_id IS NOT NULL "
+            "AND operation_kind = 'TRASLADO' AND delta_milli BETWEEN 1 AND 999999999"
+            ") OR ("
+            "event_type = 'TRASLADO_SALIDA' AND receipt_id IS NULL "
+            "AND purchase_line_id IS NULL AND inventory_operation_id IS NOT NULL "
+            "AND operation_kind = 'TRASLADO' AND delta_milli BETWEEN -999999999 AND -1"
+            ") OR ("
+            "event_type = 'AJUSTE_ENTRADA' AND receipt_id IS NULL "
+            "AND purchase_line_id IS NULL AND inventory_operation_id IS NOT NULL "
+            "AND operation_kind = 'AJUSTE_ENTRADA' AND delta_milli BETWEEN 1 AND 999999999"
+            ") OR ("
+            "event_type = 'AJUSTE_SALIDA' AND receipt_id IS NULL "
+            "AND purchase_line_id IS NULL AND inventory_operation_id IS NOT NULL "
+            "AND operation_kind = 'AJUSTE_SALIDA' AND delta_milli BETWEEN -999999999 AND -1"
+            ") OR ("
+            "event_type = 'STOCK_INICIAL' AND receipt_id IS NULL "
+            "AND purchase_line_id IS NULL AND inventory_operation_id IS NOT NULL "
+            "AND operation_kind = 'STOCK_INICIAL' AND delta_milli BETWEEN 1 AND 999999999"
+            ")",
+            name="ck_stock_movements_origin_and_sign",
+        ),
+        Index(
+            "ix_stock_movements_business_location_item",
+            "business_id", "location_id", "catalog_item_id",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     business_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("businesses.id", name="fk_stock_movements_business", ondelete="RESTRICT"),
+        Uuid(as_uuid=True),
+        ForeignKey("businesses.id", name="fk_stock_movements_business", ondelete="RESTRICT"),
         nullable=False,
     )
     location_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     catalog_item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
-    receipt_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
-    purchase_line_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    receipt_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    purchase_line_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    inventory_operation_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    operation_kind: Mapped[str | None] = mapped_column(String(24), nullable=True)
     actor_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     event_type: Mapped[str] = mapped_column(String(24), nullable=False, default="COMPRA_RECEPCION")
     delta_milli: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
-                                                  server_default=func.now())
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
