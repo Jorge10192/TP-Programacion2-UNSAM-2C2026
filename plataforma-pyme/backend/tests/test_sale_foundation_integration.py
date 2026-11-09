@@ -158,8 +158,7 @@ def test_line_total_half_up_is_enforced_by_postgresql(isolated):
     line = line_values(tenant, sale["id"], item_id, unit="KILOGRAMO",
                        qty=333, price=1050, amount=350)
     db.execute(insert(SaleLine).values(**line))
-    rejects(db, SaleLine, {**line, "id": uuid4(), "n": 2,
-                           "line_number": 2, "line_total_cents": 349})
+    rejects(db, SaleLine, {**line, "id": uuid4(), "line_number": 2, "line_total_cents": 349})
     assert db.execute(select(SaleLine.line_total_cents).where(
         SaleLine.id == line["id"],
     )).scalar_one() == 350
