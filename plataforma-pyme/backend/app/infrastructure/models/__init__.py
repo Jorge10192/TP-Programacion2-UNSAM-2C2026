@@ -14,5 +14,6 @@ from app.infrastructure.models.purchase_line import PurchaseLine
 from app.infrastructure.models.purchase_receipt import PurchaseReceipt
 from app.infrastructure.models.stock_balance import StockBalance
 from app.infrastructure.models.stock_movement import StockMovement
+from app.infrastructure.models.inventory_operation import InventoryOperation
 
-__all__ = ["User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem", "Supplier", "Purchase", "PurchaseLine", "PurchaseReceipt", "StockBalance", "StockMovement"]
+__all__ = ["User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem", "Supplier", "Purchase", "PurchaseLine", "PurchaseReceipt", "StockBalance", "StockMovement", "InventoryOperation"]
