@@ -1,3 +1,5 @@
+> **Estado actual — E2-5 A (09/11/2026):** preparación de operaciones de inventario sobre E2-4 cerrado. Nueva entidad `InventoryOperation`, ledger firmado ampliado y migración aditiva `e25a_inventory_ops`; **no hay nuevos endpoints de traslado/ajuste en este corte**. La recepción E2-4 y sus datos existentes permanecen intactos. [Contrato y procedimiento de E2-5 A](../docs/E2-5_A_MODELO_OPERACIONES_INVENTARIO.md). Los apartados E2-0 a E2-3 que siguen son registros históricos, no el último head. CI/Windows E2-5 A se informan cuando se ejecuten; no se declara validación por anticipado.
+
 # Asistente PyME — Backend FastAPI
 
 > **ESTADO DE REFERENCIA — E2-4 (08–09/11/2026):** Proveedores y Compras con snapshots, recepción completa y única, movimiento por línea física, saldo atómico por empresa/ubicación/artículo. Migración `e24e_receipt_stock` (sin deriva), **797/797 tests en Windows y Python 3.12/3.14 CI**, Docker saludable, bitácora Swagger de 17 casos. Código de corte: `4f88416141c09a82e744990b1aee8c00b9f31dfd`. **Fuente vigente:** [cierre E2-4 documentado](../docs/revisiones/E2-4_CIERRE/00_LEEME.md); [hoja para auditor independiente](../docs/revisiones/E2-4_ENTREGA_PARA_REVISION.md). El resto de este README conserva notas **históricas** por incremento, que pueden presentar módulos de E2-4 como futuros a fecha de redacción. No confundir con el estado actual ni con un despliegue productivo.
@@ -683,3 +685,22 @@ Esperado **`e23a_catalog (head)`** y **407 passed**. Es una tabla nueva sin dato
 - **Pendientes no implementados:** cancelación por API, parcial 1:N, devoluciones, ajustes, transferencias, ventas, multimoneda, permisos DB de inmutabilidad, separación completa de DB de tests, frontend React integrado, producción. [Trazabilidad](../docs/revisiones/E2-4_CIERRE/05_TRAZABILIDAD_Y_PENDIENTES.md).
 
 **Cómo revalidar:** seguir [guía segura E2-4](../docs/revisiones/E2-4_CIERRE/07_GUIA_REPRODUCCION_SEGURA.md). **No borrar volúmenes** para ejecutar pruebas ni reutilizar identificadores históricos como nuevas claves.
+
+## E2-5 A — Preparar trazabilidad de transferencias y ajustes
+
+Esta entrega suma `inventory_operations` (tipo, artículo, unidad, cantidad, origen/destino, motivo, actor e idempotencia por empresa), y amplía `stock_movements` para representar `TRASLADO_{SALIDA,ENTRADA}`, `AJUSTE_{SALIDA,ENTRADA}` y `STOCK_INICIAL` con deltas firmados, sin romper `COMPRA_RECEPCION`. Solo **modelo, migración y pruebas de integridad SQL**; no expone nuevos comandos ni modifica saldos del usuario. El endpoint de movimientos E2-4 aún está especializado en recepciones; se extenderá al publicar operaciones manuales en E2-5 B/C.
+
+Migración: `e25a_inventory_ops` (tras `e24e_receipt_stock`). Ruta y controles: [E2-5 A](../docs/E2-5_A_MODELO_OPERACIONES_INVENTARIO.md).
+
+Desde `plataforma-pyme/backend`:
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+$env:RUN_DB_INTEGRATION = "1"
+try { .\.venv\Scripts\python.exe -m pytest -q }
+finally { Remove-Item Env:\RUN_DB_INTEGRATION -ErrorAction SilentlyContinue }
+```
+
+**No usar downgrade, stamp o eliminación del volumen para validar**: la compra/recepción manual QA de E2-4 debe conservarse.
