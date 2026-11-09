@@ -2,10 +2,12 @@
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión para múltiples empresas y rubros.  
 **Ubicación prevista en el repositorio:** `plataforma-pyme/entrega-programacion-2/`.  
-**Estado vigente (08/11/2026):** E2-1 preservado y en auditoría; E2-2 cerrado y entregado para revisión; **E2-3 Catálogo A/B/C/D validado en Windows (407/498/527/580 pruebas)** y E documental/UML completado. Cinco rutas REST del Catálogo, proveedor/operaciones comerciales pendientes, React DEMO desacoplado. Versiones 01 v1.7, 02 v1.8, 03 v1.8, 04 v1.9, 05 v1.5; UML 03A v0.7; 03B/03C intactos.
+**Estado histórico anterior (08/11/2026):** E2-1 preservado y en auditoría; E2-2 cerrado y entregado para revisión; **E2-3 Catálogo A/B/C/D validado en Windows (407/498/527/580 pruebas)** y E documental/UML completado. Cinco rutas REST del Catálogo, proveedor/operaciones comerciales pendientes, React DEMO desacoplado. Versiones 01 v1.7, 02 v1.8, 03 v1.8, 04 v1.9, 05 v1.5; UML 03A v0.7; 03B/03C intactos.
 
-> **Estado vigente E2-2 (08/11/2026):** E2-2 A/A.1/B/C/D implementado y validado: **371 pruebas Windows aprobadas en 47.57s**, Alembic `e22d_assignments (head)` sin deriva, API y PostgreSQL en Docker `healthy`, `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), 371 pruebas Python 3.12/3.14 y Docker. **La política por sede aún no se aplica a inventario/compras/ventas**, que son bloques futuros; frontend React permanece DEMO. Los estados parciales descritos en notas de A/B/C constituyen histórico.
+> **Corte histórico E2-2 (08/11/2026):** E2-2 A/A.1/B/C/D implementado y validado: **371 pruebas Windows aprobadas en 47.57s**, Alembic `e22d_assignments (head)` sin deriva, API y PostgreSQL en Docker `healthy`, `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), 371 pruebas Python 3.12/3.14 y Docker. **La política por sede aún no se aplica a inventario/compras/ventas**, que son bloques futuros; frontend React permanece DEMO. Los estados parciales descritos en notas de A/B/C constituyen histórico.
 
+
+> **ACTUALIZACIÓN DE CIERRE E2-4 — 09/11/2026 (prevalece sobre los cortes históricos posteriores):** el backend integra Proveedores, Compras, recepción física completa, saldos y movimientos; migración `e24e_receipt_stock`, 797/797 tests Windows con datos QA existentes y 3/3 jobs CI en PR #18. Código de corte `4f88416141c09a82e744990b1aee8c00b9f31dfd`. Se publican [el informe académico, la bitácora Swagger (17 casos), los tests, arquitectura, datos QA y pendientes](../docs/revisiones/E2-4_CIERRE/00_LEEME.md) y la [hoja para revisión independiente](../docs/revisiones/E2-4_ENTREGA_PARA_REVISION.md). **El frontend React sigue desacoplado y el sistema no está certificado para producción.** Las afirmaciones de “pendiente” en los cortes anteriores son históricas a su fecha; consultar el cierre E2-4 para el estado actual.
 
 ## Propósito
 
@@ -22,6 +24,7 @@ Se toma como referencia la consigna oficial **«Desarrollo de una API RESTful»*
 | [`03_MODELO_DE_DOMINIO_Y_UML.md`](03_MODELO_DE_DOMINIO_Y_UML.md) | Entidades, reglas, cardinalidades, estados, transacciones y tres diagramas UML | **PUBLICADO v1.3 — modelo LocationAssignment** |
 | [`04_ARQUITECTURA_Y_PATRONES.md`](04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura AS-IS/TO-BE, patrón Repository, Adapter y patrones del libro (Factory, Decorator, Observer) | **PUBLICADO v1.4 — arquitectura E2-2 D** |
 | [`05_MATRIZ_API_Y_TRAZABILIDAD.md`](05_MATRIZ_API_Y_TRAZABILIDAD.md) | RF → CU → endpoints reales → pruebas/roles/evidencia/pendientes | **PUBLICADO v1.0 — matriz E2-2 D** |
+| [**Cierre E2-4**](../docs/revisiones/E2-4_CIERRE/00_LEEME.md) | Informe, bitácora de uso, QA, CI y trazabilidad de Proveedores/Compras/Recepción | **PUBLICADO — Corte 2026-11-08** |
 | `06_PRUEBAS_Y_DESPLIEGUE.md` | Estrategia de pruebas, GitHub Actions, Docker, despliegue y evidencias | Pendiente |
 | [`diagramas/`](diagramas/) | SVG vectoriales aprobados, fuentes PlantUML editables y tres guías detalladas | **03A / 03B / 03C publicados** |
 | `presentacion/` | Diapositivas de defensa final | A crear |
