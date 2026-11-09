@@ -2,20 +2,21 @@
 
 **Proyecto:** Asistente PyME — Programación 2 (UNSAM, 2C2026)  
 **Alcance de código:** E2-5 A, B y C — inventario físico, traslados, ajustes, stock inicial y ledger común.  
-**Estado de esta hoja:** **PREPARADA PARA REVISIÓN DEL EQUIPO**, no auditoría realizada ni autorización automática para merge.  
+**Estado de esta hoja:** **PUBLICADA COMO ENCARGO DE AUDITORÍA INDEPENDIENTE**; la auditoría todavía no fue realizada y no hay autorización de merge automático.  
 **Fecha:** 09/11/2026.  
 **Repositorio:** https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026  
 **Ruta exclusiva:** `plataforma-pyme/`; rama de origen funcional `main`.  
 **SHA exacto del código E2-5 C:** `748e69319d8d04900c009d5184168a264a9deeac`.  
 **SHA base previa de E2-4:** `1a188f9a596f4674ca121806ecb92e6a96abf294`.  
 **Rango de cambios funcionales:** `1a188f9a596f4674ca121806ecb92e6a96abf294..748e69319d8d04900c009d5184168a264a9deeac`.  
+**SHA documental de cierre publicado por PR #24:** `c66df2f8ddaa8179ca12e342bd3099348bc6b155` (publicación original; verificar también el HEAD real al iniciar la auditoría).  
 **Rama sugerida para el auditor:** `review/e2-5-inventario`, crearla desde el **main documental ya publicado**, registrando en su informe el SHA del documento recibido y el código funcional analizado.
 
-> **Precondición:** el [PR documental #24](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/24) debe ser revisado y fusionado **antes de comenzar la auditoría externa**, si se pretende utilizar el cierre v1.1 como referencia versionada en `main`. Mientras esté en Draft, el paquete es **material de preparación**, no una línea base oficial. El auditor deberá consignar explícitamente el **SHA de merge documental real** una vez publicado, que aquí se deja deliberadamente sin inventar.
+> **Precondición satisfecha:** el [PR documental #24](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/24) fue fusionado en `main` al commit `c66df2f8ddaa8179ca12e342bd3099348bc6b155`. Ese es el **SHA de publicación del cierre original**. El auditor debe registrar también el SHA de `main`/rama vigente al comenzar, porque pueden existir correcciones documentales posteriores, y comparar el backend con el SHA funcional congelado.
 
 ## 1. Qué se entrega y cuál es la fuente de verdad
 
-Se entregan dos líneas base diferenciadas: **código funcional E2-5 al SHA congelado** y **documentos de cierre a un futuro commit documental aprobado**. La documentación es una guía y una colección de evidencias; no sustituye inspeccionar routers, servicios, ORM, SQL ni ejecutar tests. Si un documento histórico describe «pendiente de merge», ese estado se refiere a la fecha de su redacción, no al corte funcional.
+Se entregan dos líneas base diferenciadas: **código funcional E2-5 al SHA congelado** y **documentos de cierre publicados al commit documental original `c66df2f8ddaa8179ca12e342bd3099348bc6b155`**. La documentación es una guía y una colección de evidencias; no sustituye inspeccionar routers, servicios, ORM, SQL ni ejecutar tests. Si un documento histórico describe «pendiente de merge», ese estado se refiere a la fecha de su redacción, no al corte funcional.
 
 El informe interno de [cierre E2-5](E2-5_CIERRE/00_LEEME.md), la [evaluación de observaciones externas](E2-5_CIERRE/13_EVALUACION_OBSERVACIONES_IA.md) y [este plan específico de auditoría](E2-5_AUDITORIA/00_LEEME_Y_PRECONDICIONES.md) **no son resultados de auditoría independiente**. El revisor no debe copiar las conclusiones internas como hallazgos probados ni dejar de investigar hipótesis por estar etiquetadas P2.
 
