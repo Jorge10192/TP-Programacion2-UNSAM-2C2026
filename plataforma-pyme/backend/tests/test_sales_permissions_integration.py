@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import func, insert, select, update
 
-from app.infrastructure.models import AuthSession, LocationAssignment, Membership, Sale, StockBalance, StockMovement
+from app.infrastructure.models import LocationAssignment, Membership, Sale
 from test_sales_api_integration import isolated, auth, business, item, location, payload, post
 
 pytestmark = [
@@ -30,9 +30,7 @@ def count_sales(db, business_id):
 def test_operational_role_requires_active_location_assignment(isolated, role):
     client, db = isolated
     owner = auth(client)
-    employee = auth(client)
-    # Obtener usuario autentificado desde el endpoint personal de sesiones
-    # usando la misma identidad incluida en el token mediante registro dedicado.
+    # Crear operador con ID comprobable y sesion propia.
     from uuid import UUID
     email = f"sales-operator-{uuid4().hex}@example.com"
     password = "Clave exclusiva larga para pruebas"
@@ -80,10 +78,6 @@ def test_revoked_membership_cannot_replay_previously_created_sale(isolated):
     bid = business(client, owner)
     iid = item(client, bid, owner)
     # Primero crear la venta, luego revocar la membresia del actor.
-    made = client.post("/api/v1/businesses", headers={
-        **owner, "Idempotency-Key": str(uuid4()),
-    }, json={"name": "Empresa separada", "category": "Servicios", "activity_kind": "MIXTO"})
-    assert made.status_code == 201, made.text
     key = uuid4()
     body = payload(iid)
     first = post(client, bid, owner, body, key=key)
