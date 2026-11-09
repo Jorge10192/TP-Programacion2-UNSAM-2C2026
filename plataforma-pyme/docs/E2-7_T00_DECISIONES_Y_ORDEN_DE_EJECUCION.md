@@ -104,6 +104,19 @@ Estas son reglas de *implementación/integración*, no decisiones nuevas de pol�
 - **T09/T10:** tenant, permisos y actor en listado/consulta por request, replay con sede pausada/membresía revocada; precio según política; stock no negativo y sin venta duplicada.
 - **T11:** navegador escritorio/móvil con FastAPI y PostgreSQL **en misma base efímera**, sin fallback DEMO; trazas y credenciales sanitizadas.
 
+## 6.1. Precisiones de aceptación surgidas de una segunda revisión
+
+La segunda opinión recibida respalda el orden T00–T12 y destaca cuatro puntos operativos. No cambia las decisiones D01–D14 ni aprueba extensiones de backend por sí misma. Estas precisiones son **criterios de prueba futuros**, no pruebas ejecutadas:
+
+1. **F5 y sesión (T02):** ensayar login → navegación a empresa → F5. Con Bearer solo en memoria debe producirse una reautenticación clara, conservarse la ruta de retorno cuando sea segura y no mostrarse información de una sesión vencida. Evaluar la fricción UX con uso real antes de adoptar persistencia de tokens. `sessionStorage` no se aprueba automáticamente; cookies `HttpOnly` exigirían un cambio de contrato/autenticación con análisis de CSRF.
+2. **Completitud del catálogo/POS (T05 y T10):** probar al menos 101 y 501 artículos. Si se descargan páginas sucesivas, la UI debe distinguir `loading`, `partial`, `complete` y `error`. Un filtro local sobre una lista incompleta no puede prometer resultados globales; un error de página posterior no puede ocultarse bajo «sin resultados». La alternativa `GET /catalog?q=` sigue condicionada a un contrato/backend explícito.
+3. **Dependencia T06 → T09 → T10:** T06 define y prueba conservación de identidad de intento/cuerpo ante red incierta; T09 define recuperación autenticada de venta por `request_id` y listado si se aprueban; T10 **no habilita POS real con garantía de recuperación tras F5** hasta probar el camino completo ante pérdida de respuesta. Un GET con 404 no prueba que el POST original haya fallado; no crear clave nueva ni reenviar automáticamente.
+4. **Conflicto de versión de conteo (T08):** ante `409` por `expected_version` obsoleta, refrescar saldo/versión y mostrar claramente que el inventario cambió durante el conteo. Exigir nueva revisión y confirmación humana; no recalcular ni enviar automáticamente una diferencia contra la nueva versión. Distinguir ese conflicto de otros 409.
+5. **Pruebas desde T02:** cada primer flujo HTTP real debe probar navegador → FastAPI → PostgreSQL en base temporal explícita, además de los tests unitarios. T11 consolida los escenarios completos, pero no constituye la primera ejecución full-stack.
+6. **PR pequeño por objetivo:** mantener PR independiente por incremento y pruebas vinculadas; no imponer un número arbitrario de archivos por commit.
+
+**Salida:** estas condiciones deben trasladarse a los criterios de aceptación de los incrementos correspondientes cuando se implementen. No hacen necesaria una nueva fase previa a T01.
+
 ## 7. Condición de salida T00 y siguiente paso
 
 **T00 está completo como propuesta documental** cuando este documento se publique, las referencias JWT del plan rector se corrijan y se verifique que el diff frente a `main` contiene solo documentos. No afirmar que T01 o los casos E2E ya están implementados o aprobados.
