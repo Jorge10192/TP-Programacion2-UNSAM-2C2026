@@ -214,12 +214,14 @@ def test_physical_and_service_mixed_sale_debits_once(isolated):
     assert len(data["balances_after"]) == 1
     assert data["balances_after"][0]["quantity_milli"] == 2000
     assert data["balances_after"][0]["version"] == 2
-    stock = db.execute(select(StockBalance).where(
+    quantity, version = db.execute(select(
+        StockBalance.quantity_milli, StockBalance.version,
+    ).where(
         StockBalance.business_id == bid,
         StockBalance.location_id == lid,
         StockBalance.catalog_item_id == good,
-    )).scalar_one()
-    assert stock.quantity_milli == 2000 and stock.version == 2
+    )).one()
+    assert (quantity, version) == (2000, 2)
     moves = db.execute(select(StockMovement).where(
         StockMovement.business_id == bid,
         StockMovement.sale_id == UUID(data["id"]),
@@ -229,11 +231,13 @@ def test_physical_and_service_mixed_sale_debits_once(isolated):
     replay = post(client, bid, headers, body, key=key)
     assert replay.status_code == 200
     assert replay.json() == data
-    stock = db.execute(select(StockBalance).where(
+    quantity, version = db.execute(select(
+        StockBalance.quantity_milli, StockBalance.version,
+    ).where(
         StockBalance.business_id == bid, StockBalance.location_id == lid,
         StockBalance.catalog_item_id == good,
-    )).scalar_one()
-    assert stock.quantity_milli == 2000 and stock.version == 2
+    )).one()
+    assert (quantity, version) == (2000, 2)
 
 
 def test_insufficient_stock_rolls_back_everything(isolated):
@@ -253,11 +257,13 @@ def test_insufficient_stock_rolls_back_everything(isolated):
         SalePayment.business_id == bid)) == 0
     assert db.scalar(select(func.count()).select_from(StockMovement).where(
         StockMovement.business_id == bid)) == 0
-    stock = db.execute(select(StockBalance).where(
+    quantity, version = db.execute(select(
+        StockBalance.quantity_milli, StockBalance.version,
+    ).where(
         StockBalance.business_id == bid, StockBalance.location_id == lid,
         StockBalance.catalog_item_id == good,
-    )).scalar_one()
-    assert stock.quantity_milli == 1000 and stock.version == 1
+    )).one()
+    assert (quantity, version) == (1000, 1)
 
 
 def test_physical_requires_sell_and_store(isolated):
