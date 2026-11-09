@@ -318,3 +318,18 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 **Implementado:** compra sin stock, centavos/milésimas enteros, snapshots, recepción física completa 1:1, balance UPSERT, movimiento histórico y permisos tenant/STORE. **Pendiente:** recepción parcial 1:N, cancelación HTTP, compensaciones, transferencias, ajustes, multimoneda, ventas, Mercado Pago, frontend integrado, hardening de DB y pruebas de carga. Los tests se ejecutaron correctamente con datos QA locales después de PR #18, **pero la DB de pruebas local continúa compartiendo entorno con desarrollo** hasta aislarla mediante infraestructura dedicada.
 
 **Criterio académico:** cierre del bloque E2-4 para su alcance acordado, **no** finalización de RF-06 completo, TP completo ni certificación productiva.
+
+## E2-5 A — Preparación de RF-06/CU-09 y CU-11: modelo implementado, API diferida
+
+**Corte:** 09/11/2026; base E2-4 validada (`797/797` Windows y CI, migración `e24e_receipt_stock`). Se agrega `inventory_operations` con FK compuestas por tenant (artículo, origen/destino, actor), motivo, cantidad y huella/idempotencia. El ledger `stock_movements` admite tipos firmados para traslados, ajustes y stock inicial, con FK compuesta de origen y nuevo CHECK de signo y exclusión; `stock_balances` y `purchase_receipts` permanecen intactos. Migración propuesta `e25a_inventory_ops` sobre la histórica E2-4.
+
+| RF / CU | Contrato implementado en E2-5 A | Endpoint HTTP | Estado |
+|---|---|---|---|
+| RF-05 / CU-07, recepción histórica | `COMPRA_RECEPCION` y snapshots E2-4 compatibles; FK y signo preservados | `POST /purchases/{id}/receive`, `GET /purchases/{id}/receipt` | **Implementado E2-4; regresión exigida E2-5 A** |
+| RF-06 / CU-08, lectura | `stock_balances` sin cambios; consulta actual de entradas por recepción | `GET /inventory/balances`, `GET /inventory/movements` | **Parcial E2-4** |
+| RF-06 / CU-09, traslado | Cabecera `TRASLADO` y deltas `TRASLADO_SALIDA/ENTRADA` con integridad SQL | **No disponible todavía** | **E2-5 A: modelo; E2-5 B: comando transaccional y pruebas** |
+| RF-06 / CU-11, ajustes e inicial | Cabeceras `AJUSTE_ENTRADA`, `AJUSTE_SALIDA`, `STOCK_INICIAL`; motivo obligatorio y signos | **No disponible todavía** | **E2-5 A: modelo; E2-5 C: comando transaccional y pruebas** |
+
+La migración no ejecuta traslados por sí misma: el saldo debe actualizarse atómicamente junto con ambos movimientos y comprobar no negatividad en E2-5 B/C. El futuro GET de movimientos requerirá respuestas compatibles con orígenes opcionales antes de registrar nuevas operaciones manuales. La revisión de BD dedicada para pruebas locales, hardening del ledger y conciliación de saldos quedan como deuda controlada antes de producción.
+
+**Fuente técnica:** [E2-5 A — Modelo de operaciones de inventario](../docs/E2-5_A_MODELO_OPERACIONES_INVENTARIO.md) y `backend/tests/test_inventory_operation_{model,integration}.py`. No se presentan aún resultados de CI/Windows del nuevo corte hasta ejecutarlos.
