@@ -51,7 +51,7 @@ La **compra** y la **recepción** son procesos distintos. Registrar la compra no
 
 ## 6. Dictamen de esta entrega
 
-**Apto para revisión de cierre funcional del alcance E2-5 A–C.** Las evidencias disponibles son consistentes: código integrado, CI aprobado y flujos manuales con resultados esperados. **No es dictamen de auditoría independiente ni aprobación para producción.** Antes de publicar el cierre deben revisarse exactitud, lenguaje de alcance, política de seguridad, trazabilidad académica y pendientes de la sección 09. No se adelantó el documento de asignación al auditor.
+**Apto para revisión de cierre funcional del alcance E2-5 A–C.** Las evidencias disponibles son consistentes: código integrado, CI aprobado y flujos manuales con resultados esperados. **No es dictamen de auditoría independiente ni aprobación para producción.** Antes de publicar el cierre deben revisarse exactitud, lenguaje de alcance, política de seguridad, trazabilidad académica y pendientes de la sección 09. El documento de asignación al auditor **se preparó en una etapa posterior a este cierre preliminar**, a pedido del equipo: [hoja formal](../E2-5_ENTREGA_PARA_REVISION.md) y [paquete de auditoría](../E2-5_AUDITORIA/00_LEEME_Y_PRECONDICIONES.md). **No se ejecutó la auditoría**.
 
 ## Evaluación crítica posterior al primer paquete (v1.1)
 
