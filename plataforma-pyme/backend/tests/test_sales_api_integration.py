@@ -169,10 +169,10 @@ def test_invalid_amount_does_not_persist(isolated):
     )) == 0
 
 
-def location(client, bid, headers, *, can_sell=True, can_store=True):
+def location(client, bid, headers, *, can_sell=True, can_store=True, name="Local Ventas"):
     response = client.post(f"/api/v1/businesses/{bid}/locations",
         headers=headers, json={
-            "name": "Local Ventas", "kind": "LOCAL",
+            "name": name, "kind": "LOCAL",
             "can_sell": can_sell, "can_store": can_store,
         })
     assert response.status_code == 201, response.text
