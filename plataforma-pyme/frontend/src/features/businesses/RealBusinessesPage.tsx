@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import {
@@ -34,7 +34,8 @@ export function RealBusinessesPage({
   const [editing, setEditing] = useState(false)
   const [changes, setChanges] = useState<NewBusiness>(emptyNewBusiness)
   const requestGeneration = useRef(0)
-  const gateway = createBusinessGateway(token, userId)
+  const gateway = useMemo(() => createBusinessGateway(token, userId), [token, userId])
+  const businessId = route.kind === 'detail' ? route.businessId : null
 
   useEffect(() => {
     // Abort reads on tenant change; ignore late responses from the previous tenant.
@@ -48,9 +49,9 @@ export function RealBusinessesPage({
     setError('')
     setItems(null)
     setSelected(null)
-    const promise = route.kind === 'list'
+    const promise = businessId === null
       ? gateway.list(controller.signal)
-      : gateway.get(route.businessId, controller.signal)
+      : gateway.get(businessId, controller.signal)
     void promise.then((result) => {
       if (controller.signal.aborted || runId !== requestGeneration.current) return
       if (Array.isArray(result)) setItems(result)
@@ -66,9 +67,7 @@ export function RealBusinessesPage({
       if (!controller.signal.aborted && runId === requestGeneration.current) setLoading(false)
     })
     return () => { controller.abort() }
-    // Gateway is derived from token/userId and not persistent across renders.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, userId, route.kind, route.kind === 'detail' ? route.businessId : ''])
+  }, [gateway, route.kind, businessId])
 
   function normalize(input: NewBusiness): NewBusiness {
     return { name: input.name.trim(), category: input.category.trim(), activity_kind: input.activity_kind }
