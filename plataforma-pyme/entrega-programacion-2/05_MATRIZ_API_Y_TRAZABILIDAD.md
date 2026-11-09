@@ -301,3 +301,20 @@ Este documento es vivo: mantener los nombres de entidad, UUID, rutas y pruebas e
 | Desactivar/reactivar | `PATCH /api/v1/businesses/{business_id}/catalog/{item_id}/status` | Titular/administrador, empresa ACTIVA |
 
 **Fuente real:** `backend/app/infrastructure/models/catalog_item.py`, `backend/alembic/versions/20261108_0011_catalog_items.py`, `backend/app/modules/catalog/{schemas,repository,service,router}.py` y `backend/tests/test_catalog*.py`. Las rutas comerciales de Compras/Stock/Ventas son metas posteriores, no implementaciones.
+
+## 21. E2-4 — Actualización de trazabilidad AS-IMPLEMENTED (cierre 08/11/2026)
+
+> **Precedencia:** esta sección documenta las operaciones existentes tras PR #18. Las frases `pendiente E2-4` de E2-3 y bloques previos se conservan como **historia** de aquellos cortes, no como estado actual. Código de cierre: `4f88416141c09a82e744990b1aee8c00b9f31dfd`. Cierre exhaustivo con 17 casos manuales, CI y backlog: [docs/revisiones/E2-4_CIERRE](../docs/revisiones/E2-4_CIERRE/00_LEEME.md).
+
+| RF / CU | Endpoint real (bajo `/api/v1/businesses/{business_id}`) | Roles/condiciones | Evidencia |
+|---|---|---|---|
+| RF-05 / CU-06, Proveedor | `GET/POST /suppliers`; `GET/PATCH /suppliers/{supplier_id}`; `PATCH /suppliers/{supplier_id}/status` | Miembro activo lee; titular/admin escriben en empresa ACTIVA | [CI E2-4 B](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42514595377), 693 tests |
+| RF-05 / CU-06, Compra | `POST/GET /purchases`; `GET /purchases/{purchase_id}` | Compra: titular/admin, empresa ACTIVA, clave idempotente; lectura de membresía activa | [CI E2-4 D](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42523855898), 772 tests; bitácora U-01–U-07 |
+| RF-05 / CU-07, Recepción | `POST /purchases/{purchase_id}/receive`; `GET /purchases/{purchase_id}/receipt` | Sesión válida, compra REGISTRADA, destino ACTIVA/`can_store`; permiso `STORE` y una sola recepción | [CI E2-4 E](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42528940012), 796 tests; U-08–U-14 |
+| RF-06 / CU-08 (parcial) | `GET /inventory/balances`, `GET /inventory/movements` | Lectura por empresa, filtros y paginación | U-15–U-17; saldo 10000, ledger una entrada |
+| RF-03/RF-04 (dependencias) | `GET/POST /locations`, `POST /catalog`; catálogo valida tipo/unidad históricos | Roles y tenant; ubicación `can_store`, artículo activo | U-06 y U-08–U-11 |
+| Calidad técnica | Sin endpoints nuevos en PR #18; corrección `test_purchase_integration.py` | Los tests no suponen DB vacía | [CI final](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42530739959), **797/797**; Windows 797/797 |
+
+**Implementado:** compra sin stock, centavos/milésimas enteros, snapshots, recepción física completa 1:1, balance UPSERT, movimiento histórico y permisos tenant/STORE. **Pendiente:** recepción parcial 1:N, cancelación HTTP, compensaciones, transferencias, ajustes, multimoneda, ventas, Mercado Pago, frontend integrado, hardening de DB y pruebas de carga. Los tests se ejecutaron correctamente con datos QA locales después de PR #18, **pero la DB de pruebas local continúa compartiendo entorno con desarrollo** hasta aislarla mediante infraestructura dedicada.
+
+**Criterio académico:** cierre del bloque E2-4 para su alcance acordado, **no** finalización de RF-06 completo, TP completo ni certificación productiva.
