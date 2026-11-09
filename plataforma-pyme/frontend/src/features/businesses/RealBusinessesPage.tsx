@@ -106,7 +106,8 @@ export function RealBusinessesPage({
     } catch (err) {
       if (mutationId !== mutationGeneration.current) return
       if (err instanceof ApiHttpError && err.status === 401) { onUnauthorized(); return }
-      const ambiguous = (err instanceof ApiTransportError && err.outcomeUnknown)
+      // Even a malformed 201 response can follow a successful database commit.
+      const ambiguous = err instanceof ApiTransportError
         || (err instanceof ApiHttpError && (err.status === 409 || err.status >= 500))
       if (!ambiguous) setPendingCreation(null)
       setError(ambiguous
