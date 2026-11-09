@@ -1,7 +1,7 @@
 """RF-05: contratos estrictos de Proveedores, sin descuentos automáticos."""
 from datetime import datetime
-import ipaddress
 import re
+from socket import inet_aton
 import unicodedata
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
@@ -71,8 +71,10 @@ def _safe_url(value: str, *, maps: bool) -> str:
                     or host.endswith((".localhost", ".local", ".internal", ".test", ".invalid"))):
                 raise ValueError("Sitio público requerido")
             try:
-                ipaddress.ip_address(host)
-            except ValueError:
+                # Conversión local, sin DNS: también reconoce IPv4 abreviada,
+                # octal y hexadecimal que un navegador interpreta como IP.
+                inet_aton(host)
+            except OSError:
                 pass
             else:
                 raise ValueError("IP directa no permitida")
