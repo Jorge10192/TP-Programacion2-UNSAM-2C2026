@@ -24,7 +24,7 @@ Esta revisión editorial/técnica cotejó:
 |---|---|---|---|---|
 | **DOC-E25-01** | P2 | `05_ARQUITECTURA_MODELO_Y_API.md` llamaba «JWT» al mecanismo de autenticación. El código usa **Bearer opaco de 256 bits** y sesión revocable, con digest en BD. | Reemplazado JWT y añadido el recorrido real de autenticación y revalidación. | **CORREGIDO EN PR** |
 | **DOC-E25-02** | P2 | `08_REPRODUCCION_SEGURA.md` y `10_CHECKLIST...md` remitían al `12_MANIFIESTO_SHA256.txt` del ZIP v1.0, ya no vigente en Git. | Sustituidas instrucciones por `12_MANIFIESTO_GIT_BLOBS.md`; el manifiesto se regenera al finalizar cambios documentales. | **CORREGIDO EN PR** |
-| **DOC-E25-03** | P2 | El checklist seguía indicando como no ejecutadas tareas documentales ya contrastadas (CI, SHA, Swagger, PR). | Actualizados estados solo donde hubo evidencia; revocación del token, aprobación y merge continúan **pendientes**. | **CORREGIDO EN PR** |
+| **DOC-E25-03** | P2 | El checklist seguía indicando como no ejecutadas tareas documentales ya contrastadas (CI, SHA, Swagger, PR). | Actualizados estados solo donde hubo evidencia; revocación del token **posteriormente confirmada por Swagger 204 con el mismo Bearer**; aprobación y merge continúan **pendientes**. | **CORREGIDO EN PR** |
 | **DOC-E25-04** | P2 | No había hoja de auditoría E2-5 ni matriz de casos suficientemente específica para un compañero y su IA; riesgo de ampliar alcance sin permiso. | Añadidos `E2-5_ENTREGA_PARA_REVISION.md` y paquete `E2-5_AUDITORIA/` con fuente de verdad, 24 invariantes, controles RBAC, tests y formato del informe. | **CORREGIDO EN PR** |
 | **DOC-E25-05** | P2 | Documentos académicos acumulativos conservaban «RF-06 planificado» y en un corte histórico vinculaban CU-11 a RF-07. Un lector automático podría confundir estado histórico con estado actual. | Adenda de estado E2-5 al inicio de `entrega-programacion-2/05_MATRIZ_API_Y_TRAZABILIDAD.md` con correspondencia vigente CU-11→RF-06 y aviso sobre tablas anteriores históricas. | **CORREGIDO EN PR** |
 | **DOC-E25-06** | P2 | Algunas secciones declaraban «se hará la hoja del auditor más adelante», inconsistente con el nuevo encargo. | Actualizados índice, informe, trazabilidad, riesgos y checklist para decir **preparado, no ejecutado/no aprobado**. | **CORREGIDO EN PR** |
@@ -44,7 +44,7 @@ Esta revisión editorial/técnica cotejó:
 | QA y cifras | 6/4 artículo A y 6 versión3 artículo B, ledger 3+3 eventos | **Atribución manual reportada, no lectura propia de DB** |
 | CI/Windows | 816/826/840 por corte CI; 840 Windows en C | **Procedencia separada, no es % coverage** |
 | React/Ventas/Producción | DEMO/TO-BE y hardening pendiente | **Explícito; sin atribuir backend de ventas al E2-5** |
-| Secretos en docs | Sin contraseña, Bearer literal, clave real, correo personal ni DSN privado | **Control de contenido del PR; revocación externa NO verificada** |
+| Secretos en docs | Sin contraseña, Bearer literal, clave real, correo personal ni DSN privado | **Control de contenido del PR; revocación de la sesión expuesta reportada por Swagger 204, no inspección SQL** |
 
 ## 4. Qué se aprueba y qué queda condicionado
 
@@ -56,7 +56,7 @@ Esta revisión editorial/técnica cotejó:
 
 **Pendientes no bloqueantes para preparar auditoría, pero relevantes antes de producción:** inmutabilidad del ledger ante SQL directo según privilegios efectivos, políticas de mermas negativas, reversión compensatoria, reintento tras revocación, reconciliación y eventual interfaz de errores estructurados. **No están resueltos por redactar documentos.**
 
-**Condición de seguridad todavía abierta:** confirmar la revocación de la sesión cuyo token se expuso en una conversación. No reproducir el valor.
+**Actualización de seguridad posterior al dictamen inicial:** la sesión cuyo token se expuso fue cerrada mediante `POST /api/v1/auth/logout` **204** (09/11/2026 15:23:37 GMT) usando el **mismo token**. Evidencia **SWAGGER-REPORTADO**, coherente con el servicio de revocación. **Cerrado ese pendiente específico**; no se certifica el estado de otras sesiones ni se reproduce el valor.
 
 **Condición de publicación:** PR #24 todavía es borrador sin merge; la hoja de auditoría requiere completar el SHA documental real **después de publicar**. Hasta entonces, no afirmar que la auditoría independiente ha comenzado ni que la documentación está en `main`.
 
