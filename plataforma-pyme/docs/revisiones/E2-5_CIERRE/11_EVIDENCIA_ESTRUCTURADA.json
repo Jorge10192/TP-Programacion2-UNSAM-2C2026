@@ -1,0 +1,272 @@
+{
+  "schema_version": "1.1",
+  "document_status": "BORRADOR EN RAMA DOCUMENTAL; NO MERGE NI AUDITORIA INDEPENDIENTE",
+  "source_provenance": {
+    "code": "GitHub main al SHA funcional; inspeccion de routers, servicios, modelos, migracion y tests",
+    "manual": "Respuestas Swagger aportadas por el desarrollador en la conversacion",
+    "windows": "Salida PowerShell aportada por el desarrollador",
+    "ci": "GitHub Actions verificado mediante runs finales de merge",
+    "external_review": "Observaciones de otra IA aportadas por el desarrollador; evaluacion interna, no auditoria independiente"
+  },
+  "project": {
+    "name": "Asistente PyME",
+    "repository": "https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026",
+    "folder": "plataforma-pyme",
+    "cutoff_date": "2026-11-09",
+    "main_sha": "748e69319d8d04900c009d5184168a264a9deeac",
+    "alembic_head": "e25a_inventory_ops"
+  },
+  "security": {
+    "raw_access_tokens_included": false,
+    "raw_passwords_included": false,
+    "raw_idempotency_keys_included": false,
+    "raw_personal_email_included": false,
+    "raw_bearer_headers_included": false,
+    "session_revocation_verified": false
+  },
+  "increments": [
+    {
+      "id": "E2-5 A",
+      "pr": 21,
+      "merge_sha": "4268846abc524ebd827b4da930ef58d8d9789ac7",
+      "ci_run": 42601062105,
+      "py312_passed": 816,
+      "py314_passed": 816,
+      "jobs_passed": 3,
+      "alembic": "e25a_inventory_ops"
+    },
+    {
+      "id": "E2-5 B",
+      "pr": 22,
+      "merge_sha": "4f992b3beb8dda732e4cd752f828b375f240e13d",
+      "ci_run": 42604071018,
+      "py312_passed": 826,
+      "py314_passed": 826,
+      "jobs_passed": 3,
+      "alembic": "e25a_inventory_ops"
+    },
+    {
+      "id": "E2-5 C",
+      "pr": 23,
+      "merge_sha": "748e69319d8d04900c009d5184168a264a9deeac",
+      "ci_run": 42617212795,
+      "py312_passed": 840,
+      "py314_passed": 840,
+      "jobs_passed": 3,
+      "alembic": "e25a_inventory_ops"
+    }
+  ],
+  "windows_e25c": {
+    "source": "desarrollador",
+    "head": "748e69319d8d04900c009d5184168a264a9deeac",
+    "pytest_passed": 840,
+    "pytest_seconds": 110.89,
+    "alembic_head": "e25a_inventory_ops",
+    "alembic_check": "No new upgrade operations detected.",
+    "docker_api": "healthy",
+    "docker_db": "healthy",
+    "ready_status": "ready",
+    "ready_database": "ok"
+  },
+  "qa_resources": {
+    "business": {
+      "alias": "EMP-QA",
+      "id": "3b161aa4-f476-4efc-8293-5978d590e0fe"
+    },
+    "locations": [
+      {
+        "alias": "DEP-QA",
+        "id": "b492ced2-0faa-42d8-b652-609fc4c2b6f4"
+      },
+      {
+        "alias": "CASA-QA",
+        "id": "a741f945-5c88-4855-8ff0-708374ac16f8"
+      }
+    ],
+    "products": [
+      {
+        "alias": "ART-A",
+        "id": "e3bcd831-1ae5-48ab-b1c1-0c43e58ae84b",
+        "sku": "ALIM-E25-001"
+      },
+      {
+        "alias": "ART-B",
+        "id": "97cc90f6-6bef-487e-b8f4-76f132bbf0d1",
+        "sku": "INICIAL-E25C-001"
+      }
+    ]
+  },
+  "manual_e25b": [
+    {
+      "id": "B-05",
+      "operation": "purchase_invalid_quantity",
+      "http": 422,
+      "effect": "none"
+    },
+    {
+      "id": "B-06",
+      "operation": "purchase_registered",
+      "http": 201,
+      "status": "REGISTRADA",
+      "quantity_milli": 10000,
+      "total_cents": 100000
+    },
+    {
+      "id": "B-07",
+      "operation": "purchase_receipt",
+      "http": 201,
+      "event": "COMPRA_RECEPCION",
+      "delta_milli": 10000
+    },
+    {
+      "id": "B-08",
+      "operation": "transfer",
+      "http": 201,
+      "transfer_id": "be1de1eb-90bc-4be3-ac6e-84f5e9d1640f",
+      "movements": [
+        -4000,
+        4000
+      ]
+    },
+    {
+      "id": "B-09",
+      "operation": "balances_after_transfer",
+      "http": 200,
+      "source_milli": 6000,
+      "source_version": 2,
+      "dest_milli": 4000,
+      "dest_version": 1
+    },
+    {
+      "id": "B-10",
+      "operation": "transfer_exact_replay",
+      "http": 200,
+      "same_transfer_id": true,
+      "same_movements": true
+    },
+    {
+      "id": "B-11",
+      "operation": "transfer_insufficient",
+      "http": 409
+    },
+    {
+      "id": "B-12",
+      "operation": "balances_after_409",
+      "http": 200,
+      "source_milli": 6000,
+      "dest_milli": 4000
+    },
+    {
+      "id": "B-13",
+      "operation": "movements_after_409",
+      "http": 200,
+      "events": [
+        "COMPRA_RECEPCION",
+        "TRASLADO_SALIDA",
+        "TRASLADO_ENTRADA"
+      ],
+      "count": 3,
+      "net_milli": 10000
+    }
+  ],
+  "manual_e25c": [
+    {
+      "id": "C-01",
+      "operation": "catalog_item_created",
+      "http": 201
+    },
+    {
+      "id": "C-02",
+      "operation": "initial_missing_bearer",
+      "http": 401,
+      "effect": "none"
+    },
+    {
+      "id": "C-03",
+      "operation": "initial_stock",
+      "http": 201,
+      "event": "STOCK_INICIAL",
+      "delta_milli": 5000
+    },
+    {
+      "id": "C-04",
+      "operation": "initial_exact_replay",
+      "http": 200,
+      "same_operation_id": true,
+      "same_movement_id": true
+    },
+    {
+      "id": "C-05",
+      "operation": "second_initial_new_request",
+      "http": 409
+    },
+    {
+      "id": "C-06",
+      "operation": "adjust_in",
+      "http": 201,
+      "delta_milli": 2000
+    },
+    {
+      "id": "C-07",
+      "operation": "adjust_out",
+      "http": 201,
+      "delta_milli": -1000
+    },
+    {
+      "id": "C-08",
+      "operation": "insufficient_adjust_out",
+      "http": 409
+    },
+    {
+      "id": "C-09",
+      "operation": "stale_version",
+      "http": 409,
+      "submitted_version": 1
+    },
+    {
+      "id": "C-10",
+      "operation": "balances",
+      "http": 200,
+      "quantity_milli": 6000,
+      "version": 3
+    },
+    {
+      "id": "C-11",
+      "operation": "movements",
+      "http": 200,
+      "events": [
+        "STOCK_INICIAL",
+        "AJUSTE_ENTRADA",
+        "AJUSTE_SALIDA"
+      ],
+      "deltas_milli": [
+        5000,
+        2000,
+        -1000
+      ],
+      "count": 3,
+      "net_milli": 6000
+    }
+  ],
+  "review_v1_1": {
+    "documentation_only": true,
+    "new_backend_tests_run": false,
+    "external_observations_evaluated": 14,
+    "confirmed_new_data_loss_bug": false,
+    "remaining_evidence_gaps": [
+      "carrera cruzada simultanea ajuste vs traslado en mismo saldo",
+      "privilegios SQL y mutacion directa del ledger",
+      "aprobaciones para ajustes negativos",
+      "reversion compensatoria vinculada",
+      "conciliacion programada saldo vs ledger"
+    ],
+    "decision_document": "13_EVALUACION_OBSERVACIONES_IA.md",
+    "risk_document": "09_RIESGOS_DEUDAS_Y_DECISIONES.md"
+  },
+  "excluded": [
+    "raw_credentials",
+    "secret_env_files",
+    "private_session_data",
+    "binary_database_dumps"
+  ]
+}
