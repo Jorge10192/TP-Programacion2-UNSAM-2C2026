@@ -36,3 +36,25 @@
 .real-auth-state{border-radius:10px;background:#fff;padding:16px;color:#425b82;font-size:13px;line-height:1.5}
 .real-auth-footer{text-align:center;color:#647590;font-size:12px;padding:23px}
 @media(max-width:820px){.real-auth-main{grid-template-columns:1fr;gap:18px;padding:24px 16px}.real-auth-aside{order:2}.real-auth-header{padding:14px 17px}.real-auth-badge{display:none}.real-auth-card,.real-auth-aside{padding:24px}.real-auth-header-actions{gap:9px}}
+
+/* E2-7 T03 · REAL business workspace; DEMO shell styles are unchanged. */
+.real-business-main{grid-template-columns:minmax(0,1.4fr) minmax(250px,.6fr);align-items:start;max-width:1340px}
+.real-business-panel{min-width:0}
+.real-business-panel>h1{margin:18px 0 10px}
+.real-business-panel>p{color:#647590;line-height:1.65}
+.real-business-nav{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding-bottom:21px;margin-bottom:25px;border-bottom:1px solid #e4eaf3}
+.real-business-nav .real-auth-link{font-size:13px;padding:3px 0}
+.real-business-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin:24px 0}
+.real-business-tile{text-align:left;display:flex;flex-direction:column;gap:11px;border:1px solid #cbdcf2;border-radius:16px;background:#f9fbff;color:#14233f;padding:22px;min-height:166px;transition:border-color .15s,box-shadow .15s}
+.real-business-tile:hover,.real-business-tile:focus-visible{border-color:#3b77cc;box-shadow:0 7px 22px #426a9a14}
+.real-business-tile strong{font-size:18px;overflow-wrap:anywhere}
+.real-business-tile span{font-size:13px;color:#647590;overflow-wrap:anywhere}
+.real-business-tile small{font-size:11px;font-weight:750;color:#365a90}
+.real-business-tile .real-business-tile-action{font-weight:800;color:#2f68bf;margin-top:auto}
+.real-business-empty{background:#f4f7fc;border:1px dashed #b7cee9;border-radius:13px;padding:24px;margin:22px 0;color:#4e6484;line-height:1.6}
+.real-business-name{font-size:24px;margin:25px 0 0;overflow-wrap:anywhere}
+.real-business-uncertain{background:#fff7e9;border:1px solid #efd7aa;padding:18px;border-radius:14px;margin:23px 0;color:#795927;font-size:13px;line-height:1.6}
+.real-business-uncertain p{margin-bottom:0}
+.real-business-uncertain .real-auth-actions{margin:14px 0 0}
+.real-auth-form select{width:100%;min-height:46px;padding:10px 13px;border-radius:10px;border:1px solid #cfdcf0;background:#fff;color:#14233f}
+@media(max-width:820px){.real-business-main{grid-template-columns:1fr}.real-business-nav{gap:14px}.real-business-panel{padding:24px}}
