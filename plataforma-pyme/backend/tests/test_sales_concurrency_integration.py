@@ -132,7 +132,7 @@ def test_concurrent_same_idempotency_key_returns_same_sale(sales_company):
     assert movements == [(-1000, "VENTA_SALIDA")]
 
 
-def test_two_sales_for_two_distinct_items_preserve_stock(sales_company):
+def test_two_sales_same_item_with_sufficient_stock_both_succeed(sales_company):
     headers, bid, loc, iid = sales_company
     with TestClient(create_app()) as client:
         purchase_id = physical(client, bid, headers, iid, amount=3000)
