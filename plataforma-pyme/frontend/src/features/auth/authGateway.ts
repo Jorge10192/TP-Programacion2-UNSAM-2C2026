@@ -1,4 +1,4 @@
-import { ApiHttpError, ApiTransportError, createApiClient } from '../../api/httpClient'
+import { ApiHttpError, ApiTransportError, createApiClient } from '../../api/httpClient.ts'
 
 /** E2-7 T02: DTOs based on backend/app/modules/auth/schemas.py. */
 export type AuthUser = {
