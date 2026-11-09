@@ -40,7 +40,7 @@
 
 ## 4. Seguridad y límite de inferencia
 
-En la conversación se compartió accidentalmente un `curl` con un valor de token Bearer. **Su valor no se copia a este ZIP**. La recomendación de revocarlo fue emitida en la sesión, pero **no se aportó comprobante de logout/revocación**, por lo que debe validarse antes de difundir evidencias externamente. La prueba C-11 usa únicamente el filtro por el artículo B; no certifica los saldos actuales de todos los demás artículos en un momento posterior.
+En la conversación se compartió accidentalmente un `curl` con un token Bearer. **Su valor no se copia en la documentación.** Posteriormente se aportó `POST /api/v1/auth/logout` con **204 No Content** (09/11/2026 15:23:37 GMT) usando el **mismo token**. Esta evidencia **SWAGGER-REPORTADO** permite dar por revocada esa sesión específica según el contrato implementado; no certifica un inventario SQL de todas las sesiones de la cuenta. No compartir otra vez el `curl` de Swagger. La prueba C-11 usa únicamente el filtro por el artículo B; no certifica los saldos actuales de todos los demás artículos en un momento posterior.
 
 ## 5. Lo no probado manualmente
 
