@@ -1,6 +1,6 @@
 # E2-7 A — Matriz de integración React ↔ FastAPI y brechas funcionales
 
-**Estado:** borrador técnico para evaluación por Astra; **no código implementado**.  
+**Estado:** matriz de base, complementada por [decisiones T00](E2-7_T00_DECISIONES_Y_ORDEN_DE_EJECUCION.md); integración aún no implementada.  
 **Base de código consultada:** `main` `9a7a66394daf5a96b18b9ce796a2fe9ec92a4068`, 2026-11-09.  
 **Alcance:** `plataforma-pyme/`. Base URL API: `/api/v1`.  
 **Reglas:** API es fuente de verdad en modo REAL; frontend E1 DEMO existe y no se conecta mágicamente; requisitos RF-08–RF-10 siguen DEMO/diferidos.  
@@ -200,3 +200,10 @@ Prefijo obligatorio de rutas: `/api/v1`. No afirmar existencia de un `GET /sales
 ## 9. Criterio de uso
 
 Esta matriz es **la entrada de E2-7 A**. Astra debe evaluar si el mapa de rutas, adaptadores y límites es correcto, priorizar las diferencias contractuales y proponer cambios sin editar código. Luego se publica una versión aprobada y se inicia B0. Ninguna operación REAL se habilita por la sola existencia de una página DEMO.
+
+## 10. Complementos de T00 posteriores a la revisión
+
+- El token de sesión es **Bearer opaco**, no JWT. La estrategia de reautenticación tras F5 y su posible mejora están registradas en T00.
+- Los listados del backend tienen paginación; catálogo y selector POS deben representar estado de completitud y no tratar la primera página como el universo.
+- La recuperación de mutaciones cuyo resultado se desconoce después de una caída del navegador necesita preservar de forma acotada identidad, UUID4 y cuerpo idéntico. La retención/privacidad y los endpoints candidatos de historial y búsqueda por clave se definirán antes de T06/T09.
+- La política de precio/descuento por rol y el replay ante cambios de permisos/sede son decisiones pendientes, no correcciones autorizadas.
