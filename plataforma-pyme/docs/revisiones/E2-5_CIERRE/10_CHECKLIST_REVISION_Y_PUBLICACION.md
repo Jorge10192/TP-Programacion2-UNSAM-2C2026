@@ -20,7 +20,7 @@
 - [x] Verificar que el paquete no contiene contraseñas, emails QA, tokens, claves idempotentes reales, `request_id` de comandos, `.env` ni bases de datos exportadas.
 - [ ] Decidir si los **UUID de recursos QA** de `07_FICHA_QA_SANITIZADA.md` deben permanecer en la futura versión pública; no son credenciales, pero su publicación es una elección editorial.
 - [ ] Controlar capturas nuevas: Swagger incluye `curl` con cabeceras; publicar solo **Server response** saneada.
-- [ ] Regenerar **al final** el manifiesto de OID Git `12_MANIFIESTO_GIT_BLOBS.md` después de todas las ediciones del PR; el SHA-256 del ZIP v1.0 no aplica.
+- [x] Regenerar **al final** el manifiesto de OID Git `12_MANIFIESTO_GIT_BLOBS.md` después de las ediciones del PR; el SHA-256 del ZIP v1.0 no aplica. **Si se edita algo después, regenerarlo de nuevo.**
 
 ## C. Cierre documental definitivo — **etapa posterior a esta revisión**
 
@@ -45,7 +45,7 @@ Ubicación efectivamente utilizada para este PR: `plataforma-pyme/docs/revisione
 
 Cotejar `docs/E2-5_A_MODELO_OPERACIONES_INVENTARIO.md`, `docs/E2-5_B_TRASLADOS_ATOMICOS.md`, `docs/E2-5_C_AJUSTES_Y_STOCK_INICIAL.md`, Documento 01–05 y ADR-004. Sus encabezados históricos (p.ej. «pendiente de merge») no son prueba de que la función siga ausente; señalar que los cortes A/B/C **ya se fusionaron** en el índice de cierre. No sobrescribir retroactivamente evidencias previas sin nota de revisión.
 
-## Dictamen editorial aún pendiente
+## Dictamen editorial propuesto y control final pendiente
 
 **Se propone aceptar E2-5 como funcionalmente cerrado para A–C** siempre que el responsable apruebe estas evidencias y límites. **No se propone** declarar producción, aprobar RF-07 por arrastre, reescribir UML sin contraste, ni iniciar de manera automática otro módulo. La auditoría independiente será una etapa posterior y expresa.
 
@@ -58,3 +58,8 @@ Cotejar `docs/E2-5_A_MODELO_OPERACIONES_INVENTARIO.md`, `docs/E2-5_B_TRASLADOS_A
 - [x] Corregir referencia normativa: **RFC 9457** (no 7807) para futura interfaz de errores; no cambiar códigos HTTP mediante documentación.
 - [ ] Agregar/correr en PR de código futuro la carrera cruzada Ajuste vs Traslado al mismo destino y los controles de permisos SQL.
 - [ ] Obtener revisión y conformidad antes del merge; la hoja de encargo ya está preparada pero **no enviada ni ejecutada**.
+
+
+## G. Resultado de revisión interna v1.2
+
+El [acta de control editorial y técnico](14_REVISION_INTEGRAL_DOCUMENTAL.md) emite **OK para revisión del equipo y preparación de auditoría**, pero **NO** para producción ni merge automático. La [hoja E2-5](../E2-5_ENTREGA_PARA_REVISION.md) y el [paquete del auditor](../E2-5_AUDITORIA/00_LEEME_Y_PRECONDICIONES.md) están preparados. Falta aprobación del equipo, merge documental y completar el SHA de documentación publicada antes de entregarlos al auditor.
