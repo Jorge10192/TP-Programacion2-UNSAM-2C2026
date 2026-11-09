@@ -70,10 +70,13 @@ class InventoryMovementView(BaseModel):
     purchase_line_id: UUID | None
     inventory_operation_id: UUID | None
     operation_kind: str | None
+    sale_id: UUID | None
+    sale_line_id: UUID | None
     actor_id: UUID
     event_type: Literal[
         "COMPRA_RECEPCION", "TRASLADO_ENTRADA", "TRASLADO_SALIDA",
         "AJUSTE_ENTRADA", "AJUSTE_SALIDA", "STOCK_INICIAL",
+        "VENTA_SALIDA",
     ]
     delta_milli: int
     occurred_at: datetime
