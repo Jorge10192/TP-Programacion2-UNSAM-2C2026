@@ -1,6 +1,6 @@
 # E2-7 — Plan rector de integración React–FastAPI, validación integral y cierre académico
 
-**Estado:** PROPUESTA PARA REVISIÓN CON ASTRA; NO IMPLEMENTADA NI APROBADA.  
+**Estado:** plan de referencia previo a la revisión externa; las decisiones T00 vigentes para la planificación están en [E2-7_T00_DECISIONES_Y_ORDEN_DE_EJECUCION.md](E2-7_T00_DECISIONES_Y_ORDEN_DE_EJECUCION.md). La integración todavía no está implementada.  
 **Fecha de preparación:** 2026-11-09.  
 **Proyecto:** Plataforma PyME, TP Final Programación 2, UNSAM 2C2026; sistema generalista multiempresa/multirrubro (WALOS solo ejemplo).  
 **Referencia inmutable de análisis:** `main` `9a7a66394daf5a96b18b9ce796a2fe9ec92a4068` (incluye PR #28 de cierre E2-6).  
@@ -22,7 +22,7 @@ Integrar la SPA React/TypeScript E1-D2 (hoy DEMO local) con los contratos FastAP
 - `main` analizado: `9a7a66394daf5a96b18b9ce796a2fe9ec92a4068`; PR #26 persistencia E2-6, PR #27 ventas, PR #28 cierre documental fusionados.
 - Migraciones versionadas hasta `20261109_0017_sales_foundation.py` / `e26a_sales_foundation`; no introducir otra migración sin necesidad demostrada.
 - Módulos backend presentes: `auth`, `businesses`, `locations`, `catalog`, `suppliers`, `purchases` y `sales`; inventario/recepción/traslado/ajustes están organizados bajo `modules/purchases`.
-- HTTP v1 protegido con JWT/Bearer para recursos privados; `POST /sales` usa `Idempotency-Key` UUID4; el servidor decide autorización, stock, conflictos y respuesta.
+- HTTP v1 protegido con Bearer opaco (token aleatorio de sesión, NO JWT) para recursos privados; `POST /sales` usa `Idempotency-Key` UUID4; el servidor decide autorización, stock, conflictos y respuesta.
 - CI del merge #27 sobre `6336152`: [run #42696474777](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42696474777), tres trabajos exitosos. El merge documental PR #28 no implica nueva ejecución backend. Regresión Windows anterior reportada: `879 passed`. **No se han ejecutado nuevas pruebas como parte de este plan.**
 
 ### 2.2 Estado frontend
@@ -76,14 +76,14 @@ Integrar la SPA React/TypeScript E1-D2 (hoy DEMO local) con los contratos FastAP
 ### ADR E27-03 — Transporte y sesión
 
 - **Desarrollo:** configurar Vite proxy para `/api`, `/health` o `/ready` si corresponde; navegador llama ruta relativa. En producción preferir mismo origen con reverse proxy. Si es inevitable origen cruzado, allowlist CORS explícita, sin wildcard con credenciales.
-- JWT de acceso solo en estado de memoria, sin persistencia en `localStorage`. El backend expone `/auth/login`, `/auth/me`, `/auth/logout`, **no refresh token** en el contrato actual; tras F5 o expiración, un reinicio de sesión puede ser necesario. Eso debe quedar claro en UX.
+- Token Bearer opaco de acceso solo en estado de memoria, sin persistencia en `localStorage`. El backend expone `/auth/login`, `/auth/me`, `/auth/logout`, **no refresh token** en el contrato actual; tras F5 o expiración, un reinicio de sesión puede ser necesario. Eso debe quedar claro en UX.
 - Proteger `/perfil`, `/empresas/nueva` y rutas `/b/:businessId/*` en modo REAL con sesión; verificar GET de empresa/membresía sin inferir permisos por datos DEMO.
 - 401 => invalidar credenciales y volver a login; 403 => pantalla de falta de permiso; 404 tenant ajeno => no revelar información; 409 => mensaje contextual/reload; 422 => errores de formulario; 5xx/network => reintentar con seguridad.
 - Token no debe aparecer en logs, URL, artefactos E2E, screenshots ni errores mostrados.
 
 ### ADR E27-04 — Comandos, idempotencia y actualizaciones
 
-- Para cada operación idempotente, usar UUID4 generado **una vez por intento lógico**, conservado en memoria durante reintentos de mismo payload; no generar una nueva clave cuando la respuesta HTTP se pierda.
+- Para cada operación idempotente, usar UUID4 generado **una vez por intento lógico**, conservado con el cuerpo inmutable durante reintentos. Cuando el resultado de una mutación pueda quedar incierto tras F5, el registro local durable acotado se definirá en T06 según la política de privacidad/retención documentada en T00; no crear una clave nueva cuando se pierda la respuesta.
 - En ventas, compras, recepciones, transferencias, ajustes, creación empresarial: comprobar ruta/cabecera exacta contra router; no asumir misma política de todos los POST.
 - Después de cada commit exitoso, recargar saldo/ledger y las proyecciones dependientes, usando solo lo devuelto por API; ante timeout conservar clave/cuerpo y ofrecer «Verificar/reintentar» en lugar de enviar nuevo comando.
 - `409` de versión obsoleta en ajuste obliga relectura de `StockBalance.version` antes de preparar un **nuevo** comando. No auto-repetir una modificación con parámetros obsoletos.
