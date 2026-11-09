@@ -37,7 +37,7 @@ Este directorio contiene **el cierre documental preliminar de E2-5**, procedente
 - **No se incluyen** contraseñas, tokens de sesión, encabezados Bearer reales, claves reales de idempotencia ni sus valores de solicitud, hashes de esos valores, credenciales de base, ni correos del usuario QA.
 - Se conservan algunos **UUID de recursos QA** (empresa, ubicaciones, artículos y operaciones) porque son identificadores de negocio útiles para contrastar el ledger. **No son credenciales**. Los UUID de identidad personal se omiten.
 - No se incluye el `curl` copiado desde Swagger, precisamente porque podría exponer una cabecera sensible. Las respuestas se reducen a códigos, estados, cantidades, eventos y relaciones verificables.
-- En la conversación de QA se copió una cabecera Bearer válida en una ocasión. **No hay evidencia aquí de que fuera revocada**. La revocación/cambio de sesión es un pendiente de seguridad a confirmar **antes de publicar**. No se reproduce su valor.
+- En la conversación de QA se copió una cabecera Bearer válida. El desarrollador **aportó después un `POST /api/v1/auth/logout` con HTTP `204 No Content` y el mismo token expuesto**, el 09/11/2026 a las 15:23:37 GMT. **Revocación de esa sesión confirmada por respuesta Swagger reportada**, coherente con `SessionService.logout()`; no es una inspección SQL independiente ni implica revocar otras sesiones. **Nunca se reproduce el token.**
 - Cualquier nueva captura o transcripción debe inspeccionarse y sanearse **antes** de adjuntarla o subirla a Git.
 
 ## Procedencia y grado de prueba
