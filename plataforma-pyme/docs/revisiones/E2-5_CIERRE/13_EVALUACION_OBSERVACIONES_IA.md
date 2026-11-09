@@ -75,9 +75,14 @@ Se recomienda mantener esta evaluación **junto al cierre documental**, pero tra
 - Criterios de aceptación reproducibles, suites de regresión y permisos por tenant/rol.
 - Migración aditiva nueva cuando afecten columnas, estados o CHECK ya aplicados; no reescribir `e25a_inventory_ops` ni E2-4.
 - Revalidación en Windows + CI PostgreSQL/Python antes de fusionar cualquier cambio funcional.
-- Aprobación separada de cierre definitivo y **posterior encargo de auditoría formal** conforme a `GUIA_MAESTRA_REVISION_BLOQUES_E2_ASISTENTE_PYME.md`.
+- Aprobación separada de cierre definitivo y **uso posterior del encargo de auditoría formal ya preparado, todavía no ejecutado**, conforme a `GUIA_MAESTRA_REVISION_BLOQUES_E2_ASISTENTE_PYME.md`.
 
 **Bibliografía interna y fuente de verdad:**
 - `backend/app/modules/purchases/transfer_service.py`, `transfer_schemas.py`, `adjustment_service.py`, `adjustment_schemas.py`, `receipt_service.py`, `schemas.py`.
 - `backend/app/infrastructure/models/{inventory_operation,stock_balance,stock_movement}.py` y migración `20261109_0016_inventory_operations.py`.
 - `backend/tests/test_{transfer,adjustment,receipt}*_integration.py`, CI de merge [E2-5 A](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42601062105), [E2-5 B](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42604071018), [E2-5 C](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42617212795).
+
+
+## 7. Dependencia del proceso independiente (adenda v1.2)
+
+La revisión crítica de esta hoja **no debe sesgar al auditor hacia aceptar las decisiones de la IA autora**. La [hoja formal E2-5](../E2-5_ENTREGA_PARA_REVISION.md) y el [prompt autónomo de auditoría](../E2-5_AUDITORIA/03_PROMPT_MAESTRO_AUDITOR_IA.md) exigen que el auditor inspeccione primero fuentes y tests y solo después lea estas observaciones; puede discrepar con evidencia. No se añadieron tests ni se modificaron servicios por esta evaluación documental.
