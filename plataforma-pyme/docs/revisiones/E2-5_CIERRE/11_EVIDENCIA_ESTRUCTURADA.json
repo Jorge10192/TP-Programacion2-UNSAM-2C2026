@@ -22,7 +22,12 @@
     "raw_idempotency_keys_included": false,
     "raw_personal_email_included": false,
     "raw_bearer_headers_included": false,
-    "session_revocation_verified": false
+    "session_revocation_verified": true,
+    "session_revocation_evidence_type": "SWAGGER-REPORTADO",
+    "session_revocation_endpoint": "POST /api/v1/auth/logout",
+    "session_revocation_http": 204,
+    "session_revocation_at_utc": "2026-11-09T15:23:37Z",
+    "session_revocation_scope": "same previously exposed bearer session only; no SQL inspection nor all-user-session revocation"
   },
   "increments": [
     {
