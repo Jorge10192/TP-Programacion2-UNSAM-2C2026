@@ -27,7 +27,7 @@ from app.modules.purchases.service import (
 from app.modules.purchases.repository import PurchaseRepository
 from app.modules.purchases.receipt_repository import ReceiptRepository
 from app.modules.purchases.receipt_schemas import (
-    PurchaseReceiptView, ReceivePurchaseRequest, StockBalanceView, StockMovementView,
+    PurchaseReceiptView, ReceivePurchaseRequest, StockBalanceView, InventoryMovementView,
 )
 
 
@@ -293,10 +293,10 @@ class ReceiptService:
         self, actor_id: UUID, session_id: UUID, business_id: UUID,
         *, location_id: UUID | None, catalog_item_id: UUID | None,
         offset: int, limit: int,
-    ) -> list[StockMovementView]:
+    ) -> list[InventoryMovementView]:
         try:
             self._authorize(actor_id, session_id, business_id)
-            result = [StockMovementView.from_record(row) for row in self.receipts.list_movements(
+            result = [InventoryMovementView.from_record(row) for row in self.receipts.list_movements(
                 business_id, location_id=location_id, catalog_item_id=catalog_item_id,
                 offset=offset, limit=limit,
             )]
