@@ -30,9 +30,19 @@ export function RealAuthApp() {
   const generation = useRef(0)
 
   useEffect(() => {
-    const back = () => { generation.current++; setBusy(false); setMessage(''); setPath(routeFromPath(window.location.pathname)) }
+    // Invalidate requests both on navigation and when the component unmounts.
+    const invalidatePendingRequests = () => { generation.current += 1 }
+    const back = () => {
+      invalidatePendingRequests()
+      setBusy(false)
+      setMessage('')
+      setPath(routeFromPath(window.location.pathname))
+    }
     window.addEventListener('popstate', back)
-    return () => { generation.current++; window.removeEventListener('popstate', back) }
+    return () => {
+      window.removeEventListener('popstate', back)
+      invalidatePendingRequests()
+    }
   }, [])
 
   useEffect(() => {
