@@ -101,7 +101,12 @@ export function RealAuthApp() {
       setPendingCreation(null)
       setSession({ token: result.access_token, expiresAt: result.expires_at, user })
       setLoginInput((old) => ({ ...old, password: '' }))
-      go('/real/perfil', true)
+      // Preserve only a safe destination after F5. Never restore a pending create
+      // form automatically because its in-memory idempotency key may be lost.
+      const safeDestination: Route = path === '/real/empresas' || path === '/real/perfil'
+        || (path.startsWith('/real/empresas/') && path !== '/real/empresas/nueva')
+        ? path : '/real/perfil'
+      go(safeDestination, true)
     } catch (error) {
       if (current !== generation.current) return
       setMessage(authErrorMessage(error, 'login'))
