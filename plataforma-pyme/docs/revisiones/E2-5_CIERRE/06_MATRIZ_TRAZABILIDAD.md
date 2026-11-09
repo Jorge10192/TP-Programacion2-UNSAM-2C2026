@@ -36,7 +36,7 @@ La evidencia es **posterior** al estado que muestran algunos encabezados de docu
 
 ## Aspectos aún sin certificación independiente
 
-Permisos/tenants en condiciones de carrera complejas, inmutabilidad ante SQL directo, tolerancia a deadlocks no contemplados, regresión del frontend, equivalencia exhaustiva con todos los atributos UML y cobertura contra la consigna académica original requieren una **auditoría separada**, cuyo encargo no se incluye en este ZIP.
+Permisos/tenants en condiciones de carrera complejas, inmutabilidad ante SQL directo, tolerancia a deadlocks no contemplados, regresión del frontend, equivalencia exhaustiva con todos los atributos UML y cobertura contra la consigna académica original requieren una **auditoría separada**, para la que se preparó [un encargo formal](../E2-5_ENTREGA_PARA_REVISION.md) **después de la revisión documental**, sin ejecución todavía.
 
 ## Anexo v1.1 — Verificación de observaciones externas
 
