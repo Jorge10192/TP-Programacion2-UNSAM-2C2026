@@ -23,6 +23,7 @@ export type NewBusiness = { name: string; category: string; activity_kind: Activ
 export type BusinessChanges = Partial<NewBusiness>
 
 export const UUID_PATTERN = /^[a-f\d]{8}-[a-f\d]{4}-[1-8][a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i
+export const UUID_V4_PATTERN = /^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -82,7 +83,7 @@ export function createBusinessGateway(token: string, userId: string, fetchImpl?:
         await client.request<unknown>('/businesses/' + businessId, { signal }), userId)
     },
     async create(input: NewBusiness, key: string): Promise<RealBusiness> {
-      if (!UUID_PATTERN.test(key)) throw new TypeError('Idempotency-Key debe ser UUID')
+      if (!UUID_V4_PATTERN.test(key)) throw new TypeError('Idempotency-Key debe ser UUID4')
       return parseRealBusiness(await client.request<unknown>('/businesses', {
         method: 'POST', body: input, idempotencyKey: key,
       }), userId)
