@@ -1,6 +1,6 @@
 # E2-5 B — Transferencias físicas atómicas entre ubicaciones
 
-**Fecha:** 2026-11-09 · **Estado:** propuesta en rama feature/e2-5b-transferencias-stock, a validar en CI y Windows.
+**Fecha:** 2026-11-09 · **Estado:** backend validado en CI; pendiente de merge y ejecución local Windows.
 **Base:** E2-5 A, commit de main `4268846abc524ebd827b4da930ef58d8d9789ac7`, migración `e25a_inventory_ops`.
 **Alcance:** RF-06, CU-09. Solo backend, datos del tenant, permisos STORE y trazabilidad; no se construye UI React ni ajustes CU-11.
 
@@ -45,7 +45,7 @@ Se conserva `POST /purchases/{purchase_id}/receive` y `GET /purchases/{purchase_
 
 ### Pruebas y límites
 
-`tests/test_transfer_api_integration.py` cubre traslado 10→6/4, respuesta persistida, replay sin duplicar, clave con carga distinta, rechazo por origen insuficiente sin cambios parciales, unidades físicas y discretas, servicios no transferibles, ubicación ajena o inhabilitada, permisos de encargado/trabajador y lectura inter-tenant. Pruebas de concurrencia real con conexiones independientes se incluirán para validar dos transferencias simultáneas de la misma existencia (si el CI y la arquitectura temporal lo permiten).
+`tests/test_transfer_api_integration.py` cubre traslado 10→6/4, respuesta persistida, replay sin duplicar, clave con carga distinta, rechazo por origen insuficiente sin cambios parciales, unidades físicas y discretas, servicios no transferibles, ubicación ajena o inhabilitada, permisos de encargado/trabajador y lectura inter-tenant. Tres pruebas de concurrencia real con conexiones HTTP/PostgreSQL independientes verifican: (i) dos transferencias competidoras de 7 unidades desde un stock de 10: solo una se confirma (201 y 409), (ii) mismo UUID4 en dos pedidos paralelos: 201 y 200, una sola operación, (iii) transferencias opuestas de ubicaciones A↔B: ambas 201, sin deadlock ni pérdida de stock. `tests/test_transfer_concurrency_integration.py` utiliza un tenant temporal propio y limpieza restringida a ese tenant; la base QA preexistente se conserva.
 
 **No implementado en este corte:** ajuste positivo/negativo (E2-5 C), stock inicial, transferencias de múltiples artículos, recepciones parciales, reversión compensatoria, consumos por venta/producción, conciliación SQL periódica, front React conectado. Aunque el movimiento es histórico e inaccesible por PATCH/DELETE en la API, el hardening ante modificaciones SQL directas se sigue debiendo.
 
@@ -75,4 +75,4 @@ cd ..
 docker compose --profile api up -d --build --wait api
 ```
 
-Esperado `e25a_inventory_ops (head)`, Alembic sin deriva y tests aprobados. El número exacto de tests solo se registrará después del CI y Windows; no borrar ningún volumen Docker.
+Esperado `e25a_inventory_ops (head)`, Alembic sin deriva y tests aprobados. **CI verificado en [GitHub Actions #42602232103](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42602232103)**: 3/3 trabajos exitosos; **826 pruebas** en Python 3.12 y **826** en Python 3.14 (PostgreSQL 16); `e25a_inventory_ops (head)`, `alembic check` sin deriva; imagen Docker y liveness aprobados. **Windows aún no ejecutado para E2-5 B**, no se lo presenta como validado. No borrar ningún volumen Docker.
