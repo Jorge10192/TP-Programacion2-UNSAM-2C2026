@@ -7,11 +7,13 @@
 ```text
 Cliente autenticado
   └── /api/v1/businesses/{business_id}/...
-        ├── routers FastAPI (contratos, JWT, HTTP)
+        ├── routers FastAPI (contratos, Bearer opaco con sesión revocable, HTTP)
         ├── services (autorización, validaciones, idempotencia, unidad transaccional)
         ├── modelos SQLAlchemy (business/ubicaciones/artículo/saldo/operación/movimiento)
         └── PostgreSQL 16 (FK, UNIQUE, CHECK, row locks, commit/rollback)
 ```
+
+La autenticación usa tokens **Bearer opacos de 256 bits**, con huella SHA-256 indexada en `auth_sessions`, vigencia y revocación comprobadas contra la base. **No hay JWT**. La sesión inicial se comprueba de nuevo dentro de las operaciones de stock bajo locks de usuario/sesión/membresía.
 
 Se mantiene la distinción E2-4: **compra registrada ≠ recepción física**. El alta en catálogo tampoco genera stock. E2-5 B traslada cantidades existentes; E2-5 C registra correcciones o primer stock, todos con un movimiento auditable.
 
