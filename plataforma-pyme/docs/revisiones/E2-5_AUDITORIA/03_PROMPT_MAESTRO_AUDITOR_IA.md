@@ -1,6 +1,6 @@
 # Prompt maestro — Asignación a IA revisora independiente de E2-5
 
-**Uso:** copiar a una **segunda IA** junto con este documento o proporcionar acceso al repositorio. **No se ejecutó esta auditoría**; el contenido es una orden de trabajo propuesta. Ajustar únicamente los dos marcadores de SHA documental/PR una vez publicado el cierre.
+**Uso:** copiar a una **segunda IA** junto con este documento o proporcionar acceso al repositorio. **No se ejecutó esta auditoría**; el contenido es una orden de trabajo propuesta. El PR documental #24 ya fue fusionado. El SHA de publicación del cierre E2-5 está resuelto; el auditor debe registrar además el HEAD real de la revisión (puede ser posterior por una fe de erratas documental).
 
 ---
 
@@ -14,7 +14,7 @@ Actuá como **auditor/a independiente senior de backend transaccional y segurida
 - Carpeta única autorizada: `plataforma-pyme/`.
 - Código E2-5 funcional congelado: `748e69319d8d04900c009d5184168a264a9deeac`.
 - Base funcional anterior E2-4: `1a188f9a596f4674ca121806ecb92e6a96abf294`.
-- SHA del **merge documental** aprobado: `<COMPLETAR_DESPUÉS_DEL_MERGE_DEL_PR_24>`.
+- SHA del **merge documental** aprobado: `c66df2f8ddaa8179ca12e342bd3099348bc6b155`.
 - Rama sugerida para revisión: `review/e2-5-inventario`, creada después de confirmar SHA exacto de `main` publicado.
 - Guía rectora: `plataforma-pyme/docs/revisiones/GUIA_MAESTRA_REVISION_BLOQUES_E2_ASISTENTE_PYME.md`.
 - Hoja específica: `plataforma-pyme/docs/revisiones/E2-5_ENTREGA_PARA_REVISION.md`.
@@ -78,4 +78,4 @@ Tu trabajo es útil cuando el equipo puede decidir **qué aprobar, qué corregir
 
 ## Nota para el responsable del proyecto
 
-**No enviar este prompt a la IA auditora hasta haber revisado/mergeado el PR documental #24**. Después reemplazar `<COMPLETAR_DESPUÉS_DEL_MERGE_DEL_PR_24>` por el SHA real del cierre documental y confirmar que no hubo cambios en backend desde el SHA funcional. Si los hubo, decidir un nuevo corte antes de iniciar la revisión.
+**PR documental #24 fusionado** en `main` al commit `c66df2f8ddaa8179ca12e342bd3099348bc6b155`. Ese SHA identifica el **cierre publicado original**, no pretende autorreferenciar el commit actual de esta fe de erratas. Antes de iniciar, comprobar `git rev-parse HEAD`, comparar el backend contra el SHA funcional `748e69319d8d04900c009d5184168a264a9deeac` y registrar ambos identificadores. Si hubo cambios funcionales posteriores, decidir un nuevo corte antes de la auditoría.
