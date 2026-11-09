@@ -34,8 +34,15 @@ export function RealBusinessesPage({
   const [editing, setEditing] = useState(false)
   const [changes, setChanges] = useState<NewBusiness>(emptyNewBusiness)
   const requestGeneration = useRef(0)
+  const mutationGeneration = useRef(0)
   const gateway = useMemo(() => createBusinessGateway(token, userId), [token, userId])
   const businessId = route.kind === 'detail' ? route.businessId : null
+
+  useEffect(() => {
+    // Changing tenant, route or session must not let an old POST/PATCH alter this page.
+    const invalidateMutations = () => { mutationGeneration.current += 1 }
+    return () => { invalidateMutations() }
+  }, [])
 
   useEffect(() => {
     // Abort reads on tenant change; ignore late responses from the previous tenant.
@@ -88,13 +95,16 @@ export function RealBusinessesPage({
     }
     const pending = pendingCreation ?? { key: crypto.randomUUID(), body: desired }
     setPendingCreation(pending)
+    const mutationId = ++mutationGeneration.current
     setBusy(true)
     try {
       const business = await gateway.create(pending.body, pending.key)
+      if (mutationId !== mutationGeneration.current) return
       setPendingCreation(null)
       setDraft(emptyNewBusiness)
       onNavigate('/real/empresas/' + business.id)
     } catch (err) {
+      if (mutationId !== mutationGeneration.current) return
       if (err instanceof ApiHttpError && err.status === 401) { onUnauthorized(); return }
       const ambiguous = (err instanceof ApiTransportError && err.outcomeUnknown)
         || (err instanceof ApiHttpError && (err.status === 409 || err.status >= 500))
@@ -103,7 +113,7 @@ export function RealBusinessesPage({
         ? 'No podemos confirmar el resultado de la creación. Primero revisá «Mis empresas»; si no aparece, podés reintentar con la MISMA clave y los MISMOS datos. No creamos otra clave automáticamente.'
         : businessErrorMessage(err))
     } finally {
-      setBusy(false)
+      if (mutationId === mutationGeneration.current) setBusy(false)
     }
   }
 
@@ -111,6 +121,7 @@ export function RealBusinessesPage({
     event.preventDefault()
     if (!selected || !canEditBusiness(selected) || busy) return
     setError(''); setNotice(''); setBusy(true)
+    const mutationId = ++mutationGeneration.current
     const updated = normalize(changes)
     const patch: BusinessChanges = {}
     if (updated.name !== selected.name) patch.name = updated.name
@@ -122,14 +133,16 @@ export function RealBusinessesPage({
     }
     try {
       const current = await gateway.update(selected.id, patch)
+      if (mutationId !== mutationGeneration.current) return
       setSelected((old) => old?.id === current.id ? current : old)
       setEditing(false)
       setNotice('Datos de la empresa actualizados en PostgreSQL.')
     } catch (err) {
+      if (mutationId !== mutationGeneration.current) return
       if (err instanceof ApiHttpError && err.status === 401) { onUnauthorized(); return }
       setError(businessErrorMessage(err))
     } finally {
-      setBusy(false)
+      if (mutationId === mutationGeneration.current) setBusy(false)
     }
   }
 
