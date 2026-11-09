@@ -26,7 +26,7 @@ def test_real_postgres_accepts_queries() -> None:
         assert conn.execute(text("SELECT current_setting('server_version_num')")).scalar_one().startswith("16")
 
 
-def test_real_postgres_has_initial_alembic_revision() -> None:
+def test_real_postgres_has_current_sales_foundation_alembic_revision() -> None:
     with get_engine().connect() as conn:
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "e25a_inventory_ops"
+        assert version == "e26a_sales_foundation"
