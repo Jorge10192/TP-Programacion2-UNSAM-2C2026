@@ -106,6 +106,19 @@ Realizar sin modificar existencias, compras ni datos DEMO.
 
 **Conclusión parcial:** quedan validados los dos casos centrales de lectura de T08-1 (existencias e historial) en TEST Empresa A y la concordancia con el comprobante histórico T07. No se registró ninguna operación de inventario nueva para verificarlo.
 
-**Todavía no verificado en estas dos capturas:** filtros efectivos por Sede A TEST 2 y artículo, aislamiento de lectura de TEST Empresa B, acceso con trabajador Miguel, DEMO sin regresiones en esta rama y manejo de listas mayores de 100 entradas. No marcar T08-1 globalmente aprobado hasta completar la aceptación acordada; tests de gateway/contratos sí estaban aprobados por CI.
+**Actualización tras las siguientes capturas:** el aislamiento visual TEST Empresa B sin saldos y la consulta desde la cuenta del trabajador Miguel ya fueron verificados; ver sección posterior. **Aún no verificado:** filtro por Sede A TEST 2 y artículo, historial vacío en Empresa B, DEMO sin regresiones específicamente en esta rama y paginación con más de 100 entradas. El CI cubre los contratos de lectura, pero esas comprobaciones manuales siguen diferenciadas.
 
 **Observación visual menor (no bloqueante):** con una única combinación el texto de la pantalla dice «1 combinaciones artículo/sede cargados»; considerar singularización de la leyenda en el pulido de T08-1, sin impacto en saldos.
+
+## Evidencia manual adicional: cuenta de Miguel y empresas A/B — 10/11/2026
+
+**Fuente:** tres capturas de la UI de Inventario REAL y confirmación textual del usuario («Anda bien desde la Cuenta de Miguel»).
+
+| Observación | Resultado | Alcance |
+|---|---|---|
+| Empresa B → Existencias | `0 combinaciones artículo/sede cargados`; estado vacío: «No hay saldos registrados para los filtros seleccionados» | **Aprobado visualmente:** no muestra el saldo ni Producto A TEST de A; no se observó aquí el historial de B |
+| Empresa A → Existencias | `Producto A TEST`, `Sede A TEST`, **11 UNIDAD**, versión 3 | **Aprobado:** coincide con último comprobante T07 y captura anterior de T08-1 |
+| Cuenta de Miguel (TRABAJADOR en Empresa A) | El usuario afirma que puede abrir correctamente esta pantalla y consultar el saldo REAL | **Aprobado en UI** para lectura; la captura por sí sola no prueba una negativa HTTP para modificaciones, que no están disponibles todavía en T08-1 |
+| Acciones de cambio de stock | No hay controles de ajuste/traslado en la vista | **Diseño previsto:** módulo read-only para todos los roles hasta T08-3/T08-4; no equivale a demostrar denegación por rol |
+
+**Resultado parcial:** aislamiento de listados de saldos entre empresas y lectura como trabajador observados. Falta ejecutar la selección explícita de **Sede A TEST 2** (y preferiblemente comprobar la pestaña Historial con ese filtro), el filtro por artículo, el historial de Empresa B y la regresión DEMO para el cierre manual de este subincremento. No se modifica la base ni se fusiona PR #41 por estas capturas.
