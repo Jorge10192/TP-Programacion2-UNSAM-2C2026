@@ -7,6 +7,7 @@ import {
 } from '../src/features/inventory/realInventoryGateway.ts'
 import {
   filterLoadedHistory, loadedInventoryCountLabel, loadedMovementCounts, movementTraceFields,
+  loadedHistorySummary, loadedMatchCountLabel,
 } from '../src/features/inventory/inventoryHistoryView.ts'
 
 const business='12dd5528-f5cc-4931-bd39-f5e9da116d25'
@@ -299,4 +300,17 @@ test('T08-2: con 100 movimientos cargados el filtro local no presume consultar p
  assert.equal(loadedInventoryCountLabel('movements',rows.length,true),
   '100 movimientos cargados · Puede haber más páginas.')
  assert.equal(rows.length,100)
+})
+
+test('T08-3 QA visual: resumen singular, plural y sin movimientos por sede',()=>{
+ assert.equal(loadedHistorySummary(1,1,0),'En el movimiento cargado: 1 entrada y 0 salidas.')
+ assert.equal(loadedHistorySummary(1,0,1),'En el movimiento cargado: 0 entradas y 1 salida.')
+ assert.equal(loadedHistorySummary(4,3,1),'En los 4 movimientos cargados: 3 entradas y 1 salida.')
+ assert.equal(loadedHistorySummary(0,0,0),'No hay movimientos cargados: 0 entradas y 0 salidas.')
+ assert.equal(loadedMatchCountLabel(1),'Se muestra 1 coincidencia del filtro local.')
+ assert.equal(loadedMatchCountLabel(0),'Se muestran 0 coincidencias del filtro local.')
+ assert.equal(loadedMatchCountLabel(3),'Se muestran 3 coincidencias del filtro local.')
+ for(const values of [[1,2,0],[-1,0,0],[2,0,3],[2,1,-1]]){
+  assert.throws(()=>loadedHistorySummary(...values),RangeError)
+ }
 })
