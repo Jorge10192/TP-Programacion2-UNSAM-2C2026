@@ -11,7 +11,7 @@ Revisión directa de `backend/app/modules/purchases/{adjustment_router.py,adjust
 - `GET /api/v1/businesses/{business_id}/inventory/adjustments/{adjustment_id}` consulta histórica **sin mutar stock**.
 - **STOCK_INICIAL** solo para titular/admin, saldo **no existente**, sin historial de movimientos en la sede+artículo, `expected_version=0`, saldo inicial positivo, nueva proyección con versión 1. No habilitar inicialización repetida, ni siquiera tras saldo histórico cero.
 - **AJUSTE_ENTRADA/SALIDA** solo si ya existe saldo: exige su versión positiva exacta; un `expected_version` obsoleto (por traslado, compra, venta u otro ajuste) produce **409** y la API NO altera saldo ni ledger. Salida exige cantidad <= saldo existente.
-- **CONTEO FÍSICO** es solo una comodidad frontend: el usuario introduce **saldo final**; la interfaz calcula diferencia `contado − saldo consultado`, construye `AJUSTE_ENTRADA` o `AJUSTE_SALIDA` con delta positivo y `expected_version` leído. Si diferencia = 0, **no envía POST**. Un saldo final contado de cero está permitido en conteo, no en stock inicial.
+- **CONTEO FÍSICO** es solo una comodidad frontend: el usuario introduce **saldo final** (hasta 999999999999999 milésimas); la interfaz calcula diferencia `contado − saldo consultado`, construye `AJUSTE_ENTRADA` o `AJUSTE_SALIDA` con delta positivo y `expected_version` leído. Si diferencia = 0, **no envía POST**. Si la diferencia es mayor que 999999999 milésimas, se rechaza por exceder el máximo de una operación individual: no se trunca ni redondea. Un saldo final contado de cero está permitido en conteo, no en stock inicial.
 - Roles: titular y administrador pueden inicializar y ajustar; encargado puede ajustar si cuenta con asignación STORE activa a la sede; trabajador no puede ajustar ni inicializar. Ubicación activa con `can_store=true`, negocio y membresía activos, artículo `BIEN` y `ACTIVO`. Toda autorización real pertenece al backend.
 - Respuesta contiene exactamente **un movimiento firmado**, con tipo de operación, actor y UUID de operación consistente con el comprobante. No inventar facturas ni cambiar precios del catálogo.
 
@@ -29,10 +29,10 @@ Revisión directa de `backend/app/modules/purchases/{adjustment_router.py,adjust
 ## 3. Evidencia automática
 
 GitHub Actions en rama T08 con el nuevo script `test:adjustment-real` (verificar último run del commit de código, no confundir CI anteriores):
-- Frontend, build y lint: **219/219 pruebas de las suites frontend**, incluidas **14/14 del ajuste**, **14/14 transferencias** y **26/26 inventario**; lint **0 errores, 0 advertencias**.
+- Frontend, build y lint: **220/220 pruebas de las suites frontend**, incluidas **15/15 del ajuste**, **14/14 transferencias** y **26/26 inventario**; lint **0 errores, 0 advertencias**.
 - Tests nuevos cubren `201`, replay `200`, GET histórico, UUID4, cantidad exacta, rol, balance inicial v0, ajustes v1+, conteo con diferencia (+,−,cero), HTTP 401/403/404/409/422, firma de movimiento, tenant, respuesta malformada, falla de red incierta, F5 con clave/cuerpo y versión originales, fallo y corrupción de IndexedDB.
 - El backend **ya** tiene pruebas de PostgreSQL específicas de ajustes y concurrencia (`test_adjustment_api_integration.py`, `test_adjustment_concurrency_integration.py`), que no deben confundirse con las nuevas pruebas unitarias de frontend.
-- Aviso Vite por chunk JS >500 kB continúa visible; es un aviso de rendimiento, no un fallo de build.
+- Aviso Vite por chunk JS >500 kB continúa visible; es un aviso de rendimiento, no un fallo de build.\n- Se encontró y corrigió una divergencia entre el límite de **saldo acumulado** y el de **delta individual**; el conteo final puede superar el máximo de un único ajuste mientras el delta cumpla su tope, conforme a `StockBalance.MAX_BALANCE_MILLI`. Hay prueba específica del saldo grande.
 
 ## 4. QA manual recomendado — minimizar alteración de los datos existentes
 
