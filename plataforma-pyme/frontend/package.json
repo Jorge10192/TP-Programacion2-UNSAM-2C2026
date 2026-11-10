@@ -29,7 +29,8 @@
     "test:inventory-real": "node --test tests/inventory-real-api.test.mjs",
     "test:transfer-real": "node --test tests/transfer-real-api.test.mjs",
     "test:adjustment-real": "node --test tests/adjustment-real-api.test.mjs",
-    "test:sales-real-read": "node --test tests/sales-real-read-api.test.mjs"
+    "test:sales-real-read": "node --test tests/sales-real-read-api.test.mjs",
+    "test:sales-real-command": "node --test tests/sales-real-command.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
