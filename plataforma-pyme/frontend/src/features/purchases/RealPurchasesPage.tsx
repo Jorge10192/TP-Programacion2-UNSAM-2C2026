@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
+import { ApiHttpError } from '../../api/httpClient.ts'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
 import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
 import { createCatalogGateway, centsToPesos } from '../catalog/realCatalogGateway.ts'
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
-import { createSupplyGateway, decimalToMilli, lineTotalCents, milliToDecimal, priceInputCents,
+import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents,
   supplyErrorMessage, validatePurchase } from './realSupplyGateway.ts'
 import type { Purchase, NewPurchase, Supplier, PurchaseLineInput } from './realSupplyGateway.ts'
 import { pendingScope, supplyJournal, PendingConflictError, PendingStorageError } from './supplyPendingJournal.ts'
