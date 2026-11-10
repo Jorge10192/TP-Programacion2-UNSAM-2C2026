@@ -1,6 +1,6 @@
 # E2-7 T08-2 — Historial REAL, filtros locales y trazabilidad de movimientos
 
-**Estado:** implementación completada y CI automatizado aprobado; QA visual REAL pendiente. **PR #41 sigue en borrador, sin merge a `main`.**
+**Estado:** implementación completada, CI aprobado y **seis pruebas funcionales manuales T08-2 aprobadas** según las capturas y confirmación del usuario (10/11/2026). **PR #41 sigue en borrador, sin merge a `main`.**
 
 ## 1. Objetivo y límites
 
@@ -84,4 +84,21 @@ Después de actualizar la rama y abrir `/real/login`:
 
 ## 7. Resultado técnico y próxima decisión
 
-Se considera **listo para QA manual T08-2**. No hay evidencia aún de prueba humana sobre los nuevos controles de búsqueda, select de tipo y desplegable de trazabilidad con la base de datos real. Los resultados de las capturas previas de T08-1 siguen válidos para la funcionalidad de saldos/historial anterior, pero **no se presentan como prueba del UX nuevo**. La aprobación futura de T08-2 depende de validar el checklist anterior; T08-3/T08-4 aún no desarrolladas y PR #41 NO se fusiona.
+Se considera **aprobada la aceptación funcional principal de T08-2** con las pruebas manuales de búsqueda, filtro por tipo, trazabilidad y saldos; ver evidencia de la sección 8. La aprobación es del subincremento de lectura, **no** de la seguridad/integración completa de T08. T08-3/T08-4 aún no desarrolladas; PR #41 NO se fusiona.
+
+## 8. Evidencia manual T08-2 — 10/11/2026
+
+**Fuente:** seis capturas del navegador con TEST Empresa A en Inventario REAL y declaración expresa del usuario de haber completado las seis pruebas. Se registra solo lo que muestran las capturas o lo que confirma el usuario; no se afirma una nueva consulta SQL ni una prueba E2E automatizada contra PostgreSQL.
+
+| Criterio | Resultado observado | Veredicto |
+|---|---|---|
+| Historial inicial de Producto A TEST, Sede A TEST | **3 movimientos** de recepción, **+5**, **+4**, **+2**; resumen **3 entradas, 0 salidas**, orden descendente | **Aprobado** |
+| Selector «Solo entradas (+)» | **3 coincidencias** y permanecen visibles las tres recepciones | **Aprobado** |
+| Selector «Solo salidas (−)» | **0 coincidencias**, mensaje «No hay coincidencias entre los 3 movimientos cargados»; sin inventar salidas | **Aprobado** |
+| Búsqueda por texto sin coincidencias | Ingreso «Producto A TEST agregado»; **0 coincidencias** y mensaje correcto; el usuario además confirma la prueba de búsqueda positiva | **Aprobado** en alcance reportado |
+| «Ver trazabilidad» en recepción +5 | Se despliegan UUID de **movimiento, responsable, ubicación, artículo, recepción interna y renglón de compra**; aviso de que no constituye factura o comprobante de pago | **Aprobado** |
+| Regreso a Existencias | **Producto A TEST: 11 UNIDAD**, saldo versión 3, leyenda singular «1 combinación artículo/sede cargada» | **Aprobado** |
+
+**Conciliación:** +2 +4 +5 = **11 UNIDAD**, consistente con el saldo confirmado en el historial y el comprobante de T07. El resumen 3/0 cuenta movimientos **descargados**, no inventario global.
+
+**Decisión:** T08-2 (historial y trazabilidad de solo lectura) **aceptado funcionalmente**. El CI sigue aprobado (25/25 tests de inventario y 190/190 frontend en la última ejecución verificada). No hay autorización para fusionar T08 completo a `main`; el PR #41 permanece en borrador. Siguen pendientes **T08-3 transferencias**, **T08-4 inventario inicial y ajustes**, **T08-5 QA integral**, además de paginación de más de 100 filas y concurrencia que se cubrirán en el QA posterior.
