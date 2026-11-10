@@ -197,3 +197,38 @@ El color **acompaña al texto**, nunca lo reemplaza: los estados se distinguen t
 **Pruebas automatizadas:** `inspectReceipt` comprueba que el caso 404 + compra registrada hace exactamente dos GET y cero POST; que el 404 del detalle no se disfraza de ausencia de recibo; que estado `RECIBIDA` sin recibo es inconsistencia; y que un comprobante confirmado se lee con un GET.
 
 **QA manual pendiente después del ajuste:** con la cuenta trabajadora, abrir el intento pendiente, usar `Consultar comprobante`, esperar el aviso no rojo si la compra sigue `REGISTRADA` y confirmar que el botón de reintento conserva la clave original, sin movimientos nuevos. Si luego se decide completar la recepción, verificar previamente asignación activa y permisos en sede, y hacer **una** confirmación explícita con esa misma clave. No suprimir los códigos HTTP para otros recursos.
+
+## 12. Detalle visual del comprobante de recepción confirmada
+
+**Decisión aprobada por el usuario el 10/11/2026.** Durante la prueba de recepción con la cuenta colaboradora se confirmó la compra «Compra2 prueba E2-7 T07» y el backend devolvió correctamente la recepción. Sin embargo, el botón «Consultar comprobante» solo mostraba un mensaje verde con el UUID de la ubicación. La expectativa era consultar un detalle legible, no solamente una notificación.
+
+**Resolución T07 (solo frontend):**
+
+- «Consultar comprobante» ejecuta el GET del recibo existente, y al obtener un registro válido presenta un panel inline «Detalle de recepción», asociado a su compra, con estado **CONFIRMADA**.
+- Incluye referencia de la compra, nombre de la sede, fecha/hora de confirmación, responsable, detalle de entradas de stock y saldos posteriores del backend.
+- La sede se resuelve por su nombre desde las ubicaciones REAL ya consultadas para la empresa; si no aparece en la lista, se explicita el nombre no disponible, dejando su UUID en la sección desplegable de trazabilidad.
+- Se utiliza el campo confirmed_by_id del servidor: cuando coincide con la sesión actual, se muestra session.user.display_name; si corresponde a otra persona, se muestra su ID de auditoría sin inventar ni revelar datos privados del equipo. No se ejecutan lecturas de membresías restringidas al trabajador.
+- Cada movimiento y cantidad proceden del comprobante REAL. La descripción y unidad se obtienen preferentemente de los snapshots históricos de la compra, no de los artículos vigentes; balances_after se utiliza solo cuando está disponible. No se agregan movimientos ficticios para servicios o conceptos.
+- Los identificadores de recibo y ubicación quedan bajo «Identificadores de trazabilidad», no como texto principal. No se publica ni copia la clave request_id del comando idempotente.
+- El panel señala que **es un registro interno de FastAPI/PostgreSQL, no una factura ni un PDF**. La exportación PDF no forma parte de T07.
+- El detalle dispone de «Cerrar detalle» y diseño adaptable a pantallas estrechas. No modifica estado comercial, inventario, roles, importes ni datos DEMO.
+- Cuando un POST de recepción acaba con respuesta válida, ese mismo recibo puede presentarse directamente, sin hacer otro POST. Al consultar un comprobante confirmado, se sigue reconciliando la clave pendiente por request_id según T06/T07. Para una recepción todavía pendiente, el manejo de 404 de la sección 11 continúa intacto.
+
+**Implementación:**
+- frontend/src/features/purchases/RealReceiptDetail.tsx: vista legible.
+- frontend/src/features/purchases/receiptViewModel.ts: mapeo puro de DTOs históricos, sedes, actor, milésimas y saldos.
+- frontend/src/features/purchases/RealPurchasesPage.tsx: apertura del comprobante dentro de la compra correspondiente.
+- frontend/src/features/auth/RealAuthApp.tsx: comparte display_name del usuario autenticado, sin consultar miembros privados.
+- frontend/src/features/auth/auth.css: estilos responsive.
+- frontend/tests/supply-real-api.test.mjs: pruebas de nombre/ID de responsable, sede, snapshots y servicios sin movimientos.
+
+**QA manual antes de fusionar PR #40:**
+
+1. Con Miguel, abrir «Compra2 prueba E2-7 T07» ya RECIBIDA, consultar comprobante y comprobar sede «Sede A TEST», fecha de servidor, responsable «miguel» (si coincide con display_name de la sesión), +5 UNIDAD de Producto A TEST y saldo posterior. Las 2 unidades de servicio no deben generar movimiento de inventario.
+2. Desde el titular, leer esa misma recepción: no mostrar un nombre de responsable inventado para el otro usuario; mostrar su identificador.
+3. Consultar la primera compra recibida: debe presentar +2 UNIDAD sin crear otro movimiento.
+4. Verificar que el estado RECIBIDA siga verde, que «Cerrar detalle» funcione y que consultar nunca reenvíe una recepción.
+5. Verificar el panel en pantalla estrecha y las etiquetas de identificadores de auditoría.
+6. En compras REGISTRADA sin recibo, mantener el aviso de ausencia de comprobante y la clave original, sin simulación de éxito.
+
+**Transferencia:** T08 debe conservar la separación entre comprobantes de compra y el ledger global del inventario. T12 debe documentar que esta vista es comprobante **interno**, no factura electrónica ni PDF. El cierre de T07 requiere capturas de navegador y CI aprobado.
