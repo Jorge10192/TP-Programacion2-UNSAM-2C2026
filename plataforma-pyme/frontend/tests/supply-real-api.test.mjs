@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ApiHttpError, ApiTransportError } from '../src/api/httpClient.ts'
-import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents, priceInputCents,
+import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents, priceInputCents, purchaseStatusPresentation,
   validatePurchase, parsePurchase, parseReceipt, parseSupplier } from '../src/features/purchases/realSupplyGateway.ts'
 import { createPendingJournal, pendingScope, PendingConflictError, parsePending, newPurchaseIntent, newReceiptIntent } from '../src/features/purchases/supplyPendingJournal.ts'
 import { suggestedUnitCost, costExceedsSalePrice, previewLineTotalCents, previewPurchaseTotalCents, unitCostFromExactLineTotal } from '../src/features/purchases/purchaseCostProposal.ts'
@@ -289,4 +289,20 @@ test('la conversión por total solo construye unit_cost_cents, sin cambiar catá
   assert.equal(lineTotalCents(changed.lines[0].quantity_milli,changed.lines[0].unit_cost_cents),400000)
   assert.equal(selectedCatalog.reference_cost_cents,80000)
   assert.equal(changed.lines[0].catalog_item_id,item)
+})
+
+test('REGISTRADA muestra recepción pendiente ámbar y RECIBIDA confirmación verde',()=>{
+  assert.deepEqual(purchaseStatusPresentation('REGISTRADA'),{
+    label:'REGISTRADA · RECEPCIÓN PENDIENTE',tone:'pending'
+  })
+  assert.deepEqual(purchaseStatusPresentation('RECIBIDA'),{
+    label:'RECIBIDA',tone:'confirmed'
+  })
+})
+test('compra sin recepción y cancelada son estados neutros, nunca verde',()=>{
+  for(const status of ['CERRADA_SIN_RECEPCION','CANCELADA']){
+    const presentation=purchaseStatusPresentation(status)
+    assert.equal(presentation.tone,'neutral')
+    assert.ok(presentation.label.length>0)
+  }
 })
