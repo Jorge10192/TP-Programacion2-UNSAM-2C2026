@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { ApiHttpError, ApiTransportError } from '../src/api/httpClient.ts'
 import {
   createSalesReadGateway, parseSaleReceipt, salesReadErrorMessage,
+  parseSaleSummary, parseSaleSummaryList, SALES_PAGE_SIZE,
 } from '../src/features/sales/realSalesReadGateway.ts'
 
 const business = '6a940fae-5c3d-4eea-b155-e3b19426ff6f'
@@ -192,4 +193,107 @@ test('T09-A mensajes 401/403/404/timeout conservan semántica de consulta', () =
   assert.match(salesReadErrorMessage(new ApiHttpError(403, 'denied')), /permiso/i)
   assert.match(salesReadErrorMessage(new ApiHttpError(404, 'missing')), /no existe/i)
   assert.match(salesReadErrorMessage(new ApiTransportError('timeout', false)), /tiempo/i)
+})
+
+
+const saleSummary = (receipt = sale()) => ({
+  id: receipt.id, business_id: receipt.business_id, location_id: receipt.location_id,
+  request_id: receipt.request_id, status: 'CONFIRMADA',
+  total_cents: receipt.total_cents, created_by_id: receipt.created_by_id,
+  created_at: receipt.created_at,
+})
+
+test('T09-D lista ventas paginadas vía GET con filtro de sede, sin POST ni fallback', async () => {
+  const requests = []
+  const gateway = createSalesReadGateway('token-real', business, async (url, init) => {
+    requests.push({ url, init })
+    return json([saleSummary(mixed())])
+  })
+  const got = await gateway.list(50, 50, { locationId: site })
+  assert.equal(got.length, 1)
+  assert.equal(got[0].location_id, site)
+  assert.equal(requests[0].url,
+    '/api/v1/businesses/' + business + '/sales?offset=50&limit=50&location_id=' + site)
+  assert.equal(requests[0].init.method, 'GET')
+  assert.equal(requests[0].init.body, undefined)
+  assert.equal(requests[0].init.headers.get('Authorization'), 'Bearer token-real')
+  assert.equal(requests[0].init.headers.has('Idempotency-Key'), false)
+  assert.equal(requests.length, 1)
+  assert.equal(SALES_PAGE_SIZE, 50)
+})
+
+test('T09-D lectura de listado excluye datos sensibles de pagos y de líneas', () => {
+  const summary = parseSaleSummary(saleSummary(mixed()), business)
+  assert.deepEqual(Object.keys(summary).sort(), [
+    'id','business_id','location_id','request_id','status',
+    'total_cents','created_by_id','created_at',
+  ].sort())
+  assert.equal(Object.hasOwn(summary, 'payments'), false)
+  assert.equal(Object.hasOwn(summary, 'lines'), false)
+  assert.equal(summary.total_cents, 17000)
+})
+
+test('T09-D listado rechaza tenant ajeno, duplicados, total incoherente, desorden y más de 100', () => {
+  const latest = saleSummary(mixed())
+  latest.created_at = '2026-11-11T09:00:00Z'
+  const first = saleSummary()
+  for (const bad of [
+    [{ ...first, business_id: foreignBusiness }],
+    [{ ...first, total_cents: 0 }],
+    [{ ...first, total_cents: 10.5 }],
+    [{ ...first, request_id: 'sale-DEMO' }],
+    [first, { ...first }],
+    [first, latest],
+    Array.from({ length: 101 }, () => first),
+  ]) assert.throws(() => parseSaleSummaryList(bad, business),
+    e => e instanceof ApiTransportError && e.reason === 'invalid-response')
+  assert.deepEqual(parseSaleSummaryList([latest, first], business).map(row => row.id),
+    [latest.id, first.id])
+})
+
+test('T09-D paginación inválida y sede inválida no generan HTTP', async () => {
+  let calls = 0
+  const gateway = createSalesReadGateway('token', business, async () => {
+    calls++
+    return json([])
+  })
+  for (const [offset, limit, filters] of [
+    [-1, 50, {}], [0, 0, {}], [0, 101, {}], [0.5, 50, {}],
+    [0, 50, { locationId: 'LOCAL-DEMO' }],
+  ]) await assert.rejects(gateway.list(offset, limit, filters), TypeError)
+  assert.equal(calls, 0)
+})
+
+test('T09-D recuperar por request_id consulta sin enviar otra venta y valida la clave', async () => {
+  const calls = []
+  const gateway = createSalesReadGateway('token', business, async (url, init) => {
+    calls.push([url, init.method])
+    return json(sale())
+  })
+  const receipt = await gateway.byRequest(requestId)
+  assert.equal(receipt.id, saleId)
+  assert.equal(receipt.request_id, requestId)
+  assert.deepEqual(calls, [[
+    '/api/v1/businesses/' + business + '/sales/by-request/' + requestId,
+    'GET',
+  ]])
+  await assert.rejects(gateway.byRequest('no-uuid'), TypeError)
+  assert.equal(calls.length, 1)
+})
+
+test('T09-D respuesta con ID o request_id cambiado falla sin reintentos', async () => {
+  for (const [kind, response] of [
+    ['get', { ...sale(), id: physicalItem }],
+    ['byRequest', { ...sale(), request_id: 'eed71bf5-2645-4660-b570-7c0bf80f7a4c' }],
+  ]) {
+    let calls = 0
+    const gateway = createSalesReadGateway('token', business, async () => {
+      calls++
+      return json(response)
+    })
+    await assert.rejects(kind === 'get' ? gateway.get(saleId) : gateway.byRequest(requestId),
+      e => e instanceof ApiTransportError && e.reason === 'invalid-response' &&
+        e.outcomeUnknown === false)
+    assert.equal(calls, 1)
+  }
 })
