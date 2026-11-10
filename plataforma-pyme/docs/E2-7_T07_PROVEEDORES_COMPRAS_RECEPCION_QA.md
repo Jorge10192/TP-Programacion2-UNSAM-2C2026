@@ -232,3 +232,15 @@ El color **acompaña al texto**, nunca lo reemplaza: los estados se distinguen t
 6. En compras REGISTRADA sin recibo, mantener el aviso de ausencia de comprobante y la clave original, sin simulación de éxito.
 
 **Transferencia:** T08 debe conservar la separación entre comprobantes de compra y el ledger global del inventario. T12 debe documentar que esta vista es comprobante **interno**, no factura electrónica ni PDF. El cierre de T07 requiere capturas de navegador y CI aprobado.
+
+## 13. Evidencia visual posterior al comprobante detallado — 10/11/2026
+
+**Validado por captura de navegador del usuario en la cuenta colaboradora (Miguel):** el botón «Consultar comprobante» de la compra real «Compra2 prueba E2-7 T07» abre correctamente el panel «Detalle de recepción», estado **CONFIRMADA**, ubicación **Sede A TEST**, fecha/hora de confirmación **10 nov 2026, 8:23 a. m.**, responsable **miguel**, **1 entrada real de inventario** de **Producto A TEST +5 UNIDAD**, saldo posterior de **11 UNIDAD** y la aclaración expresa de que no se trata de factura del proveedor ni archivo PDF. No se presenta una entrada ficticia del servicio incluido en esa compra. «Identificadores de trazabilidad» aparece plegado y está disponible «Cerrar detalle».
+
+**Criterio T07 de comprobante: aprobado visualmente**, además de los tests de mapeo automatizados. El valor de saldo informado corresponde al balance que devuelve el backend para esa recepción, no debe deducirse de los importes de compras.
+
+**Otras evidencias del mismo recorrido QA compartidas en la conversación:** la compra quedó `RECIBIDA` después de la acción explícita autorizada a un TRABAJADOR con asignación a sede; la consulta posterior confirmó el registro sin hacer otro POST. Anteriormente, la cuenta colaboradora con sede `NO ASIGNADO` podía consultar compras pero no estaba autorizada para confirmar allí. En Empresa B el listado de compras estaba vacío mientras Empresa A mostraba tres compras. La pantalla de proveedores del trabajador de A se presentó sin controles de administración. Los subtotales, la suma del documento, costo de referencia y el color ámbar/verde se comprobaron mediante capturas.
+
+**Criterios de cierre pendientes de evidencia manual completa:** compra solo con concepto libre (T07-06); verificación específica de proveedor A no visible desde B (parte T07-07); URL directa de compra de B como trabajador A (T07-09); pruebas controladas de interrupción y recuperación de alta/recepción con F5 en entorno aislado (T07-10 y T07-11); verificación independiente de replay backend (T07-12); sede pausada/sin almacenamiento (T07-13); regresión DEMO (T07-14), paginación 101+ (T07-15) y los casos de importes especiales T07-18/T07-20/T07-23. Parte de estas situaciones ya tiene pruebas unitarias/contratos, pero eso no equivale a evidencias manuales end-to-end.
+
+**Decisión de cierre:** no declarar el incremento completamente validado ni fusionar automáticamente por la sola captura. Mantener PR #40 como borrador hasta revisar y ejecutar o justificar explícitamente los criterios pendientes, sin crear movimientos de stock adicionales solo para validar una vista de lectura.
