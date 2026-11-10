@@ -227,3 +227,21 @@
 .real-inventory-disclaimer{font-size:12px;color:#667c9a;line-height:1.65;margin:24px 0 4px}
 @media(max-width:810px){.real-inventory-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.real-inventory-controls button{justify-self:start}}
 @media(max-width:530px){.real-inventory-controls{grid-template-columns:minmax(0,1fr)}.real-inventory-balance,.real-inventory-movement{align-items:flex-start}.real-inventory-positive,.real-inventory-negative,.real-inventory-zero{font-size:21px}}
+
+/* T08-2 — filtros aplicados solo al historial cargado y trazabilidad legible. */
+.real-inventory-history-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;margin:12px 0 18px}
+.real-inventory-history-filters label{display:grid;gap:8px;min-width:0;font-size:13px;font-weight:700;color:#173254}
+.real-inventory-history-filters input,.real-inventory-history-filters select{width:100%;min-width:0;border:1px solid #ccdcf4;border-radius:9px;padding:11px 12px;background:#fff;color:#172d4b;font:inherit}
+.real-inventory-local-notice{grid-column:1/-1;margin:0;font-size:12px;line-height:1.55;color:#546d90}
+.real-inventory-history-summary{padding:10px 12px;background:#f4f8fe;border:1px solid #d9e6f8;border-radius:8px;font-size:13px;line-height:1.6;color:#41648e;margin:12px 0}
+.real-inventory-history-summary strong{color:#183759}
+.real-inventory-movement-info{min-width:0;flex:1 1 230px}
+.real-inventory-trace{margin-top:14px;font-size:13px;color:#395c89}
+.real-inventory-trace summary{cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-weight:700}
+.real-inventory-trace summary:focus-visible{outline:2px solid #3277d7;outline-offset:3px;border-radius:3px}
+.real-inventory-trace dl{margin:12px 0 7px;padding:12px;background:#fff;border:1px solid #d9e4f4;border-radius:9px;display:grid;gap:11px}
+.real-inventory-trace dl>div{min-width:0}
+.real-inventory-trace dt{font-size:11px;color:#587497;margin-bottom:3px}
+.real-inventory-trace dd{margin:0;color:#1b365c;overflow-wrap:anywhere;user-select:text;font-size:12px}
+.real-inventory-trace p{font-size:12px;color:#647e9d;margin:6px 0 0}
+@media(max-width:610px){.real-inventory-history-filters{grid-template-columns:minmax(0,1fr)}.real-inventory-movement-info{flex-basis:100%}}
