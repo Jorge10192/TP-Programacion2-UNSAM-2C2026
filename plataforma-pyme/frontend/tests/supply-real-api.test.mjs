@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ApiHttpError, ApiTransportError } from '../src/api/httpClient.ts'
-import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents, priceInputCents, purchaseStatusPresentation,
+import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents, priceInputCents, purchaseStatusPresentation, inspectReceipt, missingReceiptMessage,
   validatePurchase, parsePurchase, parseReceipt, parseSupplier } from '../src/features/purchases/realSupplyGateway.ts'
 import { createPendingJournal, pendingScope, PendingConflictError, parsePending, newPurchaseIntent, newReceiptIntent } from '../src/features/purchases/supplyPendingJournal.ts'
 import { suggestedUnitCost, costExceedsSalePrice, previewLineTotalCents, previewPurchaseTotalCents, unitCostFromExactLineTotal } from '../src/features/purchases/purchaseCostProposal.ts'
@@ -305,4 +305,49 @@ test('compra sin recepción y cancelada son estados neutros, nunca verde',()=>{
     assert.equal(presentation.tone,'neutral')
     assert.ok(presentation.label.length>0)
   }
+})
+
+test('GET recibo 404 y compra REGISTRADA = pendiente sin POST ni borrar clave',async()=>{
+ const verbs=[]
+ const api=createSupplyGateway('opaque',A,async(url,init)=>{
+   verbs.push([String(url),init.method])
+   if(String(url).endsWith('/receipt'))return json({detail:'Compra, empresa o ubicacion no disponible'},404)
+   assert.equal(url,'/api/v1/businesses/'+A+'/purchases/'+id)
+   return json(purchase())
+ })
+ const outcome=await inspectReceipt(api,id)
+ assert.equal(outcome.kind,'pending')
+ assert.equal(outcome.purchase.status,'REGISTRADA')
+ assert.match(missingReceiptMessage(outcome.purchase.status),/no hay un comprobante/)
+ assert.deepEqual(verbs.map(x=>x[1]),['GET','GET'])
+})
+
+test('404 de recibo y compra 404 NO se disfraza de comprobante pendiente',async()=>{
+ let requests=0
+ const api=createSupplyGateway('opaque',A,async()=>{requests++;return json({detail:'hidden'},404)})
+ await assert.rejects(inspectReceipt(api,id),e=>e instanceof ApiHttpError&&e.status===404)
+ assert.equal(requests,2)
+})
+
+test('404 de recibo con compra RECIBIDA se marca inconsistencia, nunca invita a reintentar',async()=>{
+ const api=createSupplyGateway('opaque',A,async(url)=>{
+   if(String(url).endsWith('/receipt'))return json({detail:'missing'},404)
+   return json({...purchase(),status:'RECIBIDA'})
+ })
+ const state=await inspectReceipt(api,id)
+ assert.equal(state.kind,'inconsistent')
+ assert.match(missingReceiptMessage(state.purchase.status),/No repitas la recepción/)
+})
+
+test('recibo confirmado implica un único GET y conserva datos del comprobante',async()=>{
+ let calls=0
+ const api=createSupplyGateway('opaque',A,async(url,init)=>{
+   calls++;assert.equal(init.method,'GET')
+   assert.equal(url,'/api/v1/businesses/'+A+'/purchases/'+id+'/receipt')
+   return json(receipt())
+ })
+ const state=await inspectReceipt(api,id)
+ assert.equal(state.kind,'confirmed')
+ assert.equal(state.receipt.request_id,key)
+ assert.equal(calls,1)
 })
