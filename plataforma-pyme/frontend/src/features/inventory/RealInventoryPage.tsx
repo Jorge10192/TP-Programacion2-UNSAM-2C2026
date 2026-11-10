@@ -245,13 +245,13 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
       <h2 className="real-inventory-business">{company.name}</h2>
       <div className="real-inventory-controls">
         <label>Ubicación
-          <select value={locationId} disabled={dataLoading||balancesMoreLoading||movementsMoreLoading} onChange={e=>{resetRead();setLocationId(e.target.value)}}>
+          <select aria-label="Ubicación" value={locationId} disabled={dataLoading||balancesMoreLoading||movementsMoreLoading} onChange={e=>{resetRead();setLocationId(e.target.value)}}>
             <option value="">Todas las ubicaciones</option>
             {locations.map(x=><option key={x.id} value={x.id}>{x.name} · {x.status}</option>)}
           </select>
         </label>
         <label>Artículo del catálogo cargado
-          <select value={catalogItemId} disabled={dataLoading||balancesMoreLoading||movementsMoreLoading} onChange={e=>{resetRead();setCatalogItemId(e.target.value)}}>
+          <select aria-label="Artículo del catálogo cargado" value={catalogItemId} disabled={dataLoading||balancesMoreLoading||movementsMoreLoading} onChange={e=>{resetRead();setCatalogItemId(e.target.value)}}>
             <option value="">Todos los artículos</option>
             {catalog.filter(x=>x.item_type==='BIEN').map(x=><option key={x.id} value={x.id}>{x.name} · {x.unit} · {x.status}</option>)}
           </select>
