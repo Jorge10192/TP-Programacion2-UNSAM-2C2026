@@ -1,0 +1,87 @@
+name: Plataforma PyME · Inventario REAL full-stack
+on:
+  push:
+    branches: ['feature/e2-7-t08-inventario-real']
+    paths: ['plataforma-pyme/backend/**', 'plataforma-pyme/frontend/**', '.github/workflows/plataforma-pyme-inventory-real.yml']
+  pull_request:
+    paths: ['plataforma-pyme/backend/**', 'plataforma-pyme/frontend/**', '.github/workflows/plataforma-pyme-inventory-real.yml']
+permissions:
+  contents: read
+jobs:
+  inventory-real:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: pyme_t085_ephemeral
+          POSTGRES_USER: pyme
+          POSTGRES_PASSWORD: disposable_t085_ci_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U pyme -d pyme_t085_ephemeral"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      POSTGRES_PASSWORD: disposable_t085_ci_only
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_USER: pyme
+      DB_NAME: pyme_t085_ephemeral
+      RUN_DB_INTEGRATION: '1'
+      PYME_DISPOSABLE_QA: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Instalar backend y migrar base efímera
+        working-directory: plataforma-pyme/backend
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m alembic upgrade head
+          python -m alembic current
+          python -m alembic check
+      - name: Suite backend completa con PostgreSQL, permisos y concurrencia
+        working-directory: plataforma-pyme/backend
+        run: python -m pytest -q --junitxml=/tmp/backend-qa.xml
+      - name: Frontend completo, build y lint
+        working-directory: plataforma-pyme/frontend
+        run: |
+          npm ci
+          node --test tests/*.test.mjs
+          npm run build
+          npm run lint
+      - name: Instalar navegador
+        working-directory: plataforma-pyme/frontend/e2e
+        run: |
+          npm install --no-package-lock
+          npx playwright install --with-deps chromium
+      - name: Iniciar API aislada
+        working-directory: plataforma-pyme/backend
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 18001 > /tmp/t085-api.log 2>&1 &
+          for n in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18001/ready; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/t085-api.log
+          exit 1
+      - name: Navegador REAL, pérdida de respuesta, F5, replay, 409 y paginación
+        working-directory: plataforma-pyme/frontend/e2e
+        run: npx playwright test --config playwright.real.config.ts
+      - name: Regresión navegador DEMO escritorio y móvil
+        working-directory: plataforma-pyme/frontend/e2e
+        run: npx playwright test
+      - name: Evidencia de QA (sin trazas con Bearer)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t085-qa-results
+          path: |
+            /tmp/backend-qa.xml
+            plataforma-pyme/frontend/e2e/test-results/**/*.png
+          retention-days: 7
