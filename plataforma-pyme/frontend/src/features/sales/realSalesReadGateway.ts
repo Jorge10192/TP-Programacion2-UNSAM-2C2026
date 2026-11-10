@@ -187,11 +187,20 @@ export function parseSaleSummaryList(value: unknown, businessId: string): SaleSu
   if (!Array.isArray(value) || value.length > 100) return invalid()
   const rows = value.map(item => parseSaleSummary(item, businessId))
   noRepeatedRecords(rows, row => row.id)
-  // Backend promises newest first and deterministic tie-breaker.
+  // PostgreSQL stores microseconds. Date.parse() truncates to milliseconds,
+  // so two correctly ordered rows within one millisecond must NOT be mistaken
+  // for a UUID tie (a real tie requires identical full-precision timestamps).
+  const micros = (value: string): bigint => {
+    const millis = Date.parse(value)
+    const fraction = /\\.(\\d{1,6})(?:Z|[+-]\\d{2}:\\d{2})$/.exec(value)?.[1]
+    const remaining = (fraction ?? '').padEnd(6, '0').slice(3)
+    return BigInt(millis) * 1000n + BigInt(remaining || '0')
+  }
   for (let i = 1; i < rows.length; i++) {
     const prev = rows[i - 1], curr = rows[i]
-    if (Date.parse(prev.created_at) < Date.parse(curr.created_at) ||
-      (Date.parse(prev.created_at) === Date.parse(curr.created_at) && prev.id < curr.id)) invalid()
+    const previousTime = micros(prev.created_at), currentTime = micros(curr.created_at)
+    if (previousTime < currentTime ||
+      (previousTime === currentTime && prev.id < curr.id)) invalid()
   }
   return rows
 }
