@@ -106,6 +106,24 @@ class SalePaymentView(BaseModel):
         return cls.model_validate({field: getattr(record, field) for field in cls.model_fields})
 
 
+class SaleSummaryView(BaseModel):
+    """T09-C: fila de listado histórico; no expone referencias de pago."""
+    id: UUID
+    business_id: UUID
+    location_id: UUID | None
+    request_id: UUID
+    status: Literal["CONFIRMADA"]
+    total_cents: int
+    created_by_id: UUID
+    created_at: datetime
+
+    @classmethod
+    def from_record(cls, record: object) -> "SaleSummaryView":
+        return cls.model_validate({
+            field: getattr(record, field) for field in cls.model_fields
+        })
+
+
 class SaleView(BaseModel):
     id: UUID
     business_id: UUID
