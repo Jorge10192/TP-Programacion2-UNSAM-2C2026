@@ -14,7 +14,7 @@ from app.infrastructure.models import (
 from app.modules.locations.permissions import can_operate_at_location
 from app.modules.purchases.schemas import line_total_cents
 from app.modules.purchases.service import PurchaseService
-from app.modules.sales.schemas import CreateSaleRequest, SaleView
+from app.modules.sales.schemas import CreateSaleRequest, SaleSummaryView, SaleView
 
 
 class SaleNotFound(Exception):
@@ -270,14 +270,71 @@ class SaleService:
             self.db.rollback()
             raise
 
+    # T09-B: autorización de lectura histórica, diferente del derecho a vender.
+    # El autor no conserva acceso si perdió su asignación a la sede.
+    # Se restringe la consulta SQL ANTES de offset/limit para no filtrar en Python.
+    def _read_query(self, business_id: UUID, actor_id: UUID, role: str):
+        query = select(Sale).where(Sale.business_id == business_id)
+        if role in ("TITULAR_ADMINISTRATIVO", "ADMINISTRADOR"):
+            return query
+        if role in ("ENCARGADO", "TRABAJADOR"):
+            allowed_locations = select(LocationAssignment.location_id).where(
+                LocationAssignment.business_id == business_id,
+                LocationAssignment.user_id == actor_id,
+                LocationAssignment.status == "ACTIVA",
+            )
+            # location_id NULL nunca aparece para roles operativos.
+            return query.where(Sale.location_id.in_(allowed_locations))
+        raise SalePermissionDenied()
+
+    def list(self, actor_id: UUID, session_id: UUID, business_id: UUID,
+             *, offset: int, limit: int,
+             location_id: UUID | None = None) -> list[SaleSummaryView]:
+        try:
+            _, member = self._authorize(actor_id, session_id, business_id)
+            query = self._read_query(business_id, actor_id, member.role)
+            if location_id is not None:
+                query = query.where(Sale.location_id == location_id)
+            rows = self.db.scalars(
+                query.order_by(Sale.created_at.desc(), Sale.id.desc())
+                .offset(offset).limit(limit)
+            ).all()
+            result = [SaleSummaryView.from_record(row) for row in rows]
+            self.db.rollback()
+            return result
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def by_request(self, actor_id: UUID, session_id: UUID,
+                   business_id: UUID, request_id: UUID) -> SaleView:
+        try:
+            _, member = self._authorize(actor_id, session_id, business_id)
+            row = self.db.scalar(
+                self._read_query(business_id, actor_id, member.role).where(
+                    Sale.request_id == request_id,
+                )
+            )
+            if row is None:
+                raise SaleNotFound()
+            result = self._view(row)
+            self.db.rollback()
+            return result
+        except Exception:
+            self.db.rollback()
+            raise
+
     def get(self, actor_id: UUID, session_id: UUID,
             business_id: UUID, sale_id: UUID) -> SaleView:
         try:
-            self._authorize(actor_id, session_id, business_id)
-            row = self.db.scalar(select(Sale).where(
-                Sale.business_id == business_id, Sale.id == sale_id,
-            ))
+            _, member = self._authorize(actor_id, session_id, business_id)
+            row = self.db.scalar(
+                self._read_query(business_id, actor_id, member.role).where(
+                    Sale.id == sale_id,
+                )
+            )
             if row is None:
+                # Misma respuesta para venta inexistente, de otro tenant o no visible.
                 raise SaleNotFound()
             body = self._view(row)
             self.db.rollback()
