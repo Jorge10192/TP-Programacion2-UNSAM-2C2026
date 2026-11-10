@@ -268,7 +268,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
         <p className="real-inventory-local-notice">Estos dos filtros se aplican solo a movimientos ya cargados.
           Para buscar en todo el historial, seleccioná primero sede y artículo arriba y cargá más páginas cuando estén disponibles.</p>
       </div>}
-      {dataLoading&&<p role="status">Consultando inventario confirmado…</p>
+      {dataLoading&&<p role="status">Consultando inventario confirmado…</p>}
       {dataError&&<p className="real-auth-error" role="alert">{dataError}</p>}
       {dataLoaded&&!dataLoading&&<>
         <p className="real-auth-note">{loadedInventoryCountLabel(tab,activePage.length,hasMore)}
@@ -277,7 +277,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
           En los {movements.length} movimientos cargados: <strong>{historyCounts.entries} entradas</strong> y
           {' '}<strong>{historyCounts.exits} salidas</strong>.
           {filteringHistory&&<> Se muestran <strong>{filteredMovements.length}</strong> coincidencias del filtro local.</>}
-        </p>
+        </p>}
         {tab==='balances'?
           balances.length===0?<p className="real-inventory-empty">No hay saldos registrados para los filtros seleccionados. Esto no significa que todo el catálogo tenga saldo cero.</p>
           :<div className="real-inventory-balances">{balances.map(x=><article className="real-inventory-balance" key={x.location_id+':'+x.catalog_item_id}>
