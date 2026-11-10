@@ -42,7 +42,6 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
  const [receiptFor,setReceiptFor]=useState<string|null>(null)
  const [locationId,setLocationId]=useState('')
  const [journalReady,setJournalReady]=useState(false)
- const [unknownSupplier,setUnknownSupplier]=useState(false)
  const purchaseScope=useMemo(()=>pendingScope(userId,businessId,'purchase.create'),[userId,businessId])
  useEffect(()=>{
    alive.current=true
@@ -207,13 +206,17 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
        'Resultado incierto o rechazado. Consultá primero el comprobante, luego reintentá solo la MISMA clave. '+supplyErrorMessage(err))
    }finally{if(alive.current)setBusy(false)}
  }
- async function checkReceipt(){
-   if(!receiptFor)return
+ async function checkReceipt(purchaseId?:string){
+   const target=purchaseId??receiptFor
+   if(!target)return
    try{
-     const receipt=await api.receipt(receiptFor)
+     const scope=pendingScope(userId,businessId,'purchase.receive',target)
+     const fromDisk=await supplyJournal.load(scope)
+     if(fromDisk&&fromDisk.kind!=='purchase.receive')throw new PendingConflictError()
+     const receipt=await api.receipt(target)
      if(!alive.current)return
-     if(pendingReceipt&&receipt.request_id===pendingReceipt.key){
-       await supplyJournal.discard(pendingReceipt.scope,pendingReceipt.key)
+     if(fromDisk&&receipt.request_id===fromDisk.key){
+       await supplyJournal.discard(fromDisk.scope,fromDisk.key)
        if(!alive.current)return
        setPendingReceipt(null);setReceiptFor(null)
        setNotice('Recepción ya confirmada con la misma clave; pendiente limpiado sin duplicar stock.')
@@ -256,7 +259,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
        <strong className="real-supply-total">{money(p.total_cents)}</strong>
        <ul>{p.lines.map(l=><li key={l.id}>{l.description_snapshot} — {milliToDecimal(l.quantity_milli)} {l.unit_snapshot} × {money(l.unit_cost_cents)} = {money(l.line_total_cents)}</li>)}</ul>
        {p.status==='REGISTRADA'&&canReceive&&<button className="real-auth-secondary" type="button" disabled={busy||loading} onClick={()=>void beginReceipt(p.id)}>Confirmar recepción en ubicación</button>}
-       {p.status==='RECIBIDA'&&<button className="real-auth-secondary" type="button" disabled={busy||loading} onClick={()=>{setReceiptFor(p.id);void checkReceipt()}}>Consultar comprobante</button>}
+       {p.status==='RECIBIDA'&&<button className="real-auth-secondary" type="button" disabled={busy||loading} onClick={()=>void checkReceipt(p.id)}>Consultar comprobante</button>}
      </article>)}
    </div>
    {hasMore&&<button type="button" className="real-auth-secondary" disabled={loading||busy} onClick={()=>void more('purchases')}>Cargar 100 compras más</button>}
@@ -317,7 +320,6 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
    </form>}
    {catalogMore&&<button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void more('catalog')}>Cargar 100 artículos más para compras</button>}
    {suppliersMore&&<button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void more('suppliers')}>Cargar 100 proveedores más</button>}
-   {unknownSupplier&&<p>Hay una escritura de proveedor sin confirmar. Reconsultá el listado.</p>}
    {notice&&<p className="real-auth-message" role="status">{notice}</p>}
    {error&&<p className="real-auth-message real-auth-error" role="alert">{error}</p>}
  </section>
