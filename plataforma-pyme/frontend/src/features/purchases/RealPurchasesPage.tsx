@@ -10,12 +10,12 @@ import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents,
   supplyErrorMessage, validatePurchase } from './realSupplyGateway.ts'
 import type { Purchase, NewPurchase, Supplier, PurchaseLineInput } from './realSupplyGateway.ts'
 import { pendingScope, supplyJournal, PendingConflictError, PendingStorageError, newPurchaseIntent, newReceiptIntent } from './supplyPendingJournal.ts'
-import { suggestedUnitCost, costExceedsSalePrice } from './purchaseCostProposal.ts'
+import { suggestedUnitCost, costExceedsSalePrice, previewLineTotalCents, previewPurchaseTotalCents, unitCostFromExactLineTotal } from './purchaseCostProposal.ts'
 import type { SupplyPending } from './supplyPendingJournal.ts'
 type Props={token:string;userId:string;businessId:string;onNavigate:(path:string)=>void;onUnauthorized:()=>void}
-type DraftLine={catalogId:string;description:string;quantity:string;unitCost:string}
+type DraftLine={catalogId:string;description:string;quantity:string;unitCost:string;totalDraft:string|null}
 type Draft={date:string;supplierId:string;reference:string;notes:string;lines:DraftLine[]}
-const emptyLine=():DraftLine=>({catalogId:'concept',description:'Concepto de compra',quantity:'1',unitCost:'0'})
+const emptyLine=():DraftLine=>({catalogId:'concept',description:'Concepto de compra',quantity:'1',unitCost:'0',totalDraft:null})
 const emptyDraft=():Draft=>({date:new Date().toISOString().slice(0,10),supplierId:'',reference:'',notes:'',lines:[emptyLine()]})
 const money=(n:number)=>'$ '+centsToPesos(n)
 export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthorized}:Props){
@@ -66,7 +66,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
          reference:saved.body.reference,notes:saved.body.notes,
          lines:saved.body.lines.map(line=>({
            catalogId:line.catalog_item_id??'concept',description:line.description,
-           quantity:milliToDecimal(line.quantity_milli),unitCost:centsToPesos(line.unit_cost_cents),
+           quantity:milliToDecimal(line.quantity_milli),unitCost:centsToPesos(line.unit_cost_cents),totalDraft:null,
          })),
        })
        setNotice('Compra pendiente recuperada. Revisá el listado antes de reintentar. No se enviará automáticamente.')
@@ -85,6 +85,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
  const activeSites=locations.filter(x=>x.status==='ACTIVA'&&x.can_store)
  const activeItems=catalog.filter(x=>x.status==='ACTIVO')
  const activeSuppliers=suppliers.filter(x=>x.status==='ACTIVO')
+ const totalPreview=draft.lines.some(x=>x.totalDraft!==null)?null:previewPurchaseTotalCents(draft.lines)
  const selected=purchases.find(x=>x.id===receiptFor)
  function failed(err:unknown){
    if(!alive.current)return
@@ -126,6 +127,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
    }catch(err){failed(err)}finally{if(alive.current)setLoading(false)}
  }
  function buildPurchase():NewPurchase{
+   if(draft.lines.some(x=>x.totalDraft!==null))throw new RangeError('Primero aplicá o cancelá la edición del costo total de cada renglón.')
    const lines:PurchaseLineInput[]=draft.lines.map(x=>{
      const article=catalog.find(item=>item.id===x.catalogId)
      if(x.catalogId!=='concept'&&(!article||article.status!=='ACTIVO'))
@@ -241,6 +243,17 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
  function changeLine(index:number,patch:Partial<DraftLine>){
    setDraft(old=>({...old,lines:old.lines.map((x,i)=>i===index?{...x,...patch}:x)}))
  }
+ function applyLineTotal(index:number) {
+   const line=draft.lines[index]
+   if(!line||line.totalDraft===null)return
+   try {
+     const calculatedUnit=unitCostFromExactLineTotal(line.quantity,line.totalDraft)
+     changeLine(index,{unitCost:calculatedUnit,totalDraft:null})
+     setError('')
+   } catch(err) {
+     setError(err instanceof Error?err.message:'El importe total del renglón no es válido.')
+   }
+ }
  return <section className="real-auth-card real-business-panel">
    <nav className="real-business-nav" aria-label="Operaciones REAL">
      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId)}>Empresa</button>
@@ -297,29 +310,58 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
        {suppliersMore&&<p>Hay proveedores aún no cargados. Cargá más páginas antes de elegir uno.</p>}
        <label>Referencia<input maxLength={70} value={draft.reference} onChange={e=>setDraft(old=>({...old,reference:e.target.value}))}/></label>
        <label>Notas<textarea rows={2} maxLength={500} value={draft.notes} onChange={e=>setDraft(old=>({...old,notes:e.target.value}))}/></label>
-       {draft.lines.map((line,i)=>{const selectedArticle=activeItems.find(x=>x.id===line.catalogId);return <div className="real-supply-line" key={i}>
+       {draft.lines.map((line,i)=>{const selectedArticle=activeItems.find(x=>x.id===line.catalogId);const calculatedLineTotal=previewLineTotalCents(line.quantity,line.unitCost);return <div className="real-supply-line" key={i}>
          <strong>Renglón {i+1}</strong>
          <label>Artículo del catálogo o concepto libre
-           <select value={line.catalogId} onChange={e=>{const selected=activeItems.find(x=>x.id===e.target.value);changeLine(i,{catalogId:e.target.value,unitCost:suggestedUnitCost(selected)})}}>
+           <select value={line.catalogId} onChange={e=>{const selected=activeItems.find(x=>x.id===e.target.value);changeLine(i,{catalogId:e.target.value,unitCost:suggestedUnitCost(selected),totalDraft:null})}}>
              <option value="concept">Concepto libre (no genera stock)</option>
              {activeItems.map(x=><option key={x.id} value={x.id}>{x.name} · {x.unit}</option>)}
            </select>
          </label>
          {line.catalogId==='concept'&&<label>Descripción<input required minLength={2} maxLength={140} value={line.description} onChange={e=>changeLine(i,{description:e.target.value})}/></label>}
-         <div className="real-supply-quantities">
-           <label>Cantidad (máximo 3 decimales)<input required inputMode="decimal" value={line.quantity} onChange={e=>changeLine(i,{quantity:e.target.value})}/></label>
-           <label>Costo unitario de esta compra (pesos)<input required inputMode="decimal" value={line.unitCost} onChange={e=>changeLine(i,{unitCost:e.target.value})}/></label>
+         <div className="real-supply-amounts">
+           <label>Cantidad (hasta 3 decimales)
+             <input required inputMode="decimal" value={line.quantity} disabled={line.totalDraft!==null}
+               onChange={e=>changeLine(i,{quantity:e.target.value})}/>
+           </label>
+           <label>Costo unitario ($)
+             <input required inputMode="decimal" value={line.unitCost} disabled={line.totalDraft!==null}
+               onChange={e=>changeLine(i,{unitCost:e.target.value})}/>
+           </label>
+           <div className="real-supply-total-field">
+             <label htmlFor={'real-line-total-'+i}>Costo total ($)</label>
+             <div className="real-supply-total-control">
+               <input id={'real-line-total-'+i} inputMode="decimal" aria-label={'Costo total del renglón '+(i+1)}
+                 value={line.totalDraft??(calculatedLineTotal===null?'':centsToPesos(calculatedLineTotal))}
+                 readOnly={line.totalDraft===null} aria-readonly={line.totalDraft===null}
+                 onChange={e=>changeLine(i,{totalDraft:e.target.value})}
+                 placeholder={calculatedLineTotal===null?'Completá cantidad y costo':'0,00'}/>
+               {line.totalDraft===null&&<button type="button" className="real-supply-total-edit"
+                 disabled={busy||!journalReady||calculatedLineTotal===null}
+                 aria-label={'Editar costo total del renglón '+(i+1)}
+                 title="Editar costo total" onClick={()=>changeLine(i,{totalDraft:centsToPesos(calculatedLineTotal)})}>Editar</button>}
+             </div>
+           </div>
          </div>
+         {line.totalDraft!==null&&<div className="real-supply-total-actions">
+           <span>Para modificar el total se recalculará el costo unitario solo si los centavos coinciden exactamente.</span>
+           <button type="button" className="real-auth-secondary" onClick={()=>applyLineTotal(i)}>Aplicar total</button>
+           <button type="button" className="real-auth-secondary" onClick={()=>changeLine(i,{totalDraft:null})}>Cancelar</button>
+         </div>}
          {selectedArticle&&<p className="real-supply-cost-hint">Costo de referencia en catálogo: <strong>{selectedArticle.reference_cost_cents===null?'sin informar':money(selectedArticle.reference_cost_cents)}</strong>. Se propone al seleccionar el artículo, pero podés editarlo según el comprobante del proveedor. No se modifica el costo de referencia del catálogo.</p>}
          {selectedArticle&&costExceedsSalePrice(line.unitCost,selectedArticle)&&<p className="real-supply-cost-warning" role="status">Atención: el costo unitario de compra supera el precio de venta actual del catálogo ({selectedArticle.price_cents===null?'no informado':money(selectedArticle.price_cents)}). Revisá el margen; podés continuar con la compra.</p>}
          {draft.lines.length>1&&<button type="button" className="real-auth-secondary" onClick={()=>setDraft(old=>({...old,lines:old.lines.filter((_,j)=>j!==i)}))}>Quitar renglón</button>}
        </div>})}
        <button type="button" className="real-auth-secondary" disabled={draft.lines.length>=30} onClick={()=>setDraft(old=>({...old,lines:[...old.lines,emptyLine()]}))}>Agregar renglón</button>
+       <div className="real-supply-grand-total" aria-live="polite">
+         <span>Total de la compra</span>
+         <strong>{totalPreview===null?'Completá importes válidos':money(totalPreview)}</strong>
+       </div>
      </fieldset>
      {pending&&<p className="real-ops-warning">El cuerpo original quedó bloqueado. Primero comprobá el historial y luego reintentá con la misma clave. F5 no envía nada automáticamente.</p>}
      {!pending&&<label className="real-ops-check"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> Acepto guardar temporalmente los datos de esta compra en este navegador.</label>}
      <div className="real-auth-actions">
-       <button type="submit" className="real-auth-primary" disabled={busy||!journalReady||(!pending&&!consent)}>{busy?'Procesando…':pending?'Reintentar MISMA compra':'Registrar compra sin stock'}</button>
+       <button type="submit" className="real-auth-primary" disabled={busy||!journalReady||draft.lines.some(x=>x.totalDraft!==null)||(!pending&&!consent)}>{busy?'Procesando…':pending?'Reintentar MISMA compra':'Registrar compra sin stock'}</button>
        {pending&&<button type="button" className="real-auth-secondary" disabled={busy} onClick={()=>void discardPurchase()}>Descartar tras verificar</button>}
        <button type="button" className="real-auth-secondary" disabled={busy} onClick={()=>setForm(false)}>Cerrar formulario</button>
      </div>
