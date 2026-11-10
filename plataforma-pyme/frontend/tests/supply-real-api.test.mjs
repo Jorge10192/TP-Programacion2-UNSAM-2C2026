@@ -5,6 +5,7 @@ import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents, pr
   validatePurchase, parsePurchase, parseReceipt, parseSupplier } from '../src/features/purchases/realSupplyGateway.ts'
 import { createPendingJournal, pendingScope, PendingConflictError, parsePending, newPurchaseIntent, newReceiptIntent } from '../src/features/purchases/supplyPendingJournal.ts'
 import { suggestedUnitCost, costExceedsSalePrice, previewLineTotalCents, previewPurchaseTotalCents, unitCostFromExactLineTotal } from '../src/features/purchases/purchaseCostProposal.ts'
+import { receiptDisplay } from '../src/features/purchases/receiptViewModel.ts'
 
 const A='e5a347a3-d8e9-4a1a-9f51-72b1b2539c67',B='713fa8a7-5c21-4c3b-9b39-ade992cf8df2'
 const actor='a49e944c-e8f9-4794-b2c1-8c5524c1bbd6'
@@ -350,4 +351,43 @@ test('recibo confirmado implica un único GET y conserva datos del comprobante',
  assert.equal(state.kind,'confirmed')
  assert.equal(state.receipt.request_id,key)
  assert.equal(calls,1)
+})
+
+test('detalle de recepción usa sede y snapshot de compra, saldo posterior y responsable de sesión',()=>{
+ const view=receiptDisplay(receipt(),{...purchase(),status:'RECIBIDA'},[{id:site,name:'Sede A TEST'}],
+   {id:actor,displayName:'miguel'})
+ assert.equal(view.locationName,'Sede A TEST')
+ assert.equal(view.purchaseTitle,'FC-TEST')
+ assert.equal(view.responsibleName,'miguel')
+ assert.equal(view.responsibleId,actor)
+ assert.equal(view.receiptId,item)
+ assert.notEqual(view.confirmedAt,'Fecha y hora no disponibles')
+ assert.deepEqual(view.movementLines,[{
+   id:item,description:'Producto A TEST',unit:'UNIDAD',entered:'2',balanceAfter:'2'
+ }])
+})
+
+test('detalle de recepción no inventa nombre del responsable de otra cuenta',()=>{
+ const view=receiptDisplay(receipt(),purchase(),[{id:site,name:'Sede A TEST'}],
+   {id:B,displayName:'Otro usuario'})
+ assert.equal(view.responsibleName,'Responsable identificado por ID')
+ assert.equal(view.responsibleId,actor)
+ assert.notEqual(view.responsibleName,'Otro usuario')
+})
+
+test('detalle histórico funciona sin catálogo actual ni sede visible; no filtra datos de otra compra',()=>{
+ const view=receiptDisplay(receipt(),null,[],{id:B,displayName:'No corresponde'})
+ assert.match(view.locationName,/no disponible/)
+ assert.equal(view.movementLines[0].description,'Artículo '+item.slice(0,8))
+ assert.throws(()=>receiptDisplay(receipt(),{...purchase(),id:B},[],{id:actor,displayName:'miguel'}),TypeError)
+})
+
+test('solo presenta movimientos físicos recibidos; no inventa stock para servicios',()=>{
+ const doc=purchase()
+ doc.lines.push({id:B,line_number:2,catalog_item_id:B,description_snapshot:'Servicio A TEST',
+   kind_snapshot:'SERVICIO',unit_snapshot:'SERVICIO',sku_snapshot:'SER-1',quantity_milli:2000,
+   unit_cost_cents:110000,line_total_cents:220000})
+ const view=receiptDisplay(receipt(),doc,[{id:site,name:'Sede A TEST'}],{id:actor,displayName:'miguel'})
+ assert.equal(view.movementLines.length,1)
+ assert.equal(view.movementLines[0].entered,'2')
 })
