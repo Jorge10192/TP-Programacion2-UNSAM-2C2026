@@ -89,3 +89,23 @@ Realizar sin modificar existencias, compras ni datos DEMO.
 - **Limitación de evidencia:** GitHub CI no se conectó a PostgreSQL para verificar el saldo concreto del usuario; solo se revisaron contratos y mocks. La aceptación manual T08-1 requiere ejecutar el checklist anterior y comparar con los datos de las compras recibidas en TEST Empresa A.
 
 **Decisión del incremento:** listo para revisión en navegador y estudio del código; PR #41 permanecerá borrador, sin merge. Las mutaciones de inventario de T08-3/T08-4 no forman parte de esta implementación.
+
+## Evidencia manual T08-1 — saldo y ledger coherentes (10/11/2026)
+
+**Fuente de evidencia:** dos capturas del navegador compartidas por el usuario durante la prueba sobre TEST Empresa A, con API REAL. El resultado documenta lo observado en la UI; no se ejecutó en esta revisión una consulta SQL independiente.
+
+| Verificación | Resultado observado | Estado |
+|---|---|---|
+| Pantalla Existencias | 1 combinación artículo/sede: **Producto A TEST**, **Sede A TEST**, unidad **UNIDAD**, saldo **11** | Aprobado visualmente |
+| Versión de saldo | **3**, actualizado 10/11/2026 **8:23 a. m.** | Aprobado visualmente |
+| Pantalla Historial de movimientos | 3 movimientos `Recepción de compra` del mismo artículo y sede | Aprobado visualmente |
+| Entradas del historial | **+5**, **+4**, **+2** unidades, en orden de más reciente a más antiguo | Aprobado visualmente |
+| Aritmética y consistencia | 2 + 4 + 5 = **11**, coincidente con último saldo del comprobante T07 | Aprobado para datos mostrados |
+| Último movimiento T07 | Recepción **+5** de Producto A TEST, a las **8:23 a. m.**, coincide con comprobante visual previo del trabajador Miguel | Aprobado visualmente |
+| Paginación visible | 1 saldo, 3 movimientos, «Última página consultada» | Coherente para dataset pequeño |
+
+**Conclusión parcial:** quedan validados los dos casos centrales de lectura de T08-1 (existencias e historial) en TEST Empresa A y la concordancia con el comprobante histórico T07. No se registró ninguna operación de inventario nueva para verificarlo.
+
+**Todavía no verificado en estas dos capturas:** filtros efectivos por Sede A TEST 2 y artículo, aislamiento de lectura de TEST Empresa B, acceso con trabajador Miguel, DEMO sin regresiones en esta rama y manejo de listas mayores de 100 entradas. No marcar T08-1 globalmente aprobado hasta completar la aceptación acordada; tests de gateway/contratos sí estaban aprobados por CI.
+
+**Observación visual menor (no bloqueante):** con una única combinación el texto de la pantalla dice «1 combinaciones artículo/sede cargados»; considerar singularización de la leyenda en el pulido de T08-1, sin impacto en saldos.
