@@ -16,7 +16,7 @@ export type TransferRecord = TransferCommand & {
 }
 const validUuid=(id:unknown):id is string=>typeof id==='string'&&UUID_PATTERN.test(id)
 const record=(x:unknown):x is Record<string,unknown>=>typeof x==='object'&&x!==null&&!Array.isArray(x)
-const invalid=():never=>{throw new ApiTransportError('invalid-response',true)}
+const invalid=():never=>{throw new ApiTransportError('invalid-response',false)}
 export function transferReason(value:string):string{
   const normalized=value.trim().replace(/\s+/g,' ')
   if(normalized.length<3||normalized.length>500||[...normalized].some(x=>x.charCodeAt(0)<32))
@@ -83,7 +83,15 @@ export function createTransferGateway(token:string,businessId:string,fetchImpl?:
     async create(body:TransferCommand,key:string):Promise<TransferRecord>{
       validateTransfer(body)
       if(!UUID_V4_PATTERN.test(key))throw new TypeError('La Idempotency-Key debe ser UUID v4.')
-      return parseTransfer(await api.request<unknown>(root,{method:'POST',body,idempotencyKey:key}),businessId)
+      try{
+        return parseTransfer(await api.request<unknown>(root,{method:'POST',body,idempotencyKey:key}),businessId)
+      }catch(err){
+        // A valid HTTP success with a malformed DTO may still have committed stock.
+        // The exact same key/body must be preserved for an explicit replay.
+        if(err instanceof ApiTransportError&&err.reason==='invalid-response')
+          throw new ApiTransportError('invalid-response',true)
+        throw err
+      }
     },
     async get(transferId:string,signal?:AbortSignal):Promise<TransferRecord>{
       if(!validUuid(transferId))throw new TypeError('ID de traslado inválido.')
