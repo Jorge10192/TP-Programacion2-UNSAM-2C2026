@@ -2,7 +2,7 @@
 
 Fecha de apertura: 10/11/2026. **Rama de trabajo:** `feature/e2-7-t09-consulta-recuperacion-ventas`, creada desde `main` tras [merge PR #41 (T08)](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/41), commit `5f83541049b6332e5a991810cbfd105515db10ce`.
 
-**Estado de T09:** iniciado; alcance y decisiones P02/P03 **en elaboración, no aprobadas**. No equivale a T09 terminado ni a T10/POS implementado.
+**Estado T09:** T09-A aprobado (CI + Windows); **T09-B — política P02 confirmada por el responsable el 10/11/2026 y contrato técnico P03 definido para implementación**. Las alternativas de la sección 2 se conservan como propuestas históricas; prevalece la decisión explícita al final de este archivo. No equivale a T09/T10 terminados.
 
 ## 1. Línea base de código y contratos existentes
 
@@ -88,3 +88,29 @@ GET /api/v1/businesses/{business_id}/sales/{sale_id}  (EXISTENTE, preservar)
 - **Evidencia CI de la misma entrega:** [GitHub Actions #42901702416](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42901702416), **SUCCESS** en `09e0a88`, 879 backend, 266 frontend, 4 Playwright REAL de inventario y 6 Playwright DEMO.
 
 **Dictamen T09-A:** gateway de lectura + pruebas aprobados en CI y localmente. No hay pantalla de ventas REAL ni endpoint nuevo; P02/P03 quedan pendientes de aprobación antes de modificar permisos históricos o el backend.
+
+
+## 7. T09-B — Decisión formal sobre permisos históricos (aprobada 10/11/2026)
+
+**Aprobación del responsable:** «Encargado y Trabajador, donde está asignado específicamente. Titular y Administrador, puede consultar todo. Usuario ajeno a esos roles no puede consultar nada». Los **cuatro roles ya existen** en `BusinessRole` del backend. No crear roles nuevos ni relajar el criterio a «cualquier integrante ve todo».
+
+| Rol de la membresía ACTIVA | `GET /sales/{sale_id}`, `GET /sales/by-request/{request_id}`, `GET /sales` |
+|---|---|
+| TITULAR_ADMINISTRATIVO | Todo comprobante de la empresa, con o sin sede |
+| ADMINISTRADOR | Todo comprobante de la empresa, con o sin sede |
+| ENCARGADO | Solo comprobantes de sedes donde tenga `LocationAssignment.status = ACTIVA` |
+| TRABAJADOR | Solo comprobantes de sedes donde tenga `LocationAssignment.status = ACTIVA` |
+| Rol inexistente, usuario de otro negocio, sin membresía ACTIVA o sesión inválida | Denegado. Ninguna lectura entre tenants |
+
+**Reglas concretas:**
+- El autor **no tiene privilegio especial**: si pierde asignación a la sede, no lee tampoco sus propios comprobantes de esa sede.
+- Una venta de servicios con `location_id = null` es visible únicamente para titular/admin, porque no hay sede a la cual asignar operarios.
+- Leer documentos históricos no es operar: si la sede se `PAUSA` después de una venta, una asignación que aún esté `ACTIVA` conserva **solo lectura histórica**. La nueva venta sigue exigiendo permisos y sede actualmente operativa.
+- Se revalidan en PostgreSQL sesión, membresía, empresa y asignaciones en cada solicitud; no basta esconder botones del frontend.
+- Por privacidad, comprobantes inexistentes, de otro tenant o **no visibles para ese miembro** devuelven `404` homogéneo. Usuario que no tiene permiso de lectura empresarial: `403`; sin sesión activa: `401`. Membresía ajena/inactiva usa `404`.
+- `GET` no modifica `Sale`, pagos, inventario ni ledger. `POST` de ventas y su política existente de replay **no cambian en T09-B/C**; si perdió asignación, no puede volver a realizar una escritura o replay POST. La recuperación será mediante un `GET` cuando el usuario todavía conserve permisos de lectura.
+- El `request_id` no es una credencial que saltee asignaciones. El endpoint de búsqueda tiene exactamente la misma política que la consulta por `sale_id`.
+
+**P03 — contrato técnico de consulta autorizado para avanzar:** `GET /sales` (resúmenes de ventas visibles, 0 ≤ offset, 1 ≤ limit ≤ 100, fecha e ID descendentes, filtro opcional de ubicación) y `GET /sales/by-request/{request_id}` (comprobante histórico completo). La paginación y filtro **se aplican en SQL luego de restringir por permisos**, jamás se devuelven ventas ajenas aunque estén en el mismo tenant. La consulta `GET /sales/{sale_id}` existente se endurece para cumplir la nueva política.
+
+**Siguiente paso:** T09-C backend y tests de seguridad/visibilidad sobre PostgreSQL aislado, sin modificar cuentas locales, y después T09-D frontend con historial REAL.
