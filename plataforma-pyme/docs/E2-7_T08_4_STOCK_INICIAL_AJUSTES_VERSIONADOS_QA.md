@@ -32,7 +32,8 @@ GitHub Actions en rama T08 con el nuevo script `test:adjustment-real` (verificar
 - Frontend, build y lint: **220/220 pruebas de las suites frontend**, incluidas **15/15 del ajuste**, **14/14 transferencias** y **26/26 inventario**; lint **0 errores, 0 advertencias**.
 - Tests nuevos cubren `201`, replay `200`, GET histórico, UUID4, cantidad exacta, rol, balance inicial v0, ajustes v1+, conteo con diferencia (+,−,cero), HTTP 401/403/404/409/422, firma de movimiento, tenant, respuesta malformada, falla de red incierta, F5 con clave/cuerpo y versión originales, fallo y corrupción de IndexedDB.
 - El backend **ya** tiene pruebas de PostgreSQL específicas de ajustes y concurrencia (`test_adjustment_api_integration.py`, `test_adjustment_concurrency_integration.py`), que no deben confundirse con las nuevas pruebas unitarias de frontend.
-- Aviso Vite por chunk JS >500 kB continúa visible; es un aviso de rendimiento, no un fallo de build.\n- Se encontró y corrigió una divergencia entre el límite de **saldo acumulado** y el de **delta individual**; el conteo final puede superar el máximo de un único ajuste mientras el delta cumpla su tope, conforme a `StockBalance.MAX_BALANCE_MILLI`. Hay prueba específica del saldo grande.
+- Aviso Vite por chunk JS >500 kB continúa visible; es un aviso de rendimiento, no un fallo de build.
+- Se encontró y corrigió una divergencia entre el límite de **saldo acumulado** y el de **delta individual**; el conteo final puede superar el máximo de un único ajuste mientras el delta cumpla su tope, conforme a `StockBalance.MAX_BALANCE_MILLI`. Hay prueba específica del saldo grande.
 
 ## 4. QA manual recomendado — minimizar alteración de los datos existentes
 
