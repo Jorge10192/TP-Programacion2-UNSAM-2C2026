@@ -131,13 +131,14 @@ export function RealTransferPanel({token,actorId,business,locations,catalog,onUn
      'Confirmar traslado REAL de '+formatMilli(cmd.quantity_milli)+' '+(selectedItem?.unit??'')+
      ' de '+label+' desde '+sourceName+' hacia '+destName+'?\n\nEl backend descontará stock en origen y lo sumará en destino en una única operación.'
    ))return
+   setBusy(true) // Block a second click while IndexedDB reserves identity before POST.
    const row=newTransferIntent(actorId,business.id,cmd)
    const saved=await transferJournal.reserve(row)
    setPending(saved)
    await sendIntent(saved)
   }catch(err){
    setError(err instanceof Error?err.message:'No se pudo preparar la operación. No se envió POST.')
-  }
+  }finally{setBusy(false)}
  }
  async function discard(){
   if(!pending||busy||!checkedBeforeDiscard)return
