@@ -105,12 +105,17 @@ export function lineTotalCents(quantity_milli:number,unit_cost_cents:number):num
   return Number(computed)
 }
 export function validatePurchase(v:NewPurchase){
+  if(!record(v)||Object.keys(v).sort().join('|')!==['lines','notes','purchased_on','reference','supplier_id'].join('|'))
+    throw new RangeError('Campos de compra no permitidos.')
+  if(!Array.isArray(v.lines))throw new RangeError('Renglones inválidos.')
   if(!date(v.purchased_on)||v.purchased_on<'2000-01-01'||v.purchased_on>'2100-12-31')throw new RangeError('Fecha de compra inválida.')
   if(v.supplier_id!==null&&!uuid(v.supplier_id))throw new RangeError('Proveedor inválido')
   if(v.reference.trim().length>70||v.notes.trim().length>500
     ||v.lines.length<1||v.lines.length>30)throw new RangeError('Máximo 30 renglones, referencia de 70 y notas de 500 caracteres.')
   let total=0
   for(const l of v.lines){
+    if(!record(l)||Object.keys(l).sort().join('|')!==['catalog_item_id','description','quantity_milli','unit','unit_cost_cents'].join('|'))
+      throw new RangeError('Campos de renglón no permitidos.')
     if(typeof l.description!=='string'||l.description.trim().length<2||l.description.trim().length>140
       ||!qty(l.quantity_milli)||!money(l.unit_cost_cents))throw new RangeError('Renglón inválido.')
     if((l.catalog_item_id===null)!==(l.unit==='CONCEPTO')
