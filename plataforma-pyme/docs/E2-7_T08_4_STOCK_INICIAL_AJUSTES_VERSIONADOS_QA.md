@@ -1,6 +1,6 @@
 # E2-7 · T08-4 — Stock inicial, conteo físico y ajustes versionados REALES
 
-**Fecha:** 10/11/2026. **Estado:** implementación frontend terminada, CI aprobado; **QA manual con PostgreSQL pendiente**. Rama: `feature/e2-7-t08-inventario-real`; PR #41 sigue como borrador, **sin merge a main**.
+**Fecha:** 10/11/2026. **Estado actualizado tras T08-5:** implementación frontend terminada, aceptación manual principal en UI REAL **APROBADA** y suites PostgreSQL/Playwright de integración **APROBADAS** en CI. La evidencia manual no es inspección SQL independiente. Rama: `feature/e2-7-t08-inventario-real`; PR #41 sigue en borrador, **sin merge a main**.
 
 ## 1. Contrato y reglas reales de FastAPI
 
@@ -57,4 +57,24 @@ GitHub Actions en rama T08 con el nuevo script `test:adjustment-real` (verificar
 - **Registro histórico:** no permitir `STOCK_INICIAL` sobre ubicación+artículo con movimientos anteriores, aunque el saldo histórico sea cero. No usar suma de compras en el navegador.
 - **Datos demo:** no mezclar. **T08-4 quedará funcionalmente aprobado** solo tras las capturas de stock inicial, ajuste positivo/negativo, conservación del historial y control de permisos/tenant o sus evidencias de QA documentadas.
 
-**Estado de cierre:** implementación y CI frontend listos; falta QA manual REAL. **No merge a main.** Luego sigue T08-5: QA integral, revisión de permisos negativos, race conditions, paginación, regresión DEMO y cierre académico.
+**Estado de cierre histórico:** al redactar este plan faltaba QA manual REAL; **esa pendiente se resolvió el 10/11/2026** y está respaldada a continuación y en [T08-5](E2-7_T08_5_QA_INTEGRAL_Y_CIERRE.md). PR #41 aún no se fusiona.
+
+## 6. Acta retrospectiva de QA manual T08-4 — resultado final (10/11/2026)
+
+**Fuente:** capturas y confirmaciones del usuario sobre la interfaz de Inventario REAL conectada a FastAPI. Esta sección registra lo observado, sin afirmar consultas SQL ni capturas de tráfico HTTP independientes. **Sede efectivamente utilizada: Sede A TEST**, no Sede A TEST 2 como sugería a modo de ejemplo el plan anterior. Artículo: **Producto T08-4 CONTEO**, SKU `TEST-T084-001`, unidad UNIDAD, en **TEST Empresa A**.
+
+| Control | Evidencia manual observada | Resultado |
+|---|---|---|
+| Carga inicial | Sin saldo previo, `expected_version=0`; registro `STOCK_INICIAL +5` | Aprobado; 5 UNIDAD / versión 1 |
+| Ajuste de entrada | Sobre 5/v1, `AJUSTE_ENTRADA +2` | Aprobado; 7 UNIDAD / versión 2 |
+| Conteo físico | Saldo leído 7/v2, saldo contado 6; delta `AJUSTE_SALIDA -1` | Aprobado; 6 UNIDAD / versión 3 |
+| Ledger | En artículo/sede aparecen `+5, +2, -1` | Aprobado visualmente, total 6 |
+| Conteo sin diferencia | Conteo 6 con saldo actual 6/v3 | Aprobado: mensaje de coincidencia y botón de confirmar deshabilitado |
+| Inicialización repetida | Mismo artículo y sede con 6/v3, cantidad propuesta, motivo y aceptación completos | Aprobado: operación inicial bloqueada por stock previo |
+| Rol trabajador | Miguel ve aviso de solo lectura y no obtiene formulario de ajustes | Aprobado en UI |
+| Separación de empresas | TEST Empresa B no muestra saldos ni movimientos de A | Aprobado visualmente |
+| Regresión DEMO | DEMO muestra empresas y artículos propios, sin mezclarse con datos TEST | Aprobado visualmente |
+
+**Pendientes que NO deben confundirse con pruebas manuales realizadas:** no se verificó manualmente una colisión de dos sesiones con `expected_version` obsoleta; tampoco un rechazo directo al backend de encargado que intenta inicializar stock. Ambos comportamientos se validaron en PostgreSQL aislado, y el 409 se probó también con Playwright REAL.
+
+**CI de cierre:** [run #42896686337](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42896686337), 879/879 backend, 256/256 frontend, 4/4 Playwright REAL y 6/6 Playwright DEMO, sin fallos. No repetir los movimientos sobre el artículo TEST para reconstruir pruebas. **T08-4 queda funcionalmente aprobado**; el merge requiere autorización posterior del usuario.
