@@ -51,6 +51,14 @@ export function adjustmentMilli(input:string,unit:string):number{
   if(!validUnit(unit))throw new TypeError('Se requiere un artículo físico.')
   return transferMilli(input,unit)
 }
+/** Conteo puede ser cero. Stock inicial y ajustes siempre exigen delta positivo. */
+export function countedMilli(input:string,unit:string):number{
+  if(/^0(?:[.,]0{1,3})?$/.test(input.trim())){
+    if(!validUnit(unit))throw new TypeError('Se requiere un artículo físico.')
+    return 0
+  }
+  return adjustmentMilli(input,unit)
+}
 /** Explicit physical count is a NEW delta command, not a replacement of historic ledger. */
 export function adjustmentFromCount(targetMilli:number,currentMilli:number,version:number):{
   kind:'AJUSTE_ENTRADA'|'AJUSTE_SALIDA';quantity_milli:number
