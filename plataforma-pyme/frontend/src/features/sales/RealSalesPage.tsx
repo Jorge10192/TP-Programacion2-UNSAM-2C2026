@@ -102,7 +102,7 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
   const effectiveFilters = useMemo(() => locationId ? { locationId } : {}, [locationId])
 
   async function loadMore() {
-    if (status !== 'ready' || !hasMore || moreLoading) return
+    if (status !== 'ready' || !hasMore || moreLoading || pageController.current !== null) return
     const epoch = listEpoch.current
     const controller = new AbortController()
     pageController.current = controller
