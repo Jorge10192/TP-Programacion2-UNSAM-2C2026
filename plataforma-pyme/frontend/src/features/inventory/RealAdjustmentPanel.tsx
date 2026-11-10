@@ -8,7 +8,7 @@ import type { StockBalance } from './realInventoryGateway.ts'
 import {
   adjustmentErrorMessage, adjustmentFromCount,
   adjustmentMilli, countedMilli, createAdjustmentGateway,
-  mayAdjustInventory, mayInitializeInventory, validateAdjustment,
+  mayAdjustInventory, mayInitializeInventory, MAX_STOCK_BALANCE_MILLI, validateAdjustment,
 } from './realAdjustmentGateway.ts'
 import type { AdjustmentCommand, AdjustmentKind, AdjustmentReceipt } from './realAdjustmentGateway.ts'
 import { transferReason } from './realTransferGateway.ts'
@@ -77,7 +77,7 @@ export function RealAdjustmentPanel({
     if(isInitial&&hasExisting)throw new RangeError('Esta combinación ya tiene stock histórico. No se puede inicializar de nuevo.')
     if(!isInitial&&!hasExisting)throw new RangeError('Para ajustar se requiere un saldo existente y su versión.')
     if(kind==='AJUSTE_SALIDA'&&amount>currentMilli)throw new RangeError('No podés descontar más de las existencias consultadas.')
-    if(kind!=='AJUSTE_SALIDA'&&currentMilli+amount>999999999)
+    if(kind!=='AJUSTE_SALIDA'&&currentMilli+amount>MAX_STOCK_BALANCE_MILLI)
       throw new RangeError('La cantidad final supera el límite del backend.')
     preview={kind,quantity_milli:amount,next:isInitial?amount:currentMilli+(kind==='AJUSTE_SALIDA'?-amount:amount)}
    }
