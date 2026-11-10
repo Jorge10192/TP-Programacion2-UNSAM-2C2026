@@ -14,6 +14,7 @@ import {
   filterLoadedHistory, loadedInventoryCountLabel, loadedMovementCounts, movementTraceFields,
 } from './inventoryHistoryView.ts'
 import type { LoadedHistoryFilter } from './inventoryHistoryView.ts'
+import { RealTransferPanel } from './RealTransferPanel.tsx'
 
 type Props = {
   token:string;userId:string;businessId:string
@@ -53,6 +54,8 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
   const [dataError,setDataError]=useState('')
   const [pageError,setPageError]=useState('')
   const [refreshVersion,setRefreshVersion]=useState(0)
+  const [dataRefreshVersion,setDataRefreshVersion]=useState(0)
+  const [transferOpen,setTransferOpen]=useState(false)
   const metadataEpoch=useRef(0)
   const dataEpoch=useRef(0)
   const moreControllers=useRef<AbortController[]>([])
@@ -110,7 +113,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
       aborters.forEach(c=>c.abort())
       aborters.length=0
     }
-  },[inventoryApi,query,refreshVersion,onUnauthorized])
+  },[inventoryApi,query,refreshVersion,dataRefreshVersion,onUnauthorized])
 
   async function nextPage(which:Tab) {
     if(!dataLoaded||dataLoading||balancesMoreLoading||movementsMoreLoading)return
@@ -187,6 +190,15 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
     setBalances([]);setMovements([]);setBalancesHasMore(false);setMovementsHasMore(false)
     setBalancesMoreLoading(false);setMovementsMoreLoading(false)
   }
+  function refreshAfterTransfer(){
+    resetRead()
+    setDataRefreshVersion(x=>x+1)
+  }
+  function reviewAfterTransfer(){
+    setTransferOpen(false)
+    setTab('balances')
+    refreshAfterTransfer()
+  }
   function refresh(){
     resetRead()
     setMetadataLoading(true);setMetadataError('');setCompany(null)
@@ -215,9 +227,9 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/compras')}>Compras y recepciones</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>
-    <span className="real-auth-eyebrow">E2-7 · T08-2 · INVENTARIO REAL</span>
+    <span className="real-auth-eyebrow">E2-7 · T08-3 · INVENTARIO REAL</span>
     <h1>Inventario</h1>
-    <p>Saldos y movimientos confirmados en FastAPI y PostgreSQL, por empresa y ubicación. Este panel es de solo lectura: no utiliza existencias de DEMO.</p>
+    <p>Saldos y movimientos confirmados en FastAPI y PostgreSQL, por empresa y ubicación. Las consultas no utilizan existencias DEMO; los traslados se ejecutan exclusivamente en el backend REAL.</p>
     {metadataLoading&&<p role="status">Comprobando empresa, ubicaciones y catálogo REAL…</p>}
     {metadataError&&<p className="real-auth-error" role="alert">{metadataError}</p>}
     {!metadataLoading&&company&&<>
@@ -239,6 +251,12 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
           Actualizar desde API
         </button>
       </div>
+      <div className="real-transfer-launch"><button type="button" className="real-auth-primary" disabled={transferOpen||metadataLoading||dataLoading}
+        onClick={()=>setTransferOpen(true)}>Transferir entre ubicaciones</button>
+        <span>Movimiento REAL: requiere permiso STORE en origen y destino; no afecta compras ni dinero.</span></div>
+      {transferOpen&&<RealTransferPanel token={token} actorId={userId} business={company} locations={locations} catalog={catalog}
+        onUnauthorized={onUnauthorized} onClose={()=>setTransferOpen(false)} onConfirmed={refreshAfterTransfer}
+        onReview={reviewAfterTransfer}/>}
       {catalogHasMore&&<div className="real-inventory-catalog-hint">
         El selector contiene {catalog.length} fichas cargadas. Puede haber más artículos.
         <button type="button" className="real-auth-link" disabled={catalogLoading} onClick={()=>void loadMoreCatalog()}>
@@ -310,7 +328,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
           {fetchingMore?'Consultando siguiente página…':'Cargar más '+(tab==='balances'?'saldos':'movimientos')}
         </button>}
       </>}
-      <p className="real-inventory-disclaimer">Los nombres y unidades se muestran según el catálogo actual cargado para esta empresa. Los movimientos conservan su cantidad firmada y fecha histórica del ledger; no se calcula stock sumando compras. Las transferencias y los ajustes se incorporarán en T08-3 y T08-4.</p>
+      <p className="real-inventory-disclaimer">Los nombres y unidades se muestran según el catálogo actual cargado para esta empresa. Los movimientos conservan su cantidad firmada y fecha histórica del ledger; no se calcula stock sumando compras. Las transferencias se registran en T08-3; stock inicial y ajustes versionados se incorporarán en T08-4.</p>
     </>}
   </section>
 }
