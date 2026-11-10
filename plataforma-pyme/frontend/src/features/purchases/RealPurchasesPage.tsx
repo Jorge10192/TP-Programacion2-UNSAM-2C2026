@@ -60,6 +60,14 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
      if(saved){
        if(saved.kind!=='purchase.create')throw new PendingConflictError()
        setPending(saved);setForm(true);setConsent(true)
+       setDraft({
+         date:saved.body.purchased_on,supplierId:saved.body.supplier_id??'',
+         reference:saved.body.reference,notes:saved.body.notes,
+         lines:saved.body.lines.map(line=>({
+           catalogId:line.catalog_item_id??'concept',description:line.description,
+           quantity:milliToDecimal(line.quantity_milli),unitCost:centsToPesos(line.unit_cost_cents),
+         })),
+       })
        setNotice('Compra pendiente recuperada. Revisá el listado antes de reintentar. No se enviará automáticamente.')
      }
      setJournalReady(true)
