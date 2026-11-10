@@ -211,7 +211,7 @@ El color **acompaña al texto**, nunca lo reemplaza: los estados se distinguen t
 - Cada movimiento y cantidad proceden del comprobante REAL. La descripción y unidad se obtienen preferentemente de los snapshots históricos de la compra, no de los artículos vigentes; balances_after se utiliza solo cuando está disponible. No se agregan movimientos ficticios para servicios o conceptos.
 - Los identificadores de recibo y ubicación quedan bajo «Identificadores de trazabilidad», no como texto principal. No se publica ni copia la clave request_id del comando idempotente.
 - El panel señala que **es un registro interno de FastAPI/PostgreSQL, no una factura ni un PDF**. La exportación PDF no forma parte de T07.
-- El detalle dispone de «Cerrar detalle» y diseño adaptable a pantallas estrechas. No modifica estado comercial, inventario, roles, importes ni datos DEMO.
+- El detalle dispone de «Cerrar detalle» y diseño adaptable a pantallas estrechas. Al consultar desde el formulario de recepción (situado debajo del listado), el navegador enfoca y desplaza la vista al detalle recién abierto para que el usuario no siga viendo solamente el formulario. No modifica estado comercial, inventario, roles, importes ni datos DEMO.
 - Cuando un POST de recepción acaba con respuesta válida, ese mismo recibo puede presentarse directamente, sin hacer otro POST. Al consultar un comprobante confirmado, se sigue reconciliando la clave pendiente por request_id según T06/T07. Para una recepción todavía pendiente, el manejo de 404 de la sección 11 continúa intacto.
 
 **Implementación:**
