@@ -236,7 +236,7 @@ export function RealAuthApp() {
                       onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
                   : operationBusinessId && operationsKind === 'compras'
                     ? <RealPurchasesPage key={session.user.id + ':' + path} token={session.token}
-                        userId={session.user.id} businessId={operationBusinessId}
+                        userId={session.user.id} userDisplayName={session.user.display_name} businessId={operationBusinessId}
                         onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
                     : null
         : showBusinesses && session && businessRoute
