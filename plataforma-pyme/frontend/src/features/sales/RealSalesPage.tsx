@@ -155,6 +155,10 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
     event.preventDefault()
     const id = requestInput.trim()
     if (!UUID_V4_PATTERN.test(id)) {
+      // Invalid input invalidates a previous in-flight lookup too.
+      detailController.current?.abort()
+      detailEpoch.current++
+      setDetailLoading(false)
       setReceipt(null); setDetailError('Ingresá una clave de solicitud UUID4 válida.')
       return
     }
