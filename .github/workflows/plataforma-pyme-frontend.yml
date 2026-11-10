@@ -37,6 +37,7 @@ jobs:
       - run: npm run test:pending-commands
       - run: npm run test:supply-real
       - run: npm run test:inventory-real
+      - run: npm run test:transfer-real
       - run: npm run test:accounts
       - run: npm run test:sales
       - run: npm run test:cash
