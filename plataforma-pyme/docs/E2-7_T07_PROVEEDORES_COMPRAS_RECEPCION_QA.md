@@ -241,7 +241,7 @@ El color **acompaña al texto**, nunca lo reemplaza: los estados se distinguen t
 
 **Otras evidencias del mismo recorrido QA compartidas en la conversación:** la compra quedó `RECIBIDA` después de la acción explícita autorizada a un TRABAJADOR con asignación a sede; la consulta posterior confirmó el registro sin hacer otro POST. Anteriormente, la cuenta colaboradora con sede `NO ASIGNADO` podía consultar compras pero no estaba autorizada para confirmar allí. En Empresa B el listado de compras estaba vacío mientras Empresa A mostraba tres compras. La pantalla de proveedores del trabajador de A se presentó sin controles de administración. Los subtotales, la suma del documento, costo de referencia y el color ámbar/verde se comprobaron mediante capturas.
 
-**Criterios de cierre pendientes de evidencia manual completa:** compra solo con concepto libre (T07-06); URL directa de compra de B como trabajador A (T07-09); pruebas controladas de interrupción y recuperación de alta/recepción con F5 en entorno aislado (T07-10 y T07-11); verificación independiente de replay backend (T07-12); sede pausada/sin almacenamiento (T07-13); regresión DEMO (T07-14), paginación 101+ (T07-15) y los casos de importes especiales T07-18/T07-20/T07-23. Parte de estas situaciones ya tiene pruebas unitarias/contratos, pero eso no equivale a evidencias manuales end-to-end.
+**Criterios de cierre pendientes de evidencia manual completa:** URL directa de compra de B como trabajador A (T07-09); pruebas controladas de interrupción y recuperación de alta/recepción con F5 en entorno aislado (T07-10 y T07-11); verificación independiente de replay backend (T07-12); sede pausada/sin almacenamiento (T07-13); regresión DEMO (T07-14), paginación 101+ (T07-15) y los casos de importes especiales T07-18/T07-20/T07-23. Parte de estas situaciones ya tiene pruebas unitarias/contratos, pero eso no equivale a evidencias manuales end-to-end.
 
 **Decisión de cierre:** no declarar el incremento completamente validado ni fusionar automáticamente por la sola captura. Mantener PR #40 como borrador hasta revisar y ejecutar o justificar explícitamente los criterios pendientes, sin crear movimientos de stock adicionales solo para validar una vista de lectura.
 
@@ -252,3 +252,11 @@ El color **acompaña al texto**, nunca lo reemplaza: los estados se distinguen t
 La parte de **compras** del mismo caso T07-07 también tenía evidencia anterior: B mostraba 0 compras y A mostraba 3. Esta observación confirma el aislamiento de listados en la UI, **no equivale por sí sola a una prueba adversarial HTTP** de acceso por ID al recurso ajeno; esa prueba queda dentro de T07-09 y del conjunto de contratos automatizados.
 
 **Estado:** T07-07 completo en su alcance de interfaz. Continúan las demás verificaciones pendientes descritas en la sección 13; no fusionar el PR por esta sola comprobación.
+
+## 15. Evidencia QA: compra compuesta exclusivamente por concepto libre — 10/11/2026
+
+**T07-06: aprobado visualmente con captura de la interfaz REAL.** El usuario registró una cuarta compra de TEST Empresa A bajo la referencia `concepto libre T07`, sin proveedor, con **1 renglón de CONCEPTO**, cantidad **5** y costo unitario **$500,00**; el resumen mostró **$2.500,00** y estado **CERRADA SIN RECEPCIÓN**. No se presentó botón para confirmar recepción ni acción para aumentar inventario.
+
+**Alcance de la evidencia:** se verificó la aritmética, el estado comercial y la ausencia de la acción de recepción en el frontend conectado a FastAPI/PostgreSQL. Aunque el caso inicialmente sugería cantidad 1, utilizar cantidad 5 es compatible con la misma regla y muestra correctamente la multiplicación. No se comparó en esta prueba el ledger de stock antes y después, por lo que la ausencia de movimientos queda respaldada por el comportamiento de la UI y las reglas/pruebas del backend, pero no por una comprobación independiente de existencias.
+
+**No fusionado:** T07-06 pasa de pendiente a aprobado en su alcance de interfaz; otros criterios aún pendientes se enumeran en la sección 13. No se requirió confirmar recepción ni modificar movimientos de stock.
