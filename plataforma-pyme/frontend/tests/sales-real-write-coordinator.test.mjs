@@ -204,7 +204,11 @@ test('T10-B2 no confirma recibo alterado ni borra un pendiente al cambiar tenant
   ]) {
     const { coordinator } = setup(async () => response(modified))
     await coordinator.prepare(body(), key)
-    await assert.rejects(coordinator.recover(), SalePendingConflict)
+    // Off-tenant/corrupt receipts are rejected by the T09 parser first;
+    // structurally valid but inconsistent receipts fail the journal check.
+    await assert.rejects(coordinator.recover(),
+      error => error instanceof SalePendingConflict ||
+        (error instanceof ApiTransportError && error.reason === 'invalid-response'))
     assert.equal((await coordinator.pending()).key, key)
   }
 })
