@@ -245,3 +245,36 @@
 .real-inventory-trace dd{margin:0;color:#1b365c;overflow-wrap:anywhere;user-select:text;font-size:12px}
 .real-inventory-trace p{font-size:12px;color:#647e9d;margin:6px 0 0}
 @media(max-width:610px){.real-inventory-history-filters{grid-template-columns:minmax(0,1fr)}.real-inventory-movement-info{flex-basis:100%}}
+
+/* E2-7 T08-3 — traslados REAL; solo el backend modifica saldos */
+.real-transfer-launch{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0}
+.real-transfer-launch button{width:auto}
+.real-transfer-launch span{font-size:12px;color:#506a8e}
+.real-transfer-panel{border:1px solid #bdd6f4;border-radius:14px;background:#f8fbff;padding:23px;margin:20px 0 28px;min-width:0}
+.real-transfer-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.real-transfer-top h2{font-size:22px;margin:0 0 12px;color:#142c4e}
+.real-transfer-top p{font-size:13px;line-height:1.6;margin:0 0 12px;color:#527094}
+.real-transfer-top button{width:auto;flex-shrink:0}
+.real-transfer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0}
+.real-transfer-grid label,.real-transfer-reason{display:grid;gap:8px;min-width:0;font-size:13px;font-weight:700;color:#173254}
+.real-transfer-grid select,.real-transfer-grid input,.real-transfer-reason textarea{width:100%;min-width:0;border:1px solid #c6d9f5;border-radius:9px;padding:11px 12px;background:#fff;color:#1b365c;font:inherit;line-height:1.4}
+.real-transfer-reason{margin:18px 0 14px}
+.real-transfer-balance{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:#eef5ff;border:1px solid #d5e4f8;border-radius:11px;padding:16px;margin:16px 0}
+.real-transfer-balance p{font-size:12px;color:#6580a1;margin:4px 0 0}
+.real-transfer-balance strong{color:#153a6c;white-space:nowrap}
+.real-transfer-balance button{width:auto}
+.real-transfer-accept{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.6;color:#284564;margin:18px 0}
+.real-transfer-accept input{width:16px;height:16px;flex:0 0 16px;margin-top:2px}
+.real-transfer-form>.real-auth-primary{width:auto;min-width:210px}
+.real-transfer-pending,.real-transfer-confirmed{border-radius:12px;padding:18px;margin:20px 0;border:1px solid #e9bf68;background:#fff8e9;color:#514421;overflow-wrap:anywhere}
+.real-transfer-confirmed{border-color:#b4dfcc;background:#eefbf5;color:#185c3d}
+.real-transfer-pending h3,.real-transfer-confirmed h3{margin:0 0 14px;font-size:20px}
+.real-transfer-pending p,.real-transfer-confirmed p{font-size:13px;line-height:1.6}
+.real-transfer-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+.real-transfer-actions button{width:auto}
+.real-transfer-confirmed>.real-auth-primary{width:auto;margin-top:14px}
+.real-transfer-movements{display:grid;gap:10px;margin:16px 0}
+.real-transfer-movements>div{border:1px solid #c7e4d5;border-radius:9px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;padding:12px}
+.real-transfer-confirmed code{overflow-wrap:anywhere;white-space:normal}
+.real-transfer-confirmed summary{cursor:pointer;text-decoration:underline}
+@media(max-width:650px){.real-transfer-grid{grid-template-columns:minmax(0,1fr)}.real-transfer-top{flex-direction:column}.real-transfer-panel{padding:15px}.real-transfer-movements>div{flex-wrap:wrap}.real-transfer-balance{align-items:flex-start}}
