@@ -176,6 +176,16 @@ export function createSupplyGateway(token:string,businessId:string,fetchImpl?:ty
       await api.request<unknown>(purchases+'/'+id(purchaseId)+'/receipt',{signal}),businessId,purchaseId),
   }
 }
+/**
+ * GET /receipt returns 404 both when no receipt exists and when access is denied.
+ * The caller must verify the purchase itself via GET /purchases/:id first.
+ * Only a confirmed, readable REGISTRADA purchase permits this safe explanation.
+ */
+export function missingReceiptMessage(status:Purchase['status']):string {
+  if(status==='REGISTRADA')return 'Todavía no hay un comprobante de recepción confirmado para esta compra. La compra sigue REGISTRADA. Si tenés un intento pendiente guardado, se conserva la misma clave: no se envió ninguna nueva recepción. Antes de reintentar verificá tu asignación a la sede y sus permisos.'
+  if(status==='RECIBIDA')return 'La compra figura RECIBIDA, pero la API no permitió consultar el comprobante. No repitas la recepción. Actualizá y revisá el acceso con el administrador.'
+  return 'No se pudo consultar el comprobante para esta compra. No se realizó ninguna recepción adicional.'
+}
 export function supplyErrorMessage(err:unknown):string{
   if(err instanceof ApiHttpError){
     if(err.status===401)return 'Sesión vencida. Iniciá sesión nuevamente.'
