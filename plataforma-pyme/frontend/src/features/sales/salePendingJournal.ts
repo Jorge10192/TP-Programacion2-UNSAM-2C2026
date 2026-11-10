@@ -53,6 +53,7 @@ export function parseSalePending(value: unknown, scope: string): SalePending {
   const row = value as Record<string, unknown>
   if (!keys(row, ['scope', 'actorId', 'businessId', 'kind', 'key', 'body', 'createdAt']) ||
     typeof row.actorId !== 'string' || typeof row.businessId !== 'string' ||
+    !UUID_PATTERN.test(row.actorId) || !UUID_PATTERN.test(row.businessId) ||
     typeof row.scope !== 'string' || typeof row.key !== 'string' ||
     row.kind !== 'sale.create' || !UUID_V4_PATTERN.test(row.key) ||
     row.scope !== scope || row.scope !== salePendingScope(row.actorId, row.businessId) ||
@@ -176,9 +177,8 @@ async function read(scope: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let result: unknown
     const tx = db.transaction(STORE, 'readonly')
-    tx.objectStore(STORE).get(scope).onsuccess = event => {
-      result = (event.target as IDBRequest).result
-    }
+    const request = tx.objectStore(STORE).get(scope)
+    request.onsuccess = () => { result = request.result }
     tx.oncomplete = () => { db.close(); resolve(result) }
     tx.onerror = () => { db.close(); reject(new SalePendingUnavailable()) }
     tx.onabort = () => { db.close(); reject(new SalePendingUnavailable()) }
