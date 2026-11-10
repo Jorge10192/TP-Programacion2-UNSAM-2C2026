@@ -47,27 +47,39 @@ export function validateAdjustment(value:AdjustmentCommand):AdjustmentCommand{
     throw new RangeError('Motivo de ajuste inválido.')
   return value
 }
+/** Backend StockBalance.MAX_BALANCE_MILLI is larger than the per-command quantity limit. */
+export const MAX_STOCK_BALANCE_MILLI=999_999_999_999_999
+export const MAX_ADJUSTMENT_DELTA_MILLI=999_999_999
 export function adjustmentMilli(input:string,unit:string):number{
   if(!validUnit(unit))throw new TypeError('Se requiere un artículo físico.')
   return transferMilli(input,unit)
 }
-/** Conteo puede ser cero. Stock inicial y ajustes siempre exigen delta positivo. */
+/** A counted *final stock* can be zero or greater than the per-command delta cap. */
 export function countedMilli(input:string,unit:string):number{
-  if(/^0(?:[.,]0{1,3})?$/.test(input.trim())){
-    if(!validUnit(unit))throw new TypeError('Se requiere un artículo físico.')
-    return 0
-  }
-  return adjustmentMilli(input,unit)
+  if(!validUnit(unit))throw new TypeError('Se requiere un artículo físico.')
+  const text=input.trim()
+  if(!/^(?:0|[1-9]\\d*)(?:[.,]\\d{1,3})?$/.test(text))
+    throw new RangeError('Conteo: cantidad no negativa, hasta tres decimales y sin miles.')
+  const [whole,frac='']=text.replace(',','.').split('.')
+  const amount=BigInt(whole)*1000n+BigInt(frac.padEnd(3,'0'))
+  if(amount>BigInt(MAX_STOCK_BALANCE_MILLI))
+    throw new RangeError('Conteo supera el máximo de saldo permitido.')
+  if(['UNIDAD','PAQUETE','CAJA'].includes(unit)&&amount%1000n!==0n)
+    throw new RangeError('El artículo discreto requiere cantidades enteras.')
+  return Number(amount)
 }
-/** Explicit physical count is a NEW delta command, not a replacement of historic ledger. */
+/** A count is converted to a delta. Never replaces the historical ledger. */
 export function adjustmentFromCount(targetMilli:number,currentMilli:number,version:number):{
   kind:'AJUSTE_ENTRADA'|'AJUSTE_SALIDA';quantity_milli:number
 }|null{
   if(![targetMilli,currentMilli,version].every(Number.isSafeInteger)
-    ||targetMilli<0||targetMilli>999999999||currentMilli<0||currentMilli>999999999||version<1)
+    ||targetMilli<0||targetMilli>MAX_STOCK_BALANCE_MILLI
+    ||currentMilli<0||currentMilli>MAX_STOCK_BALANCE_MILLI||version<1)
     throw new RangeError('Conteo, saldo o versión inválidos.')
   const delta=targetMilli-currentMilli
   if(delta===0)return null
+  if(Math.abs(delta)>MAX_ADJUSTMENT_DELTA_MILLI)
+    throw new RangeError('Diferencia demasiado grande para un único ajuste; revisá el conteo.')
   return {kind:delta>0?'AJUSTE_ENTRADA':'AJUSTE_SALIDA',quantity_milli:Math.abs(delta)}
 }
 export function parseAdjustment(value:unknown,businessId:string):AdjustmentReceipt{
