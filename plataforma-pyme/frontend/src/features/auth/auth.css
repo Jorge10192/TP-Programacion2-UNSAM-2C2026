@@ -402,3 +402,13 @@
   .real-pos-fields{grid-template-columns:1fr}
   .real-pos-cart-row{align-items:flex-start}
 }
+
+/* T10-C QA: precio bloqueado por defecto y subtotales claros, sin rediseño DEMO. */
+.real-pos-in-cart{display:block;border:1px solid #bddfd1;border-radius:8px;padding:7px 9px;background:#edf8f2;color:#11684b!important;font-weight:750}
+.real-pos-price-override{margin:3px 0 12px;text-align:left}
+.real-pos-line-preview{background:#e8f2ff;border:1px solid #bad4fa;border-radius:11px;padding:12px 15px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:15px 0}
+.real-pos-line-preview span{font-size:13px;color:#335477}
+.real-pos-line-preview strong{color:#195bb4;font-size:18px}
+.real-pos-line-total{font-size:15px;color:#215da6;margin-top:4px}
+.real-pos-cart-actions{display:flex;gap:12px;flex-direction:row;align-items:center;flex-wrap:wrap}
+@media(max-width:660px){.real-pos-line-preview{align-items:flex-start;flex-direction:column}.real-pos-cart-actions{justify-content:flex-start}}
