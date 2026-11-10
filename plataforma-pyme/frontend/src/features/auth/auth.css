@@ -123,3 +123,21 @@
 .real-intent-fields:disabled{opacity:.85}
 .real-intent-fields input:disabled,.real-intent-fields select:disabled{background:#f3f6fa;color:#546888}
 .real-business-uncertain .real-auth-secondary{font-size:12px}
+
+/* E2-7 T07 — Proveedores, compras y recepciones REAL. */
+.real-supply-list{display:grid;gap:16px;margin:20px 0}
+.real-supply-card{border:1px solid #d3e0f2;border-radius:15px;background:#f9fbff;padding:20px;display:grid;gap:13px;min-width:0}
+.real-supply-card .real-catalog-tile-header{align-items:center}
+.real-supply-card .real-catalog-tile-header strong{font-size:17px;overflow-wrap:anywhere}
+.real-supply-card>small{font-size:12px;color:#516a8a}
+.real-supply-total{font-size:19px;color:#16325e}
+.real-supply-card ul{margin:0;padding-left:23px;font-size:13px;color:#405777;line-height:1.7}
+.real-supply-card li{overflow-wrap:anywhere}
+.real-supply-card button{justify-self:start}
+.real-supply-line{border:1px solid #cfddef;border-radius:12px;padding:17px;display:grid;gap:12px;background:#fff}
+.real-supply-line strong{font-size:14px}
+.real-supply-line label,.real-supply-label{display:grid;gap:8px;font-size:13px;color:#354f75;font-weight:700}
+.real-supply-line input,.real-supply-line select,.real-supply-label select{width:100%;min-height:44px;padding:10px 12px;border:1px solid #cad9ed;border-radius:10px;color:#183155;background:#fff}
+.real-supply-quantities{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.real-supply-line .real-auth-secondary{justify-self:start}
+@media(max-width:650px){.real-supply-quantities{grid-template-columns:1fr}.real-supply-card{padding:15px}}
