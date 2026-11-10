@@ -4,7 +4,7 @@
 
 **Tipo de trabajo:** revisión de código/repositorio, contratos HTTP, casos de prueba PostgreSQL y Playwright, matrices de acceso, evidencia de CI y evidencia manual comunicada por el usuario. No implica conexión a la base de datos de su equipo, ejecución manual de ventas ni acceso a capturas originales fuera del chat.
 
-**Estado del acta al crearla:** hallazgos de código corregidos en rama; **verificación final de workflows del último commit funcional pendiente**. No declarar cierre ni proponer merge antes de registrar la conclusión verde de esa ejecución.
+**Estado final:** auditoría de T09-F **COMPLETADA / APTA PARA REVISIÓN FINAL**. Hallazgos técnicos corregidos en rama; workflows del último commit funcional **APROBADOS**. **No implica autorización de merge:** el PR #42 permanece en borrador hasta que el responsable lo apruebe.
 
 ## 1. Alcance y límites del bloque T09
 
@@ -16,7 +16,7 @@
 - **T09-E:** harness Playwright REAL sobre base descartable que simula pérdida del `201` **tras el COMMIT**, recuperación por GET, replay `200` con misma clave/cuerpo, `409` si cuerpo difiere; venta física con un solo débito y venta de servicio sin stock.
 - **T09-F:** auditoría, regresión, documentación, aceptación de los límites y dictamen pre-merge. **T10/POS REAL no está implementado**: T09 **no** ofrece formularios para crear ventas en React, ni journal duradero de intentos, ni acreditación de pagos externos.
 
-**Comparación inicial contra `main`:** 31 commits propios, 0 commits pendientes de traer, 18 rutas de archivo modificadas o agregadas dentro de `plataforma-pyme/`. No se detectaron cambios de T09 fuera de su carpeta, ni conflicto de fusión en la comparación inicial. GitHub debe confirmar estos números nuevamente al concluir el cierre.
+**Comparación final contra `main` (antes de este cierre documental):** **40 commits por delante, 0 por detrás, 19 archivos** modificados/agregados exclusivamente bajo `plataforma-pyme/`. GitHub confirma **mergeable=true, mergeable_state=clean**, sin conflictos y con `main` sin cambios. Este commit documental agrega uno más al recuento de commits, pero no cambia los archivos funcionales.
 
 ## 2. Matriz técnica de evidencia
 
@@ -64,6 +64,8 @@ Fuentes internas: [T09-D — acta manual y QA](E2-7_T09_D_HISTORIAL_VENTAS_REALE
 | T09-F07 | Baja — límite arquitectónico | No existe journal duradero del POST de venta en el frontend; la prueba T09-E conserva clave/cuerpo solo en harness de test | **Reservado explícitamente a T10**: no habilitar POS real hasta registrar intentos durables y reintentos seguros |
 | T09-F08 | Baja — evidencia | No se archivaron capturas locales originales en la carpeta T09 del repositorio; las actas citan la captura aportada en conversación | Aceptable para seguimiento; agregar captura sanitizada si una revisión académica independiente la requiere |
 
+**Incidente CI de la nueva prueba T09-F (resuelto):** los runs de los commits `f3521db`, `12e7c97` y `f494781` detectaron **1 fallo** en la prueba Playwright recién incorporada de error 503/reintento. La inyección 503 ocurría solo para la primera petición y React StrictMode podía volver a montar/reconsultar, eliminando el estado de error antes de la aserción; **no era una falla de permisos, stock o ventas del servidor**. Se corrigió en `3df34c9`: el test mantiene el 503 en toda petición GET hasta que se pulsa «Reintentar», luego permite la consulta real. [Full-stack #42913262454](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42913262454) verificó el caso **APROBADO**. Conservar los runs fallidos como evidencia histórica de detección y resolución, no describirlos como verdes.
+
 **No se encontró un fallo crítico reproducible** de aislamiento por tenant, bypass de roles, reintento duplicador, saldo negativo o alteración indebida de T08. Una auditoría estática + CI no demuestra ausencia absoluta de defectos futuros.
 
 ## 5. Integridad del alcance
@@ -75,6 +77,17 @@ Fuentes internas: [T09-D — acta manual y QA](E2-7_T09_D_HISTORIAL_VENTAS_REALE
 
 ## 6. Validación final y dictamen
 
-**PENDIENTE DE COMPLETAR después de CI del último commit funcional de T09-F**: anotar SHA, ejecución integral con PostgreSQL, matriz Python 3.12/3.14, pruebas frontend y navegador REAL/DEMO, conflictos/estados de PR y si existe algún test fallido. Los commits documentales posteriores no cambian código.
+**Commit funcional verificado:** `3df34c9a4d0c52294dcd59e24a55c8f8c8d4ebaf` (corrección de test 503). Los commits exclusivamente documentales posteriores no alteran el comportamiento de ejecución.
 
-**Dictamen provisional:** bloque funcional T09-A a T09-E aprobado; hallazgos T09-F01..04 corregidos; **aún no autorizar merge** hasta comprobar regresión final y aceptación explícita del usuario. No es obligatorio generar ventas manuales en la base local para cerrar T09.
+| Control final | Ejecución GitHub | Resultado confirmado |
+|---|---|---|
+| PostgreSQL efímero y suite backend completa | [Full-stack #42913262454](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42913262454) | **886/886** aprobadas, 2 advertencias no bloqueantes |
+| Frontend Node | Mismo run | **273/273** aprobadas, 0 fallidas (incluye la prueba nueva de microsegundos) |
+| Compilación y lint | Mismo run | **Build y Oxlint sin errores ni advertencias** |
+| Playwright REAL | Mismo run | **11/11**: 4 inventario T08, 4 lectura/errores ventas T09-D/F, 3 recuperación T09-E; **incluido 503 con reintento GET** |
+| Playwright DEMO | Mismo run | **6/6** aprobadas |
+| Python 3.12/3.14, Docker y liveness | [Backend independiente #42913262461](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42913262461) | **SUCCESS** todos los jobs |
+| Frontend y Chromium DEMO independientes | [Frontend #42913262480](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42913262480) | **SUCCESS** todos los jobs |
+| Comparación PR #42 con `main` | [PR #42](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/42) | **Sin conflictos, 0 commits behind**, aún **DRAFT / sin merge** |
+
+**Dictamen final: T09-0/A/B/C/D/E/F COMPLETADOS Y APTOS PARA REVISIÓN HUMANA FINAL.** No queda ningún test automático fallido en el último commit funcional, ni se identificaron defectos críticos pendientes de este alcance. No es obligatorio realizar nuevas ventas ni pruebas mutantes en el PostgreSQL local para cerrar T09. Las verificaciones manuales adicionales posibles (cambiar filtro, F5, comprobar responsive) son **opcionales y de solo lectura**; no se atribuyen como realizadas. Riesgos no bloqueantes (paginación por offset, ausencia de POS/journal T10, evidencia gráfica no archivada) están enumerados. **No merge a main hasta la autorización explícita del responsable**.
