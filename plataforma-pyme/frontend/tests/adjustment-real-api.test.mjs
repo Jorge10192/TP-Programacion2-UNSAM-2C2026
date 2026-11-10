@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { ApiHttpError, ApiTransportError } from '../src/api/httpClient.ts'
 import {
   createAdjustmentGateway,adjustmentMilli,countedMilli,adjustmentFromCount,
+  MAX_STOCK_BALANCE_MILLI,MAX_ADJUSTMENT_DELTA_MILLI,
   mayAdjustInventory,mayInitializeInventory,validateAdjustment,parseAdjustment,
 } from '../src/features/inventory/realAdjustmentGateway.ts'
 import {
@@ -206,4 +207,17 @@ test('T08-4 IndexedDB fallido bloquea reserva y solo elimina registro con clave 
   assert.equal(await journal.load(intent.scope),null)
   const broken=createAdjustmentJournal({...storage,async reserve(){throw new AdjustmentJournalUnavailable()}})
   await assert.rejects(broken.reserve(intent),AdjustmentJournalUnavailable)
+})
+
+test('T08-4: saldo acumulado admite 999999999999999 milésimas aunque el delta individual sea menor',()=>{
+  assert.equal(MAX_STOCK_BALANCE_MILLI,999999999999999)
+  assert.equal(MAX_ADJUSTMENT_DELTA_MILLI,999999999)
+  assert.equal(countedMilli('1000000000,500','GRAMO'),1000000000500)
+  assert.equal(countedMilli('1000000000','UNIDAD'),1000000000000)
+  assert.deepEqual(adjustmentFromCount(1000000001000,1000000000000,4),{
+    kind:'AJUSTE_ENTRADA',quantity_milli:1000,
+  })
+  assert.equal(countedMilli('999999999999,999','GRAMO'),MAX_STOCK_BALANCE_MILLI)
+  assert.throws(()=>countedMilli('1000000000000','GRAMO'))
+  assert.throws(()=>adjustmentFromCount(1000000000000,0,1),RangeError)
 })
