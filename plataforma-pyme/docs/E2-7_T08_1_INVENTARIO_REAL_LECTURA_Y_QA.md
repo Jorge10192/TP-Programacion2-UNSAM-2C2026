@@ -122,3 +122,15 @@ Realizar sin modificar existencias, compras ni datos DEMO.
 | Acciones de cambio de stock | No hay controles de ajuste/traslado en la vista | **Diseño previsto:** módulo read-only para todos los roles hasta T08-3/T08-4; no equivale a demostrar denegación por rol |
 
 **Resultado parcial:** aislamiento de listados de saldos entre empresas y lectura como trabajador observados. Falta ejecutar la selección explícita de **Sede A TEST 2** (y preferiblemente comprobar la pestaña Historial con ese filtro), el filtro por artículo, el historial de Empresa B y la regresión DEMO para el cierre manual de este subincremento. No se modifica la base ni se fusiona PR #41 por estas capturas.
+
+## Evidencia manual — filtro Sede A TEST 2 (10/11/2026)
+
+**Fuente:** dos capturas del usuario con TEST Empresa A y filtro explícito **Sede A TEST 2 · ACTIVA**, una para cada pestaña.
+
+| Vista | Evidencia visual | Resultado |
+|---|---|---|
+| Existencias | 0 combinaciones artículo/sede; mensaje «No hay saldos registrados para los filtros seleccionados. Esto no significa que todo el catálogo tenga saldo cero» | **Aprobado** |
+| Historial de movimientos | 0 movimientos; mensaje «No hay movimientos registrados para los filtros seleccionados» | **Aprobado** |
+| Aislamiento por sede | No figuran Producto A TEST con saldo 11 ni las tres recepciones (+5, +4 y +2) de Sede A TEST | **Aprobado visualmente** |
+
+**Conclusión:** se verifica el funcionamiento del filtro server-side por sede en ambas vistas, sobre el conjunto de datos de esta prueba. Saldos y movimientos de Sede A TEST se mantienen separados de Sede A TEST 2. La respuesta vacía no prueba saldo cero explícito. Para el cierre completo de T08-1 quedan por revisar, según alcance deseado, el filtro por artículo, la regresión DEMO en esta rama y la paginación con volúmenes grandes; la cobertura de contrato ya fue ejecutada en CI. No se fusiona el PR por esta sola evidencia.
