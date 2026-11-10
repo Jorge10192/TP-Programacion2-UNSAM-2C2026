@@ -6,7 +6,7 @@ import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
 import { CATALOG_PAGE_SIZE, centsToPesos, createCatalogGateway, pesosToCents } from '../catalog/realCatalogGateway.ts'
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
 import type { PosCartLine } from './realPosDraft.ts'
-import { canOverrideSalesPrice, parsePosQuantity, posQuantityText, previewPosCart } from './realPosDraft.ts'
+import { canOverrideSalesPrice, parsePosQuantity, posLineTotalCents, posQuantityText, previewPosCart } from './realPosDraft.ts'
 
 type Props = {
   token: string
@@ -41,6 +41,7 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const [selectedId, setSelectedId] = useState('')
   const [quantityText, setQuantityText] = useState('1')
   const [priceText, setPriceText] = useState('')
+  const [priceOverride, setPriceOverride] = useState(false)
   const [discountText, setDiscountText] = useState('0')
   const [cart, setCart] = useState<PosCartLine[]>([])
   const [draftError, setDraftError] = useState('')
@@ -70,6 +71,18 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const canWork = company?.status === 'ACTIVA' && company.membership.status === 'ACTIVA'
   const saleSites = locations.filter(site => site.status === 'ACTIVA' && site.can_sell)
   const selected = items.find(row => row.id === selectedId) ?? null
+  const selectedInCart = selected ? cart.some(row => row.catalog_item_id === selected.id) : false
+  const linePreview = useMemo(() => {
+    if (!selected) return { subtotal: null as number | null, message: '' }
+    try {
+      const quantity = parsePosQuantity(quantityText, selected.unit)
+      const price = manager && priceOverride ? pesosToCents(priceText) : selected.price_cents
+      if (price === null) return { subtotal: null, message: 'Sin precio definido: un titular o administrador debe indicar un importe para cotizar.' }
+      return { subtotal: posLineTotalCents(quantity, price), message: '' }
+    } catch {
+      return { subtotal: null, message: 'Ingresá cantidad y precio válidos para calcular el subtotal del producto.' }
+    }
+  }, [selected, quantityText, priceText, priceOverride, manager])
   const displayed = items.filter(item => {
     const term = search.trim().toLocaleLowerCase('es-AR')
     return item.status === 'ACTIVO' && item.sellable &&
@@ -114,9 +127,13 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   }, [catalogApi, hasMore, items, loadState, onUnauthorized])
 
   function choose(item: CatalogItem) {
+    const existing = cart.find(row => row.catalog_item_id === item.id)
+    const hasCustomPrice = manager && existing !== undefined &&
+      existing.unit_price_cents !== item.price_cents
     setSelectedId(item.id)
-    setQuantityText('1')
-    setPriceText(centsToPesos(item.price_cents))
+    setQuantityText(existing ? posQuantityText(existing.quantity_milli) : '1')
+    setPriceOverride(hasCustomPrice)
+    setPriceText(centsToPesos(hasCustomPrice && existing ? existing.unit_price_cents : item.price_cents))
     setDraftError('')
   }
 
@@ -125,11 +142,11 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
     try {
       if (!selected || selected.status !== 'ACTIVO' || !selected.sellable)
         throw new RangeError('Seleccioná un artículo vendible.')
-      if (cart.some(row => row.catalog_item_id === selected.id))
-        throw new RangeError('Este artículo ya está en el carrito. Retiralo para cambiar su cantidad.')
-      if (cart.length >= 30) throw new RangeError('Máximo 30 artículos distintos por venta.')
+      const alreadyInCart = cart.some(row => row.catalog_item_id === selected.id)
+      if (!alreadyInCart && cart.length >= 30)
+        throw new RangeError('Máximo 30 artículos distintos por venta.')
       const quantity_milli = parsePosQuantity(quantityText, selected.unit)
-      const unit_price_cents = manager ? pesosToCents(priceText) : selected.price_cents
+      const unit_price_cents = manager && priceOverride ? pesosToCents(priceText) : selected.price_cents
       if (unit_price_cents === null)
         throw new RangeError('El artículo no tiene precio. Un administrador debe definirlo.')
       if (!siteId && (!manager || selected.item_type === 'BIEN'))
@@ -138,9 +155,12 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
         (selected.item_type === 'BIEN' && !location.can_store)))
         throw new RangeError('La ubicación seleccionada no admite este artículo.')
       if (!canWork) throw new RangeError('La empresa o membresía no está activa.')
-      setCart(old => [...old, {
-        catalog_item_id: selected.id, quantity_milli, unit_price_cents,
-      }])
+      // Validar también el subtotal individual; nunca redondear importes con floats.
+      posLineTotalCents(quantity_milli, unit_price_cents)
+      const updatedLine = { catalog_item_id: selected.id, quantity_milli, unit_price_cents }
+      setCart(old => old.some(line => line.catalog_item_id === selected.id)
+        ? old.map(line => line.catalog_item_id === selected.id ? updatedLine : line)
+        : [...old, updatedLine])
       setSelectedId('')
     } catch (error) {
       setDraftError(error instanceof Error ? error.message : 'No se pudo agregar el artículo.')
@@ -192,6 +212,8 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
             <strong>{item.name}</strong>
             <small>{item.kind} · {item.unit} · {item.sku || 'Sin SKU'}</small>
             <span>{item.price_cents === null ? 'Sin precio definido' : money(item.price_cents)}</span>
+            {cart.some(line => line.catalog_item_id === item.id) &&
+              <small className="real-pos-in-cart">En carrito: {posQuantityText(cart.find(line => line.catalog_item_id === item.id)!.quantity_milli)} {item.unit}</small>}
           </button>)}
         </div>
         {displayed.length === 0 && <p className="real-business-empty">No hay artículos vendibles entre las fichas cargadas que coincidan con este filtro.</p>}
@@ -207,12 +229,29 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
             </label>
             <label>Precio unitario (ARS)
               <input inputMode="decimal" aria-label="Precio unitario de la venta"
-                value={manager ? priceText : centsToPesos(selected.price_cents)}
-                disabled={!manager} onChange={e => setPriceText(e.target.value)}/>
+                value={manager && priceOverride ? priceText : centsToPesos(selected.price_cents)}
+                disabled={!manager || !priceOverride}
+                onChange={e => setPriceText(e.target.value)}/>
             </label>
           </div>
-          {!manager && <p className="real-auth-note">Tu rol debe respetar el precio del catálogo y no puede aplicar descuentos.</p>}
-          <button type="button" className="real-auth-primary" onClick={addToCart}>Agregar al carrito</button>
+          {manager ? <button type="button" className="real-auth-link real-pos-price-override"
+              aria-pressed={priceOverride}
+              onClick={() => {
+                setPriceOverride(previous => !previous)
+                if (priceOverride) setPriceText(centsToPesos(selected.price_cents))
+                setDraftError('')
+              }}>
+              {priceOverride ? 'Restablecer precio de catálogo' : 'Modificar precio excepcionalmente'}
+            </button>
+            : <p className="real-auth-note">Tu rol debe respetar el precio del catálogo y no puede aplicar descuentos.</p>}
+          <div className="real-pos-line-preview" role="status">
+            {linePreview.subtotal === null ? <span>{linePreview.message}</span>
+              : <><span>Subtotal del producto ({quantityText} × precio unitario)</span>
+                  <strong>{money(linePreview.subtotal)}</strong></>}
+          </div>
+          <button type="button" className="real-auth-primary" onClick={addToCart}>
+            {selectedInCart ? 'Actualizar en carrito' : 'Agregar al carrito'}
+          </button>
         </div>}
         {draftError && <p role="alert" className="real-auth-message real-auth-error">{draftError}</p>}
       </section>
@@ -223,9 +262,14 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
           const item = items.find(product => product.id === row.catalog_item_id)
           return <article key={row.catalog_item_id} className="real-pos-cart-row">
             <div><strong>{item?.name ?? 'Artículo no disponible'}</strong>
-              <small>{posQuantityText(row.quantity_milli)} {item?.unit || ''} · {money(row.unit_price_cents)} por unidad</small></div>
-            <button className="real-auth-link" type="button" onClick={() =>
-              setCart(previous => previous.filter(line => line.catalog_item_id !== row.catalog_item_id))}>Quitar</button>
+              <small>Cantidad: {posQuantityText(row.quantity_milli)} {item?.unit || ''} × Precio unitario: {money(row.unit_price_cents)}</small>
+              <strong className="real-pos-line-total">Subtotal del producto: {money(posLineTotalCents(row.quantity_milli, row.unit_price_cents))}</strong>
+            </div>
+            <div className="real-pos-cart-actions">
+              {item && <button className="real-auth-link" type="button" onClick={() => choose(item)}>Editar</button>}
+              <button className="real-auth-link" type="button" onClick={() =>
+                setCart(previous => previous.filter(line => line.catalog_item_id !== row.catalog_item_id))}>Quitar</button>
+            </div>
           </article>
         })}
         {manager && <label>Descuento de la venta (ARS)
