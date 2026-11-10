@@ -28,6 +28,17 @@ export type Purchase = {
   total_cents:number; reference:string; notes:string; created_by_id:string
   created_at:string; lines:PurchaseLine[]
 }
+/** The visual state reflects backend confirmation, not an optimistic frontend action. */
+export function purchaseStatusPresentation(status:Purchase['status']):{
+  label:string; tone:'pending'|'confirmed'|'neutral'
+} {
+  switch(status){
+    case 'REGISTRADA': return {label:'REGISTRADA · RECEPCIÓN PENDIENTE',tone:'pending'}
+    case 'RECIBIDA': return {label:'RECIBIDA',tone:'confirmed'}
+    case 'CERRADA_SIN_RECEPCION': return {label:'CERRADA SIN RECEPCIÓN',tone:'neutral'}
+    case 'CANCELADA': return {label:'CANCELADA',tone:'neutral'}
+  }
+}
 export type PurchaseReceipt = {
   id:string; business_id:string; purchase_id:string; location_id:string
   request_id:string; confirmed_by_id:string; confirmed_at:string
