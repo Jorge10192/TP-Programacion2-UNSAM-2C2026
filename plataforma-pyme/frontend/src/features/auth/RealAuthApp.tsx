@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiHttpError } from '../../api/httpClient'
 import { RealBusinessesPage } from '../businesses/RealBusinessesPage'
@@ -72,7 +72,7 @@ export function RealAuthApp() {
     return () => window.clearTimeout(task)
   }, [session])
 
-  function go(next: Route, replace = false) {
+  const go = useCallback((next: Route, replace = false) => {
     generation.current++
     setBusy(false)
     setMessage('')
@@ -82,7 +82,7 @@ export function RealAuthApp() {
       else window.history.pushState({}, '', next)
     }
     setPath(next)
-  }
+  }, [])
 
   async function onLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -173,14 +173,14 @@ export function RealAuthApp() {
     })
   }
 
-  function onBusinessAuthLost() {
+  const onBusinessAuthLost = useCallback(() => {
     generation.current++
     setSession(null)
     setPendingCreation(null)
     go('/real/login', true)
     setMessage('La sesión ya no es válida. Iniciá sesión nuevamente.')
     setWarning(true)
-  }
+  }, [go])
 
   const businessRoute: BusinessRoute | null =
     path === '/real/empresas' ? { kind: 'list' }
