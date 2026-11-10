@@ -189,3 +189,15 @@ test('T08-3: journal falla cerrado si almacenamiento no funciona; discard exige 
  const broken=createTransferJournal({...port,async reserve(){throw new TransferPendingUnavailable()}})
  await assert.rejects(broken.reserve(row),TransferPendingUnavailable)
 })
+
+test('T08-3: GET con respuesta inválida es error de lectura, nunca resultado de mutación incierta',async()=>{
+ const fake=async()=>response({...receipt(),business_id:otherBusiness},200)
+ await assert.rejects(createTransferGateway('token',business,fake).get(op),
+  e=>e instanceof ApiTransportError&&e.reason==='invalid-response'&&!e.outcomeUnknown)
+})
+
+test('T08-3: POST 201 con respuesta inválida conserva resultado incierto y misma clave',async()=>{
+ const fake=async()=>response({...receipt(),movements:[]},201)
+ await assert.rejects(createTransferGateway('token',business,fake).create(command(),key),
+  e=>e instanceof ApiTransportError&&e.reason==='invalid-response'&&e.outcomeUnknown)
+})
