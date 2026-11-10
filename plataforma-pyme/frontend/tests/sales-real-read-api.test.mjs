@@ -235,6 +235,8 @@ test('T09-D lectura de listado excluye datos sensibles de pagos y de líneas', (
 
 test('T09-D listado rechaza tenant ajeno, duplicados, total incoherente, desorden y más de 100', () => {
   const latest = saleSummary(mixed())
+  latest.id = 'db9339d2-8e42-4baf-a65a-f1a0f2c60769'
+  latest.request_id = '747e1de5-6f3b-4188-a4bb-f2aa3c3a4dae'
   latest.created_at = '2026-11-11T09:00:00Z'
   const first = saleSummary()
   for (const bad of [
