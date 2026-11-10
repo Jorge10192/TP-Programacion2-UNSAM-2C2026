@@ -76,7 +76,7 @@ export function parseReceipt(v:unknown,businessId:string,purchaseId:string):Purc
     ||m.location_id!==v.location_id||!qty(m.delta_milli))return invalid()
   for(const k of v.balances_after)if(!record(k)||!uuid(k.catalog_item_id)
     ||typeof k.quantity_milli!=='number'||!Number.isSafeInteger(k.quantity_milli)
-    ||k.quantity_milli<0||!Number.isSafeInteger(k.version)||k.version<1)return invalid()
+    ||k.quantity_milli<0||typeof k.version!=='number'||!Number.isSafeInteger(k.version)||k.version<1)return invalid()
   return v as PurchaseReceipt
 }
 function page<T>(v:unknown,limit:number,parse:(x:unknown)=>T):T[]{
