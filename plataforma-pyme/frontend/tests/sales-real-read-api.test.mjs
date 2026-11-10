@@ -143,7 +143,7 @@ test('T09-A rechaza duplicados de renglón/pago o números de orden y snapshots 
   assert.equal(also.balances_after.length, 1)
 })
 
-test('T09-A valida UUID antes de solicitar datos y no inventa listado ni búsqueda request_id', async () => {
+test('T09-A valida UUID antes de solicitar datos y gateway T09-D solo expone lecturas', async () => {
   let calls = 0
   const gateway = createSalesReadGateway('token', business, async () => {
     calls++
@@ -153,7 +153,7 @@ test('T09-A valida UUID antes de solicitar datos y no inventa listado ni búsque
     await assert.rejects(gateway.get(bad), TypeError)
   }
   assert.equal(calls, 0)
-  assert.deepEqual(Object.keys(gateway), ['get'])
+  assert.deepEqual(Object.keys(gateway), ['list', 'byRequest', 'get'])
   assert.throws(() => createSalesReadGateway('', business), TypeError)
   assert.throws(() => createSalesReadGateway('token', 'id-demo'), TypeError)
 })
