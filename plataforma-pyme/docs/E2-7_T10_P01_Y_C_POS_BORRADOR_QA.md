@@ -74,5 +74,5 @@ El usuario probó en su computadora el POS con **TEST Empresa A** y compartió c
 ### CI específica del ajuste posterior a capturas
 
 - **10/11/2026:** [Full-stack #42925918339](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42925918339) — **SUCCESS**; 892 Pytest en PostgreSQL descartable (3 warnings no bloqueantes), **13/13 Playwright REAL**, **6/6 DEMO**. Las pruebas T10-C verificaron carrito, precio inicial ineditable, override gerencial, subtotal por artículo, edición de cantidad sin duplicación, página 501 y **cero POST de venta**.
-- **Frontend independiente #42925917999:** **SUCCESS**; build TypeScript/Vite, Oxlint y nuevas pruebas de subtotal.
+- **Frontend independiente #42925917999:** **SUCCESS**; build TypeScript/Vite, Oxlint y suites explícitas del workflow. Las **3 pruebas nuevas de subtotal** se ejecutaron y aprobaron dentro del paso `node --test tests/*.test.mjs` del **full-stack #42925918339**, como confirma su registro.
 - **Commit funcional validado:** `f6cfae57`. Este acta se actualiza después del commit probado sin modificar lógica.
