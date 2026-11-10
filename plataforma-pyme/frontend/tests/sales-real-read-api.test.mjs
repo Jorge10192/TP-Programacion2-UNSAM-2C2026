@@ -299,3 +299,28 @@ test('T09-D respuesta con ID o request_id cambiado falla sin reintentos', async 
     assert.equal(calls, 1)
   }
 })
+
+test('T09-F conserva orden por microsegundos de PostgreSQL aun con UUIDs inversos', () => {
+  const recent = {
+    ...saleSummary(), id: '1a9339d2-8e42-4baf-a65a-f1a0f2c60769',
+    created_at: '2026-11-10T17:00:00.123999+00:00',
+  }
+  const older = {
+    ...saleSummary(), id: 'fa9339d2-8e42-4baf-a65a-f1a0f2c60769',
+    created_at: '2026-11-10T17:00:00.123001+00:00',
+  }
+  // Date.parse(recent) === Date.parse(older), but the API correctly returns
+  // recent first. Comparing UUIDs here would incorrectly reject valid sales.
+  assert.equal(Date.parse(recent.created_at), Date.parse(older.created_at))
+  assert.deepEqual(parseSaleSummaryList([recent, older], business).map(s => s.id),
+    [recent.id, older.id])
+  assert.throws(() => parseSaleSummaryList([older, recent], business),
+    e => e instanceof ApiTransportError && e.reason === 'invalid-response')
+
+  // Exact timestamp ties still require deterministic UUID descending order.
+  const sameTimestamp = { ...older, created_at: recent.created_at }
+  assert.deepEqual(parseSaleSummaryList([sameTimestamp, recent], business).map(s => s.id),
+    [sameTimestamp.id, recent.id])
+  assert.throws(() => parseSaleSummaryList([recent, sameTimestamp], business),
+    e => e instanceof ApiTransportError && e.reason === 'invalid-response')
+})
