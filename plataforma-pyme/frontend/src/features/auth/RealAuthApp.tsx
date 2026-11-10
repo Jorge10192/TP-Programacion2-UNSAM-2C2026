@@ -109,6 +109,7 @@ export function RealAuthApp() {
       // Preserve only a safe destination after F5. Never restore a pending create
       // form automatically because its in-memory idempotency key may be lost.
       const safeDestination: Route = path === '/real/empresas' || path === '/real/perfil'
+        || path === '/real/empresas/nueva' // safe: journal is reloaded before any manual POST
         || path === '/real/invitaciones/aceptar'
         || (path.startsWith('/real/empresas/') && path !== '/real/empresas/nueva')
         ? path : '/real/perfil'
