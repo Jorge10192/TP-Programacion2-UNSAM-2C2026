@@ -1,6 +1,6 @@
 # E2-7 T08-3 — Plan de integración de transferencias REALES
 
-**Estado:** implementación y CI automatizado aprobados; **circuito principal REAL, conciliación de saldos, ID compartido y aislamiento A/B confirmados visualmente** (10/11/2026). El usuario reporta las verificaciones completadas; queda **sin evidencia visual independiente** el escenario negativo de permiso STORE de Miguel y la regresión DEMO de esta ronda. Rama `feature/e2-7-t08-inventario-real`, PR #41 en borrador y sin fusionar.
+**Estado actualizado después de T08-5:** circuito de traslados REAL **ACEPTADO funcionalmente** con evidencia manual de saldos, ledger y trazabilidad; QA de permisos, recuperación e idempotencia completado mediante PostgreSQL/Playwright aislado. **No** se realizó manualmente el escenario adversarial de rechazo 403 con Miguel; DEMO sí se comprobó manualmente en T08-5 y automáticamente en escritorio/móvil. Esta acta conserva las observaciones parciales de cada ronda como historial. Rama `feature/e2-7-t08-inventario-real`, PR #41 en borrador, sin fusionar.
 
 ## 1. Punto de partida verificado
 
@@ -206,3 +206,18 @@ El usuario adjuntó cinco capturas adicionales y reportó «Verificaciones compl
 **Decisión de cierre:** T08-3 tiene el circuito **funcional principal aprobado**, con trazabilidad y conservación validadas; la integración de QA de permisos negativos (trabajador sin acceso a una de las sedes), regresión DEMO y fallos controlados **permanece expresamente en T08-5** antes del merge global. La segunda transferencia de 1 unidad no debe volver a ejecutarse solo para «completar» el acta. No se fusiona PR #41 ni se modifica `main`.
 
 **Siguiente bloque:** T08-4, inventario inicial y ajustes versionados con `expected_version`, resolución de conflictos 409 y no regresión de transferencias/recepciones. La nueva base de pruebas es **origen 7 UNIDAD / destino 4 UNIDAD** si no se generan operaciones posteriores. Esos valores son evidencia histórica, no constantes a codificar.
+
+## 12. Reconciliación T08-3 → T08-5, revisión previa a merge
+
+El checklist original (secciones 5 y 7) es un **plan**, no un acta de ejecución. Sus números iniciales 11→10/1 eran ilustrativos; **la primera transferencia efectivamente confirmada fue de 3 UNIDAD**, origen **11→8**, destino **0→3**; una segunda transferencia distinta fue de 1 UNIDAD, con saldos finales **7 y 4**, total constante **11**. Se verificaron manualmente salida/entrada, ID compartido `efeff7f6-5f82-475b-b29b-bf0b53d778e6` del traslado de 3, historial, B aislada y lectura posterior. No hay motivo para volver a crear ninguna de esas operaciones.
+
+| Verificación pendiente de las rondas históricas | Evidencia posterior y alcance |
+|---|---|
+| Trabajador sin STORE en una de las sedes: rechazo 403 | **No realizada manualmente**; validada mediante `test_transfer_api_integration.py::test_employee_requires_store_assignment_at_both_locations` en PostgreSQL efímero. No cambiar asignaciones locales para simularla |
+| Origen=destino, cantidad indebida y rechazo de operación inválida | **No consta el recorrido negativo manual completo**; cubierto por `frontend/tests/transfer-real-api.test.mjs` y pruebas de integración PostgreSQL |
+| Recuperación con corte de respuesta y F5/re-login | **No realizada manualmente**, era opcional; aprobada con Playwright REAL en API/PostgreSQL efímeros, tanto para traslado como para ajuste, sin POST automático |
+| Clave repetida tras pérdida de respuesta | Comprobada automáticamente como `201` inicial y `200` replay, sin duplicar movimientos; no reproducir con clave nueva en la base local |
+| Regresión DEMO | **Verificada manualmente en ronda T08-5**, más 6/6 recorridos Playwright DEMO de escritorio/móvil |
+| Integridad transaccional, idempotencia y concurrencia | Suites `test_transfer_api_integration.py` y `test_transfer_concurrency_integration.py` aprobadas con PostgreSQL real en CI |
+
+**Cierre técnico:** [GitHub Actions #42896686337](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42896686337): 879 backend, 256 frontend, 4 Playwright REAL, 6 Playwright DEMO, todos aprobados. La aceptación funcional T08-3 se conserva; ningún caso automatizado se presenta como si fuera una captura manual.
