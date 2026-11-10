@@ -181,6 +181,28 @@ export function createSupplyGateway(token:string,businessId:string,fetchImpl?:ty
  * The caller must verify the purchase itself via GET /purchases/:id first.
  * Only a confirmed, readable REGISTRADA purchase permits this safe explanation.
  */
+/**
+ * Read-only receipt reconciliation. The backend returns 404 both for a
+ * missing receipt and for a hidden resource, so confirm the purchase is
+ * readable before interpreting 404 as 'not yet received'.
+ */
+export async function inspectReceipt(
+  gateway:Pick<ReturnType<typeof createSupplyGateway>,'receipt'|'purchase'>,
+  purchaseId:string,
+):Promise<
+ | {kind:'confirmed';receipt:PurchaseReceipt}
+ | {kind:'pending';purchase:Purchase}
+ | {kind:'inconsistent';purchase:Purchase}
+>{
+  try{
+    return {kind:'confirmed',receipt:await gateway.receipt(purchaseId)}
+  }catch(err){
+    if(!(err instanceof ApiHttpError&&err.status===404))throw err
+    const purchase=await gateway.purchase(purchaseId)
+    if(purchase.status==='REGISTRADA')return {kind:'pending',purchase}
+    return {kind:'inconsistent',purchase}
+  }
+}
 export function missingReceiptMessage(status:Purchase['status']):string {
   if(status==='REGISTRADA')return 'Todavía no hay un comprobante de recepción confirmado para esta compra. La compra sigue REGISTRADA. Si tenés un intento pendiente guardado, se conserva la misma clave: no se envió ninguna nueva recepción. Antes de reintentar verificá tu asignación a la sede y sus permisos.'
   if(status==='RECIBIDA')return 'La compra figura RECIBIDA, pero la API no permitió consultar el comprobante. No repitas la recepción. Actualizá y revisá el acceso con el administrador.'
