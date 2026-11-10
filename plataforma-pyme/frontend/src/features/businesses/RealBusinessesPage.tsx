@@ -48,14 +48,7 @@ export function RealBusinessesPage({
     // Abort reads on tenant change; ignore late responses from the previous tenant.
     const controller = new AbortController()
     const runId = ++requestGeneration.current
-    if (route.kind === 'create') {
-      setLoading(false)
-      return () => { controller.abort() }
-    }
-    setLoading(true)
-    setError('')
-    setItems(null)
-    setSelected(null)
+    if (route.kind === 'create') return () => { controller.abort() }
     const promise = businessId === null
       ? gateway.list(controller.signal)
       : gateway.get(businessId, controller.signal)
@@ -74,7 +67,7 @@ export function RealBusinessesPage({
       if (!controller.signal.aborted && runId === requestGeneration.current) setLoading(false)
     })
     return () => { controller.abort() }
-  }, [gateway, route.kind, businessId])
+  }, [gateway, route.kind, businessId, onUnauthorized])
 
   function normalize(input: NewBusiness): NewBusiness {
     return { name: input.name.trim(), category: input.category.trim(), activity_kind: input.activity_kind }
@@ -213,6 +206,10 @@ export function RealBusinessesPage({
           <div><dt>Identificador del negocio</dt><dd className="real-auth-id">{selected.id}</dd></div>
         </dl>
         <p className="real-auth-note">Panel empresarial inicial. Todavía no hay cifras, inventario o ventas REAL: se integrarán en las próximas etapas.</p>
+        <div className="real-auth-actions">
+          <button className="real-auth-primary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/ubicaciones')}>Ubicaciones reales</button>
+          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/equipo')}>Equipo e invitaciones</button>
+        </div>
         {canEditBusiness(selected) && !editing && <button className="real-auth-secondary" type="button" onClick={() => setEditing(true)}>Editar perfil empresarial</button>}
         {canEditBusiness(selected) && editing && <form className="real-auth-form" onSubmit={(e) => void updateCompany(e)}>
           {fields(changes, (field, value) => setChanges((old) => ({ ...old, [field]: value })))}

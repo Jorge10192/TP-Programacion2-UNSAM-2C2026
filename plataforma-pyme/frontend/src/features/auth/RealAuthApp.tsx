@@ -1,23 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiHttpError } from '../../api/httpClient'
 import { RealBusinessesPage } from '../businesses/RealBusinessesPage'
 import type { BusinessRoute, PendingBusinessCreation } from '../businesses/RealBusinessesPage'
 import { UUID_PATTERN } from '../businesses/businessGateway'
+import { RealLocationsPage } from '../locations/RealLocationsPage'
+import { RealTeamPage } from '../team/RealTeamPage'
+import { RealAcceptInvitationPage } from '../team/RealAcceptInvitationPage'
 import { authErrorMessage, createAuthGateway } from './authGateway'
 import type { AuthUser, LoginInput, RegisterInput } from './authGateway'
 import './auth.css'
 
 type Session = { token: string; expiresAt: string; user: AuthUser }
-type Route = '/real/login' | '/real/registro' | '/real/perfil' | '/real/empresas' | '/real/empresas/nueva' | `/real/empresas/${string}`
+type Route = '/real/login' | '/real/registro' | '/real/perfil' | '/real/empresas' | '/real/empresas/nueva' | '/real/invitaciones/aceptar' | `/real/empresas/${string}`
 
 const gateway = createAuthGateway()
 
 function routeFromPath(path: string): Route {
   if (path === '/real/perfil') return '/real/perfil'
   if (path === '/real/registro') return '/real/registro'
-  if (path === '/real/empresas' || path === '/real/empresas/nueva') return path
-  const detailMatch = /^\/real\/empresas\/([^/]+)$/.exec(path)
+  if (path === '/real/empresas' || path === '/real/empresas/nueva'
+    || path === '/real/invitaciones/aceptar') return path
+  const detailMatch = /^\/real\/empresas\/([^/]+)(?:\/(ubicaciones|equipo))?$/.exec(path)
   if (detailMatch && UUID_PATTERN.test(detailMatch[1])) return path as Route
   return '/real/login'
 }
@@ -72,7 +76,7 @@ export function RealAuthApp() {
     return () => window.clearTimeout(task)
   }, [session])
 
-  function go(next: Route, replace = false) {
+  const go = useCallback((next: Route, replace = false) => {
     generation.current++
     setBusy(false)
     setMessage('')
@@ -82,7 +86,7 @@ export function RealAuthApp() {
       else window.history.pushState({}, '', next)
     }
     setPath(next)
-  }
+  }, [])
 
   async function onLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -104,6 +108,7 @@ export function RealAuthApp() {
       // Preserve only a safe destination after F5. Never restore a pending create
       // form automatically because its in-memory idempotency key may be lost.
       const safeDestination: Route = path === '/real/empresas' || path === '/real/perfil'
+        || path === '/real/invitaciones/aceptar'
         || (path.startsWith('/real/empresas/') && path !== '/real/empresas/nueva')
         ? path : '/real/perfil'
       go(safeDestination, true)
@@ -173,24 +178,29 @@ export function RealAuthApp() {
     })
   }
 
-  function onBusinessAuthLost() {
+  const onBusinessAuthLost = useCallback(() => {
     generation.current++
     setSession(null)
     setPendingCreation(null)
     go('/real/login', true)
     setMessage('La sesión ya no es válida. Iniciá sesión nuevamente.')
     setWarning(true)
-  }
+  }, [go])
 
   const businessRoute: BusinessRoute | null =
     path === '/real/empresas' ? { kind: 'list' }
     : path === '/real/empresas/nueva' ? { kind: 'create' }
     : path.startsWith('/real/empresas/') ? { kind: 'detail', businessId: path.slice('/real/empresas/'.length) }
     : null
-  const showBusinesses = session !== null && businessRoute !== null
+  const operationsMatch = /^\/real\/empresas\/([^/]+)\/(ubicaciones|equipo)$/.exec(path)
+  const operationBusinessId = operationsMatch && UUID_PATTERN.test(operationsMatch[1]) ? operationsMatch[1] : null
+  const operationsKind = operationBusinessId ? operationsMatch?.[2] : null
+  const showInvitation = session !== null && path === '/real/invitaciones/aceptar'
+  const showOperations = session !== null && (operationBusinessId !== null || showInvitation)
+  const showBusinesses = session !== null && businessRoute !== null && !showOperations
 
   // A valid session never reveals the login form, even if browser Back changes the URL.
-  const isProfile = session !== null && !showBusinesses
+  const isProfile = session !== null && !showBusinesses && !showOperations
   const isRegistration = path === '/real/registro' && !session
   const showLogin = !session && !isRegistration
 
@@ -199,8 +209,21 @@ export function RealAuthApp() {
       <div className="real-auth-brand"><span className="real-auth-logo" aria-hidden="true">▦</span><div><strong>Asistente PyME</strong><small>Acceso conectado a FastAPI</small></div></div>
       <div className="real-auth-header-actions"><span className="real-auth-badge">REAL · Identidad</span><a href="/inicio">Entrar a DEMO</a></div>
     </header>
-    <main className={'real-auth-main' + (showBusinesses ? ' real-business-main' : '')}>
-      {showBusinesses && session && businessRoute
+    <main className={'real-auth-main' + (showBusinesses || showOperations ? ' real-business-main' : '')}>
+      {showOperations && session
+        ? showInvitation
+          ? <RealAcceptInvitationPage key={session.user.id + ':invite'} token={session.token}
+              userId={session.user.id} onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
+          : operationBusinessId && operationsKind === 'ubicaciones'
+            ? <RealLocationsPage key={session.user.id + ':' + path} token={session.token}
+                userId={session.user.id} businessId={operationBusinessId}
+                onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
+            : operationBusinessId && operationsKind === 'equipo'
+              ? <RealTeamPage key={session.user.id + ':' + path} token={session.token}
+                  userId={session.user.id} businessId={operationBusinessId}
+                  onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
+              : null
+        : showBusinesses && session && businessRoute
         ? <RealBusinessesPage
           key={session.user.id + ':' + path}
           token={session.token}
@@ -226,6 +249,7 @@ export function RealAuthApp() {
           <p className="real-auth-note">La sesión se guarda solo en memoria. Si actualizás la página con F5, tendrás que volver a ingresar.</p>
           <div className="real-auth-actions">
             <button type="button" className="real-auth-primary" onClick={() => go('/real/empresas')}>Mis empresas reales</button>
+            <button type="button" className="real-auth-secondary" onClick={() => go('/real/invitaciones/aceptar')}>Aceptar invitación</button>
             <button type="button" className="real-auth-secondary" onClick={() => void onRefreshProfile()} disabled={busy}>{busy ? 'Consultando…' : 'Actualizar desde API'}</button>
             <button type="button" className="real-auth-secondary" onClick={onLogout}>Cerrar sesión</button>
           </div>
@@ -255,10 +279,10 @@ export function RealAuthApp() {
       </section>}
       <aside className="real-auth-aside">
         <h2>Una plataforma, diferentes negocios</h2>
-        <p>Tu identidad y tus empresas se consultan desde FastAPI y PostgreSQL. Las ubicaciones, el equipo y los módulos comerciales reales se conectarán por incrementos posteriores.</p>
+        <p>Tu identidad, empresas, ubicaciones, equipo e invitaciones se consultan desde FastAPI y PostgreSQL. Las operaciones comerciales se integrarán posteriormente.</p>
         <div className="real-auth-state">Esta vista no accede a `demoStore`, cuentas, caja ni stock ficticio.</div>
       </aside>
     </main>
-    <footer className="real-auth-footer">Modo REAL · E2-7 T03 · Token solo en memoria · Empresas verificadas por membresía</footer>
+    <footer className="real-auth-footer">Modo REAL · E2-7 T04 · Token solo en memoria · Aislamiento por empresa</footer>
   </div>
 }
