@@ -1,0 +1,246 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ApiHttpError } from '../../api/httpClient.ts'
+import type { RealBusiness } from '../businesses/businessGateway.ts'
+import { createOperationsGateway, operationsError } from '../businesses/realOperationsGateway.ts'
+import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
+import { CATALOG_PAGE_SIZE, centsToPesos, createCatalogGateway, pesosToCents } from '../catalog/realCatalogGateway.ts'
+import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
+import type { PosCartLine } from './realPosDraft.ts'
+import { canOverrideSalesPrice, parsePosQuantity, posQuantityText, previewPosCart } from './realPosDraft.ts'
+
+type Props = {
+  token: string
+  userId: string
+  businessId: string
+  onNavigate: (path: string) => void
+  onUnauthorized: () => void
+}
+
+const ars = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' })
+const money = (c: number) => ars.format(c / 100)
+
+/**
+ * T10-C is a draft-only POS UI. There is deliberately NO createSale,
+ * sendApproved, journal.reserve or POST request in this component.
+ * Actual confirmation is T10-D with the reviewed/saved command and P01.
+ */
+export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthorized }: Props) {
+  const companyApi = useMemo(() => createOperationsGateway(token, userId), [token, userId])
+  const catalogApi = useMemo(() => createCatalogGateway(token, businessId), [token, businessId])
+  const [company, setCompany] = useState<RealBusiness | null>(null)
+  const [locations, setLocations] = useState<LocationRecord[]>([])
+  const [items, setItems] = useState<CatalogItem[]>([])
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [loadError, setLoadError] = useState('')
+  const [moreError, setMoreError] = useState('')
+  const [hasMore, setHasMore] = useState(false)
+  const [moreLoading, setMoreLoading] = useState(false)
+  const loadingPage = useRef(false)
+  const [search, setSearch] = useState('')
+  const [siteId, setSiteId] = useState('')
+  const [selectedId, setSelectedId] = useState('')
+  const [quantityText, setQuantityText] = useState('1')
+  const [priceText, setPriceText] = useState('')
+  const [discountText, setDiscountText] = useState('0')
+  const [cart, setCart] = useState<PosCartLine[]>([])
+  const [draftError, setDraftError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void Promise.all([
+      companyApi.business(businessId, controller.signal),
+      companyApi.locations(businessId, controller.signal),
+      catalogApi.page(0, CATALOG_PAGE_SIZE, controller.signal),
+    ]).then(([business, sites, first]) => {
+      if (controller.signal.aborted) return
+      setCompany(business); setLocations(sites)
+      setItems(first); setHasMore(first.length === CATALOG_PAGE_SIZE)
+      setLoadState('ready'); setLoadError('')
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return
+      if (error instanceof ApiHttpError && error.status === 401) { onUnauthorized(); return }
+      setLoadState('error'); setLoadError(operationsError(error))
+    })
+    return () => { controller.abort() }
+  }, [companyApi, catalogApi, businessId, onUnauthorized])
+
+  const role = company?.membership.role ?? ''
+  const manager = canOverrideSalesPrice(role)
+  const location = locations.find(row => row.id === siteId) ?? null
+  const canWork = company?.status === 'ACTIVA' && company.membership.status === 'ACTIVA'
+  const saleSites = locations.filter(site => site.status === 'ACTIVA' && site.can_sell)
+  const selected = items.find(row => row.id === selectedId) ?? null
+  const displayed = items.filter(item => {
+    const term = search.trim().toLocaleLowerCase('es-AR')
+    return item.status === 'ACTIVO' && item.sellable &&
+      (!term || item.name.toLocaleLowerCase('es-AR').includes(term) ||
+        (item.sku ?? '').toLocaleLowerCase('es-AR').includes(term))
+  })
+
+  const preview = useMemo(() => {
+    if (!company || cart.length === 0) return { total: null, problem: '' }
+    try {
+      const discount = manager ? pesosToCents(discountText) : 0
+      if (discount === null) throw new RangeError('Ingresá un descuento válido.')
+      const calculation = previewPosCart(
+        role, canWork, location, items, cart, discount,
+      )
+      return { total: calculation.totals, problem: '' }
+    } catch (err) {
+      return { total: null, problem: err instanceof Error ? err.message : 'Carrito inválido.' }
+    }
+  }, [company, cart, manager, discountText, role, canWork, location, items])
+
+  const loadMore = useCallback(async () => {
+    if (loadState !== 'ready' || loadingPage.current || !hasMore) return
+    loadingPage.current = true
+    setMoreLoading(true); setMoreError('')
+    try {
+      const next = await catalogApi.page(items.length, CATALOG_PAGE_SIZE)
+      if (next.some(row => items.some(existing => existing.id === row.id))) {
+        setMoreError('El catálogo cambió durante la carga. Volvé a abrir el POS para revisar todas las páginas.')
+        setHasMore(false)
+      } else {
+        setItems(previous => [...previous, ...next])
+        setHasMore(next.length === CATALOG_PAGE_SIZE)
+      }
+    } catch (err) {
+      if (err instanceof ApiHttpError && err.status === 401) { onUnauthorized(); return }
+      setMoreError(operationsError(err))
+    } finally {
+      loadingPage.current = false
+      setMoreLoading(false)
+    }
+  }, [catalogApi, hasMore, items, loadState, onUnauthorized])
+
+  function choose(item: CatalogItem) {
+    setSelectedId(item.id)
+    setQuantityText('1')
+    setPriceText(centsToPesos(item.price_cents))
+    setDraftError('')
+  }
+
+  function addToCart() {
+    setDraftError('')
+    try {
+      if (!selected || selected.status !== 'ACTIVO' || !selected.sellable)
+        throw new RangeError('Seleccioná un artículo vendible.')
+      if (cart.some(row => row.catalog_item_id === selected.id))
+        throw new RangeError('Este artículo ya está en el carrito. Retiralo para cambiar su cantidad.')
+      if (cart.length >= 30) throw new RangeError('Máximo 30 artículos distintos por venta.')
+      const quantity_milli = parsePosQuantity(quantityText, selected.unit)
+      const unit_price_cents = manager ? pesosToCents(priceText) : selected.price_cents
+      if (unit_price_cents === null)
+        throw new RangeError('El artículo no tiene precio. Un administrador debe definirlo.')
+      if (!siteId && (!manager || selected.item_type === 'BIEN'))
+        throw new RangeError('Seleccioná una ubicación habilitada antes de agregar.')
+      if (siteId && (!location || location.status !== 'ACTIVA' || !location.can_sell ||
+        (selected.item_type === 'BIEN' && !location.can_store)))
+        throw new RangeError('La ubicación seleccionada no admite este artículo.')
+      if (!canWork) throw new RangeError('La empresa o membresía no está activa.')
+      setCart(old => [...old, {
+        catalog_item_id: selected.id, quantity_milli, unit_price_cents,
+      }])
+      setSelectedId('')
+    } catch (error) {
+      setDraftError(error instanceof Error ? error.message : 'No se pudo agregar el artículo.')
+    }
+  }
+
+  return <section className="real-auth-card real-business-panel real-pos-panel" aria-label="Preparación de ventas REAL">
+    <nav className="real-business-nav" aria-label="Navegación de empresa">
+      <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId)}>Empresa</button>
+      <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId + '/ventas')}>Historial de ventas</button>
+      <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId + '/catalogo')}>Catálogo</button>
+    </nav>
+    <span className="real-auth-eyebrow">E2-7 · T10-C · POS REAL en preparación</span>
+    <h1>Punto de venta</h1>
+    <p>Armá el carrito con artículos y servicios de esta empresa. Los precios y permisos se comprobarán otra vez en FastAPI al confirmar una venta.</p>
+    <p className="real-auth-note"><strong>Vista preliminar, solo preparación.</strong> Todavía no registra ventas, pagos, movimientos de stock ni guarda un intento pendiente. La confirmación segura se habilitará en T10-D.</p>
+    {loadState === 'loading' && <p role="status">Cargando empresa, sedes y catálogo REAL desde FastAPI…</p>}
+    {loadState === 'error' && <p role="alert" className="real-auth-message real-auth-error">{loadError}</p>}
+    {loadState === 'ready' && company && <>
+      <div className="real-ops-toolbar">
+        <strong>{company.name}</strong>
+        <span>{role.replaceAll('_', ' ')} · {company.status}</span>
+      </div>
+      {!canWork && <p role="alert" className="real-auth-message real-ops-warning">La empresa o tu membresía no está activa. No podés preparar ventas.</p>}
+      <section className="real-ops-subpanel" aria-label="Ubicación para la venta">
+        <h2>1. Ubicación de venta</h2>
+        <label>Elegí la sede
+          <select value={siteId} onChange={e => { setSiteId(e.target.value); setDraftError('') }}
+            aria-label="Sede del punto de venta" disabled={!canWork}>
+            <option value="">{manager ? 'Sin sede (solo servicios)' : 'Seleccionar sede asignada'}</option>
+            {saleSites.map(site => <option key={site.id} value={site.id}>{site.name} {site.can_store ? '· ventas y stock' : '· solo servicios'}</option>)}
+          </select>
+        </label>
+        {!manager && <p className="real-auth-note">Solo podés vender en sedes donde tengas asignación activa. FastAPI verifica la asignación al confirmar; elegir una sede acá no concede permisos.</p>}
+      </section>
+      <section className="real-ops-subpanel" aria-label="Catálogo disponible">
+        <h2>2. Artículos y servicios</h2>
+        <p className="real-auth-note">{items.length} fichas consultadas de PostgreSQL. {hasMore
+          ? 'Hay más páginas sin consultar. La búsqueda solo abarca las fichas cargadas.'
+          : 'Se llegó al final del catálogo consultado.'}</p>
+        <label>Buscar entre fichas cargadas
+          <input value={search} onChange={event => setSearch(event.target.value)}
+            placeholder="Nombre o SKU" aria-label="Buscar artículos cargados"/>
+        </label>
+        <div className="real-pos-catalog">
+          {displayed.map(item => <button type="button" key={item.id}
+            className={'real-pos-product' + (selectedId === item.id ? ' real-pos-product-selected' : '')}
+            disabled={!canWork} onClick={() => choose(item)}>
+            <strong>{item.name}</strong>
+            <small>{item.kind} · {item.unit} · {item.sku || 'Sin SKU'}</small>
+            <span>{item.price_cents === null ? 'Sin precio definido' : money(item.price_cents)}</span>
+          </button>)}
+        </div>
+        {displayed.length === 0 && <p className="real-business-empty">No hay artículos vendibles entre las fichas cargadas que coincidan con este filtro.</p>}
+        {hasMore && <button className="real-auth-secondary" type="button" disabled={moreLoading}
+          onClick={() => void loadMore()}>{moreLoading ? 'Consultando…' : 'Cargar más fichas de catálogo'}</button>}
+        {moreError && <p role="alert" className="real-auth-message real-ops-warning">{moreError}</p>}
+        {selected && <div className="real-pos-picker">
+          <h3>Agregar: {selected.name}</h3>
+          <div className="real-pos-fields">
+            <label>Cantidad ({selected.unit})
+              <input inputMode="decimal" aria-label="Cantidad del artículo" value={quantityText}
+                onChange={e => setQuantityText(e.target.value)}/>
+            </label>
+            <label>Precio unitario (ARS)
+              <input inputMode="decimal" aria-label="Precio unitario de la venta"
+                value={manager ? priceText : centsToPesos(selected.price_cents)}
+                disabled={!manager} onChange={e => setPriceText(e.target.value)}/>
+            </label>
+          </div>
+          {!manager && <p className="real-auth-note">Tu rol debe respetar el precio del catálogo y no puede aplicar descuentos.</p>}
+          <button type="button" className="real-auth-primary" onClick={addToCart}>Agregar al carrito</button>
+        </div>}
+        {draftError && <p role="alert" className="real-auth-message real-auth-error">{draftError}</p>}
+      </section>
+      <section className="real-ops-subpanel" aria-label="Carrito de venta">
+        <h2>3. Carrito · borrador</h2>
+        {cart.length === 0 && <p className="real-business-empty">Aún no agregaste artículos. No se realizó ninguna venta.</p>}
+        {cart.map(row => {
+          const item = items.find(product => product.id === row.catalog_item_id)
+          return <article key={row.catalog_item_id} className="real-pos-cart-row">
+            <div><strong>{item?.name ?? 'Artículo no disponible'}</strong>
+              <small>{posQuantityText(row.quantity_milli)} {item?.unit || ''} · {money(row.unit_price_cents)} por unidad</small></div>
+            <button className="real-auth-link" type="button" onClick={() =>
+              setCart(previous => previous.filter(line => line.catalog_item_id !== row.catalog_item_id))}>Quitar</button>
+          </article>
+        })}
+        {manager && <label>Descuento de la venta (ARS)
+          <input inputMode="decimal" aria-label="Descuento de la venta" value={discountText}
+            onChange={e => setDiscountText(e.target.value)}/>
+        </label>}
+        {preview.problem && <p role="alert" className="real-auth-message real-ops-warning">{preview.problem}</p>}
+        {preview.total && <div className="real-pos-summary">
+          <span>Subtotal <strong>{money(preview.total.subtotal_cents)}</strong></span>
+          <span>Descuento <strong>−{money(preview.total.discount_cents)}</strong></span>
+          <span>Total estimado <strong>{money(preview.total.total_cents)}</strong></span>
+        </div>}
+        <button type="button" disabled className="real-auth-primary">Confirmación de venta disponible en T10-D</button>
+        <p className="real-auth-note">Los medios de pago y la confirmación de stock se incorporarán en T10-D. Cambiar de página descarta este carrito preliminar: todavía no es una venta ni un intento enviado.</p>
+      </section>
+    </>}
+  </section>
+}
