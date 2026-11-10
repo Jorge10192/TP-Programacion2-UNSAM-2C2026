@@ -99,9 +99,10 @@ export function milliToDecimal(v:number):string{
 }
 export function lineTotalCents(quantity_milli:number,unit_cost_cents:number):number{
   if(!qty(quantity_milli)||!money(unit_cost_cents))throw new RangeError('Cantidad o costo inválido')
-  const total=Math.floor((quantity_milli*unit_cost_cents+500)/1000)
-  if(!Number.isSafeInteger(total)||total>MAX_CENTS)throw new RangeError('Total fuera de rango')
-  return total
+  // Match Python's HALF_UP per line with exact integer arithmetic.
+  const computed=(BigInt(quantity_milli)*BigInt(unit_cost_cents)+500n)/1000n
+  if(computed>BigInt(MAX_CENTS))throw new RangeError('Total fuera de rango')
+  return Number(computed)
 }
 export function validatePurchase(v:NewPurchase){
   if(!date(v.purchased_on)||v.purchased_on<'2000-01-01'||v.purchased_on>'2100-12-31')throw new RangeError('Fecha de compra inválida.')
