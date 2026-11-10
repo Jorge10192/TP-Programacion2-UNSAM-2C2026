@@ -6,7 +6,7 @@ import type { RealBusiness } from '../businesses/businessGateway.ts'
 import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
 import { createCatalogGateway, centsToPesos } from '../catalog/realCatalogGateway.ts'
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
-import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents, purchaseStatusPresentation,
+import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents, purchaseStatusPresentation, missingReceiptMessage,
   supplyErrorMessage, validatePurchase } from './realSupplyGateway.ts'
 import type { Purchase, NewPurchase, Supplier, PurchaseLineInput } from './realSupplyGateway.ts'
 import { pendingScope, supplyJournal, PendingConflictError, PendingStorageError, newPurchaseIntent, newReceiptIntent } from './supplyPendingJournal.ts'
@@ -214,12 +214,27 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
  }
  async function checkReceipt(purchaseId?:string){
    const target=purchaseId??receiptFor
-   if(!target)return
+   if(!target||busy||loading)return
+   setBusy(true);setError('');setNotice('')
    try{
      const scope=pendingScope(userId,businessId,'purchase.receive',target)
      const fromDisk=await supplyJournal.load(scope)
      if(fromDisk&&fromDisk.kind!=='purchase.receive')throw new PendingConflictError()
-     const receipt=await api.receipt(target)
+     let receipt:Awaited<ReturnType<typeof api.receipt>>
+     try{
+       receipt=await api.receipt(target)
+     }catch(err){
+       if(!(err instanceof ApiHttpError&&err.status===404))throw err
+       // A missing receipt and an inaccessible resource both result in 404.
+       // Independently verify that the purchase is readable before explaining
+       // the lack of a receipt. This remains GET-only and preserves the key.
+       const current=await api.purchase(target)
+       if(!alive.current)return
+       setPurchases(old=>old.map(p=>p.id===current.id?current:p))
+       if(current.status==='REGISTRADA')setNotice(missingReceiptMessage(current.status))
+       else setError(missingReceiptMessage(current.status))
+       return
+     }
      if(!alive.current)return
      if(fromDisk&&receipt.request_id===fromDisk.key){
        await supplyJournal.discard(fromDisk.scope,fromDisk.key)
@@ -232,6 +247,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
      const rows=await api.purchases()
      if(alive.current){setPurchases(rows);setHasMore(rows.length===100)}
    }catch(err){failed(err)}
+   finally{if(alive.current)setBusy(false)}
  }
  async function discardPurchase(){
    if(!pending||busy)return
