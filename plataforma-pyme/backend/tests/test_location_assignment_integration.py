@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert, select, update
+from sqlalchemy import insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -95,8 +95,10 @@ def rejected_sql(conn, query):
         sp.rollback()
 
 
-def test_assign_list_idempotent_revoke_reactivate(ctx):
+@pytest.mark.parametrize("db_timezone", ["UTC", "America/Argentina/Buenos_Aires"])
+def test_assign_list_idempotent_revoke_reactivate(ctx, db_timezone):
     client, conn = ctx
+    conn.execute(text("SELECT set_config('TimeZone', :zone, true)"), {"zone": db_timezone})
     owner, _ = actor(client)
     _, worker = actor(client)
     bid = business(client, owner)
@@ -111,11 +113,13 @@ def test_assign_list_idempotent_revoke_reactivate(ctx):
     assert row["location_id"] == str(lid)
     assert row["status"] == "ACTIVA" and row["revoked_at"] is None
     assert row["created_at"] and row["updated_at"]
+    assert row["created_at"].endswith("Z") and row["updated_at"].endswith("Z")
     assert change(client, bid, lid, mid, owner).json() == row
     assert client.get(url(bid, lid), headers=owner).json() == [row]
     revoked = change(client, bid, lid, mid, owner, "REVOCADA")
     assert revoked.status_code == 200 and revoked.json()["revoked_at"]
     assert revoked.json()["status"] == "REVOCADA"
+    assert revoked.json()["revoked_at"].endswith("Z")
     assert change(client, bid, lid, mid, owner, "REVOCADA").json() == revoked.json()
     restored = change(client, bid, lid, mid, owner)
     assert restored.status_code == 200
