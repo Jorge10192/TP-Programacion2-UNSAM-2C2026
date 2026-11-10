@@ -60,7 +60,6 @@ test('T10-C POS REAL: carrito, sede, precio admin, descuento, sin POST de venta'
   await expect(page.getByText('Vista preliminar, solo preparación.')).toBeVisible()
   await expect(page.locator('.real-pos-product')).toHaveCount(1)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
-  await page.locator('.real-pos-product').getByRole('button').count().catch(() => 0)
   await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
   await page.getByLabel('Cantidad del artículo').fill('2')
   await page.getByLabel('Precio unitario de la venta').fill('1800,50')
