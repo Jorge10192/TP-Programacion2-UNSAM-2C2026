@@ -1,6 +1,6 @@
 # E2-7 · T09-D — Historial y comprobantes de ventas REALES
 
-**Rama:** `feature/e2-7-t09-consulta-recuperacion-ventas`. **Estado:** implementación de frontend incorporada; verificación funcional automática y pruebas manuales de navegador según acta. **PR #42:** borrador, sin merge a `main`.
+**Rama:** `feature/e2-7-t09-consulta-recuperacion-ventas`. **Estado:** T09-D implementado y **QA automática aprobada**, pendiente ronda manual visual en Windows. **Commit funcional validado:** `abf70a80f1293b69cad6a333f022503dd9574694`. **PR #42:** borrador, sin merge a `main`.
 
 ## Objetivo funcional
 
@@ -29,9 +29,9 @@ Agregar consulta de ventas confirmadas sobre el backend de T09-C sin modificar e
 | Caso | Herramienta | Resultado |
 |---|---|---|
 | Lectura GET por ID, tenant y contrato estricto | `sales-real-read-api.test.mjs` (T09-A) | Aprobó en Windows y en CI previo |
-| Resúmenes sin referencias de pago, filtros, paginación válida/inválida, duplicates, GET por solicitud y respuesta inconsistente | 6 pruebas nuevas T09-D de Node | Integradas, verificar último CI |
-| Construcción React/TypeScript y lint | GitHub Actions frontend | Aprobado en el commit de código T09-D |
-| F5/relogin, listado REAL, detalle por ID, recuperación por request, cero POST desde navegador | `e2e/real/sales.spec.ts` con API/PostgreSQL efímeros | Integrada, verificar último full-stack |
+| Resúmenes sin referencias de pago, filtros, paginación válida/inválida, duplicates, GET por solicitud y respuesta inconsistente | 6 pruebas nuevas T09-D de Node | **6/6 nuevas pruebas aprobadas**; total frontend 272/272 |
+| Construcción React/TypeScript y lint | GitHub Actions frontend | **Aprobado** (TypeScript/Vite build y lint 0 errores) |
+| F5/relogin, listado REAL, detalle por ID, recuperación por request, cero POST desde navegador | `e2e/real/sales.spec.ts` con API/PostgreSQL efímeros | **1/1 Playwright ventas aprobado**; 5/5 REAL en conjunto |
 | Roles, cambios de asignación, 2 tenants, ventas sin sede, listados 101+ | `test_sales_read_scope_integration.py`, PostgreSQL real | T09-C aprobada: 7 pruebas nuevas |
 
 La suite del browser exige `PYME_DISPOSABLE_QA=1`, FastAPI `127.0.0.1:18001` y PostgreSQL efímero. **No ejecutarla contra la instalación local del usuario**.
@@ -54,3 +54,15 @@ La suite del browser exige `PYME_DISPOSABLE_QA=1`, FastAPI `127.0.0.1:18001` y P
 - **T09-F** consolidará QA manual, auditoría final y cierre académico antes de pedir permiso de merge del PR #42.
 
 **Este documento no autoriza fusión a `main`.** Los resultados de CI que aún no están confirmados deben permanecer como pendientes, no como aprobados.
+
+
+## Evidencia de QA automática de T09-D — 10/11/2026
+
+- [Run #42906485675 — Inventario REAL full-stack + ventas REAL](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42906485675), **SUCCESS**, commit funcional `abf70a80`.
+- PostgreSQL efímero: **886/886 pruebas backend aprobadas** (3 advertencias no bloqueantes); **frontend 272/272 aprobadas**, incluyendo 16 del gateway de ventas (10 T09-A + 6 T09-D); build y lint sin errores ni advertencias.
+- Playwright REAL: **5/5** (4 regresiones T08 y 1 recorrido nuevo T09-D de ventas por ID/solicitud tras F5 y cero POST del navegador). Playwright DEMO: **6/6**.
+- Backend Python 3.12 y Python 3.14 en la misma versión de código: éxito; imagen Docker/liveness: éxito.
+- Falla previa de CI `d9045d8`: la prueba antigua T09-A exigía que el gateway tuviera solo `get`; al implementar `list` y `byRequest`, su expectativa quedó obsoleta. Corregida en `abf70a8`; la suite integral volvió a aprobar. No fue falla de stock ni de permisos.
+- **Evidencia local:** aún no consta ejecución manual de la pantalla en el equipo del usuario; no marcar ese checklist como completado hasta recibir resultados/capturas.
+
+**Dictamen:** T09-D superó QA automática. Se habilita ronda manual **de solo lectura**; no realizar nuevas ventas en la base local para demostrar esta pantalla. T09-E/F quedan pendientes.
