@@ -1,6 +1,6 @@
 # E2-7 · T08-1 — Lectura de Inventario REAL, saldos y movimientos
 
-**Estado:** primera implementación completada y CI frontend aprobado en PR #41 (borrador). **QA manual REAL con PostgreSQL pendiente; no fusionar a main sin revisión y autorización.**
+**Estado:** lectura central T08-1 validada en navegador REAL y regresión DEMO confirmada; PR #41 aún en borrador. **No fusionar a main antes de revisión de cierre de T08 y autorización.**
 
 ## Objetivo y alcance
 
@@ -134,3 +134,18 @@ Realizar sin modificar existencias, compras ni datos DEMO.
 | Aislamiento por sede | No figuran Producto A TEST con saldo 11 ni las tres recepciones (+5, +4 y +2) de Sede A TEST | **Aprobado visualmente** |
 
 **Conclusión:** se verifica el funcionamiento del filtro server-side por sede en ambas vistas, sobre el conjunto de datos de esta prueba. Saldos y movimientos de Sede A TEST se mantienen separados de Sede A TEST 2. La respuesta vacía no prueba saldo cero explícito. Para el cierre completo de T08-1 quedan por revisar, según alcance deseado, el filtro por artículo, la regresión DEMO en esta rama y la paginación con volúmenes grandes; la cobertura de contrato ya fue ejecutada en CI. No se fusiona el PR por esta sola evidencia.
+
+## Evidencia manual de regresión DEMO y aceptación principal — 10/11/2026
+
+**Fuente:** confirmación expresa del responsable de las pruebas: «Demo sigue mostrando sus datos particulares sin mezclar nada de pruebas reales». Se refiere a la continuidad del entorno DEMO después de integrar T08-1; no representa una ejecución independiente de pruebas e2e automatizadas sobre PostgreSQL.
+
+| Verificación | Resultado | Evidencia |
+|---|---|---|
+| DEMO WALOS: datos propios y navegación existente | **Aprobada en alcance reportado** | Usuario confirma que los datos DEMO se mantienen particulares y sin mezcla de pruebas REAL |
+| Saldos REAL en TEST Empresa A | **Aprobado** | 11 UNIDAD de Producto A TEST en Sede A TEST, versión 3 |
+| Ledger de la sede A TEST | **Aprobado** | Tres recepciones reales: +2, +4 y +5; suma 11 |
+| Filtro Sede A TEST 2: saldos e historial | **Aprobado** | Ambas vistas vacías, sin arrastrar movimientos de Sede A TEST |
+| Empresas A vs. B en saldos | **Aprobado visualmente** | B devuelve 0 combinaciones, sin saldos de A |
+| Consulta con trabajador Miguel | **Aprobada en UI** | El usuario pudo acceder a los datos permitidos |
+
+**Decisión:** aceptación funcional principal de T08-1 completada para lectura de saldos y movimientos, aislamiento visual por sede/empresa, trabajador lector y no regresión DEMO observada. **No equivale a aprobación de T08 completo ni a QA integral de seguridad**. Pendientes explícitos: prueba manual de filtro por artículo; historial vacío de B bajo la cuenta pertinente; >100 filas y cambios concurrentes de página; pruebas negativas HTTP y Playwright full-stack contra PostgreSQL (T11). Un mensaje de pluralización «0/1 combinaciones» sigue siendo un detalle UX no bloqueante para el siguiente pulido. **PR #41 permanece abierto como borrador, sin merge**.
