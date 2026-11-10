@@ -5,6 +5,22 @@ import type { NewPurchase } from './realSupplyGateway.ts'
 export type SupplyPending =
   | {scope:string; actorId:string; businessId:string;kind:'purchase.create'; key:string;body:NewPurchase;createdAt:string}
   | {scope:string; actorId:string; businessId:string;kind:'purchase.receive';purchaseId:string;key:string;body:{location_id:string};createdAt:string}
+/** Construct new commercial command identities only when the user initiates an action,
+ * never during a React render. Replays must reuse the saved record instead. */
+export function newPurchaseIntent(actorId:string,businessId:string,body:NewPurchase):Extract<SupplyPending,{kind:'purchase.create'}>{
+  return {
+    scope:pendingScope(actorId,businessId,'purchase.create'),
+    actorId,businessId,kind:'purchase.create',key:crypto.randomUUID(),
+    body,createdAt:new Date().toISOString(),
+  }
+}
+export function newReceiptIntent(actorId:string,businessId:string,purchaseId:string,locationId:string):Extract<SupplyPending,{kind:'purchase.receive'}>{
+  return {
+    scope:pendingScope(actorId,businessId,'purchase.receive',purchaseId),
+    actorId,businessId,purchaseId,kind:'purchase.receive',key:crypto.randomUUID(),
+    body:{location_id:locationId},createdAt:new Date().toISOString(),
+  }
+}
 export type PendingPort = {
   read(scope:string):Promise<unknown>
   reserve(row:SupplyPending):Promise<void>
