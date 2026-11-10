@@ -24,7 +24,7 @@
 3. **Playwright T09-D REAL:** con `PYME_DISPOSABLE_QA=1` únicamente, crea fixtures efímeros en PostgreSQL de CI; abre el historial de dos sedes, filtra, consulta un comprobante y lo recupera por `request_id`; verifica **cero POST a ventas desde la interfaz**. Segundo caso en viewport móvil y después de F5/login. No ejecutar contra bases locales con datos del usuario.
 4. **Backend T09-C (ya validado):** 886 pruebas en PostgreSQL con matriz rol/sede, revocación, filtros SQL y paginación; se repiten como regresión en este incremento.
 
-**Evidencia de CI (APROBADA):** [run integral #42907187715](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42907187715), commit de código/documentación `b60c1969d58a0d18e3c91cb34d40680208c359f3`, **SUCCESS**: PostgreSQL **886/886** (2 warnings de Pytest, no bloqueantes), frontend **272/272**, build y lint limpios, Playwright **7/7 REAL** (incluidos tres escenarios T09-D de lectura/recuperación y los cuatro de inventario), **6/6 DEMO**. [Backend independiente #42907187818](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42907187818) pasó en Python 3.12 y 3.14 con Docker/liveness. [Frontend #42907187572](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42907187572) pasó frontend y Chromium DEMO. **Resultado técnico T09-D: aprobado en CI; la aceptación manual local sigue pendiente.**
+**Evidencia de CI (APROBADA):** [run integral #42907187715](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42907187715), commit de código/documentación `b60c1969d58a0d18e3c91cb34d40680208c359f3`, **SUCCESS**: PostgreSQL **886/886** (2 warnings de Pytest, no bloqueantes), frontend **272/272**, build y lint limpios, Playwright **7/7 REAL** (incluidos tres escenarios T09-D de lectura/recuperación y los cuatro de inventario), **6/6 DEMO**. [Backend independiente #42907187818](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42907187818) pasó en Python 3.12 y 3.14 con Docker/liveness. [Frontend #42907187572](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42907187572) pasó frontend y Chromium DEMO. **Resultado técnico T09-D: aprobado en CI; aceptación manual del estado vacío y conexión con API REAL aprobada el 10/11/2026; comprobantes con datos y acciones no verificables localmente sin ventas.**
 
 ## Guía de QA manual NO MUTANTE (a ejecutar en frontend local)
 
@@ -34,7 +34,7 @@
 4. Si se dispone de un `request_id` **preexistente y autorizado**, consultarlo. Si no se conserva uno, **no crear una venta para obtenerlo** en este bloque.
 5. Comprobar en red del navegador, si se revisa, que las rutas de ventas usadas por este módulo son **GET**, sin POST ni cambios de stock.
 6. Comprobar regreso a empresa, F5 y login. En móvil, revisar que las tarjetas no desborden la pantalla y que la interfaz de ventas siga siendo solo lectura.
-7. Registrar capturas y resultados en esta acta: **al escribir este documento no hay evidencia de ejecución manual del nuevo T09-D**. No atribuir pruebas de CI a la sesión local del usuario.
+7. Registrar capturas y resultados en esta acta; diferenciar observaciones de interfaz local de resultados automatizados. El recorrido de comprobantes solo es manualmente ejecutable si existen ventas visibles.
 
 ## Riesgos conocidos y límites
 
@@ -42,3 +42,23 @@
 - La paginación `offset/limit` puede desplazarse si se registran ventas mientras el usuario pagina. Si aparece un ID duplicado entre páginas, el frontend ofrece reiniciar la consulta; no hay cursor/snapshot estable.
 - La pantalla no muestra saldo de caja ni integración bancaria/MP. Los pagos son **declaraciones**. Los importes usan centavos enteros recibidos del servidor, sin recalcular la venta contra precios actuales.
 - T09-E añadirá pruebas de recuperación de ventas con **respuesta POST perdida y clave persistida**; T09-D solo ofrece la consulta y el smoke de lectura.
+
+
+## Acta manual T09-D — Consulta vacía REAL (10/11/2026)
+
+**Fuente:** captura compartida por el usuario tras sincronizar el frontend al commit `994569e`, reconstruir el servicio FastAPI Docker desde la rama T09, comprobar los tres endpoints `/sales`, `/sales/by-request/{request_id}` y `/sales/{sale_id}` en OpenAPI del puerto 18000 y configurar Vite con proxy `PYME_API_PROXY_TARGET=http://127.0.0.1:18000`. El contenedor PostgreSQL seguía `healthy`. La primera captura anterior exhibía un error HTTP al consultar el listado debido al backend Docker desactualizado; el segundo intento ya no lo muestra.
+
+| Control observado en la captura final | Evidencia | Resultado |
+|---|---|---|
+| Contexto de empresa | Título **Historial de ventas**, **TEST Empresa A**, rol **TITULAR ADMINISTRATIVO** | **APROBADO visualmente** |
+| Contrato de solo lectura | Leyenda: «Acá no se registran ventas, no se modifica stock ni se acreditan pagos» | **APROBADO visualmente**: UI no ofrece crear ventas |
+| Consulta del listado | «**0 cargadas · Fin del listado consultado**», sin alerta roja y mensaje «No hay ventas accesibles con el filtro elegido» | **APROBADO**: API responde lista vacía con el filtro actual |
+| Selección de sede | Control «Todas las sedes autorizadas» disponible | **Disponible**, cambio de filtro no ejecutado/documentado en esta captura |
+| Recuperación por solicitud | Campo UUID4 y botón «Consultar solicitud» presentes | **Disponible**, sin `request_id` preexistente para prueba manual |
+| Comprobante con importes/pagos | No había ventas accesibles en la cuenta durante la observación | **No ejecutable manualmente con esta evidencia**; validado en Playwright REAL aislado |
+| No mutación HTTP | No hay evidencia de captura de red del navegador en esta ronda | **No afirmado manualmente**; probado con Playwright REAL, verificando cero POST desde UI |
+| Experiencia móvil y paginación | No aparecen en la captura de escritorio con resultado vacío | **No probados manualmente**; Chromium REAL móvil y tests de paginación respaldados en CI |
+
+**Conclusión de la ronda:** la integración local frontend → FastAPI T09-C y el estado vacío del historial quedan **aprobados manualmente**. El estado vacío no implica error ni demuestra que jamás se registraron ventas en otros tenants o sedes. No se creó ninguna venta ni se alteró inventario para fabricar evidencia. La **aceptación manual de T09-D es parcial y suficiente para el caso disponible**; el recorrido de comprobantes y recuperación ya tiene evidencia de Playwright descartable pero no de una venta histórica local visible.
+
+**Estado general:** T09-D con CI **APROBADA** y smoke local vacío **APROBADO**; T09-E y T09-F todavía **pendientes**. PR #42 continúa borrador, no fusionado.
