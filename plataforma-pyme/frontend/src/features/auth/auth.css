@@ -371,3 +371,34 @@
   .real-sales-receipt-head>strong{font-size:21px}
   .real-sales-receipt-lines>div{flex-wrap:wrap}
 }
+
+/* T10-C · Punto de venta REAL (borrador sin POST). */
+.real-pos-panel{min-width:0}
+.real-pos-panel label{display:grid;gap:7px;margin:12px 0;font-weight:700;font-size:13px;color:#31496b}
+.real-pos-panel select,.real-pos-panel input{width:100%;max-width:530px;min-height:43px;padding:9px 12px;border:1px solid #c8d8ef;border-radius:10px;background:#fff;color:#193052}
+.real-pos-panel input:disabled{background:#edf2f9;color:#61718c}
+.real-pos-catalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px;margin:15px 0}
+.real-pos-product{text-align:left;border:1px solid #d8e5f3;border-radius:13px;padding:14px;background:#fff;display:flex;flex-direction:column;gap:7px;cursor:pointer;color:#1d375a;min-width:0}
+.real-pos-product strong{font-size:14px;overflow-wrap:anywhere}
+.real-pos-product small{font-size:11px;color:#607694}
+.real-pos-product span{font-size:15px;font-weight:800;color:#255aa4}
+.real-pos-product:hover:not(:disabled),.real-pos-product-selected{border-color:#2e70c1;background:#eef6ff}
+.real-pos-product:focus-visible{outline:3px solid #4694ed;outline-offset:2px}
+.real-pos-product:disabled{opacity:.55;cursor:not-allowed}
+.real-pos-picker{border:1px solid #c7def8;background:#f5faff;border-radius:14px;margin:16px 0;padding:18px}
+.real-pos-picker h3{margin:0 0 12px;font-size:16px}
+.real-pos-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.real-pos-cart-row{border-bottom:1px solid #d9e5f4;padding:13px 3px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.real-pos-cart-row:last-of-type{border-bottom:0}
+.real-pos-cart-row div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.real-pos-cart-row strong{overflow-wrap:anywhere}
+.real-pos-cart-row small{color:#627a96}
+.real-pos-summary{border-top:1px solid #d7e4f2;display:grid;gap:10px;margin:18px 0;padding:14px 0}
+.real-pos-summary span{display:flex;justify-content:space-between;gap:12px}
+.real-pos-summary span:last-child{font-weight:800;font-size:18px;color:#1b58ae}
+.real-pos-panel button:disabled.real-auth-primary{opacity:.55;cursor:not-allowed}
+@media(max-width:660px){
+  .real-pos-catalog{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .real-pos-fields{grid-template-columns:1fr}
+  .real-pos-cart-row{align-items:flex-start}
+}
