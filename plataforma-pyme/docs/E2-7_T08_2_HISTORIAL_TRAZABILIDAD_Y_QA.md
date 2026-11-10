@@ -1,6 +1,6 @@
 # E2-7 T08-2 — Historial REAL, filtros locales y trazabilidad de movimientos
 
-**Estado:** implementado en la rama `feature/e2-7-t08-inventario-real`; pruebas y revisión visual pendientes de cerrar. **PR #41 sigue en borrador, sin merge a `main`.**
+**Estado:** implementación completada y CI automatizado aprobado; QA visual REAL pendiente. **PR #41 sigue en borrador, sin merge a `main`.**
 
 ## 1. Objetivo y límites
 
@@ -54,7 +54,7 @@ El resto de tests existentes se mantiene; no se modifica el contrato `createInve
 | 100 filas cargadas | No se infiere cobertura total del servidor ni se accede a páginas futuras |
 | Totales visibles | Cuenta filas de las páginas cargadas; no calcula el stock ni cantidades agregadas |
 
-**Evidencia CI:** pendiente de verificar en GitHub Actions para el último SHA de esta modificación. No declarar aprobado hasta comprobar logs. El tamaño del bundle de Vite puede seguir emitiendo aviso de rendimiento, sin silenciar.
+**Evidencia CI confirmada:** [GitHub Actions run #42846238798](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42846238798), commit funcional `449bc5804a9cfb280b826540430f6c9bc04f5915`: **SUCCESS**. `npm run build` aprobado, `npm run lint` **0 advertencias y 0 errores**, `npm run test:inventory-real` **25/25** (16 de T08-1 + 9 de T08-2), suites frontend **190/190** acumuladas y job Chromium escritorio/móvil aprobado (recorridos actuales DEMO; no E2E PostgreSQL). La primera ejecución de T08-2 había fallado por dos expresiones JSX sin cerrar; fueron corregidas en commit `449bc58` y la ejecución posterior aprobó. El aviso Vite de tamaño de chunk JS >500 kB continúa visible, no se ha silenciado.
 
 ## 5. QA manual sobre TEST Empresa A (sin mutaciones)
 
@@ -81,3 +81,7 @@ Después de actualizar la rama y abrir `/real/login`:
 - **T08-3:** transferencias REALES con doble movimiento atómico e idempotencia; UI distinta, protección de roles/ubicaciones.
 - **T08-4:** carga inicial y ajustes con `expected_version` y relectura ante 409.
 - **T08-5:** validación integrada antes de merge a `main`. El PR #41 sigue como borrador hasta finalizar T08 completo.
+
+## 7. Resultado técnico y próxima decisión
+
+Se considera **listo para QA manual T08-2**. No hay evidencia aún de prueba humana sobre los nuevos controles de búsqueda, select de tipo y desplegable de trazabilidad con la base de datos real. Los resultados de las capturas previas de T08-1 siguen válidos para la funcionalidad de saldos/historial anterior, pero **no se presentan como prueba del UX nuevo**. La aprobación futura de T08-2 depende de validar el checklist anterior; T08-3/T08-4 aún no desarrolladas y PR #41 NO se fusiona.
