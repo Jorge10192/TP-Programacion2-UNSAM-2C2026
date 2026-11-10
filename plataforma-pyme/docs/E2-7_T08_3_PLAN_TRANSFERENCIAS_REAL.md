@@ -180,7 +180,7 @@ En el historial filtrado por la segunda sede se visualizaba «En los **1 movimie
 
 > En el movimiento cargado: **1 entrada y 0 salidas**.
 
-La misma regla ahora contempla 0, 1 y N entradas/salidas y el singular de coincidencias. Se añadió una prueba de regresión automatizada. **Esta corrección visual posterior requiere nuevo CI**; no atribuirle automáticamente el resultado verde anterior.
+La misma regla ahora contempla 0, 1 y N entradas/salidas y el singular de coincidencias. Se añadió una prueba de regresión automatizada. **CI verificado y aprobado:** [GitHub Actions #42862320601](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42862320601) para el commit de código `0e234c4`: **205/205 pruebas frontend**, incluidas **26/26 de inventario** y **14/14 de transferencias**; build aprobado, lint **0 advertencias y 0 errores**, Chromium escritorio/móvil aprobado. Persiste únicamente el aviso de bundle grande de Vite.
 
 ### Criterio actualizado
 
