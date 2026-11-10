@@ -5,6 +5,7 @@ import { RealBusinessesPage } from '../businesses/RealBusinessesPage'
 import type { BusinessRoute, PendingBusinessCreation } from '../businesses/RealBusinessesPage'
 import { UUID_PATTERN } from '../businesses/businessGateway'
 import { RealLocationsPage } from '../locations/RealLocationsPage'
+import { RealCatalogPage } from '../catalog/RealCatalogPage'
 import { RealTeamPage } from '../team/RealTeamPage'
 import { RealAcceptInvitationPage } from '../team/RealAcceptInvitationPage'
 import { authErrorMessage, createAuthGateway } from './authGateway'
@@ -21,7 +22,7 @@ function routeFromPath(path: string): Route {
   if (path === '/real/registro') return '/real/registro'
   if (path === '/real/empresas' || path === '/real/empresas/nueva'
     || path === '/real/invitaciones/aceptar') return path
-  const detailMatch = /^\/real\/empresas\/([^/]+)(?:\/(ubicaciones|equipo))?$/.exec(path)
+  const detailMatch = /^\/real\/empresas\/([^/]+)(?:\/(ubicaciones|equipo|catalogo))?$/.exec(path)
   if (detailMatch && UUID_PATTERN.test(detailMatch[1])) return path as Route
   return '/real/login'
 }
@@ -192,7 +193,7 @@ export function RealAuthApp() {
     : path === '/real/empresas/nueva' ? { kind: 'create' }
     : path.startsWith('/real/empresas/') ? { kind: 'detail', businessId: path.slice('/real/empresas/'.length) }
     : null
-  const operationsMatch = /^\/real\/empresas\/([^/]+)\/(ubicaciones|equipo)$/.exec(path)
+  const operationsMatch = /^\/real\/empresas\/([^/]+)\/(ubicaciones|equipo|catalogo)$/.exec(path)
   const operationBusinessId = operationsMatch && UUID_PATTERN.test(operationsMatch[1]) ? operationsMatch[1] : null
   const operationsKind = operationBusinessId ? operationsMatch?.[2] : null
   const showInvitation = session !== null && path === '/real/invitaciones/aceptar'
@@ -222,7 +223,11 @@ export function RealAuthApp() {
               ? <RealTeamPage key={session.user.id + ':' + path} token={session.token}
                   userId={session.user.id} businessId={operationBusinessId}
                   onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
-              : null
+              : operationBusinessId && operationsKind === 'catalogo'
+                ? <RealCatalogPage key={session.user.id + ':' + path} token={session.token}
+                    userId={session.user.id} businessId={operationBusinessId}
+                    onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
+                : null
         : showBusinesses && session && businessRoute
         ? <RealBusinessesPage
           key={session.user.id + ':' + path}
@@ -279,10 +284,10 @@ export function RealAuthApp() {
       </section>}
       <aside className="real-auth-aside">
         <h2>Una plataforma, diferentes negocios</h2>
-        <p>Tu identidad, empresas, ubicaciones, equipo e invitaciones se consultan desde FastAPI y PostgreSQL. Las operaciones comerciales se integrarán posteriormente.</p>
+        <p>Tu identidad, empresas, ubicaciones, equipo, invitaciones y catálogo se consultan desde FastAPI y PostgreSQL. Compras, stock y ventas se integrarán posteriormente.</p>
         <div className="real-auth-state">Esta vista no accede a `demoStore`, cuentas, caja ni stock ficticio.</div>
       </aside>
     </main>
-    <footer className="real-auth-footer">Modo REAL · E2-7 T04 · Token solo en memoria · Aislamiento por empresa</footer>
+    <footer className="real-auth-footer">Modo REAL · E2-7 T05 · Token solo en memoria · Catálogo y permisos por empresa</footer>
   </div>
 }
