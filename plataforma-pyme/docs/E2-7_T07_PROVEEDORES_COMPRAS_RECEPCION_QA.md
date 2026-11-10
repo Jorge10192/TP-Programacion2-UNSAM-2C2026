@@ -31,6 +31,22 @@ Cálculo: cantidades en `quantity_milli` (entero en milésimas) y costos en `uni
 
 El formulario permite líneas vinculadas al catálogo REAL (con unidad derivada) o concepto libre (sin stock). Hasta 30 renglones. Se permite compra sin proveedor. La selección de catálogo y proveedores es sobre páginas cargadas: si hay más de 100, la pantalla ofrece cargar más y no presume que vio todo.
 
+### 2.1. Costo unitario propuesto desde catálogo (mejora UX de T07)
+
+**Decisión de negocio y arquitectura:** el `reference_cost_cents` del artículo NO es el `unit_cost_cents` de la compra. El primero es una referencia vigente y editable en el catálogo; el segundo es el valor histórico efectivamente pactado con el proveedor y queda fijado en cada renglón de la compra.
+
+- Al **seleccionar un artículo** del catálogo REAL en un renglón nuevo, la UI propone `reference_cost_cents` convertido a pesos con dos decimales, sin multiplicar números flotantes.
+- El campo de costo unitario **sigue siendo editable** para cargar el importe exacto del comprobante del proveedor; modificar cantidad, proveedor o fecha no reemplaza el costo editado.
+- `reference_cost_cents = null` significa costo de referencia no informado: el campo queda **vacío**, no se interpreta como cero. `reference_cost_cents = 0` sí representa cero informado y se propone como `0,00`.
+- Al volver a seleccionar otro artículo se propone el costo del nuevo artículo; al pasar a concepto libre, el costo queda vacío. Las líneas recuperadas de IndexedDB después de F5 conservan el costo original bloqueado: nunca se recalculan desde el catálogo.
+- Cuando el costo unitario ingresado supera el **precio de venta actual** (`price_cents`), la interfaz exhibe un aviso **informativo, no bloqueante**. No hay comparación si falta el precio de venta o si el importe aún está vacío/no válido.
+- Crear o recibir una compra **no modifica automáticamente** el costo de referencia, el precio de venta ni la ficha del catálogo. Actualizar referencias sería otra decisión explícita y otro comando.
+- No se infieren márgenes reales sin considerar gastos, descuentos, impuestos y diferencias de unidad; la advertencia solo detecta una comparación simple por unidad.
+- Contratos FastAPI/DTO, `quantity_milli`, `unit_cost_cents`, snapshots e idempotencia permanecen **sin cambios**. Es una mejora de formulario, no de modelo de datos.
+
+**Caso testigo (TEST Empresa A):** `Producto A TEST` tiene precio de venta $1.500,00 y costo de referencia $800,00. Al elegirlo en una nueva compra se sugiere **$800,00**, que puede reemplazarse por **$2.000,00**, generando una advertencia sin impedir el POST. El ejemplo histórico ya creado por el usuario conserva **2 UNIDAD × $2.000,00 = $4.000,00**; no debe mutarse para reflejar la sugerencia.
+
+
 ## 3. Recuperación de operaciones pendientes
 
 A diferencia de proveedores, las altas de compra y recepción disponen de **replay idempotente server-side**. Se aplica el patrón de T06:
@@ -51,6 +67,7 @@ A diferencia de proveedores, las altas de compra y recepción disponen de **repl
 - `/real/empresas/{id}/proveedores` — proveedores reales por tenant, alta inicial por nombre y estados, paginación.
 - `/real/empresas/{id}/compras` — historial paginado, registro con artículos/costos, proveedor opcional, recepción de bienes en sede, comprobante.
 - `frontend/src/features/purchases/realSupplyGateway.ts` — DTOs, rutas, validación HTTP, centavos y milésimas.
+- `frontend/src/features/purchases/purchaseCostProposal.ts` — funciones puras para proponer costo de catálogo y detectar costo mayor al precio de venta; **no realizan PATCH ni POST**.
 - `frontend/src/features/purchases/supplyPendingJournal.ts` — intents durables por actor, empresa y compra; chequeo de cuerpo inmutable.
 - `frontend/src/features/suppliers/RealSuppliersPage.tsx` y `frontend/src/features/purchases/RealPurchasesPage.tsx` — vistas independientes de DEMO.
 - `frontend/tests/supply-real-api.test.mjs` + `npm.cmd run test:supply-real` — contratos/roles/tenancy/saldo.
@@ -94,9 +111,23 @@ Para navegar: API/Postgres Docker activos, ejecutar `$env:PYME_API_PROXY_TARGET=
 | T07-13 | Intentar recibir en sede pausada/sin can_store | Rechazo 409, sin stock |
 | T07-14 | DEMO `/inicio` | Ninguna modificación en cuentas, gastos, compras o stock simulados |
 | T07-15 | Catálogos/proveedores 101+ y compras 101+ | Paginación real, sin listas incompletas asumidas como completas |
+| T07-16 | En nueva compra, seleccionar `Producto A TEST` | Costo sugerido $800,00 desde catálogo, campo editable |
+| T07-17 | Sustituir sugerencia por $2.000,00 y cambiar cantidad a 2 | Conserva $2.000,00, muestra advertencia sobre venta $1.500,00 y **no bloquea** |
+| T07-18 | Artículo con costo de referencia no informado (`null`) / cero explícito (`0`) | Vacío / `0,00`; ambos se distinguen correctamente |
+| T07-19 | Reabrir compra histórica, regresar a catálogo | La compra original conserva su costo; la ficha del artículo no se modifica automáticamente |
+| T07-20 | Recuperar una compra pendiente tras F5 y nuevo login | Costo guardado e inmutable; no se reemplaza por referencia actualizada |
+
 
 Las pruebas de fallo se realizan solo con datos de prueba y la API de Docker. No eliminar el volumen PostgreSQL. No simular un 201 perdido en datos productivos; para una prueba de extremo a extremo exhaustiva conviene utilizar PostgreSQL temporal aislado y un proxy controlable.
 
 ## 7. Puerta de cierre
 
 No fusionar T07 sin CI aprobado, tests locales, creación de proveedor, documento con concepto y bienes, recepción con movimiento real, permisos por tenant, prueba de reintento manual y DEMO intacta. Documentar que la lectura de balances reales detallados de inventario se abordará en T08; T07 solo muestra el comprobante.
+
+## 8. Evidencia de QA de T07 y estado de integración
+
+**Confirmado con capturas compartidas por el usuario (10/11/2026):** Empresa A muestra botones de proveedores y compras REAL; `Proveedor A T07` se creó, desactivó y reactivó; una compra de **2 UNIDAD × $2.000,00 = $4.000,00** se registró sin stock, después se confirmó como **RECIBIDA** con 1 movimiento real de stock; la lectura posterior del comprobante confirmó recepción en una sede, sin reenvío del POST. La señal 404 transitoria que había aparecido no volvió a presentarse en la última lectura.
+
+**Pendiente:** comprobaciones manuales de T07-06 a T07-15 sobre roles, otras empresas, F5/replay, conceptos y paginación extensa; QA visual del costo propuesto T07-16 a T07-20 tras incorporar este cambio; y estado final de CI del último commit. No declarar T07 fusionado ni completo sin esas evidencias.
+
+**Integración posterior:** el módulo T08 deberá usar entradas de recepción y balances reales, sin inferir stocks a partir de costos de referencia. Los reportes posteriores deberán distinguir `reference_cost_cents` vigente de `unit_cost_cents` histórico por compra. Esta regla se transmite a la documentación de cierre T12 y a cualquier UI que integre compras/catálogo.
