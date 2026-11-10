@@ -8,6 +8,16 @@ import type { SaleCommandLine, SaleTotals } from './realSaleCommand.ts'
 import { calculateSaleTotals } from './realSaleCommand.ts'
 
 export type PosCartLine = SaleCommandLine
+
+/** Subtotal por artículo, usando HALF_UP en centavos sin errores de floats. */
+export function posLineTotalCents(quantityMilli: number, unitPriceCents: number): number {
+  if (!Number.isSafeInteger(quantityMilli) || quantityMilli < 1 || quantityMilli > 999_999_999 ||
+      !Number.isSafeInteger(unitPriceCents) || unitPriceCents < 0 || unitPriceCents > 99_999_999_999)
+    throw new RangeError('Cantidad o precio unitario inválidos.')
+  const cents = (BigInt(quantityMilli) * BigInt(unitPriceCents) + 500n) / 1000n
+  if (cents > 99_999_999_999n) throw new RangeError('Subtotal del producto fuera de rango.')
+  return Number(cents)
+}
 const DISCRETE = new Set<CatalogUnit>(['UNIDAD', 'PAQUETE', 'CAJA', 'SERVICIO'])
 export const canOverrideSalesPrice = (role: string): boolean =>
   role === 'TITULAR_ADMINISTRATIVO' || role === 'ADMINISTRADOR'
