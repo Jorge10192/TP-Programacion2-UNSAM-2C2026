@@ -177,3 +177,23 @@ El color **acompaña al texto**, nunca lo reemplaza: los estados se distinguen t
 - T07-31: API rechaza recepción o se pierde respuesta → no pintar verde por optimismo; conservar `REGISTRADA` hasta confirmar desde servidor.
 
 **Trazabilidad:** `frontend/src/features/purchases/realSupplyGateway.ts` exporta la clasificación semántica del estado; `RealPurchasesPage.tsx` aplica clases según dicho estado; `auth.css` contiene los estilos ámbar/verde/neutro. Las pruebas automatizadas validan el mapeo y los cálculos; las pruebas de interfaz aún deben observarse en el navegador antes del cierre de T07. Este criterio cromático se incluye en el traspaso a T08/T12, y en los módulos futuros que reciban mercadería.
+
+## 11. Corrección UX: error 404 al verificar recepción pendiente (QA colaborador)
+
+**Observación real de QA (10/11/2026):** un trabajador con acceso de lectura a `TEST Empresa A` recuperó una intención de recepción de la compra `Compra2 prueba E2-7 T07` en IndexedDB, pulsó `Consultar comprobante` y vio el error rojo genérico «Proveedor, compra, sede o empresa no disponible para esta cuenta». La compra continuaba visible como `REGISTRADA · RECEPCIÓN PENDIENTE`.
+
+**Causa verificada en backend:** `GET /businesses/{id}/purchases/{purchase_id}/receipt` devuelve `404` tanto cuando todavía NO existe el recibo (`ReceiptNotFound`) como para determinados recursos no disponibles/ajenos. El frontend anterior confundía ausencia de comprobante con inaccesibilidad a un recurso, sin verificar el estado de la compra.
+
+**Resolución en T07, sin cambios de backend:** ante `404` de `GET /receipt`, se consulta mediante **otro GET** el detalle de la misma compra, autenticado con el mismo token y tenant:
+
+- Si `GET /purchase` confirma que es legible y sigue `REGISTRADA`: mostrar aviso informativo «Todavía no hay un comprobante de recepción confirmado…», mantener el intento original y su clave, sin repetir POST ni incrementar stock.
+- Si el detalle muestra `RECIBIDA` pero no se puede leer su comprobante: presentar inconsistencia explícita y pedir revisar el acceso/servidor; **no volver a recibir**.
+- Si `GET /purchase` devuelve `401`, `403` o `404`: respetar el error de autenticación/autorización/inaccesibilidad. **Nunca** transformar un recurso ajeno o inaccesible en una supuesta compra pendiente.
+- Si `GET /receipt` devuelve `200`, comprobar `request_id` y conciliar/limpiar la clave local únicamente al verificar la misma operación, igual que antes.
+- Ante un fallo de conexión, no afirmar que no existe el comprobante; conservar la intención y no reintentar automáticamente.
+
+**Importante:** esta mejora es para **consultar**, no para otorgar autorización de confirmar recepción. Al pulsar `Reintentar MISMA recepción` sigue siendo FastAPI quien valida los permisos de `STORE` de la cuenta y su asignación a la sede. Una solicitud fallida por permisos no puede convertirse en exitosa desde React.
+
+**Pruebas automatizadas:** `inspectReceipt` comprueba que el caso 404 + compra registrada hace exactamente dos GET y cero POST; que el 404 del detalle no se disfraza de ausencia de recibo; que estado `RECIBIDA` sin recibo es inconsistencia; y que un comprobante confirmado se lee con un GET.
+
+**QA manual pendiente después del ajuste:** con la cuenta trabajadora, abrir el intento pendiente, usar `Consultar comprobante`, esperar el aviso no rojo si la compra sigue `REGISTRADA` y confirmar que el botón de reintento conserva la clave original, sin movimientos nuevos. Si luego se decide completar la recepción, verificar previamente asignación activa y permisos en sede, y hacer **una** confirmación explícita con esa misma clave. No suprimir los códigos HTTP para otros recursos.
