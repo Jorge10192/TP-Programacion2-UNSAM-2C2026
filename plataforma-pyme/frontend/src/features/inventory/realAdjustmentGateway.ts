@@ -58,7 +58,7 @@ export function adjustmentMilli(input:string,unit:string):number{
 export function countedMilli(input:string,unit:string):number{
   if(!validUnit(unit))throw new TypeError('Se requiere un artículo físico.')
   const text=input.trim()
-  if(!/^(?:0|[1-9]\\d*)(?:[.,]\\d{1,3})?$/.test(text))
+  if(!/^(?:0|[1-9]\d*)(?:[.,]\d{1,3})?$/.test(text))
     throw new RangeError('Conteo: cantidad no negativa, hasta tres decimales y sin miles.')
   const [whole,frac='']=text.replace(',','.').split('.')
   const amount=BigInt(whole)*1000n+BigInt(frac.padEnd(3,'0'))
