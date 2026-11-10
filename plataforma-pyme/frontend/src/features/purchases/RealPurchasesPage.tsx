@@ -24,6 +24,7 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
  const catalogApi=useMemo(()=>createCatalogGateway(token,businessId),[token,businessId])
  const companies=useMemo(()=>createOperationsGateway(token,userId),[token,userId])
  const alive=useRef(true)
+ const receiptDetailRef=useRef<HTMLDivElement|null>(null)
  const [business,setBusiness]=useState<RealBusiness|null>(null)
  const [purchases,setPurchases]=useState<Purchase[]>([])
  const [suppliers,setSuppliers]=useState<Supplier[]>([])
@@ -42,6 +43,12 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
  const [pending,setPending]=useState<Extract<SupplyPending,{kind:'purchase.create'}>|null>(null)
  const [pendingReceipt,setPendingReceipt]=useState<Extract<SupplyPending,{kind:'purchase.receive'}>|null>(null)
  const [shownReceipt,setShownReceipt]=useState<PurchaseReceipt|null>(null)
+ useEffect(()=>{
+   if(!shownReceipt)return
+   const detail=receiptDetailRef.current
+   detail?.focus({preventScroll:true})
+   detail?.scrollIntoView({block:'nearest',behavior:'smooth'})
+ },[shownReceipt])
  const [receiptFor,setReceiptFor]=useState<string|null>(null)
  const [locationId,setLocationId]=useState('')
  const [journalReady,setJournalReady]=useState(false)
@@ -289,9 +296,11 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
        <ul>{p.lines.map(l=><li key={l.id}>{l.description_snapshot} — {milliToDecimal(l.quantity_milli)} {l.unit_snapshot} × {money(l.unit_cost_cents)} = {money(l.line_total_cents)}</li>)}</ul>
        {p.status==='REGISTRADA'&&canReceive&&<button className="real-auth-secondary real-supply-pending-action" type="button" disabled={busy||loading} onClick={()=>void beginReceipt(p.id)}>Pendiente · Confirmar recepción en ubicación</button>}
        {p.status==='RECIBIDA'&&<button className="real-auth-secondary" type="button" disabled={busy||loading} onClick={()=>void checkReceipt(p.id)}>Consultar comprobante</button>}
-       {shownReceipt?.purchase_id===p.id&&<RealReceiptDetail receipt={shownReceipt} purchase={p}
-         locations={locations} viewer={{id:userId,displayName:userDisplayName}}
-         onClose={()=>setShownReceipt(null)}/>}
+       {shownReceipt?.purchase_id===p.id&&<div ref={receiptDetailRef} tabIndex={-1} className="real-supply-receipt-focus" aria-label="Comprobante de recepción consultado">
+         <RealReceiptDetail receipt={shownReceipt} purchase={p}
+           locations={locations} viewer={{id:userId,displayName:userDisplayName}}
+           onClose={()=>setShownReceipt(null)}/>
+       </div>}
 
      </article>})}
    </div>
