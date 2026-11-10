@@ -1,7 +1,7 @@
 """E2-6 C: API de ventas de servicios, bienes y mixtas con stock atomico."""
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
@@ -11,7 +11,7 @@ from app.modules.auth.session_service import AuthContext
 from app.modules.purchases.service import (
     PurchaseBusinessUnavailable, PurchasePermissionDenied, PurchaseSessionInvalid,
 )
-from app.modules.sales.schemas import CreateSaleRequest, SaleView
+from app.modules.sales.schemas import CreateSaleRequest, SaleSummaryView, SaleView
 from app.modules.sales.service import (
     SaleService, SaleBusinessSuspended, SaleIdempotencyConflict, SaleInvalidReference,
     SaleLocationNotEnabled, SaleNotFound, SalePermissionDenied, SaleInsufficientStock,
@@ -73,6 +73,60 @@ def create_sale(
 
 
 @router.get(
+    "", response_model=list[SaleSummaryView],
+    responses={
+        401: {"description": "Sesion invalida"},
+        403: {"description": "Rol sin permiso de lectura"},
+        404: {"description": "Empresa no disponible para la cuenta"},
+    },
+    summary="Consultar listado paginado de ventas historicas visibles",
+)
+def list_sales(
+    business_id: UUID,
+    offset: int = Query(0, ge=0, le=9_223_372_036_854_775_807),
+    limit: int = Query(100, ge=1, le=100),
+    location_id: UUID | None = Query(default=None),
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> list[SaleSummaryView]:
+    try:
+        return SaleService(db).list(
+            context.user.id, context.auth_session.id, business_id,
+            offset=offset, limit=limit, location_id=location_id,
+        )
+    except PurchaseSessionInvalid:
+        raise unauthorized() from None
+    except (PurchaseBusinessUnavailable, PurchasePermissionDenied,
+            SalePermissionDenied) as error:
+        raise _http(error) from None
+
+
+@router.get(
+    "/by-request/{request_id}", response_model=SaleView,
+    responses={
+        401: {"description": "Sesion invalida"},
+        403: {"description": "Rol sin permiso de lectura"},
+        404: {"description": "Venta inexistente, de otro negocio o no visible"},
+    },
+    summary="Recuperar comprobante historico por Idempotency-Key original",
+)
+def get_sale_by_request(
+    business_id: UUID, request_id: UUID4,
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> SaleView:
+    try:
+        return SaleService(db).by_request(
+            context.user.id, context.auth_session.id, business_id, request_id,
+        )
+    except PurchaseSessionInvalid:
+        raise unauthorized() from None
+    except (PurchaseBusinessUnavailable, PurchasePermissionDenied,
+            SalePermissionDenied, SaleNotFound) as error:
+        raise _http(error) from None
+
+
+@router.get(
     "/{sale_id}", response_model=SaleView,
     responses={
         401: {"description": "Sesion invalida"},
@@ -92,5 +146,6 @@ def get_sale(
         )
     except PurchaseSessionInvalid:
         raise unauthorized() from None
-    except (PurchaseBusinessUnavailable, PurchasePermissionDenied, SaleNotFound) as error:
+    except (PurchaseBusinessUnavailable, PurchasePermissionDenied,
+            SalePermissionDenied, SaleNotFound) as error:
         raise _http(error) from None
