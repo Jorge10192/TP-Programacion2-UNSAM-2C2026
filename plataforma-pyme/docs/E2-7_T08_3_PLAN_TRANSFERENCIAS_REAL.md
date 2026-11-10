@@ -1,6 +1,6 @@
 # E2-7 T08-3 — Plan de integración de transferencias REALES
 
-**Estado:** implementación y tests automatizados aprobados; **primera transferencia manual REAL confirmada**, aún falta verificar los saldos de ambas sedes, permisos y aislamiento antes del cierre funcional de T08-3. Rama `feature/e2-7-t08-inventario-real`, PR #41 en borrador y sin fusionar.
+**Estado:** implementación y CI automatizado aprobados antes del último ajuste visual; **circuito principal de transferencia REAL confirmado manualmente, incluidos los saldos de ambas sedes y los movimientos de origen/destino** (10/11/2026). Pendientes: permisos, aislamiento y contraste de ID común entre los dos detalles. Rama `feature/e2-7-t08-inventario-real`, PR #41 en borrador y sin fusionar.
 
 ## 1. Punto de partida verificado
 
@@ -158,3 +158,30 @@ El usuario adjuntó cuatro capturas del navegador tras ejecutar una transferenci
 **Observación:** el formulario muestra saldo consultado (11), pero no se toma esa lectura como prueba de los saldos finales. La pantalla de confirmación sí valida que la API devolvió una salida y una entrada coherentes. Verificar por separado saldos postoperación y, si es posible, las dos líneas del historial filtradas por sede. El usuario ya ejecutó la transferencia: **no repetirla ni crear otra clave para probar la misma acción**.
 
 **Siguiente verificación recomendada:** Inventario REAL → Existencias, comprobar origen **8 UNIDAD** y destino **3 UNIDAD** solo si este último partía de cero. Revisar el historial de la sede destino para la entrada +3 y el mismo identificador de operación. Luego validar permisos y aislamiento. Sin merge a `main` hasta completar T08-4/5.
+
+## 10. Segunda ronda de evidencia manual — 10/11/2026
+
+El usuario remitió cinco capturas adicionales tras la transferencia de **3 UNIDAD** ya confirmada. Se contrastaron las lecturas postoperación, sin repetir la transferencia ni escribir movimientos nuevos.
+
+| Control | Datos visualizados | Veredicto |
+|---|---|---|
+| Existencias de origen | TEST Empresa A → **Sede A TEST** → Producto A TEST: **8 UNIDAD**, versión **4**, actualizado **10/11/26 14:06** | **Aprobado** |
+| Historial origen | **4 movimientos cargados**, **3 entradas + 1 salida**. Traslado enviado **−3** a las **14:06**; compras anteriores +5, +4, +2 | **Aprobado** |
+| Existencias de destino | TEST Empresa A → **Sede A TEST 2** → Producto A TEST: **3 UNIDAD**, versión **1**, actualizado **10/11/26 14:06** | **Aprobado** |
+| Historial destino | **1 movimiento cargado**, «**Traslado recibido**» **+3**, a las **14:06** | **Aprobado** |
+| Trazabilidad destino | UUID real del movimiento, actor, sede, artículo, **operación de inventario** y tipo **TRASLADO** | **Aprobado** |
+| Invariante de conservación | **11 = 8 + 3** después de la operación; antes, **11 + 0** | **Aprobado** |
+| Correspondencia exacta de IDs | Se ve el ID de operación de la entrada, pero **no se adjuntó el detalle de trazabilidad desplegado de la salida**, para confrontar literalmente los dos `inventory_operation_id` | **Pendiente de comparación visual puntual** |
+| Permisos y aislamiento | No hay evidencia nueva de T08-3 para trabajador con acceso insuficiente, Empresa B y DEMO | **Pendiente** |
+
+### Hallazgo visual no funcional (corregido en la rama)
+
+En el historial filtrado por la segunda sede se visualizaba «En los **1 movimientos** cargados: **1 entradas** y 0 salidas». No afecta saldos, signos, operaciones ni permisos. Se corrigió a:
+
+> En el movimiento cargado: **1 entrada y 0 salidas**.
+
+La misma regla ahora contempla 0, 1 y N entradas/salidas y el singular de coincidencias. Se añadió una prueba de regresión automatizada. **Esta corrección visual posterior requiere nuevo CI**; no atribuirle automáticamente el resultado verde anterior.
+
+### Criterio actualizado
+
+**Circuito de transferencia REAL principal: ACEPTADO funcionalmente** con evidencia de saldos y ledger en ambas sedes. No declarar **todo T08-3** aprobado hasta verificar los permisos STORE, aislamiento A/B, DEMO y el ID compartido en el detalle de origen. No repetir el traslado de 3 unidades; su resultado persistente ya está demostrado. La rama permanece abierta y el PR #41 sigue en borrador, **sin merge a `main`**.
