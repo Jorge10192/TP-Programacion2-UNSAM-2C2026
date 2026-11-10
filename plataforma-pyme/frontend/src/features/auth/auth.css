@@ -145,3 +145,21 @@
 /* T07: reference cost is a suggestion, not the immutable purchase-line cost. */
 .real-supply-cost-hint{margin:0;font-size:12px;line-height:1.55;color:#466385}
 .real-supply-cost-warning{margin:0;font-size:12px;line-height:1.6;color:#9b5d1e;font-weight:650}
+
+/* T07: one subtotal per line; total is editable only with an explicit action. */
+.real-supply-amounts{display:grid;grid-template-columns:minmax(110px,.9fr) minmax(170px,1.1fr) minmax(210px,1.5fr);gap:12px;align-items:end}
+.real-supply-amounts>label{min-width:0}
+.real-supply-total-field{min-width:0;display:grid;gap:8px}
+.real-supply-total-field>label{font-size:13px;color:#354f75;font-weight:700}
+.real-supply-total-control{position:relative;display:flex;align-items:center;min-width:0}
+.real-supply-total-control input{font-weight:800;font-size:17px;background:#eef5ff;padding-right:68px;min-width:0}
+.real-supply-total-control input:not([readonly]){background:#fff}
+.real-supply-total-edit{position:absolute;right:7px;top:50%;transform:translateY(-50%);padding:7px 8px;font-size:12px;font-weight:700;border:1px solid #cbdaf0;border-radius:8px;background:#fff;color:#28558f;cursor:pointer}
+.real-supply-total-edit:disabled{opacity:.55;cursor:not-allowed}
+.real-supply-total-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.real-supply-total-actions>span{font-size:12px;line-height:1.5;color:#546b8b;flex:1;min-width:180px}
+.real-supply-grand-total{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid #d6e3f4;margin-top:3px;padding:17px 4px 4px}
+.real-supply-grand-total span{font-size:15px;font-weight:750;color:#264366}
+.real-supply-grand-total strong{font-size:20px;color:#142d54;font-variant-numeric:tabular-nums}
+@media(max-width:780px){.real-supply-amounts{grid-template-columns:repeat(2,minmax(0,1fr))}.real-supply-total-field{grid-column:1/-1}}
+@media(max-width:480px){.real-supply-amounts{grid-template-columns:1fr}.real-supply-total-field{grid-column:auto}}
