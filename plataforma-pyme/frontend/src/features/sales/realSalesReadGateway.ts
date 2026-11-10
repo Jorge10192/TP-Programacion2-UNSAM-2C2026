@@ -192,7 +192,7 @@ export function parseSaleSummaryList(value: unknown, businessId: string): SaleSu
   // for a UUID tie (a real tie requires identical full-precision timestamps).
   const micros = (value: string): bigint => {
     const millis = Date.parse(value)
-    const fraction = /\\.(\\d{1,6})(?:Z|[+-]\\d{2}:\\d{2})$/.exec(value)?.[1]
+    const fraction = /\.(\d{1,6})(?:Z|[+-]\d{2}:\d{2})$/.exec(value)?.[1]
     const remaining = (fraction ?? '').padEnd(6, '0').slice(3)
     return BigInt(millis) * 1000n + BigInt(remaining || '0')
   }
