@@ -174,3 +174,30 @@
 .real-ops-subpanel button.real-supply-confirm-action:hover:not(:disabled){background:#e1ab35;color:#302007}
 .real-supply-pending-action:focus-visible,.real-supply-confirm-action:focus-visible{outline:3px solid #547ac1;outline-offset:3px}
 .real-supply-pending-action:disabled,.real-supply-confirm-action:disabled{opacity:.55;cursor:not-allowed}
+
+/* T07: read-only receipt, resolved from FastAPI; not a supplier invoice or PDF. */
+.real-supply-receipt-detail{background:#fff;border:1px solid #bfdccd;border-radius:14px;padding:20px;display:grid;gap:17px;min-width:0}
+.real-supply-receipt-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.real-supply-receipt-heading h3{font-size:19px;color:#142c50;margin:0 0 4px}
+.real-supply-receipt-heading p{font-size:14px;color:#506d91;margin:0}
+.real-supply-receipt-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px;row-gap:14px;margin:0}
+.real-supply-receipt-facts>div{border-bottom:1px solid #e0e9f4;padding-bottom:10px;min-width:0}
+.real-supply-receipt-facts dt{font-size:12px;color:#5b7190}
+.real-supply-receipt-facts dd{margin:5px 0 0;font-size:14px;font-weight:750;color:#173153;overflow-wrap:anywhere}
+.real-supply-receipt-id{font-size:12px!important;font-weight:500!important;overflow-wrap:anywhere}
+.real-supply-receipt-movements h4{font-size:15px;margin:0 0 11px}
+.real-supply-receipt-movements h4 span{color:#607895}
+.real-supply-receipt-movements ul{list-style:none;padding:0;margin:0;display:grid;gap:9px}
+.real-supply-receipt-movements li{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #dbe7f4;border-radius:10px;padding:12px;flex-wrap:wrap;background:#f8fbff}
+.real-supply-receipt-movements li strong{display:block;font-size:14px;color:#193557}
+.real-supply-receipt-movements li small{display:block;margin-top:4px;font-size:12px;color:#5b7290}
+.real-supply-receipt-movements li .real-supply-receipt-delta{font-size:17px;color:#177448;font-variant-numeric:tabular-nums}
+.real-supply-receipt-footer{display:grid;gap:11px}
+.real-supply-receipt-footer>p{font-size:12px;color:#5a7090;line-height:1.6;margin:0}
+.real-supply-receipt-footer details{font-size:12px;color:#4c6586}
+.real-supply-receipt-footer summary{cursor:pointer;font-weight:700}
+.real-supply-receipt-footer dl{margin:8px 0;display:grid;gap:4px}
+.real-supply-receipt-footer dt{font-weight:700}
+.real-supply-receipt-footer dd{margin:0 0 4px}
+.real-supply-receipt-footer>button{justify-self:start}
+@media(max-width:650px){.real-supply-receipt-detail{padding:15px}.real-supply-receipt-facts{grid-template-columns:1fr}}
