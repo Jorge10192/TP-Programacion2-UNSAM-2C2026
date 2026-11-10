@@ -1,6 +1,6 @@
 # E2-7 T08-3 — Plan de integración de transferencias REALES
 
-**Estado:** implementación y CI automatizado aprobados antes del último ajuste visual; **circuito principal de transferencia REAL confirmado manualmente, incluidos los saldos de ambas sedes y los movimientos de origen/destino** (10/11/2026). Pendientes: permisos, aislamiento y contraste de ID común entre los dos detalles. Rama `feature/e2-7-t08-inventario-real`, PR #41 en borrador y sin fusionar.
+**Estado:** implementación y CI automatizado aprobados; **circuito principal REAL, conciliación de saldos, ID compartido y aislamiento A/B confirmados visualmente** (10/11/2026). El usuario reporta las verificaciones completadas; queda **sin evidencia visual independiente** el escenario negativo de permiso STORE de Miguel y la regresión DEMO de esta ronda. Rama `feature/e2-7-t08-inventario-real`, PR #41 en borrador y sin fusionar.
 
 ## 1. Punto de partida verificado
 
@@ -185,3 +185,24 @@ La misma regla ahora contempla 0, 1 y N entradas/salidas y el singular de coinci
 ### Criterio actualizado
 
 **Circuito de transferencia REAL principal: ACEPTADO funcionalmente** con evidencia de saldos y ledger en ambas sedes. No declarar **todo T08-3** aprobado hasta verificar los permisos STORE, aislamiento A/B, DEMO y el ID compartido en el detalle de origen. No repetir el traslado de 3 unidades; su resultado persistente ya está demostrado. La rama permanece abierta y el PR #41 sigue en borrador, **sin merge a `main`**.
+
+## 11. Tercera ronda de QA — 10/11/2026 (trazabilidad, saldos posteriores, tenant)
+
+El usuario adjuntó cinco capturas adicionales y reportó «Verificaciones completadas bien creo». Los resultados **verificables en las capturas** son:
+
+| Control | Evidencia | Veredicto |
+|---|---|---|
+| ID compartido del traslado de 3 UNIDAD, origen vs destino | Ambos detalles muestran `efeff7f6-5f82-475b-b29b-bf0b53d778e6`, responsable `dd64a12c-a6bc-4d20-941e-533967b1a341`, mismo artículo y tipo de operación `TRASLADO`; salida **−3**, entrada **+3** | **Aprobado** |
+| Separación de movimientos | IDs de movimiento distintos para cada sede, con el mismo ID de operación | **Aprobado** |
+| Nueva transferencia adicional | A las **14:23** las capturas muestran otra transferencia **−1 origen, +1 destino**. Es una **operación distinta**, posterior al traslado de 3 unidades de las 14:06. No atribuirla a Miguel o al titular sin evidencia de cuenta/actor | **Confirmada en el ledger** |
+| Saldo posterior de origen | **7 UNIDAD** en Sede A TEST, versión 5 | **Aprobado** |
+| Saldo posterior de destino | **4 UNIDAD** en Sede A TEST 2, versión 2 | **Aprobado** |
+| Invariante de transferencia | **7 + 4 = 11 UNIDAD**, mismo total que antes de ambas transferencias | **Aprobado** |
+| Historial agregado | **7 movimientos cargados: 5 entradas y 2 salidas**, consistentes con 3 recepciones y 2 transferencias de dos movimientos cada una | **Aprobado** |
+| Aislamiento por empresa | TEST Empresa B presenta **0 combinaciones artículo/sede**; no aparece el stock de TEST Empresa A | **Aprobado en consulta** |
+| DEMO | El usuario informa que las verificaciones completaron bien, pero **no hay captura DEMO en esta ronda** | **Aceptación reportada, sin evidencia visual específica** |
+| Autorización de Miguel | Las capturas no muestran sesión activa ni identidad del actor del traslado de 1 unidad; por tanto no demuestra por sí sola un rechazo 403 cuando falte asignación STORE a origen/destino | **Pendiente de evidencia negativa específica / T08-5** |
+
+**Decisión de cierre:** T08-3 tiene el circuito **funcional principal aprobado**, con trazabilidad y conservación validadas; la integración de QA de permisos negativos (trabajador sin acceso a una de las sedes), regresión DEMO y fallos controlados **permanece expresamente en T08-5** antes del merge global. La segunda transferencia de 1 unidad no debe volver a ejecutarse solo para «completar» el acta. No se fusiona PR #41 ni se modifica `main`.
+
+**Siguiente bloque:** T08-4, inventario inicial y ajustes versionados con `expected_version`, resolución de conflictos 409 y no regresión de transferencias/recepciones. La nueva base de pruebas es **origen 7 UNIDAD / destino 4 UNIDAD** si no se generan operaciones posteriores. Esos valores son evidencia histórica, no constantes a codificar.
