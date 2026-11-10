@@ -104,3 +104,32 @@ test('T09-D móvil REAL: historial sin operaciones y recuperación posterior a F
     .toContainText(fixture.saleB.id)
   expect(uiWrites).toBe(0)
 })
+
+test('T09-F navegador: error 503 de historial permite reintentar GET sin POST de venta', async ({ page, request }) => {
+  const fixture = await seed(request)
+  let injected = false
+  let uiSalePosts = 0
+  page.on('request', req => {
+    if (req.method() === 'POST' && req.url().includes('/api/v1/businesses/') &&
+      req.url().includes('/sales')) uiSalePosts++
+  })
+  await page.route('**/businesses/' + fixture.company.id + '/sales?*', async route => {
+    if (route.request().method() !== 'GET') return route.continue()
+    if (!injected) {
+      injected = true
+      return route.fulfill({
+        status: 503, contentType: 'application/json',
+        body: JSON.stringify({ detail: 'API temporalmente no disponible' }),
+      })
+    }
+    return route.continue()
+  })
+  await open(page, fixture)
+  await expect(page.getByText('Error al consultar')).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('FastAPI no pudo consultar el comprobante')
+  await page.getByRole('button', { name: 'Reintentar consulta' }).click()
+  await expect(page.locator('.real-sales-row')).toHaveCount(2)
+  await expect(page.getByText('Fin del listado consultado')).toBeVisible()
+  expect(injected).toBe(true)
+  expect(uiSalePosts).toBe(0)
+})
