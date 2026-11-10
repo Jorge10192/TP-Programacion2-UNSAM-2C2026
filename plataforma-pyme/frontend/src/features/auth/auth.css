@@ -278,3 +278,12 @@
 .real-transfer-confirmed code{overflow-wrap:anywhere;white-space:normal}
 .real-transfer-confirmed summary{cursor:pointer;text-decoration:underline}
 @media(max-width:650px){.real-transfer-grid{grid-template-columns:minmax(0,1fr)}.real-transfer-top{flex-direction:column}.real-transfer-panel{padding:15px}.real-transfer-movements>div{flex-wrap:wrap}.real-transfer-balance{align-items:flex-start}}
+
+/* E2-7 T08-4: resumen de diferencia para conteo físico, no saldo inventado */
+.real-adjustment-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+.real-adjustment-preview>div{border:1px solid #c6d9f5;background:#fff;padding:14px;border-radius:10px;display:grid;gap:7px;min-width:0}
+.real-adjustment-preview span{font-size:12px;color:#536f93}
+.real-adjustment-preview strong{font-size:18px;color:#173455;overflow-wrap:anywhere}
+.real-adjustment-preview strong.real-inventory-negative{color:#b12c35}
+.real-adjustment-preview strong.real-inventory-positive{color:#087044}
+@media(max-width:650px){.real-adjustment-preview{grid-template-columns:minmax(0,1fr)}}
