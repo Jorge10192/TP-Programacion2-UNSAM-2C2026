@@ -5,7 +5,13 @@ from pydantic import ValidationError
 from app.core.settings import DatabaseSettings
 
 
-def test_database_url_handles_reserved_password_characters() -> None:
+def test_database_url_handles_reserved_password_characters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # El entorno de CI define DB_PORT=5432 para PostgreSQL efimero.
+    # Esta prueba verifica el fallback POSTGRES_HOST_PORT sin overrides.
+    monkeypatch.delenv("DB_HOST", raising=False)
+    monkeypatch.delenv("DB_PORT", raising=False)
     settings = DatabaseSettings(
         _env_file=None,
         POSTGRES_PASSWORD="pass:@/% with spaces",
