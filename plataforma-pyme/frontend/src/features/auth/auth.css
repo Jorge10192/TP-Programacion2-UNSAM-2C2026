@@ -201,3 +201,6 @@
 .real-supply-receipt-footer dd{margin:0 0 4px}
 .real-supply-receipt-footer>button{justify-self:start}
 @media(max-width:650px){.real-supply-receipt-detail{padding:15px}.real-supply-receipt-facts{grid-template-columns:1fr}}
+
+.real-supply-receipt-focus{min-width:0;outline:none}
+.real-supply-receipt-focus:focus-visible .real-supply-receipt-detail{outline:2px solid #547ac1;outline-offset:3px}
