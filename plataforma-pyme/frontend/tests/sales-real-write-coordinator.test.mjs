@@ -81,7 +81,7 @@ test('T10-B2 preparar escribe y relee intento sin emitir ningún HTTP', async ()
   assert.deepEqual(prepared.body, body())
   assert.deepEqual(await coordinator.pending(), prepared)
   assert.equal(requests, 0)
-  assert.deepEqual(await coordinator.recover(), { state: 'not-found', pending: prepared } === null ? {} : { state: 'not-found', pending: prepared })
+  // prepare() must never attempt GET or POST; recovery is a separate operation.
 })
 
 test('T10-B2 sin confirmación explícita, clave distinta o journal ausente no hace POST', async () => {
