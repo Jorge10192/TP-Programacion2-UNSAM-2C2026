@@ -46,6 +46,10 @@ def test_operational_role_requires_active_location_assignment(isolated, role):
     bid = business(client, owner)
     lid = location(client, bid, owner)
     iid = item(client, bid, owner)
+    # T10-P01: el operador vende exclusivamente al precio del catálogo.
+    priced = client.patch(f"/api/v1/businesses/{bid}/catalog/{iid}",
+                          headers=owner, json={"price_cents": 2000})
+    assert priced.status_code == 200, priced.text
     body = payload(iid)
     body["location_id"] = str(lid)
 
