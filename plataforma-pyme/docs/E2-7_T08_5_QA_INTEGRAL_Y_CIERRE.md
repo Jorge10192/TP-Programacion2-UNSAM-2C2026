@@ -29,15 +29,15 @@ Existen tests PostgreSQL de transferencias, ajustes, permisos y carreras: `test_
 
 | Caso | Procedimiento / evidencia requerida | Estado |
 |---|---|---|
-| P1 Trabajador sin ajustes | Con Miguel como TRABAJADOR activo, abrir inventario y Stock inicial y ajustes; aviso de solo lectura, sin formulario habilitado | Pendiente manual |
+| P1 Trabajador sin ajustes | Con Miguel como TRABAJADOR activo, abrir inventario y Stock inicial y ajustes; aviso de solo lectura, sin formulario habilitado | Aprobado en UI, captura de Miguel |
 | P2 Autorización backend | Pruebas de integración: trabajador rechazado para ajustes/inicialización; traslado requiere STORE en ambas sedes; verificar ausencia de mutación | Pendiente ejecución PostgreSQL |
 | P3 Roles administrativos | Inicialización titular/admin; encargado solo ajuste con asignación; backend deniega inicialización al encargado | Pendiente ejecución PostgreSQL |
 | C1 Versión obsoleta | Dos operaciones sobre misma versión: una confirma, otra 409; saldo y ledger cambian una sola vez | Pendiente PostgreSQL |
 | C2 Concurrencia e idempotencia | Misma clave/cuerpo no duplica; transferencias opuestas no dejan escrituras parciales; inicialización concurrente única | Pendiente PostgreSQL |
 | R1 Recuperación | En entorno aislado, simular pérdida de respuesta y F5/relogin; mismo actor/empresa recupera clave/cuerpo/version originales, sin POST automático | Pendiente full-stack |
-| R2 Inicialización repetida | Rechazar sobre saldo previo, incluso cero histórico; sin movimiento nuevo | Pendiente PostgreSQL / UI |
-| A1 Empresa B | Confirmar ausencia de artículo, saldo y movimientos T08-4 de A en B | Pendiente manual posterior a ajustes |
-| A2 DEMO | Datos y navegación DEMO propios, sin incorporar datos TEST REAL | Pendiente regresión final |
+| R2 Inicialización repetida | Rechazar sobre saldo previo, incluso cero histórico; sin movimiento nuevo | UI aprobada con motivo y consentimiento completos; PostgreSQL pendiente |
+| A1 Empresa B | Confirmar ausencia de artículo, saldo y movimientos T08-4 de A en B | Aprobado visualmente: B sin saldos ni movimientos, filtros generales |
+| A2 DEMO | Datos y navegación DEMO propios, sin incorporar datos TEST REAL | Aprobado visualmente: empresas DEMO y artículos propios |
 | V1 Paginación | Más de 100 registros, filtros sede/artículo y recarga ante cambios entre páginas | Pendiente dataset aislado |
 
 P1 demuestra comportamiento de interfaz, no sustituye P2. No retirar asignaciones reales de Miguel ni enviar traslados potencialmente válidos para intentar obtener un rechazo: verificar permisos negativos en fixtures aislados.
@@ -49,3 +49,13 @@ P1 demuestra comportamiento de interfaz, no sustituye P2. No retirar asignacione
 3. Ejecutar suites PostgreSQL en base exclusiva; registrar comando, commit, aprobadas/fallidas/omitidas.
 4. Recuperación y paginación full-stack con datos aislados; registrar cualquier aplazamiento a T11 explícitamente, sin marcarlo aprobado.
 5. Consolidar evidencia y riesgos antes de proponer cierre. PR #41 permanece borrador; no fusionar mientras falten criterios acordados.
+
+## Ronda manual T08-5 completada — 10/11/2026
+
+Capturas: Miguel ve el aviso de solo lectura y no recibe formulario de ajustes; Empresa B muestra cero saldos y cero movimientos con filtros generales; DEMO muestra empresas propias y artículos colágeno, crema de enjuague y shampoo, sin productos TEST visibles. Inicialización repetida de Producto T08-4 CONTEO en Sede A TEST bloqueada con saldo 6/v3, cantidad 1, motivo completo y consentimiento marcado. Estas son comprobaciones visuales; no sustituyen los controles API.
+
+## Ejecución automática en curso
+
+Commit `a665a077f9c015a12cf0472ef60a2568bb54ca79`: nuevo workflow `plataforma-pyme-inventory-real.yml` ejecuta suite backend completa con PostgreSQL 16 efímero, todas las pruebas frontend, build/lint, cuatro recorridos Playwright REAL y regresión DEMO. Base exclusiva `pyme_t085_ephemeral`, API en puerto 18001, cuentas aleatorias; no usa datos del equipo del usuario. No se guardan trazas de navegador con Bearer.
+
+Los recorridos REAL envían operaciones a FastAPI, pierden intencionalmente solo la respuesta después de un 201, recargan y vuelven a iniciar sesión, comprueban recuperación de clave/cuerpo sin POST automático y replay 200 con ledger sin duplicados. Otro caso cambia la versión desde una segunda sesión y comprueba 409 sin mutación. Paginación: 105 movimientos, filtro de sede/artículo y detección de desplazamiento entre páginas tras inserción concurrente. Resultados pendientes de finalización; no declarar aprobados por haber agregado los tests.
