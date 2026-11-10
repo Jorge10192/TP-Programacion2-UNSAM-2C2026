@@ -131,3 +131,49 @@ No fusionar T07 sin CI aprobado, tests locales, creación de proveedor, document
 **Pendiente:** comprobaciones manuales de T07-06 a T07-15 sobre roles, otras empresas, F5/replay, conceptos y paginación extensa; QA visual del costo propuesto T07-16 a T07-20 tras incorporar este cambio; y estado final de CI del último commit. No declarar T07 fusionado ni completo sin esas evidencias.
 
 **Integración posterior:** el módulo T08 deberá usar entradas de recepción y balances reales, sin inferir stocks a partir de costos de referencia. Los reportes posteriores deberán distinguir `reference_cost_cents` vigente de `unit_cost_cents` histórico por compra. Esta regla se transmite a la documentación de cierre T12 y a cualquier UI que integre compras/catálogo.
+
+## 9. Decisión UX T07: importe por renglón y proveedor de compra
+
+**Diseño aprobado por el usuario (10/11/2026):** el proveedor se selecciona **una sola vez en la cabecera de cada compra**, no repetido por renglón. Una compra puede contener múltiples productos, servicios o conceptos del mismo proveedor. Si los proveedores difieren, corresponden documentos de compra separados. La compra sin proveedor sigue siendo válida conforme al contrato de FastAPI.
+
+Cada renglón presenta en una misma fila, de izquierda a derecha:
+
+1. **Cantidad** (editable, hasta tres decimales según unidad).
+2. **Costo unitario de esta compra** (editable, precargado con costo de referencia cuando exista).
+3. **Costo total del renglón** (más ancho y visualmente destacado; se calcula automáticamente).
+
+El subtotal **no se repite** en una fórmula de texto ni en un segundo bloque. Una acción `Editar` junto al campo total habilita una **edición explícita por total**. Mientras el usuario modifica el total, cantidad y unitario quedan temporalmente bloqueados; debe pulsar `Aplicar total` o `Cancelar` antes de registrar la compra. Si aplica, se calcula un `unit_cost_cents` compatible con la cantidad y se comprueba que `HALF_UP(quantity_milli * unit_cost_cents / 1000)` sea exactamente el importe introducido. **No se admiten ajustes silenciosos de centavos.** Algunos importes no se pueden representar exactamente con las unidades y costos actuales (por ejemplo 3 unidades por $10,00); en esos casos se explica la incompatibilidad y se mantiene la edición sin enviar POST.
+
+La suma de subtotales de todos los renglones aparece una sola vez, al pie del formulario, como **Total de la compra**. Es solo una vista previa calculada: los contratos backend permanecen iguales y FastAPI vuelve a calcular el total histórico de forma autoritativa. No hay campo de total adicional enviado a la API ni actualización automática del costo de referencia del catálogo. La funcionalidad futura de *ofrecer actualizar el costo de referencia* queda registrada como propuesta optativa y autorizada explícitamente, separada del alta de compra. No se modifica el precio de venta sin una operación independiente.
+
+**QA de presentación y cálculos:**
+
+- T07-21: 4 unidades a $800,00 → subtotal $3.200,00; el importe no se duplica visualmente.
+- T07-22: editar total a $12.000,00 con cantidad 4 → costo unitario $3.000,00; margen informativo si supera el precio de venta.
+- T07-23: 3 unidades con total $10,00 → validación de importe no representable; no redondear ni registrar.
+- T07-24: dos renglones 4×$800,00 y 2×$2.000,00 → Total de la compra $7.200,00, sin multiplicación float.
+- T07-25: cambiar la cantidad o el unitario → subtotal se recalcula; no se modifica referencia del catálogo.
+- T07-26: verificar el formulario en pantallas estrechas: el subtotal pasa a la fila siguiente sin perder etiquetas ni controles.
+
+## 10. Decisión UX T07: distinguir recepción pendiente de confirmada
+
+**Solicitud adicional del usuario (10/11/2026):** los controles de **Confirmar recepción** no deben tener apariencia de operación completada. La comunicación visual depende exclusivamente de `Purchase.status` devuelto por FastAPI, no de que el usuario haya abierto la pantalla de recepción.
+
+| Estado backend | Etiqueta mostrada | Estilo |
+|---|---|---|
+| `REGISTRADA` | **REGISTRADA · RECEPCIÓN PENDIENTE** | Insignia ámbar; botón *Pendiente · Confirmar recepción en ubicación* también ámbar |
+| Formulario de recepción por confirmar | **Confirmar recepción REAL** / **Reintentar MISMA recepción** | Acción principal ámbar, nunca verde; botón deshabilitado sin sede seleccionada |
+| `RECIBIDA` | **RECIBIDA** | Insignia verde de confirmación real; acción posterior solo **Consultar comprobante** |
+| `CERRADA_SIN_RECEPCION`, `CANCELADA` | Etiquetas respectivas | Neutro, no implican recepción pendiente ni exitosa |
+
+El color **acompaña al texto**, nunca lo reemplaza: los estados se distinguen también por su nombre. El amarillo/ámbar representa una operación pendiente de confirmar; el verde se reserva para el registro que ya consta como `RECIBIDA` en PostgreSQL. El botón de recepción no provoca ninguna mutación al abrir el formulario: la escritura sigue ejecutándose solo con la confirmación, el destino válido y el mismo mecanismo de idempotencia/replay que antes. No se cambia backend, modelo de datos, balances ni permisos.
+
+**QA adicional:**
+
+- T07-27: compra recién creada `REGISTRADA` → etiqueta y botón ámbar; no aparece ninguna señal verde de `RECIBIDA`.
+- T07-28: confirmar recepción en sede activa → en nueva lectura aparece `RECIBIDA` en verde; desaparece botón de confirmar y aparece *Consultar comprobante*.
+- T07-29: compra solo concepto / cancelada → estilo neutro; jamás se ofrece recepción.
+- T07-30: modo móvil y teclado → contraste legible, foco visible, estado también por texto.
+- T07-31: API rechaza recepción o se pierde respuesta → no pintar verde por optimismo; conservar `REGISTRADA` hasta confirmar desde servidor.
+
+**Trazabilidad:** `frontend/src/features/purchases/realSupplyGateway.ts` exporta la clasificación semántica del estado; `RealPurchasesPage.tsx` aplica clases según dicho estado; `auth.css` contiene los estilos ámbar/verde/neutro. Las pruebas automatizadas validan el mapeo y los cálculos; las pruebas de interfaz aún deben observarse en el navegador antes del cierre de T07. Este criterio cromático se incluye en el traspaso a T08/T12, y en los módulos futuros que reciban mercadería.
