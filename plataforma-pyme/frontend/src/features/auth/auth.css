@@ -117,3 +117,9 @@
 .real-catalog-tile .real-auth-actions{margin-top:auto}
 .real-ops-form textarea{width:100%;border:1px solid #cbdcf0;border-radius:10px;background:#fff;color:#14233f;padding:11px 13px;resize:vertical;font:inherit}
 @media(max-width:640px){.real-catalog-grid{grid-template-columns:1fr}.real-catalog-filters{flex-direction:column;align-items:stretch}.real-catalog-filters label{width:100%}}
+
+/* T06: journal opt-in; persisted data stays in the browser until explicit resolution. */
+.real-intent-fields{border:0;min-inline-size:0;margin:0;padding:0;display:grid;gap:18px}
+.real-intent-fields:disabled{opacity:.85}
+.real-intent-fields input:disabled,.real-intent-fields select:disabled{background:#f3f6fa;color:#546888}
+.real-business-uncertain .real-auth-secondary{font-size:12px}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
+import { businessIntentJournal, intentIsOld, JournalConflictError, JournalUnavailableError } from '../pending/businessIntentJournal.ts'
 import {
   businessErrorMessage, canEditBusiness, createBusinessGateway,
 } from './businessGateway.ts'
@@ -31,6 +32,10 @@ export function RealBusinessesPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [draft, setDraft] = useState<NewBusiness>(() => pendingCreation?.body ?? emptyNewBusiness)
+  const [journalState, setJournalState] = useState<'loading' | 'ready' | 'error'>(route.kind === 'create' ? 'loading' : 'ready')
+  const [journalNote, setJournalNote] = useState('')
+  const [acknowledged, setAcknowledged] = useState(false)
+  const [intentOld, setIntentOld] = useState(false)
   const [editing, setEditing] = useState(false)
   const [changes, setChanges] = useState<NewBusiness>(emptyNewBusiness)
   const requestGeneration = useRef(0)
@@ -69,14 +74,44 @@ export function RealBusinessesPage({
     return () => { controller.abort() }
   }, [gateway, route.kind, businessId, onUnauthorized])
 
+  useEffect(() => {
+    if (route.kind !== 'create') return
+    let active = true
+    void businessIntentJournal.load(userId).then((record) => {
+      if (!active) return
+      const restored = record ? { key: record.key, body: record.body } : null
+      setPendingCreation(restored)
+      if (record) {
+        setDraft(record.body)
+        setAcknowledged(true) // the original attempt was already persisted explicitly
+        setIntentOld(intentIsOld(record))
+        setJournalNote('Se recuperó un intento guardado en este navegador. No se reenviará automáticamente.')
+      } else {
+        setDraft(emptyNewBusiness)
+        setIntentOld(false)
+        setJournalNote('')
+      }
+      setJournalState('ready')
+    }).catch(() => {
+      if (!active) return
+      setJournalState('error')
+      setJournalNote('No se pudo abrir o validar el registro del navegador. Por seguridad no se permitirá crear una empresa sin conservar antes su clave.')
+    })
+    return () => { active = false }
+  }, [route.kind, userId, setPendingCreation])
+
   function normalize(input: NewBusiness): NewBusiness {
     return { name: input.name.trim(), category: input.category.trim(), activity_kind: input.activity_kind }
   }
 
   async function createCompany(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (busy) return
+    if (busy || journalState !== 'ready') return
     setError(''); setNotice('')
+    if (!acknowledged) {
+      setError('Para crear una empresa, aceptá conservar temporalmente el intento en este navegador. No se guardan tokens ni contraseñas.')
+      return
+    }
     const desired = normalize(draft)
     if (desired.name.length < 2 || desired.category.length < 2) {
       setError('Nombre y rubro deben tener al menos dos caracteres.')
@@ -87,11 +122,22 @@ export function RealBusinessesPage({
       return
     }
     const pending = pendingCreation ?? { key: crypto.randomUUID(), body: desired }
-    setPendingCreation(pending)
     const mutationId = ++mutationGeneration.current
     setBusy(true)
     try {
-      const business = await gateway.create(pending.body, pending.key)
+      // Strict ordering: durable commit FIRST, business POST SECOND.
+      // If persistence is denied or corrupted, do not send any POST.
+      const saved = await businessIntentJournal.reserve(userId, pending.body, pending.key)
+      if (mutationId !== mutationGeneration.current) return
+      setPendingCreation({ key: saved.key, body: saved.body })
+      const business = await gateway.create(saved.body, saved.key)
+      if (mutationId !== mutationGeneration.current) return
+      try {
+        await businessIntentJournal.discard(userId, saved.key)
+      } catch {
+        setError('La empresa se confirmó en FastAPI, pero no se pudo limpiar su intento local. Consultá Mis empresas y descartá manualmente el registro cuando vuelva a estar disponible.')
+        return
+      }
       if (mutationId !== mutationGeneration.current) return
       setPendingCreation(null)
       setDraft(emptyNewBusiness)
@@ -102,10 +148,13 @@ export function RealBusinessesPage({
       // Even a malformed 201 response can follow a successful database commit.
       const ambiguous = err instanceof ApiTransportError
         || (err instanceof ApiHttpError && (err.status === 409 || err.status >= 500))
-      if (!ambiguous) setPendingCreation(null)
-      setError(ambiguous
-        ? 'No podemos confirmar el resultado de la creación. Primero revisá «Mis empresas»; si no aparece, podés reintentar con la MISMA clave y los MISMOS datos. No creamos otra clave automáticamente.'
-        : businessErrorMessage(err))
+      setError(err instanceof JournalUnavailableError
+        ? 'No se pudo guardar el intento en este navegador: NO enviamos la creación a FastAPI. Revisá la disponibilidad de IndexedDB.'
+        : err instanceof JournalConflictError
+          ? 'Ya existe un intento guardado con otra clave o contenido. No enviamos un POST nuevo: revisá la solicitud pendiente.'
+          : ambiguous
+            ? 'No podemos confirmar el resultado. Revisá «Mis empresas» antes de repetir. Si corresponde, reintentá con la MISMA clave y los MISMOS datos, incluso después de F5.'
+            : businessErrorMessage(err))
     } finally {
       if (mutationId === mutationGeneration.current) setBusy(false)
     }
@@ -140,10 +189,23 @@ export function RealBusinessesPage({
     }
   }
 
-  function dismissPending() {
-    if (!pendingCreation) return
-    const confirmed = window.confirm('Descartá el intento solo si verificaste en Mis empresas que la creación no existe. Si el servidor la confirmó y aún no figura, un nuevo intento podría crear otra empresa. ¿Descartar la clave?')
-    if (confirmed) { setPendingCreation(null); setDraft(emptyNewBusiness); setError(''); setNotice('Intento anterior descartado manualmente.') }
+  async function dismissPending() {
+    if (!pendingCreation || busy) return
+    const confirmed = window.confirm('Descartá el intento solo después de verificar Mis empresas. Si el servidor ya confirmó la creación, otra clave puede crear una empresa duplicada. ¿Eliminar el registro local?')
+    if (!confirmed) return
+    setBusy(true)
+    try {
+      await businessIntentJournal.discard(userId, pendingCreation.key)
+      setPendingCreation(null)
+      setDraft(emptyNewBusiness)
+      setIntentOld(false)
+      setAcknowledged(false)
+      setError('')
+      setJournalNote('')
+      setNotice('Registro local descartado por tu decisión. No se modificó nada en FastAPI.')
+    } catch {
+      setError('No se pudo eliminar el registro local. No se descartó su identidad de intento.')
+    } finally { setBusy(false) }
   }
 
   function fields(value: NewBusiness, update: (field: keyof NewBusiness, value: string) => void) {
@@ -180,13 +242,20 @@ export function RealBusinessesPage({
     </> : route.kind === 'create' ? <>
       <h1>Nueva empresa real</h1>
       <p>Se creará una empresa y tu membresía de titular administrativo mediante una única operación en PostgreSQL.</p>
+      <p className="real-auth-note">El registro de recuperación guarda únicamente nombre, rubro, actividad, clave UUID y fecha en IndexedDB de este navegador. No cifra esos datos ni guarda credenciales: evitá utilizar dispositivos compartidos.</p>
+      {journalState === 'loading' && <p role="status">Verificando intentos guardados…</p>}
+      {journalNote && <p role={journalState === 'error' ? 'alert' : 'status'} className={journalState === 'error' ? 'real-auth-message real-auth-error' : 'real-auth-note'}>{journalNote}</p>}
+      {intentOld && <p className="real-auth-message real-ops-warning">Este intento tiene más de 30 días. Comprobá su estado con especial cuidado antes de reintentarlo. No se elimina automáticamente.</p>}
       <form className="real-auth-form" onSubmit={(e) => void createCompany(e)}>
-        {fields(draft, (field, value) => setDraft((old) => ({ ...old, [field]: value })))}
-        <button className="real-auth-primary" type="submit" disabled={busy}>{busy ? 'Creando…' : pendingCreation ? 'Reintentar MISMO intento' : 'Crear empresa'}</button>
+        <fieldset disabled={busy || journalState !== 'ready' || !!pendingCreation} className="real-intent-fields">
+          {fields(draft, (field, value) => setDraft((old) => ({ ...old, [field]: value })))}
+        </fieldset>
+        {!pendingCreation && <label className="real-ops-check"><input type="checkbox" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)}/> Acepto conservar los datos de esta solicitud en este navegador hasta resolverla. No usar en dispositivos compartidos.</label>}
+        <button className="real-auth-primary" type="submit" disabled={busy || journalState !== 'ready' || (!pendingCreation && !acknowledged)}>{busy ? 'Procesando…' : pendingCreation ? 'Reintentar MISMO intento' : 'Crear empresa'}</button>
       </form>
       {pendingCreation && <div className="real-business-uncertain">
-        <strong>Existe un intento de creación pendiente de confirmación.</strong>
-        <p>Se conservaron la clave y los datos originales en memoria. Antes de reintentar, consultá el listado y buscá la empresa.</p>
+        <strong>Existe un intento de creación guardado para esta cuenta.</strong>
+        <p>El registro persistió en IndexedDB y se recuperará después de F5 cuando vuelvas a iniciar sesión con la misma cuenta. Primero revisá el listado, porque el servidor podría haber confirmado la creación.</p>
         <div className="real-auth-actions">
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas')}>Consultar mis empresas</button>
           <button className="real-auth-secondary" type="button" onClick={dismissPending}>Descartar tras verificar</button>
