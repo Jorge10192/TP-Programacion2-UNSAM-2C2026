@@ -163,3 +163,14 @@
 .real-supply-grand-total strong{font-size:20px;color:#142d54;font-variant-numeric:tabular-nums}
 @media(max-width:780px){.real-supply-amounts{grid-template-columns:repeat(2,minmax(0,1fr))}.real-supply-total-field{grid-column:1/-1}}
 @media(max-width:480px){.real-supply-amounts{grid-template-columns:1fr}.real-supply-total-field{grid-column:auto}}
+
+/* T07 receipt lifecycle: amber = awaiting confirmation, green = persisted receipt. */
+.real-supply-card .real-catalog-tile-header{flex-wrap:wrap}
+.real-supply-pending-status{background:#fff1c4;color:#7a4c00;border:1px solid #e4ba55}
+.real-supply-neutral-status{background:#e9eef4;color:#52647b;border:1px solid #cbd5e2}
+.real-supply-card button.real-supply-pending-action{background:#fff0bf;border:1px solid #d9ac44;color:#67410a;font-weight:800}
+.real-supply-card button.real-supply-pending-action:hover:not(:disabled){background:#ffe39a;border-color:#c4942a;color:#4f3208}
+.real-ops-subpanel button.real-supply-confirm-action{background:#eebf59;border:1px solid #c39431;color:#3e2b0b;font-weight:800}
+.real-ops-subpanel button.real-supply-confirm-action:hover:not(:disabled){background:#e1ab35;color:#302007}
+.real-supply-pending-action:focus-visible,.real-supply-confirm-action:focus-visible{outline:3px solid #547ac1;outline-offset:3px}
+.real-supply-pending-action:disabled,.real-supply-confirm-action:disabled{opacity:.55;cursor:not-allowed}
