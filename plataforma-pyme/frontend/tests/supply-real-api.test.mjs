@@ -4,6 +4,7 @@ import { ApiHttpError, ApiTransportError } from '../src/api/httpClient.ts'
 import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents,
   validatePurchase, parsePurchase, parseReceipt, parseSupplier } from '../src/features/purchases/realSupplyGateway.ts'
 import { createPendingJournal, pendingScope, PendingConflictError, parsePending, newPurchaseIntent, newReceiptIntent } from '../src/features/purchases/supplyPendingJournal.ts'
+import { suggestedUnitCost, costExceedsSalePrice } from '../src/features/purchases/purchaseCostProposal.ts'
 
 const A='e5a347a3-d8e9-4a1a-9f51-72b1b2539c67',B='713fa8a7-5c21-4c3b-9b39-ade992cf8df2'
 const actor='a49e944c-e8f9-4794-b2c1-8c5524c1bbd6'
@@ -207,4 +208,41 @@ test('factory de recepción crea identidad por compra y ubicación sin efectos d
   assert.equal(intent.body.location_id,site)
   assert.equal(intent.scope,pendingScope(actor,A,'purchase.receive',id))
   assert.deepEqual(parsePending(intent,intent.scope),intent)
+})
+
+test('al seleccionar artículo, costo de referencia se propone en pesos con centavos exactos',()=>{
+  const article={reference_cost_cents:80000,price_cents:150000}
+  assert.equal(suggestedUnitCost(article),'800,00')
+  assert.equal(suggestedUnitCost({reference_cost_cents:125055,price_cents:200000}),'1250,55')
+})
+
+test('sin costo de referencia el campo queda vacío; cero informado no es ausencia',()=>{
+  assert.equal(suggestedUnitCost({reference_cost_cents:null,price_cents:100000}),'')
+  assert.equal(suggestedUnitCost(null),'')
+  assert.equal(suggestedUnitCost(undefined),'')
+  assert.equal(suggestedUnitCost({reference_cost_cents:0,price_cents:null}),'0,00')
+})
+
+test('costo real editado reemplaza la propuesta y el backend guarda el valor del documento',()=>{
+  const article={reference_cost_cents:80000,price_cents:150000}
+  assert.equal(suggestedUnitCost(article),'800,00')
+  // El comprador puede editar a 2000,00. No se modifica el catálogo.
+  const actual='2000,00'
+  const cost=Number(actual.replace(',','').replace('.',''))
+  assert.equal(cost,200000)
+  const edited={...body,lines:[{...body.lines[0],unit_cost_cents:cost}]}
+  validatePurchase(edited)
+  assert.equal(edited.lines[0].unit_cost_cents,200000)
+  assert.equal(article.reference_cost_cents,80000)
+  assert.equal(lineTotalCents(edited.lines[0].quantity_milli,cost),400000)
+})
+
+test('costo mayor a venta advierte sin bloquear; igual, menor, nulo o inválido no advierten',()=>{
+  const article={reference_cost_cents:80000,price_cents:150000}
+  assert.equal(costExceedsSalePrice('2000',article),true)
+  assert.equal(costExceedsSalePrice('1500,00',article),false)
+  assert.equal(costExceedsSalePrice('800',article),false)
+  assert.equal(costExceedsSalePrice('2000',{reference_cost_cents:null,price_cents:null}),false)
+  assert.equal(costExceedsSalePrice('',article),false)
+  assert.equal(costExceedsSalePrice('1.000,00',article),false)
 })
