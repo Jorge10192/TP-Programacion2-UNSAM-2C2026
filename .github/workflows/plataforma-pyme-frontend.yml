@@ -33,6 +33,7 @@ jobs:
       - run: npm run test:auth
       - run: npm run test:businesses
       - run: npm run test:operations-real
+      - run: npm run test:catalog-real
       - run: npm run test:accounts
       - run: npm run test:sales
       - run: npm run test:cash
