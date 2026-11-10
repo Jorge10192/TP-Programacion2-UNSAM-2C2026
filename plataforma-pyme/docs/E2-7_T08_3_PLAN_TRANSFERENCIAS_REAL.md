@@ -1,6 +1,6 @@
 # E2-7 T08-3 — Plan de integración de transferencias REALES
 
-**Estado:** plan de implementación; **no se ha programado todavía T08-3**. Rama propuesta: `feature/e2-7-t08-inventario-real`. PR #41 continúa como borrador, sin fusionar.
+**Estado:** implementación de frontend T08-3 completada en `feature/e2-7-t08-inventario-real` y tests automatizados aprobados; **QA funcional REAL pendiente**. PR #41 continúa como borrador, sin fusionar.
 
 ## 1. Punto de partida verificado
 
@@ -88,3 +88,54 @@ Restricciones del contrato:
 T08-4 integrará **stock inicial y ajustes versionados**, mediante `adjustment_router.py` y `adjustment_schemas.py`: `kind`, `quantity_milli`, `expected_version`, `reason`, `location_id`. Ante 409 por versión obsoleta se requiere **refresco, revisión y nueva confirmación humana**, no recalcular diferencias ni reintentar automáticamente.
 
 T08-5 consolidará QA full-stack real/DEMO y preparación de merge único de T08, siempre luego de validar cada subincremento. **No se solicita ni realiza merge en esta planificación.**
+
+## 7. Implementación efectiva del frontend — 10/11/2026
+
+### Archivos nuevos
+
+- `frontend/src/features/inventory/realTransferGateway.ts`: contrato estricto `POST /transfers` con `Idempotency-Key` UUID4, `GET /transfers/{id}`, motivos normalizados como backend, entrada exacta en milésimas con `BigInt` y verificación de operación/actor/sedes/artículo y dos movimientos firmados. Sin reintentos automáticos ni `demoStore`.
+- `frontend/src/features/inventory/transferPendingJournal.ts`: IndexedDB independiente de T06/T07, scope `actorId:businessId:inventory.transfer`. Reserva transaccional y verificación por lectura **antes del POST**; clave y cuerpo inmutables, solo un intento pendiente por actor/empresa. No guarda credenciales, Bearer, contraseña, email ni datos de DEMO. Los datos de operación permanecen **sin cifrar** en el navegador; usuario consiente. Si IndexedDB falla se bloquea la mutación.
+- `frontend/src/features/inventory/RealTransferPanel.tsx`: formulario por artículo físico ACTIVO, dos sedes ACTIVA con `can_store=true`, cantidades exactas, motivo y consentimiento de persistencia; consulta saldo de origen por GET específico antes de confirmar. Confirmación explícita `window.confirm`, deshabilitación de dobles clics; si el resultado es incierto, conserva clave/cuerpo y **nunca** reenvía automáticamente. El usuario puede revisar saldos/historial, reintentar **la misma clave** mediante acción explícita, o descartar solo después de afirmar que verificó y confirmar de nuevo. En éxito muestra ID de operación, dos deltas y consulta detalle por GET.
+- `frontend/src/features/inventory/RealInventoryPage.tsx`: lanza el formulario desde el inventario REAL y vuelve a consultar balances/movements en FastAPI al confirmar. Sigue permitiendo filtros, historial y trazabilidad T08-1/2.
+- `frontend/src/features/auth/auth.css`: estilos responsive de formulario, saldo consultado, pendiente ámbar y confirmación verde.
+- `frontend/tests/transfer-real-api.test.mjs`, `frontend/package.json` y `.github/workflows/plataforma-pyme-frontend.yml`: comando `npm.cmd run test:transfer-real` incorporado al CI.
+
+### Garantías y límites importantes
+
+- El saldo mostrado es lectura previa, **no reserva**: FastAPI vuelve a validar disponibilidad con UPDATE condicional y transacción atómica, por lo que un 409 de concurrencia es normal y no provoca retry automático.
+- El botón aparece para la empresa activa con sedes y artículos elegibles; **los permisos STORE reales son los del servidor**. A un trabajador sin asignaciones a ambas sedes FastAPI puede rechazar con 403. No se crean ni se cambian asignaciones para habilitarlo.
+- La respuesta se acepta solo si incluye **exactamente dos** movimientos, uno `TRASLADO_SALIDA=-quantity_milli` en origen y uno `TRASLADO_ENTRADA=+quantity_milli` en destino, ambos con el mismo `inventory_operation_id`, actor y artículo.
+- Un 201 (creación) y un 200 (replay de misma clave/cuerpo) se presentan como confirmación, **no** como dos traslados diferentes.
+- El GET por ID no recupera un POST cuyo identificador nunca llegó. En resultado incierto se utiliza historial/saldos y eventual replay **idéntico**, jamás clave nueva automática.
+- No se crean comprobantes fiscales, no se editan saldos en el frontend y no se modifica la cuenta/caja.
+- Los registros de intención persisten solo en el navegador donde se originaron y pueden permanecer sin cifrar hasta limpieza explícita; no usar equipo compartido.
+- T08-3 no requiere cambios de backend ni migraciones. No modifica inventario inicial/ajustes de T08-4.
+
+### CI y pruebas
+
+GitHub Actions [#42854537202](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42854537202), commit de implementación `09d9b683`:
+
+- **Frontend: SUCCESS:** `npm ci`, `npm run build`, `npm run lint` **0 warnings y 0 errors**.
+- **Tests frontend: 202/202 aprobadas** (12 pruebas nuevas en `test:transfer-real` y 190 preexistentes); **test:inventory-real 25/25** sin regresión.
+- Se conserva el aviso Vite por chunk JavaScript mayor de 500 kB, sin modificar umbrales ni silenciar.
+- **Chromium:** consultar estado de ese job al completar; los recorridos actuales son **DEMO**, no pruebas full-stack de POST transferencias con PostgreSQL.
+- Pruebas T08-3 incluyen: POST Bearer e Idempotency-Key, 200 replay, GET histórico, validación de unidades y motivo, dos movimientos con actor/sede/ID compartidos, HTTP 401/403/404/409/422, timeout/red incierta, conservación de clave tras F5, aislamiento de actor/tenant y rechazo cerrado de registro corrupto y de nuevo cuerpo.
+- Una ejecución anterior detectó un test que esperaba rechazo de salto de línea en motivo; se corrigió porque el backend normaliza espacios y saltos de línea. La última ejecución de frontend está aprobada.
+
+### QA humano pendiente
+
+1. `git pull --ff-only origin feature/e2-7-t08-inventario-real`, ejecutar `npm.cmd run test:transfer-real`, `npm.cmd run test:inventory-real`, `npm.cmd run build` y `npm.cmd run lint` desde `plataforma-pyme/frontend`.
+2. Con FastAPI y Postgres saludables, abrir `http://localhost:5173/real/login`, entrar como titular de **TEST Empresa A** → Inventario REAL → **Transferir entre ubicaciones**.
+3. Elegir `Producto A TEST`, origen `Sede A TEST`, destino `Sede A TEST 2`. Verificar mediante GET el saldo **antes de confirmar**. Si sigue en 11 y destino no tenía registro, transferir **1 UNIDAD**, motivo `Reposición de sede secundaria`. Confirmar.
+4. Resultado esperado si los saldos no cambiaron antes de la operación: **origen 10, destino 1**, historial con **−1 en origen y +1 en destino**, relacionados por un único identificador de transferencia. **No** asumir saldos fijos ni repetir el POST de esa operación con clave nueva.
+5. Abrir «Ver identificadores» del resultado, después «Revisar saldos e historial actualizados» y comprobar datos leídos desde API. No debe modificar DEMO ni el historial anterior.
+6. Probar destino=origen, cantidad inválida/servicio y saldo insuficiente **sin realizar una nueva transferencia válida**. El frontend debe bloquear y/o API devolver 409 sin cambios.
+7. Cambiar a cuenta Miguel: sin permisos STORE **a ambas sedes**, un intento debe recibir 403; conservar el pendiente de ese actor si se envió POST y no inventar permisos.
+8. Comprobar Empresa B y WALOS/DEMO continúan aislados.
+9. **Prueba de fallo de red opcional y controlada**: parar solo la API una vez que se haya reservado un intento nuevo, revisar el mensaje de resultado incierto, F5 y re-login; el registro deberá reaparecer con la **misma clave y el mismo cuerpo** y nunca reenviarse solo. No usar la prueba sobre una transferencia confirmada que ya se haya limpiado.
+
+**Prohibido:** detener/eliminar volúmenes PostgreSQL, forzar roles, crear segunda clave para imitar un replay, asumir éxito por los tests simulados o fusionar el PR #41 antes de T08-4/5.
+
+## 8. Criterio de cierre
+
+El subincremento **T08-3 queda listo para pruebas manuales**, no aprobado todavía en PostgreSQL real. Cerrar una vez contrastados 201/200, saldos, exactamente dos movimientos, aislamiento A/B, permisos STORE y regresión DEMO. Los casos de carrera >100 movimientos y pérdida de respuesta permanecerán en T08-5/T11 cuando requieran orquestación full-stack.
