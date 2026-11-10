@@ -274,13 +274,14 @@ export function RealBusinessesPage({
           <div><dt>Tu membresía</dt><dd>{selected.membership.status}</dd></div>
           <div><dt>Identificador del negocio</dt><dd className="real-auth-id">{selected.id}</dd></div>
         </dl>
-        <p className="real-auth-note">Panel empresarial inicial. Todavía no hay cifras, inventario o ventas REAL: se integrarán en las próximas etapas.</p>
+        <p className="real-auth-note">Ya podés consultar el inventario REAL, además de empresas, ubicaciones, catálogo, proveedores y compras. Los reportes y las ventas REAL se integrarán en próximos incrementos.</p>
         <div className="real-auth-actions">
           <button className="real-auth-primary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/ubicaciones')}>Ubicaciones reales</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/equipo')}>Equipo e invitaciones</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/catalogo')}>Catálogo REAL</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/proveedores')}>Proveedores REAL</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/compras')}>Compras y recepciones REAL</button>
+          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/inventario')}>Inventario REAL</button>
         </div>
         {canEditBusiness(selected) && !editing && <button className="real-auth-secondary" type="button" onClick={() => setEditing(true)}>Editar perfil empresarial</button>}
         {canEditBusiness(selected) && editing && <form className="real-auth-form" onSubmit={(e) => void updateCompany(e)}>
