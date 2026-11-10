@@ -70,7 +70,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
     }).finally(()=>{
       if(!controller.signal.aborted&&epoch===metadataEpoch.current)setMetadataLoading(false)
     })
-    return ()=>{controller.abort();metadataEpoch.current++}
+    return ()=>{controller.abort()}
   },[businessId,companyApi,catalogApi,onUnauthorized,refreshVersion])
 
   const query=useMemo<InventoryQuery>(()=>({
@@ -80,11 +80,9 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
   useEffect(()=>{
     const controller=new AbortController()
     const epoch=++dataEpoch.current
-    moreControllers.current.forEach(c=>c.abort())
-    moreControllers.current=[]
-    setDataLoading(true);setDataLoaded(false);setDataError('');setPageError('')
-    setBalances([]);setMovements([]);setBalancesHasMore(false);setMovementsHasMore(false)
-    setBalancesMoreLoading(false);setMovementsMoreLoading(false)
+    const aborters=moreControllers.current
+    aborters.forEach(c=>c.abort())
+    aborters.length=0
     void Promise.all([
       inventoryApi.balances(0,INVENTORY_PAGE_SIZE,query,controller.signal),
       inventoryApi.movements(0,INVENTORY_PAGE_SIZE,query,controller.signal),
@@ -103,9 +101,8 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
     })
     return ()=>{
       controller.abort()
-      moreControllers.current.forEach(c=>c.abort())
-      moreControllers.current=[]
-      dataEpoch.current++
+      aborters.forEach(c=>c.abort())
+      aborters.length=0
     }
   },[inventoryApi,query,refreshVersion,onUnauthorized])
 
@@ -147,7 +144,8 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
       if(err instanceof ApiHttpError&&err.status===401){onUnauthorized();return}
       setPageError(inventoryErrorMessage(err))
     }finally{
-      moreControllers.current=moreControllers.current.filter(c=>c!==controller)
+      const abortIndex=moreControllers.current.indexOf(controller)
+      if(abortIndex>=0)moreControllers.current.splice(abortIndex,1)
       if(epoch===dataEpoch.current){
         if(which==='balances')setBalancesMoreLoading(false)
         else setMovementsMoreLoading(false)
@@ -177,6 +175,17 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
     }finally{if(epoch===metadataEpoch.current)setCatalogLoading(false)}
   }
 
+  function resetRead(){
+    // Event-driven reset: avoid cascading state changes synchronously in a React effect.
+    setDataLoading(true);setDataLoaded(false);setDataError('');setPageError('')
+    setBalances([]);setMovements([]);setBalancesHasMore(false);setMovementsHasMore(false)
+    setBalancesMoreLoading(false);setMovementsMoreLoading(false)
+  }
+  function refresh(){
+    resetRead()
+    setMetadataLoading(true);setMetadataError('');setCompany(null)
+    setRefreshVersion(x=>x+1)
+  }
   const itemLabels=useMemo(()=>new Map(catalog.map(x=>[x.id,x])),[catalog])
   const locationLabels=useMemo(()=>new Map(locations.map(x=>[x.id,x])),[locations])
   const itemName=(id:string)=>itemLabels.get(id)?.name??'Artículo '+shortId(id)
@@ -202,18 +211,18 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
       <h2 className="real-inventory-business">{company.name}</h2>
       <div className="real-inventory-controls">
         <label>Ubicación
-          <select value={locationId} disabled={dataLoading||balancesMoreLoading||movementsMoreLoading} onChange={e=>setLocationId(e.target.value)}>
+          <select value={locationId} disabled={dataLoading||balancesMoreLoading||movementsMoreLoading} onChange={e=>{resetRead();setLocationId(e.target.value)}}>
             <option value="">Todas las ubicaciones</option>
             {locations.map(x=><option key={x.id} value={x.id}>{x.name} · {x.status}</option>)}
           </select>
         </label>
         <label>Artículo del catálogo cargado
-          <select value={catalogItemId} disabled={dataLoading||balancesMoreLoading||movementsMoreLoading} onChange={e=>setCatalogItemId(e.target.value)}>
+          <select value={catalogItemId} disabled={dataLoading||balancesMoreLoading||movementsMoreLoading} onChange={e=>{resetRead();setCatalogItemId(e.target.value)}}>
             <option value="">Todos los artículos</option>
             {catalog.filter(x=>x.item_type==='BIEN').map(x=><option key={x.id} value={x.id}>{x.name} · {x.unit} · {x.status}</option>)}
           </select>
         </label>
-        <button type="button" className="real-auth-secondary" disabled={dataLoading||metadataLoading||balancesMoreLoading||movementsMoreLoading} onClick={()=>setRefreshVersion(x=>x+1)}>
+        <button type="button" className="real-auth-secondary" disabled={dataLoading||metadataLoading||balancesMoreLoading||movementsMoreLoading} onClick={refresh}>
           Actualizar desde API
         </button>
       </div>
