@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   canOverrideSalesPrice, canOperateSales, parsePosQuantity,
-  posQuantityText, previewPosCart,
+  posLineTotalCents, posQuantityText, previewPosCart,
 } from '../src/features/sales/realPosDraft.ts'
 
 const itemId = '7d6ab8a4-bcab-4e28-bb99-60a35dd0c9d1'
@@ -106,4 +106,33 @@ test('T10-C carrito puro no crea solicitudes, conserva montos y snapshots de pre
   })
   assert.notStrictEqual(result.lines[0], original[0])
   assert.deepEqual(original, cart())
+})
+
+test('T10-C subtotal por producto distingue precio unitario de cantidad y aplica HALF_UP', () => {
+  assert.equal(posLineTotalCents(4000, 150000), 600000)
+  assert.equal(posLineTotalCents(5000, 200000), 1000000)
+  assert.equal(posLineTotalCents(4000, 100000), 400000)
+  assert.equal(posLineTotalCents(500, 3), 2)
+  assert.equal(posLineTotalCents(1, 500), 1)
+  assert.equal(posLineTotalCents(1, 1), 0)
+})
+
+test('T10-C subtotales de 2 artículos coinciden con subtotal de venta', () => {
+  const lines = [
+    { catalog_item_id: itemId, quantity_milli: 5000, unit_price_cents: 200000 },
+    { catalog_item_id: otherId, quantity_milli: 4000, unit_price_cents: 100000 },
+  ]
+  const calculated = previewPosCart('TITULAR_ADMINISTRATIVO', true, location, catalog, lines, 200000)
+  assert.deepEqual(calculated.totals.line_totals_cents,
+    lines.map(line => posLineTotalCents(line.quantity_milli, line.unit_price_cents)))
+  assert.equal(calculated.totals.subtotal_cents, 1400000)
+  assert.equal(calculated.totals.discount_cents, 200000)
+  assert.equal(calculated.totals.total_cents, 1200000)
+})
+
+test('T10-C subtotal por producto rechaza montos fuera de rango sin floats', () => {
+  for (const [quantity, unit] of [
+    [0, 150000], [1000, -1], [1000.5, 150000], [1000, NaN],
+    [1000, Number.MAX_SAFE_INTEGER], [1000000000, 1], [2000, 99999999999],
+  ]) assert.throws(() => posLineTotalCents(quantity, unit), RangeError)
 })
