@@ -29,7 +29,9 @@
 - Fallos de lectura/reserva de IndexedDB bloquean la escritura.
 - Comprobante confirmado con fallo de borrado local mantiene el intento sin duplicar la venta.
 
-**Evidencia automática del último commit:** pendiente de completar cuando GitHub Actions termine; no atribuir aprobación integral a un run anterior. `npm.cmd run test:sales-real-write` ejecuta la suite. Las pruebas T10-A (11) y B1 (12) aprobaron localmente o en CI; aún corresponde verificar B2.
+**CI integral T10-B2 APROBADA:** [workflow #42919262068](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42919262068), commit funcional `b84823f89f2d7338b931c4fa8ca40ee3be6680e7`, **SUCCESS**. Log: **12/12 tests nuevos de T10-B2**, **886/886 backend PostgreSQL**, **11/11 Playwright REAL**, **6/6 Playwright DEMO**; build y lint frontend completados. Las pruebas T10-A (11) y B1 (12) habían aprobado localmente. Comando en Windows: `npm.cmd run test:sales-real-write`.
+
+**Incidente detectado y resuelto:** el primer run integral de B2 falló en la prueba que requería `SalePendingConflict` ante comprobante ajeno/corrupto, porque el validador T09 lo rechazaba antes con `ApiTransportError('invalid-response')`. En `b84823f8` se corrigió **solo la expectativa de test** para aceptar ambos rechazos seguros y verificar que el journal conserve el intento. La ejecución integral posterior terminó verde; no ocultar el run fallido histórico. **El POS sigue sin habilitar ventas desde React**.
 
 ## Siguientes puertas
 
