@@ -5,6 +5,9 @@ import {
   createInventoryGateway, parseBalance, parseMovement, formatMilli, formatDelta,
   INVENTORY_EVENTS,
 } from '../src/features/inventory/realInventoryGateway.ts'
+import {
+  filterLoadedHistory, loadedInventoryCountLabel, loadedMovementCounts, movementTraceFields,
+} from '../src/features/inventory/inventoryHistoryView.ts'
 
 const business='12dd5528-f5cc-4931-bd39-f5e9da116d25'
 const another='f50f0e1e-b247-45f4-b1b0-ac975567f8c6'
@@ -188,4 +191,112 @@ test('cancelación de GET conserva política de solo lectura',async()=>{
  const p=gateway.movements(0,100,{},controller.signal)
  controller.abort()
  await assert.rejects(p,e=>e instanceof ApiTransportError&&e.reason==='aborted'&&!e.outcomeUnknown)
+})
+
+const historyLabels={
+ itemName:(_id)=>'Colágeno hidrolizado',
+ itemSku:(_id)=>'ART-003',
+ siteName:(_id)=>'Sede A TEST',
+}
+const saleMovement=()=>({
+ ...movement('VENTA_SALIDA',-1500),
+ id:'c4ac5084-42df-4ed0-9435-d4e546e39213',
+ receipt_id:null,purchase_line_id:null,
+ sale_id:'f646980a-0fa0-432b-b222-2b80f1efb193',
+ sale_line_id:'242f6829-391f-4029-90f6-eec82e4ab0e0',
+})
+const transferMovement=()=>({
+ ...movement('TRASLADO_ENTRADA',4000),
+ id:'9b90d013-9db8-47c0-92d9-81d73956f3f8',
+ receipt_id:null,purchase_line_id:null,
+ operation_kind:'TRASLADO',
+ inventory_operation_id:'85a4cdda-6a91-4e16-a151-b4dc8c76f79c',
+})
+
+test('T08-2: leyenda singular/plural correcta, 0 vacío y página incompleta explícita',()=>{
+ assert.equal(loadedInventoryCountLabel('balances',0,false),
+  '0 combinaciones artículo/sede cargadas · Última página consultada.')
+ assert.equal(loadedInventoryCountLabel('balances',1,false),
+  '1 combinación artículo/sede cargada · Última página consultada.')
+ assert.equal(loadedInventoryCountLabel('balances',2,true),
+  '2 combinaciones artículo/sede cargadas · Puede haber más páginas.')
+ assert.equal(loadedInventoryCountLabel('movements',1,false),
+  '1 movimiento cargado · Última página consultada.')
+ assert.equal(loadedInventoryCountLabel('movements',3,true),
+  '3 movimientos cargados · Puede haber más páginas.')
+ assert.throws(()=>loadedInventoryCountLabel('balances',-1,false),RangeError)
+})
+
+test('T08-2: cuenta solo entradas/salidas de los movimientos cargados, no suma saldos',()=>{
+ assert.deepEqual(loadedMovementCounts([
+   movement(), {...movement(),id:'21bccf55-67a4-4c42-bb7a-9093aca35c02',delta_milli:2000},
+   saleMovement(),
+ ]),{entries:2,exits:1})
+ assert.deepEqual(loadedMovementCounts([]),{entries:0,exits:0})
+})
+
+test('T08-2: filtro Entradas/Salidas respeta signo y orden del backend, sin modificar originales',()=>{
+ const source=[movement(),saleMovement(),transferMovement()]
+ const orig=[...source]
+ assert.deepEqual(filterLoadedHistory(source,'ENTRADAS','',historyLabels),[source[0],source[2]])
+ assert.deepEqual(filterLoadedHistory(source,'SALIDAS','',historyLabels),[source[1]])
+ assert.deepEqual(filterLoadedHistory(source,'TODOS','',historyLabels),source)
+ assert.deepEqual(source,orig)
+})
+
+test('T08-2: filtrar evento exacto no confunde venta con recepción ni transferencia',()=>{
+ const source=[saleMovement(),transferMovement(),movement()]
+ assert.deepEqual(filterLoadedHistory(source,'VENTA_SALIDA','',historyLabels),[source[0]])
+ assert.deepEqual(filterLoadedHistory(source,'COMPRA_RECEPCION','',historyLabels),[source[2]])
+ assert.deepEqual(filterLoadedHistory(source,'TRASLADO_ENTRADA','',historyLabels),[source[1]])
+ assert.deepEqual(filterLoadedHistory(source,'AJUSTE_SALIDA','',historyLabels),[])
+})
+
+test('T08-2: búsqueda local de nombre, SKU, sede y tipo ignora tildes y mayúsculas',()=>{
+ const rows=[movement(),saleMovement()]
+ for(const q of [' COLAGENO  ', 'art-003','sede a test','Recepcion de compra']){
+  const result=filterLoadedHistory(rows,'TODOS',q,historyLabels)
+  assert.equal(result.length,q==='Recepcion de compra'?1:2)
+ }
+ assert.equal(filterLoadedHistory(rows,'TODOS','Sin coincidencias',historyLabels).length,0)
+})
+
+test('T08-2: admite búsqueda por ID de movimiento, responsable, recepción y operación interna',()=>{
+ const source=[movement(),saleMovement(),transferMovement()]
+ assert.deepEqual(filterLoadedHistory(source,'TODOS',movementId,historyLabels),[source[0]])
+ assert.deepEqual(filterLoadedHistory(source,'TODOS',actor,historyLabels),source)
+ assert.deepEqual(filterLoadedHistory(source,'TODOS',source[0].receipt_id,historyLabels),[source[0]])
+ assert.deepEqual(filterLoadedHistory(source,'TODOS',source[2].inventory_operation_id,historyLabels),[source[2]])
+ assert.deepEqual(filterLoadedHistory(source,'TODOS','traslado',historyLabels),[source[2]])
+})
+
+test('T08-2: trazabilidad de recepción conserva IDs reales sin inventar factura ni compra',()=>{
+ const fields=movementTraceFields(movement())
+ assert.equal(fields.find(x=>x.label==='ID del movimiento').value,movementId)
+ assert.equal(fields.find(x=>x.label==='Responsable (ID)').value,actor)
+ assert.ok(fields.some(x=>x.label==='Recepción interna (ID)'))
+ assert.ok(fields.some(x=>x.label==='Renglón de compra (ID)'))
+ assert.ok(!fields.some(x=>x.label==='Venta (ID)'))
+ assert.ok(!fields.some(x=>/factura|comprobante de pago/i.test(x.label)))
+})
+
+test('T08-2: trazabilidad de venta y traslado diferencia campos opcionales/null del backend',()=>{
+ const saleFields=movementTraceFields(saleMovement())
+ assert.ok(saleFields.some(x=>x.label==='Venta (ID)'))
+ assert.ok(saleFields.some(x=>x.label==='Renglón de venta (ID)'))
+ assert.ok(!saleFields.some(x=>x.label==='Recepción interna (ID)'))
+ const transferFields=movementTraceFields(transferMovement())
+ assert.ok(transferFields.some(x=>x.label==='Operación de inventario (ID)'))
+ assert.equal(transferFields.find(x=>x.label==='Tipo de operación del servidor').value,'TRASLADO')
+ assert.ok(!transferFields.some(x=>x.label==='Recepción interna (ID)'))
+})
+
+test('T08-2: con 100 movimientos cargados el filtro local no presume consultar páginas futuras',()=>{
+ const rows=Array.from({length:100},(_,i)=>({
+  ...movement(),id:`00000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`,
+ }))
+ assert.equal(filterLoadedHistory(rows,'SALIDAS','',historyLabels).length,0)
+ assert.equal(loadedInventoryCountLabel('movements',rows.length,true),
+  '100 movimientos cargados · Puede haber más páginas.')
+ assert.equal(rows.length,100)
 })
