@@ -12,6 +12,7 @@ import {
 import type { StockBalance, InventoryMovement, InventoryQuery } from './realInventoryGateway.ts'
 import {
   filterLoadedHistory, loadedInventoryCountLabel, loadedMovementCounts, movementTraceFields,
+  loadedHistorySummary, loadedMatchCountLabel,
 } from './inventoryHistoryView.ts'
 import type { LoadedHistoryFilter } from './inventoryHistoryView.ts'
 import { RealTransferPanel } from './RealTransferPanel.tsx'
@@ -292,9 +293,8 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
         <p className="real-auth-note">{loadedInventoryCountLabel(tab,activePage.length,hasMore)}
           {' '}Las cantidades son las registradas por el servidor, no estimaciones desde compras.</p>
         {tab==='movements'&&<p className="real-inventory-history-summary" role="status">
-          En los {movements.length} movimientos cargados: <strong>{historyCounts.entries} entradas</strong> y
-          {' '}<strong>{historyCounts.exits} salidas</strong>.
-          {filteringHistory&&<> Se muestran <strong>{filteredMovements.length}</strong> coincidencias del filtro local.</>}
+          {loadedHistorySummary(movements.length,historyCounts.entries,historyCounts.exits)}
+          {filteringHistory&&<> {loadedMatchCountLabel(filteredMovements.length)}</>}
         </p>}
         {tab==='balances'?
           balances.length===0?<p className="real-inventory-empty">No hay saldos registrados para los filtros seleccionados. Esto no significa que todo el catálogo tenga saldo cero.</p>
