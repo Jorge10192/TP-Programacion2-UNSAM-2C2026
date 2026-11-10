@@ -24,17 +24,17 @@ Construir el POS de ventas REALES en React, integrado con FastAPI y PostgreSQL p
 - No se permite vender cantidades fraccionadas de catálogo con unidades `UNIDAD`, `PAQUETE`, `CAJA` o `SERVICIO`. Se validará tanto en frontend con catálogo completo como en backend.
 - Catálogo puede tener `price_cents=null`, por lo que jamás inventar precio `0` automáticamente ni tomar precio de DEMO. La API existente permite que el comando indique precio; la política de **quién puede editarlo** es la decisión P01, todavía no aprobada para T10.
 
-## 2. Decisión formal P01 — PUERTA ANTES DE HABILITAR POST EN REACT
+## 2. Decisión formal P01 — APROBADA Y APLICADA EN FASTAPI
 
 El plan previo `E2-7_T00_DECISIONES_Y_ORDEN_DE_EJECUCION.md` exige aprobación del responsable para precio/descuerdo por rol. **No asumir que el backend restringe precios por rol:** actualmente sus reglas controlan permiso de venta por empresa/sede, pero toman `unit_price_cents` y `discount_cents` del comando y verifican consistencia.
 
-**Propuesta para aprobación (no vigente aún):**
+**Regla aprobada por el responsable (10/11/2026) y vigente desde T10-P01 en la rama:**
 - Titular administrativo y administrador: pueden modificar precio de la venta, ofrecer descuentos y registrar cualquier método **declarado**.
 - Encargado/trabajador: pueden vender en sus sedes autorizadas a precio del catálogo; **no** pueden cambiar precio unitario ni descontar. Si el catálogo no define precio, no pueden vender ese artículo hasta que un administrador defina precio o autorice una excepción formal.
 - Servicios sin sede: solo titular/admin conforme al backend.
 - Cualquier restricción aprobada deberá implementarse en FastAPI **y** React, con tests de bypass API, no solo ocultando el campo.
 
-**Alternativa legítima:** conservar el comportamiento actual del backend, que permite al personal autorizado elegir precio y descuento, siempre con registro de actor. Elegir cualquiera de estas políticas requiere aprobación del usuario; T10-A se desarrolla sin cambiar ni ejecutar el endpoint POST.
+**Implementación:** FastAPI rechaza con 403 descuentos/precios distintos del catálogo para operarios y 422 artículos sin precio; Titular/Administrador conservan el control. Pruebas con PostgreSQL efímero y regresión de replays aprobadas. Ver [acta P01 y T10-C](E2-7_T10_P01_Y_C_POS_BORRADOR_QA.md). La regla se verificará nuevamente antes de T10-D.
 
 ## 3. Arquitectura de intentos idempotentes (P04)
 
@@ -76,3 +76,8 @@ Antes del primer POST, persistir en IndexedDB por scope **actor + empresa + `sal
 - En cada bloque: Node/TS/Vite/Oxlint; backend Pytest PostgreSQL/migraciones; full-stack REAL y regresión DEMO con datos efímeros.
 - CI T09 antes del merge: 886 backend, 273 frontend, 11 Playwright REAL, 6 DEMO, todos aprobados; se usan como línea base, no como resultado de T10.
 - Este plan es una **iniciación de T10**, no autorización para ventas reales desde el navegador.
+
+
+## Actualización de estado posterior — T10-P01 / T10-C
+
+La política de precios fue **aprobada expresamente** y aplicada en FastAPI con pruebas de bypass, sin crear roles nuevos. Se preparó la ruta de **POS REAL /pos** con carrito, catálogo paginado y resumen; su botón de confirmación permanece **deshabilitado**, sin POST ni journal desde React. Los incrementos de T10-D/E/F siguen pendientes. Ver [acta canónica T10-P01/C](E2-7_T10_P01_Y_C_POS_BORRADOR_QA.md) para las pruebas y límites vigentes; las indicaciones anteriores sobre «P01 pendiente» se conservan como contexto histórico hasta el momento de la aprobación.
