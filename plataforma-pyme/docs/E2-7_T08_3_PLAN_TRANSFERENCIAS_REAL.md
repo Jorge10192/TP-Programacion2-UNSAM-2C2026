@@ -113,12 +113,12 @@ T08-5 consolidará QA full-stack real/DEMO y preparación de merge único de T08
 
 ### CI y pruebas
 
-GitHub Actions [#42855154846](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42855154846), commit de implementación `cee2b67d`:
+GitHub Actions [#42855668226](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42855668226), commit de implementación `7dc23ba`: **ambos jobs SUCCESS**.
 
 - **Frontend: SUCCESS:** `npm ci`, `npm run build`, `npm run lint` **0 warnings y 0 errors**.
 - **Tests frontend: 204/204 aprobadas** (14 pruebas nuevas en `test:transfer-real` y 190 preexistentes); **test:inventory-real 25/25** sin regresión.
-- Se conserva el aviso Vite por chunk JavaScript mayor de 500 kB, sin modificar umbrales ni silenciar. Se corrigió además el formulario para limpiar el destino al cambiar de origen, y se distingue respuesta GET inválida (solo lectura) de POST exitoso con DTO inválido (resultado incierto: conservar el intento); estos casos están probados.
-- **Chromium:** verificar su resultado final en el mismo run; sus recorridos actuales son **DEMO**, no pruebas full-stack de POST transferencias con PostgreSQL.
+- Se conserva el aviso Vite por chunk JavaScript mayor de 500 kB, sin modificar umbrales ni silenciar. Se corrigió además el formulario para limpiar el destino al cambiar de origen y bloquear el botón durante la reserva de identidad en IndexedDB. También se distingue respuesta GET inválida (solo lectura) de POST exitoso con DTO inválido (resultado incierto: conservar el intento); estos casos están probados.
+- **Chromium escritorio y móvil: SUCCESS**. Sus recorridos actuales son **DEMO**, no pruebas full-stack de POST transferencias con PostgreSQL.
 - Pruebas T08-3 incluyen: POST Bearer e Idempotency-Key, 200 replay, GET histórico, validación de unidades y motivo, dos movimientos con actor/sede/ID compartidos, HTTP 401/403/404/409/422, timeout/red incierta, conservación de clave tras F5, aislamiento de actor/tenant y rechazo cerrado de registro corrupto y de nuevo cuerpo.
 - Una ejecución anterior detectó un test que esperaba rechazo de salto de línea en motivo; se corrigió porque el backend normaliza espacios y saltos de línea. La última ejecución de frontend está aprobada.
 
