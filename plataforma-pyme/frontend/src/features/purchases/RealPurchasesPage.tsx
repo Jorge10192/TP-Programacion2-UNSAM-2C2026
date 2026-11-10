@@ -6,7 +6,7 @@ import type { RealBusiness } from '../businesses/businessGateway.ts'
 import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
 import { createCatalogGateway, centsToPesos } from '../catalog/realCatalogGateway.ts'
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
-import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents,
+import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents, purchaseStatusPresentation,
   supplyErrorMessage, validatePurchase } from './realSupplyGateway.ts'
 import type { Purchase, NewPurchase, Supplier, PurchaseLineInput } from './realSupplyGateway.ts'
 import { pendingScope, supplyJournal, PendingConflictError, PendingStorageError, newPurchaseIntent, newReceiptIntent } from './supplyPendingJournal.ts'
@@ -270,14 +270,14 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
    {loading&&<p role="status">Consultando proveedores, catálogo, compras y ubicaciones…</p>}
    {!loading&&purchases.length===0&&<div className="real-business-empty">Todavía no hay compras reales en esta empresa.</div>}
    <div className="real-supply-list">
-     {purchases.map(p=><article key={p.id} className="real-supply-card">
-       <div className="real-catalog-tile-header"><strong>{p.reference||'Compra '+p.id.slice(0,8)}</strong><span className="real-catalog-status real-catalog-active">{p.status.replaceAll('_',' ')}</span></div>
+     {purchases.map(p=>{const visualState=purchaseStatusPresentation(p.status);return <article key={p.id} className="real-supply-card">
+       <div className="real-catalog-tile-header"><strong>{p.reference||'Compra '+p.id.slice(0,8)}</strong><span className={"real-catalog-status "+(visualState.tone==="pending"?"real-supply-pending-status":visualState.tone==="confirmed"?"real-catalog-active":"real-supply-neutral-status")}>{visualState.label}</span></div>
        <small>{p.purchased_on} · Proveedor: {p.supplier_name_snapshot||'Sin proveedor'} · {p.lines.length} renglones</small>
        <strong className="real-supply-total">{money(p.total_cents)}</strong>
        <ul>{p.lines.map(l=><li key={l.id}>{l.description_snapshot} — {milliToDecimal(l.quantity_milli)} {l.unit_snapshot} × {money(l.unit_cost_cents)} = {money(l.line_total_cents)}</li>)}</ul>
-       {p.status==='REGISTRADA'&&canReceive&&<button className="real-auth-secondary" type="button" disabled={busy||loading} onClick={()=>void beginReceipt(p.id)}>Confirmar recepción en ubicación</button>}
+       {p.status==='REGISTRADA'&&canReceive&&<button className="real-auth-secondary real-supply-pending-action" type="button" disabled={busy||loading} onClick={()=>void beginReceipt(p.id)}>Pendiente · Confirmar recepción en ubicación</button>}
        {p.status==='RECIBIDA'&&<button className="real-auth-secondary" type="button" disabled={busy||loading} onClick={()=>void checkReceipt(p.id)}>Consultar comprobante</button>}
-     </article>)}
+     </article>})}
    </div>
    {hasMore&&<button type="button" className="real-auth-secondary" disabled={loading||busy} onClick={()=>void more('purchases')}>Cargar 100 compras más</button>}
    {receiptFor&&selected&&<section className="real-ops-subpanel">
@@ -291,7 +291,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
      </label>
      {pendingReceipt&&<p className="real-ops-warning">Recepción pendiente recuperada con clave original. Consultá primero si se confirmó antes de repetir.</p>}
      <div className="real-auth-actions">
-       <button className="real-auth-primary" type="button" disabled={busy||!locationId} onClick={()=>void sendReceipt()}>{busy?'Procesando…':pendingReceipt?'Reintentar MISMA recepción':'Confirmar recepción REAL'}</button>
+       <button className="real-auth-primary real-supply-confirm-action" type="button" disabled={busy||!locationId} onClick={()=>void sendReceipt()}>{busy?'Procesando…':pendingReceipt?'Reintentar MISMA recepción':'Confirmar recepción REAL'}</button>
        <button className="real-auth-secondary" type="button" disabled={busy} onClick={()=>void checkReceipt()}>Consultar comprobante</button>
        <button className="real-auth-secondary" type="button" disabled={busy} onClick={()=>setReceiptFor(null)}>Cerrar</button>
      </div>
