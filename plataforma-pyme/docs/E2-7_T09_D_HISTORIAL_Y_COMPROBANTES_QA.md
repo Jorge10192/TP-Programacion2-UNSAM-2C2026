@@ -1,6 +1,6 @@
 # E2-7 · T09-D — Historial y comprobantes de ventas REALES
 
-**Rama:** `feature/e2-7-t09-consulta-recuperacion-ventas`. **Estado:** T09-D implementado y **QA automática aprobada**, pendiente ronda manual visual en Windows. **Commit funcional validado:** `abf70a80f1293b69cad6a333f022503dd9574694`. **PR #42:** borrador, sin merge a `main`.
+**Rama:** `feature/e2-7-t09-consulta-recuperacion-ventas`. **Estado actualizado:** T09-D aprobó CI y la **ronda manual de estado vacío en TEST Empresa A** el 10/11/2026; los recorridos manuales con comprobantes cargados siguen **no ejecutados** en la base local. **Este archivo conserva evidencia histórica del commit `abf70a80`; el acta de aceptación posterior y canónica es [T09-D Historial de ventas REALES](E2-7_T09_D_HISTORIAL_VENTAS_REALES_QA.md).** T09-E también aprobó posteriormente sus pruebas con PostgreSQL descartable. **PR #42:** borrador, sin merge a `main`.
 
 ## Objetivo funcional
 
@@ -50,7 +50,7 @@ La suite del browser exige `PYME_DISPOSABLE_QA=1`, FastAPI `127.0.0.1:18001` y P
 ## Pendientes y alcance
 
 - **T09-D** incluye consulta de historial; no incluye POS real ni pagos externos, que se harán en T10.
-- **T09-E** debe certificar formalmente pérdida de respuesta POST 201 y recuperación GET con misma identidad + sin dobles efectos en ventas, con PostgreSQL temporal.
+- **T09-E (actualizado):** pérdida de respuesta POST 201, recuperación GET, replay idempotente y no duplicación **certificados en Playwright REAL con PostgreSQL temporal**. Ver [acta T09-E](E2-7_T09_E_RECUPERACION_VENTAS_IDEMPOTENCIA_QA.md).
 - **T09-F** consolidará QA manual, auditoría final y cierre académico antes de pedir permiso de merge del PR #42.
 
 **Este documento no autoriza fusión a `main`.** Los resultados de CI que aún no están confirmados deben permanecer como pendientes, no como aprobados.
@@ -63,6 +63,6 @@ La suite del browser exige `PYME_DISPOSABLE_QA=1`, FastAPI `127.0.0.1:18001` y P
 - Playwright REAL: **5/5** (4 regresiones T08 y 1 recorrido nuevo T09-D de ventas por ID/solicitud tras F5 y cero POST del navegador). Playwright DEMO: **6/6**.
 - Backend Python 3.12 y Python 3.14 en la misma versión de código: éxito; imagen Docker/liveness: éxito.
 - Falla previa de CI `d9045d8`: la prueba antigua T09-A exigía que el gateway tuviera solo `get`; al implementar `list` y `byRequest`, su expectativa quedó obsoleta. Corregida en `abf70a8`; la suite integral volvió a aprobar. No fue falla de stock ni de permisos.
-- **Evidencia local:** aún no consta ejecución manual de la pantalla en el equipo del usuario; no marcar ese checklist como completado hasta recibir resultados/capturas.
+- **Evidencia local, actualización posterior:** la captura del usuario confirmó TEST Empresa A como titular administrativo, acceso REAL, solo lectura y lista vacía sin error. Está documentada en el [acta manual T09-D](E2-7_T09_D_HISTORIAL_VENTAS_REALES_QA.md). No hay evidencia manual local de apertura de un comprobante real con líneas y pagos.
 
-**Dictamen:** T09-D superó QA automática. Se habilita ronda manual **de solo lectura**; no realizar nuevas ventas en la base local para demostrar esta pantalla. T09-E/F quedan pendientes.
+**Dictamen actualizado:** T09-D **aprobado técnicamente**, con aceptación manual de consulta vacía en el entorno local. T09-E **aprobado en CI** y T09-F en auditoría. Los recorridos de ventas con datos y pérdida de respuesta no se marcarán como realizados manualmente. No generar ventas en la base local para demostrar esta pantalla.
