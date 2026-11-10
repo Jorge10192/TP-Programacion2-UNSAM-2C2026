@@ -9,7 +9,7 @@ import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
 import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents,
   supplyErrorMessage, validatePurchase } from './realSupplyGateway.ts'
 import type { Purchase, NewPurchase, Supplier, PurchaseLineInput } from './realSupplyGateway.ts'
-import { pendingScope, supplyJournal, PendingConflictError, PendingStorageError } from './supplyPendingJournal.ts'
+import { pendingScope, supplyJournal, PendingConflictError, PendingStorageError, newPurchaseIntent, newReceiptIntent } from './supplyPendingJournal.ts'
 import type { SupplyPending } from './supplyPendingJournal.ts'
 type Props={token:string;userId:string;businessId:string;onNavigate:(path:string)=>void;onUnauthorized:()=>void}
 type DraftLine={catalogId:string;description:string;quantity:string;unitCost:string}
@@ -147,9 +147,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
    if(!consent){setError('Debés autorizar guardar la intención comercial en IndexedDB.');return}
    let body:NewPurchase
    try{body=pending?.body??buildPurchase()}catch(err){failed(err);return}
-   const intent:Extract<SupplyPending,{kind:'purchase.create'}>=pending??{
-     scope:purchaseScope,actorId:userId,businessId,kind:'purchase.create',
-     key:crypto.randomUUID(),body,createdAt:new Date().toISOString()}
+   const intent:Extract<SupplyPending,{kind:'purchase.create'}>=pending??newPurchaseIntent(userId,businessId,body)
    setBusy(true);setError('');setNotice('')
    try{
      await supplyJournal.reserve(intent)
@@ -187,10 +185,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
  async function sendReceipt(){
    if(!receiptFor||!canReceive||busy||loading)return
    if(!window.confirm('Confirmar recepción COMPLETA de la compra en la ubicación elegida. Esta acción incrementa stock real en PostgreSQL y no admite recepción parcial. ¿Continuar?'))return
-   const scope=pendingScope(userId,businessId,'purchase.receive',receiptFor)
-   const intent:Extract<SupplyPending,{kind:'purchase.receive'}>=pendingReceipt??{
-     scope,actorId:userId,businessId,purchaseId:receiptFor,kind:'purchase.receive',
-     key:crypto.randomUUID(),body:{location_id:locationId},createdAt:new Date().toISOString()}
+   const intent:Extract<SupplyPending,{kind:'purchase.receive'}>=pendingReceipt??newReceiptIntent(userId,businessId,receiptFor,locationId)
    if(!activeSites.some(x=>x.id===intent.body.location_id)){
      setError('La sede elegida está pausada, fuera del tenant o no permite stock.');return
    }
