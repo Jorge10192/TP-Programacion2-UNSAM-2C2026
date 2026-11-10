@@ -24,7 +24,7 @@
 3. **Playwright T09-D REAL:** con `PYME_DISPOSABLE_QA=1` únicamente, crea fixtures efímeros en PostgreSQL de CI; abre el historial de dos sedes, filtra, consulta un comprobante y lo recupera por `request_id`; verifica **cero POST a ventas desde la interfaz**. Segundo caso en viewport móvil y después de F5/login. No ejecutar contra bases locales con datos del usuario.
 4. **Backend T09-C (ya validado):** 886 pruebas en PostgreSQL con matriz rol/sede, revocación, filtros SQL y paginación; se repiten como regresión en este incremento.
 
-**Evidencia de CI:** pendiente de registrar el run final del commit de T09-D. No marcar T09-D aprobado antes de que la CI finalice y se inspeccionen las nuevas pruebas Playwright.
+**Evidencia de CI (APROBADA):** [run integral #42907187715](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42907187715), commit de código/documentación `b60c1969d58a0d18e3c91cb34d40680208c359f3`, **SUCCESS**: PostgreSQL **886/886** (2 warnings de Pytest, no bloqueantes), frontend **272/272**, build y lint limpios, Playwright **7/7 REAL** (incluidos tres escenarios T09-D de lectura/recuperación y los cuatro de inventario), **6/6 DEMO**. [Backend independiente #42907187818](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42907187818) pasó en Python 3.12 y 3.14 con Docker/liveness. [Frontend #42907187572](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42907187572) pasó frontend y Chromium DEMO. **Resultado técnico T09-D: aprobado en CI; la aceptación manual local sigue pendiente.**
 
 ## Guía de QA manual NO MUTANTE (a ejecutar en frontend local)
 
