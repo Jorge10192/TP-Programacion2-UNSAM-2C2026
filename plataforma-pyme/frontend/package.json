@@ -31,7 +31,8 @@
     "test:adjustment-real": "node --test tests/adjustment-real-api.test.mjs",
     "test:sales-real-read": "node --test tests/sales-real-read-api.test.mjs",
     "test:sales-real-command": "node --test tests/sales-real-command.test.mjs",
-    "test:sales-real-pending": "node --test tests/sales-real-pending.test.mjs"
+    "test:sales-real-pending": "node --test tests/sales-real-pending.test.mjs",
+    "test:sales-real-write": "node --test tests/sales-real-write-coordinator.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
