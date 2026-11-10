@@ -60,6 +60,22 @@ export function loadedInventoryCountLabel(
   return `${count} ${noun} · ${hasMore ? 'Puede haber más páginas' : 'Última página consultada'}.`
 }
 
+/** A human-readable count of loaded movements only, never tenant-wide totals. */
+export function loadedHistorySummary(total:number, entries:number, exits:number):string {
+  if (![total,entries,exits].every(n=>Number.isSafeInteger(n)&&n>=0)
+    || entries+exits>total)throw new RangeError('Recuento de movimientos inválido')
+  const countNoun=(n:number,singular:string,plural:string)=>n===1?singular:plural
+  const prefix=total===0?'No hay movimientos cargados:'
+    :total===1?'En el movimiento cargado:'
+    :`En los ${total} movimientos cargados:`
+  return `${prefix} ${entries} ${countNoun(entries,'entrada','entradas')} y ${exits} ${countNoun(exits,'salida','salidas')}.`
+}
+
+export function loadedMatchCountLabel(count:number):string {
+  if (!Number.isSafeInteger(count)||count<0)throw new RangeError('Recuento inválido')
+  return `Se ${count===1?'muestra':'muestran'} ${count} ${count===1?'coincidencia':'coincidencias'} del filtro local.`
+}
+
 /** Traceable identifiers from the REAL ledger (not invoices or arbitrary client links). */
 export function movementTraceFields(record: InventoryMovement): {label: string; value: string}[] {
   const fields = [
