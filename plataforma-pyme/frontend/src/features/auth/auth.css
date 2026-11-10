@@ -141,3 +141,7 @@
 .real-supply-quantities{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .real-supply-line .real-auth-secondary{justify-self:start}
 @media(max-width:650px){.real-supply-quantities{grid-template-columns:1fr}.real-supply-card{padding:15px}}
+
+/* T07: reference cost is a suggestion, not the immutable purchase-line cost. */
+.real-supply-cost-hint{margin:0;font-size:12px;line-height:1.55;color:#466385}
+.real-supply-cost-warning{margin:0;font-size:12px;line-height:1.6;color:#9b5d1e;font-weight:650}
