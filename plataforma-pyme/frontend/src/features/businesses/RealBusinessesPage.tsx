@@ -48,14 +48,7 @@ export function RealBusinessesPage({
     // Abort reads on tenant change; ignore late responses from the previous tenant.
     const controller = new AbortController()
     const runId = ++requestGeneration.current
-    if (route.kind === 'create') {
-      setLoading(false)
-      return () => { controller.abort() }
-    }
-    setLoading(true)
-    setError('')
-    setItems(null)
-    setSelected(null)
+    if (route.kind === 'create') return () => { controller.abort() }
     const promise = businessId === null
       ? gateway.list(controller.signal)
       : gateway.get(businessId, controller.signal)
@@ -74,7 +67,7 @@ export function RealBusinessesPage({
       if (!controller.signal.aborted && runId === requestGeneration.current) setLoading(false)
     })
     return () => { controller.abort() }
-  }, [gateway, route.kind, businessId])
+  }, [gateway, route.kind, businessId, onUnauthorized])
 
   function normalize(input: NewBusiness): NewBusiness {
     return { name: input.name.trim(), category: input.category.trim(), activity_kind: input.activity_kind }
