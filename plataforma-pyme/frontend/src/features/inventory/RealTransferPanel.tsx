@@ -77,8 +77,8 @@ export function RealTransferPanel({token,actorId,business,locations,catalog,onUn
   return ()=>{controller.abort()}
  },[balanceGateway,source,article,selectedSource,selectedItem,onUnauthorized,balanceRefresh])
 
- function changeArticle(id:string){setArticle(id);setBalance(null);setBalanceLoading(true);setBalanceError('');setNotice('')}
- function changeSource(id:string){setSource(id);setBalance(null);setBalanceLoading(true);setBalanceError('');setNotice('')}
+ function changeArticle(id:string){setArticle(id);setBalance(null);setBalanceLoading(!!id&&!!source);setBalanceError('');setNotice('')}
+ function changeSource(id:string){setSource(id);setDestination('');setBalance(null);setBalanceLoading(!!id&&!!article);setBalanceError('');setNotice('')}
  function refreshBalance(){
   setBalance(null);setBalanceLoading(true);setBalanceError('')
   setBalanceRefresh(x=>x+1)
