@@ -1,6 +1,6 @@
 # E2-7 T07 — Integración REAL de proveedores, compras y recepción
 
-**Estado:** implementación sujeta a CI y QA manual en PostgreSQL; PR borrador, no fusionar prematuramente.  
+**Estado:** revisión de cierre incremental aprobada técnicamente el 10/11/2026; se conserva trazabilidad de QA pendiente para T11. Consultar `E2-7_T07_CIERRE_REVISION_Y_PRUEBAS.md` antes de fusionar.  
 **Rama:** `feature/e2-7-t07-proveedores-compras-recepcion`  
 **Base:** `main` `fed4f8282fed964cdfb00bf96c07a5ab71e7eb75` (T06 integrado).
 
@@ -128,7 +128,7 @@ No fusionar T07 sin CI aprobado, tests locales, creación de proveedor, document
 
 **Confirmado con capturas compartidas por el usuario (10/11/2026):** Empresa A muestra botones de proveedores y compras REAL; `Proveedor A T07` se creó, desactivó y reactivó; una compra de **2 UNIDAD × $2.000,00 = $4.000,00** se registró sin stock, después se confirmó como **RECIBIDA** con 1 movimiento real de stock; la lectura posterior del comprobante confirmó recepción en una sede, sin reenvío del POST. La señal 404 transitoria que había aparecido no volvió a presentarse en la última lectura.
 
-**Pendiente:** comprobaciones manuales de T07-06 a T07-15 sobre roles, otras empresas, F5/replay, conceptos y paginación extensa; QA visual del costo propuesto T07-16 a T07-20 tras incorporar este cambio; y estado final de CI del último commit. No declarar T07 fusionado ni completo sin esas evidencias.
+**Actualización de cierre del 10/11/2026:** los casos centrales descritos anteriormente fueron completados y están registrados en las secciones 9–16. El informe `E2-7_T07_CIERRE_REVISION_Y_PRUEBAS.md` presenta las 165 pruebas frontend aprobadas en CI, 6 recorridos Chromium DEMO, evidencia manual con PostgreSQL, limitaciones del alcance y criterios adicionales trasladados a T11. No confundir esta conformidad del incremento T07 con el cierre de toda la integración E2-7.
 
 **Integración posterior:** el módulo T08 deberá usar entradas de recepción y balances reales, sin inferir stocks a partir de costos de referencia. Los reportes posteriores deberán distinguir `reference_cost_cents` vigente de `unit_cost_cents` histórico por compra. Esta regla se transmite a la documentación de cierre T12 y a cualquier UI que integre compras/catálogo.
 
