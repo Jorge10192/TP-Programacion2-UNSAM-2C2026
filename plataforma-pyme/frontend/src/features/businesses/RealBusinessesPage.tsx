@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
-import { businessIntentJournal, intentIsOld } from '../pending/businessIntentJournal.ts'
+import { businessIntentJournal, intentIsOld, JournalConflictError, JournalUnavailableError } from '../pending/businessIntentJournal.ts'
 import {
   businessErrorMessage, canEditBusiness, createBusinessGateway,
 } from './businessGateway.ts'
@@ -148,9 +148,13 @@ export function RealBusinessesPage({
       // Even a malformed 201 response can follow a successful database commit.
       const ambiguous = err instanceof ApiTransportError
         || (err instanceof ApiHttpError && (err.status === 409 || err.status >= 500))
-      setError(ambiguous
-        ? 'No podemos confirmar el resultado. Revisá «Mis empresas» antes de repetir. Si corresponde, reintentá con la MISMA clave y los MISMOS datos, incluso después de F5.'
-        : businessErrorMessage(err))
+      setError(err instanceof JournalUnavailableError
+        ? 'No se pudo guardar el intento en este navegador: NO enviamos la creación a FastAPI. Revisá la disponibilidad de IndexedDB.'
+        : err instanceof JournalConflictError
+          ? 'Ya existe un intento guardado con otra clave o contenido. No enviamos un POST nuevo: revisá la solicitud pendiente.'
+          : ambiguous
+            ? 'No podemos confirmar el resultado. Revisá «Mis empresas» antes de repetir. Si corresponde, reintentá con la MISMA clave y los MISMOS datos, incluso después de F5.'
+            : businessErrorMessage(err))
     } finally {
       if (mutationId === mutationGeneration.current) setBusy(false)
     }
