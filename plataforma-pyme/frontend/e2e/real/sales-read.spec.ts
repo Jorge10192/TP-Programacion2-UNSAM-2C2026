@@ -107,16 +107,22 @@ test('T09-D móvil REAL: historial sin operaciones y recuperación posterior a F
 
 test('T09-F navegador: error 503 de historial permite reintentar GET sin POST de venta', async ({ page, request }) => {
   const fixture = await seed(request)
-  let injected = false
+  // React StrictMode puede montar dos veces: mantener el 503 hasta que
+  // el usuario pulse Reintentar, en vez de fallar sólo la primera petición.
+  let failMode = true
+  let injections = 0
   let uiSalePosts = 0
   page.on('request', req => {
     if (req.method() === 'POST' && req.url().includes('/api/v1/businesses/') &&
       req.url().includes('/sales')) uiSalePosts++
   })
-  await page.route('**/businesses/' + fixture.company.id + '/sales?*', async route => {
+  await page.route(url =>
+    url.pathname === '/api/v1/businesses/' + fixture.company.id + '/sales' &&
+    url.searchParams.has('offset'),
+  async route => {
     if (route.request().method() !== 'GET') return route.continue()
-    if (!injected) {
-      injected = true
+    if (failMode) {
+      injections++
       return route.fulfill({
         status: 503, contentType: 'application/json',
         body: JSON.stringify({ detail: 'API temporalmente no disponible' }),
@@ -127,9 +133,10 @@ test('T09-F navegador: error 503 de historial permite reintentar GET sin POST de
   await open(page, fixture)
   await expect(page.getByText('Error al consultar')).toBeVisible()
   await expect(page.getByRole('alert')).toContainText('FastAPI no pudo consultar el comprobante')
+  failMode = false
   await page.getByRole('button', { name: 'Reintentar consulta' }).click()
   await expect(page.locator('.real-sales-row')).toHaveCount(2)
   await expect(page.getByText('Fin del listado consultado')).toBeVisible()
-  expect(injected).toBe(true)
+  expect(injections).toBeGreaterThan(0)
   expect(uiSalePosts).toBe(0)
 })
