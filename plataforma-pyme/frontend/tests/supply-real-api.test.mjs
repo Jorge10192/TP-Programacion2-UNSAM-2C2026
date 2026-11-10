@@ -4,7 +4,7 @@ import { ApiHttpError, ApiTransportError } from '../src/api/httpClient.ts'
 import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents, priceInputCents,
   validatePurchase, parsePurchase, parseReceipt, parseSupplier } from '../src/features/purchases/realSupplyGateway.ts'
 import { createPendingJournal, pendingScope, PendingConflictError, parsePending, newPurchaseIntent, newReceiptIntent } from '../src/features/purchases/supplyPendingJournal.ts'
-import { suggestedUnitCost, costExceedsSalePrice } from '../src/features/purchases/purchaseCostProposal.ts'
+import { suggestedUnitCost, costExceedsSalePrice, previewLineTotalCents, previewPurchaseTotalCents, unitCostFromExactLineTotal } from '../src/features/purchases/purchaseCostProposal.ts'
 
 const A='e5a347a3-d8e9-4a1a-9f51-72b1b2539c67',B='713fa8a7-5c21-4c3b-9b39-ade992cf8df2'
 const actor='a49e944c-e8f9-4794-b2c1-8c5524c1bbd6'
@@ -245,4 +245,48 @@ test('costo mayor a venta advierte sin bloquear; igual, menor, nulo o inválido 
   assert.equal(costExceedsSalePrice('2000',{reference_cost_cents:null,price_cents:null}),false)
   assert.equal(costExceedsSalePrice('',article),false)
   assert.equal(costExceedsSalePrice('1.000,00',article),false)
+})
+
+test('subtotal por renglón se calcula con el mismo HALF_UP del backend',()=>{
+  assert.equal(previewLineTotalCents('4','800,00'),320000)
+  assert.equal(previewLineTotalCents('2','2000'),400000)
+  assert.equal(previewLineTotalCents('0,001','0,01'),0)
+  assert.equal(previewLineTotalCents('0','800'),null)
+  assert.equal(previewLineTotalCents('4',''),null)
+})
+
+test('total general suma los subtotales en centavos, no multiplica floats',()=>{
+  assert.equal(previewPurchaseTotalCents([{quantity:'4',unitCost:'800,00'},{quantity:'2',unitCost:'2000'}]),720000)
+  assert.equal(previewPurchaseTotalCents([{quantity:'0,500',unitCost:'0,03'},{quantity:'0,500',unitCost:'0,03'}]),4)
+  assert.equal(previewPurchaseTotalCents([]),null)
+  assert.equal(previewPurchaseTotalCents([{quantity:'2',unitCost:''}]),null)
+  assert.equal(previewPurchaseTotalCents([{quantity:'1',unitCost:'999999999,99'},{quantity:'1',unitCost:'0,01'}]),null)
+})
+
+test('edición por importe total recalcula unitario exacto y conserva el subtotal',()=>{
+  assert.equal(unitCostFromExactLineTotal('4','3200'), '800,00')
+  assert.equal(unitCostFromExactLineTotal('4','12000'), '3000,00')
+  assert.equal(unitCostFromExactLineTotal('3','10,02'), '3,34')
+  assert.equal(unitCostFromExactLineTotal('0,001','0,01'), '10,00')
+  const calculated=unitCostFromExactLineTotal('4','12000')
+  assert.equal(previewLineTotalCents('4',calculated),1_200_000)
+})
+
+test('no se acepta total imposible de representar con costo unitario en centavos',()=>{
+  assert.throws(()=>unitCostFromExactLineTotal('3','10,00'),/no puede representarse exactamente/)
+  assert.throws(()=>unitCostFromExactLineTotal('0','100'),RangeError)
+  assert.throws(()=>unitCostFromExactLineTotal('3',''),RangeError)
+  assert.throws(()=>unitCostFromExactLineTotal('3','-1'),RangeError)
+  assert.throws(()=>unitCostFromExactLineTotal('0,001','999999999,99'),RangeError)
+})
+
+test('la conversión por total solo construye unit_cost_cents, sin cambiar catálogo ni identidad del pendiente',()=>{
+  const selectedCatalog={reference_cost_cents:80000,price_cents:150000}
+  const adjustedUnit=unitCostFromExactLineTotal('2','4000,00')
+  assert.equal(adjustedUnit,'2000,00')
+  const changed={...body,lines:[{...body.lines[0],unit_cost_cents:priceInputCents(adjustedUnit)}]}
+  validatePurchase(changed)
+  assert.equal(lineTotalCents(changed.lines[0].quantity_milli,changed.lines[0].unit_cost_cents),400000)
+  assert.equal(selectedCatalog.reference_cost_cents,80000)
+  assert.equal(changed.lines[0].catalog_item_id,item)
 })
