@@ -2,13 +2,26 @@ import { ApiHttpError, ApiTransportError, createApiClient } from '../../api/http
 import { UUID_PATTERN, UUID_V4_PATTERN } from '../businesses/businessGateway.ts'
 
 /**
- * T09-A: lectura del contrato EXISTENTE E2-6: GET /businesses/{id}/sales/{sale_id}.
- * No inventa GET /sales ni búsqueda por request_id (pendientes de P02/P03).
- * No utiliza DEMO, no crea ventas ni registra tokens en almacenamiento.
+ * E2-7 T09: consultas REALES sin escrituras ni DEMO fallback.
+ * Los tres endpoints están respaldados por FastAPI y filtrados por rol/sede en SQL.
+ * No realiza POST y nunca persiste el token.
  */
 export type SaleKind = 'BIEN' | 'SERVICIO'
 export type DeclaredPaymentMethod =
   'EFECTIVO' | 'TRANSFERENCIA' | 'CUENTA_DNI' | 'TARJETA' | 'MERCADO_PAGO_DECLARADO'
+
+export type SaleSummary = {
+  id: string
+  business_id: string
+  location_id: string | null
+  request_id: string
+  status: 'CONFIRMADA'
+  total_cents: number
+  created_by_id: string
+  created_at: string
+}
+export const SALES_PAGE_SIZE = 50
+export type SaleListFilters = { locationId?: string }
 
 export type SaleLine = {
   id: string
@@ -155,6 +168,34 @@ export function parseSaleReceipt(value: unknown, businessId: string): SaleReceip
   }
 }
 
+/** List returns only compact summaries. Full payment details require authorized GET by ID. */
+export function parseSaleSummary(value: unknown, businessId: string): SaleSummary {
+  if (!obj(value) || !uuid(value.id) || value.business_id !== businessId ||
+    !(value.location_id === null || uuid(value.location_id)) ||
+    !uuid(value.request_id) || value.status !== 'CONFIRMADA' ||
+    !integer(value.total_cents, 1, MAX_CENTS) || !uuid(value.created_by_id) ||
+    !validDate(value.created_at)) return invalid()
+  return {
+    id: value.id, business_id: businessId, location_id: value.location_id,
+    request_id: value.request_id, status: 'CONFIRMADA',
+    total_cents: value.total_cents, created_by_id: value.created_by_id,
+    created_at: value.created_at,
+  }
+}
+
+export function parseSaleSummaryList(value: unknown, businessId: string): SaleSummary[] {
+  if (!Array.isArray(value) || value.length > 100) return invalid()
+  const rows = value.map(item => parseSaleSummary(item, businessId))
+  noRepeatedRecords(rows, row => row.id)
+  // Backend promises newest first and deterministic tie-breaker.
+  for (let i = 1; i < rows.length; i++) {
+    const prev = rows[i - 1], curr = rows[i]
+    if (Date.parse(prev.created_at) < Date.parse(curr.created_at) ||
+      (Date.parse(prev.created_at) === Date.parse(curr.created_at) && prev.id < curr.id)) invalid()
+  }
+  return rows
+}
+
 export function createSalesReadGateway(
   token: string, businessId: string, fetchImpl?: typeof fetch,
 ) {
@@ -162,13 +203,37 @@ export function createSalesReadGateway(
     throw new TypeError('Se requiere sesión y empresa REAL válidas')
   const api = createApiClient({ getAccessToken: () => token, fetchImpl })
   return {
-    /** Only an existing GET by sale UUID. This is NOT GET by request_id. */
+    async list(offset = 0, limit = SALES_PAGE_SIZE, filters: SaleListFilters = {},
+               signal?: AbortSignal): Promise<SaleSummary[]> {
+      if (!Number.isSafeInteger(offset) || offset < 0 ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+        throw new TypeError('Paginación de ventas inválida')
+      if (filters.locationId !== undefined && !UUID_PATTERN.test(filters.locationId))
+        throw new TypeError('Sede inválida para filtrar ventas')
+      const params = new URLSearchParams({ offset: String(offset), limit: String(limit) })
+      if (filters.locationId) params.set('location_id', filters.locationId)
+      return parseSaleSummaryList(await api.request<unknown>(
+        '/businesses/' + businessId + '/sales?' + params, { signal },
+      ), businessId)
+    },
+    async byRequest(requestId: string, signal?: AbortSignal): Promise<SaleReceipt> {
+      if (!UUID_V4_PATTERN.test(requestId)) throw new TypeError('Clave de solicitud inválida')
+      const raw = await api.request<unknown>(
+        '/businesses/' + businessId + '/sales/by-request/' + requestId, { signal },
+      )
+      const receipt = parseSaleReceipt(raw, businessId)
+      if (receipt.request_id !== requestId) return invalid()
+      return receipt
+    },
+    /** Historical GET by sale UUID; no writes and no implicit retries. */
     async get(saleId: string, signal?: AbortSignal): Promise<SaleReceipt> {
       if (!UUID_PATTERN.test(saleId)) throw new TypeError('ID de venta inválido')
       const raw = await api.request<unknown>(
         '/businesses/' + businessId + '/sales/' + saleId, { signal },
       )
-      return parseSaleReceipt(raw, businessId)
+      const receipt = parseSaleReceipt(raw, businessId)
+      if (receipt.id !== saleId) return invalid()
+      return receipt
     },
   }
 }
