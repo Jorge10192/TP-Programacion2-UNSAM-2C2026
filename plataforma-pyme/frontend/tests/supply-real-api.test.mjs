@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { ApiHttpError, ApiTransportError } from '../src/api/httpClient.ts'
 import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents,
   validatePurchase, parsePurchase, parseReceipt, parseSupplier } from '../src/features/purchases/realSupplyGateway.ts'
-import { createPendingJournal, pendingScope, PendingConflictError, parsePending } from '../src/features/purchases/supplyPendingJournal.ts'
+import { createPendingJournal, pendingScope, PendingConflictError, parsePending, newPurchaseIntent, newReceiptIntent } from '../src/features/purchases/supplyPendingJournal.ts'
 
 const A='e5a347a3-d8e9-4a1a-9f51-72b1b2539c67',B='713fa8a7-5c21-4c3b-9b39-ade992cf8df2'
 const actor='a49e944c-e8f9-4794-b2c1-8c5524c1bbd6'
@@ -190,4 +190,21 @@ test('journal rechaza datos corruptos o secretos',()=>{
  assert.throws(()=>parsePending({...a,token:'Bearer'},a.scope),PendingConflictError)
  assert.throws(()=>parsePending({...a,body:{...body,password:'123'}},a.scope),PendingConflictError)
  assert.throws(()=>pendingScope('demo',A,'purchase.create'),TypeError)
+})
+
+test('factory de compra crea clave, fecha y scope válidos fuera de render; reintentos se restauran',()=>{
+  const intent=newPurchaseIntent(actor,A,body)
+  assert.match(intent.key,/^[0-9a-f-]{36}$/)
+  assert.equal(intent.createdAt.length,24)
+  assert.equal(intent.scope,pendingScope(actor,A,'purchase.create'))
+  assert.deepEqual(parsePending(intent,intent.scope),intent)
+  assert.deepEqual(intent.body,body)
+})
+
+test('factory de recepción crea identidad por compra y ubicación sin efectos de stock',()=>{
+  const intent=newReceiptIntent(actor,A,id,site)
+  assert.equal(intent.kind,'purchase.receive')
+  assert.equal(intent.body.location_id,site)
+  assert.equal(intent.scope,pendingScope(actor,A,'purchase.receive',id))
+  assert.deepEqual(parsePending(intent,intent.scope),intent)
 })
