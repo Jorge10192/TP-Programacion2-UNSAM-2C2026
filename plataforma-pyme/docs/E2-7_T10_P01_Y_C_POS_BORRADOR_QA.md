@@ -42,8 +42,8 @@ Tras presentar las reglas de precios y descuentos, el responsable respondió: «
 - **P01 primera CI verificada:** [full-stack #42920637980](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42920637980), **SUCCESS**: 892/892 backend, 308/308 frontend, 11/11 Playwright REAL y 6/6 DEMO.
 - **T10-C pure Node:** `frontend/tests/sales-real-pos-draft.test.mjs` con 7 casos de cantidades, roles, descuentos, sede, servicio sin sede y carrito sin efectos externos; comando `npm.cmd run test:sales-real-pos`.
 - **T10-C navegador:** `frontend/e2e/real/pos-draft.spec.ts`, dos escenarios en CI con `PYME_DISPOSABLE_QA=1` y empresa creada en PostgreSQL efímero. Verifica carrito sin POST y 501 fichas paginadas. La segunda usa fixtures de API simulados solo para la paginación, sin crear 501 artículos en la DB.
-- **Estado de CI del commit final T10-C:** pendiente de incorporar tras observar resultados. No atribuir aprobación a un run inacabado.
-- **Pruebas manuales locales de T10-C:** todavía **no realizadas**. Se puede verificar visualmente con la empresa TEST usando solo GET y carrito preliminar, pero no se debe intentar confirmar ventas desde este incremento.
+- **CI T10-C originalmente aprobada y nueva revisión aprobada:** [full-stack #42925918339](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42925918339), commit funcional `f6cfae57f9048eeca1e552739781d5e13c6ac877`, **SUCCESS: 892 backend, 13 Playwright REAL (incluidas ambas pruebas T10-C), 6 DEMO**, regresiones y build/lint frontend aprobados. [Frontend independiente #42925917999](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42925917999) también **SUCCESS**. La documentación posterior no cambia código.
+- **Pruebas manuales locales T10-C (versión previa al ajuste de subtotales):** usuario confirmó el catálogo REAL y carrito mixto en TEST Empresa A mediante capturas. Los totales y descuento se calcularon correctamente, pero identificó confusión entre valor unitario y subtotal. Los cambios de visualización fueron incorporados después y están aprobados en CI; **la nueva interfaz no fue revalidada manualmente todavía**. No se realizó venta ni se confirmó un movimiento de stock.
 
 ## 4. Próximos pasos
 
@@ -69,3 +69,10 @@ El usuario probó en su computadora el POS con **TEST Empresa A** y compartió c
 **No se copia ahora de DEMO:** imágenes, categorías, existencias o botón «Agregar otro» con cantidad acumulativa; la fuente REAL debe obtener catálogos y stock **por empresa/sede con permisos, unidades y versiones**, y no asumir campos presentes solamente en DEMO. Antes de sumar stock disponible hay que consultar Inventario REAL de la sede y revalidar el stock atómicamente al confirmar en T10-D. La armonización estética se deja para una fase de diseño, como solicitó el usuario.
 
 **Regresiones agregadas:** 3 pruebas Node para subtotal individual (incluidos 4 × $1.500, 5 × $2.000, redondeo HALF_UP y límites de centavos) y ampliación de Playwright REAL para asegurar bloqueo inicial de precio, habilitación gerencial explícita, subtotal por artículo, actualización del renglón sin duplicados y **cero POST**. La verificación completa de la última versión debe consignarse después de observar el run final de CI; **las capturas existentes no prueban todavía los controles nuevos**.
+
+
+### CI específica del ajuste posterior a capturas
+
+- **10/11/2026:** [Full-stack #42925918339](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42925918339) — **SUCCESS**; 892 Pytest en PostgreSQL descartable (3 warnings no bloqueantes), **13/13 Playwright REAL**, **6/6 DEMO**. Las pruebas T10-C verificaron carrito, precio inicial ineditable, override gerencial, subtotal por artículo, edición de cantidad sin duplicación, página 501 y **cero POST de venta**.
+- **Frontend independiente #42925917999:** **SUCCESS**; build TypeScript/Vite, Oxlint y nuevas pruebas de subtotal.
+- **Commit funcional validado:** `f6cfae57`. Este acta se actualiza después del commit probado sin modificar lógica.
