@@ -77,3 +77,14 @@ GET /api/v1/businesses/{business_id}/sales/{sale_id}  (EXISTENTE, preservar)
 6. PR de T09 abierto como borrador hasta QA y revisión de alcance.
 
 **Hito T09-0:** línea base verificada, contrato propuesto y decisiones pendientes visibles; el hecho de documentarlas **no las aprueba automáticamente**.
+
+
+## 6. Validación local T09-A — 10/11/2026
+
+- **Entorno:** Windows PowerShell en `plataforma-pyme/frontend`; rama `feature/e2-7-t09-consulta-recuperacion-ventas`, commit funcional `09e0a88`.
+- **Comando ejecutado por el usuario:** `npm.cmd run test:sales-real-read`. Se utilizó `npm.cmd` porque PowerShell bloquea `npm.ps1` por su política de ejecución; **no se cambió ExecutionPolicy ni se requirió privilegio de administrador**.
+- **Resultado local observado:** `tests 10`, `pass 10`, `fail 0`, `cancelled 0`, `skipped 0`, `todo 0`, duración ~260 ms.
+- **Cobertura de esas diez pruebas:** GET por UUID con Bearer en memoria y sin POST, snapshots y pagos declarados de venta mixta, redondeo HALF_UP, rechazo de tenant ajeno y DTOs inválidos, importes/pagos inconsistente, duplicados, UUID inválidos, propagación 401/403/404/500, fallo de red en GET y mensajes de error.
+- **Evidencia CI de la misma entrega:** [GitHub Actions #42901702416](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42901702416), **SUCCESS** en `09e0a88`, 879 backend, 266 frontend, 4 Playwright REAL de inventario y 6 Playwright DEMO.
+
+**Dictamen T09-A:** gateway de lectura + pruebas aprobados en CI y localmente. No hay pantalla de ventas REAL ni endpoint nuevo; P02/P03 quedan pendientes de aprobación antes de modificar permisos históricos o el backend.
