@@ -209,6 +209,7 @@ export function RealBusinessesPage({
         <div className="real-auth-actions">
           <button className="real-auth-primary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/ubicaciones')}>Ubicaciones reales</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/equipo')}>Equipo e invitaciones</button>
+          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/catalogo')}>Catálogo REAL</button>
         </div>
         {canEditBusiness(selected) && !editing && <button className="real-auth-secondary" type="button" onClick={() => setEditing(true)}>Editar perfil empresarial</button>}
         {canEditBusiness(selected) && editing && <form className="real-auth-form" onSubmit={(e) => void updateCompany(e)}>

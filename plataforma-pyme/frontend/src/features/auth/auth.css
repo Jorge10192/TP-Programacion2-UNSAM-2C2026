@@ -97,3 +97,23 @@
   .real-ops-member-actions label{flex:1}
   .real-ops-subpanel,.real-ops-form{padding:17px}
 }
+
+/* E2-7 T05 · REAL catalog scoped to authenticated business. */
+.real-catalog-coverage{padding:12px 16px;border-left:3px solid #5388d3;background:#eef5ff;border-radius:0 10px 10px 0;font-size:13px}
+.real-catalog-filters{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin:25px 0 18px}
+.real-catalog-filters label{display:grid;gap:7px;font-size:13px;font-weight:750;color:#34537a;flex:1;min-width:175px}
+.real-catalog-filters input,.real-catalog-filters select{width:100%;min-height:44px;border:1px solid #c8d7ec;border-radius:10px;background:#fff;color:#182b48;padding:9px 12px}
+.real-catalog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:16px;margin:18px 0 23px}
+.real-catalog-tile{background:#f9fbff;border:1px solid #d1e0f3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:11px;min-width:0}
+.real-catalog-tile-header{display:flex;gap:12px;align-items:start;justify-content:space-between}
+.real-catalog-tile-header strong{font-size:18px;line-height:1.35;overflow-wrap:anywhere}
+.real-catalog-status{flex:none;border-radius:8px;padding:5px 8px;background:#f3e5e4;color:#8e4541;font-size:10px;font-weight:900}
+.real-catalog-active{background:#e2f3eb;color:#28754f}
+.real-catalog-tile>small{font-size:12px;color:#526885;overflow-wrap:anywhere}
+.real-catalog-tile>p{font-size:13px;line-height:1.55;color:#4a6385;margin:0;overflow-wrap:anywhere}
+.real-catalog-prices{display:flex;gap:13px;justify-content:space-between;flex-wrap:wrap;border-top:1px solid #e0e9f4;padding-top:11px}
+.real-catalog-prices span{font-size:11px;color:#667b97;display:grid;gap:6px}
+.real-catalog-prices b{color:#16335c;font-size:14px}
+.real-catalog-tile .real-auth-actions{margin-top:auto}
+.real-ops-form textarea{width:100%;border:1px solid #cbdcf0;border-radius:10px;background:#fff;color:#14233f;padding:11px 13px;resize:vertical;font:inherit}
+@media(max-width:640px){.real-catalog-grid{grid-template-columns:1fr}.real-catalog-filters{flex-direction:column;align-items:stretch}.real-catalog-filters label{width:100%}}
