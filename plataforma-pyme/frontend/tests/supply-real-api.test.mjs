@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ApiHttpError, ApiTransportError } from '../src/api/httpClient.ts'
-import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents,
+import { createSupplyGateway, decimalToMilli, milliToDecimal, lineTotalCents, priceInputCents,
   validatePurchase, parsePurchase, parseReceipt, parseSupplier } from '../src/features/purchases/realSupplyGateway.ts'
 import { createPendingJournal, pendingScope, PendingConflictError, parsePending, newPurchaseIntent, newReceiptIntent } from '../src/features/purchases/supplyPendingJournal.ts'
 import { suggestedUnitCost, costExceedsSalePrice } from '../src/features/purchases/purchaseCostProposal.ts'
@@ -228,7 +228,7 @@ test('costo real editado reemplaza la propuesta y el backend guarda el valor del
   assert.equal(suggestedUnitCost(article),'800,00')
   // El comprador puede editar a 2000,00. No se modifica el catálogo.
   const actual='2000,00'
-  const cost=Number(actual.replace(',','').replace('.',''))
+  const cost=priceInputCents(actual)
   assert.equal(cost,200000)
   const edited={...body,lines:[{...body.lines[0],unit_cost_cents:cost}]}
   validatePurchase(edited)
