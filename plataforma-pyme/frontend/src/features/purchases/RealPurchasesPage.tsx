@@ -10,6 +10,7 @@ import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents,
   supplyErrorMessage, validatePurchase } from './realSupplyGateway.ts'
 import type { Purchase, NewPurchase, Supplier, PurchaseLineInput } from './realSupplyGateway.ts'
 import { pendingScope, supplyJournal, PendingConflictError, PendingStorageError, newPurchaseIntent, newReceiptIntent } from './supplyPendingJournal.ts'
+import { suggestedUnitCost, costExceedsSalePrice } from './purchaseCostProposal.ts'
 import type { SupplyPending } from './supplyPendingJournal.ts'
 type Props={token:string;userId:string;businessId:string;onNavigate:(path:string)=>void;onUnauthorized:()=>void}
 type DraftLine={catalogId:string;description:string;quantity:string;unitCost:string}
@@ -296,10 +297,10 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
        {suppliersMore&&<p>Hay proveedores aún no cargados. Cargá más páginas antes de elegir uno.</p>}
        <label>Referencia<input maxLength={70} value={draft.reference} onChange={e=>setDraft(old=>({...old,reference:e.target.value}))}/></label>
        <label>Notas<textarea rows={2} maxLength={500} value={draft.notes} onChange={e=>setDraft(old=>({...old,notes:e.target.value}))}/></label>
-       {draft.lines.map((line,i)=><div className="real-supply-line" key={i}>
+       {draft.lines.map((line,i)=>{const selectedArticle=activeItems.find(x=>x.id===line.catalogId);return <div className="real-supply-line" key={i}>
          <strong>Renglón {i+1}</strong>
          <label>Artículo del catálogo o concepto libre
-           <select value={line.catalogId} onChange={e=>changeLine(i,{catalogId:e.target.value})}>
+           <select value={line.catalogId} onChange={e=>{const selected=activeItems.find(x=>x.id===e.target.value);changeLine(i,{catalogId:e.target.value,unitCost:suggestedUnitCost(selected)})}}>
              <option value="concept">Concepto libre (no genera stock)</option>
              {activeItems.map(x=><option key={x.id} value={x.id}>{x.name} · {x.unit}</option>)}
            </select>
@@ -307,10 +308,12 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
          {line.catalogId==='concept'&&<label>Descripción<input required minLength={2} maxLength={140} value={line.description} onChange={e=>changeLine(i,{description:e.target.value})}/></label>}
          <div className="real-supply-quantities">
            <label>Cantidad (máximo 3 decimales)<input required inputMode="decimal" value={line.quantity} onChange={e=>changeLine(i,{quantity:e.target.value})}/></label>
-           <label>Costo unitario en pesos<input required inputMode="decimal" value={line.unitCost} onChange={e=>changeLine(i,{unitCost:e.target.value})}/></label>
+           <label>Costo unitario de esta compra (pesos)<input required inputMode="decimal" value={line.unitCost} onChange={e=>changeLine(i,{unitCost:e.target.value})}/></label>
          </div>
+         {selectedArticle&&<p className="real-supply-cost-hint">Costo de referencia en catálogo: <strong>{selectedArticle.reference_cost_cents===null?'sin informar':money(selectedArticle.reference_cost_cents)}</strong>. Se propone al seleccionar el artículo, pero podés editarlo según el comprobante del proveedor. No se modifica el costo de referencia del catálogo.</p>}
+         {selectedArticle&&costExceedsSalePrice(line.unitCost,selectedArticle)&&<p className="real-supply-cost-warning" role="status">Atención: el costo unitario de compra supera el precio de venta actual del catálogo ({selectedArticle.price_cents===null?'no informado':money(selectedArticle.price_cents)}). Revisá el margen; podés continuar con la compra.</p>}
          {draft.lines.length>1&&<button type="button" className="real-auth-secondary" onClick={()=>setDraft(old=>({...old,lines:old.lines.filter((_,j)=>j!==i)}))}>Quitar renglón</button>}
-       </div>)}
+       </div>})}
        <button type="button" className="real-auth-secondary" disabled={draft.lines.length>=30} onClick={()=>setDraft(old=>({...old,lines:[...old.lines,emptyLine()]}))}>Agregar renglón</button>
      </fieldset>
      {pending&&<p className="real-ops-warning">El cuerpo original quedó bloqueado. Primero comprobá el historial y luego reintentá con la misma clave. F5 no envía nada automáticamente.</p>}
