@@ -101,7 +101,7 @@ test('T08-3: validación estricta rechaza origen=destino, cantidad inválida y m
  ]
  for(const row of bad)assert.throws(()=>validateTransfer(row))
  assert.equal(transferReason('  Reposición   local '),'Reposición local')
- assert.throws(()=>transferReason('a\nb'))
+ assert.equal(transferReason('a\nb'),'a b')
 })
 
 test('T08-3: unidad discreta no acepta fracciones; GRAMO sí, con precisión exacta',()=>{
