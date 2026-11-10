@@ -8,17 +8,18 @@ import { createCatalogGateway, centsToPesos } from '../catalog/realCatalogGatewa
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
 import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents, purchaseStatusPresentation, missingReceiptMessage, inspectReceipt,
   supplyErrorMessage, validatePurchase } from './realSupplyGateway.ts'
-import type { Purchase, NewPurchase, Supplier, PurchaseLineInput } from './realSupplyGateway.ts'
+import type { Purchase, PurchaseReceipt, NewPurchase, Supplier, PurchaseLineInput } from './realSupplyGateway.ts'
+import { RealReceiptDetail } from './RealReceiptDetail.tsx'
 import { pendingScope, supplyJournal, PendingConflictError, PendingStorageError, newPurchaseIntent, newReceiptIntent } from './supplyPendingJournal.ts'
 import { suggestedUnitCost, costExceedsSalePrice, previewLineTotalCents, previewPurchaseTotalCents, unitCostFromExactLineTotal } from './purchaseCostProposal.ts'
 import type { SupplyPending } from './supplyPendingJournal.ts'
-type Props={token:string;userId:string;businessId:string;onNavigate:(path:string)=>void;onUnauthorized:()=>void}
+type Props={token:string;userId:string;userDisplayName:string;businessId:string;onNavigate:(path:string)=>void;onUnauthorized:()=>void}
 type DraftLine={catalogId:string;description:string;quantity:string;unitCost:string;totalDraft:string|null}
 type Draft={date:string;supplierId:string;reference:string;notes:string;lines:DraftLine[]}
 const emptyLine=():DraftLine=>({catalogId:'concept',description:'Concepto de compra',quantity:'1',unitCost:'0',totalDraft:null})
 const emptyDraft=():Draft=>({date:new Date().toISOString().slice(0,10),supplierId:'',reference:'',notes:'',lines:[emptyLine()]})
 const money=(n:number)=>'$ '+centsToPesos(n)
-export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthorized}:Props){
+export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNavigate,onUnauthorized}:Props){
  const api=useMemo(()=>createSupplyGateway(token,businessId),[token,businessId])
  const catalogApi=useMemo(()=>createCatalogGateway(token,businessId),[token,businessId])
  const companies=useMemo(()=>createOperationsGateway(token,userId),[token,userId])
@@ -40,6 +41,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
  const [consent,setConsent]=useState(false)
  const [pending,setPending]=useState<Extract<SupplyPending,{kind:'purchase.create'}>|null>(null)
  const [pendingReceipt,setPendingReceipt]=useState<Extract<SupplyPending,{kind:'purchase.receive'}>|null>(null)
+ const [shownReceipt,setShownReceipt]=useState<PurchaseReceipt|null>(null)
  const [receiptFor,setReceiptFor]=useState<string|null>(null)
  const [locationId,setLocationId]=useState('')
  const [journalReady,setJournalReady]=useState(false)
@@ -173,7 +175,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
  }
  async function beginReceipt(purchaseId:string){
    if(busy||loading)return
-   setError('');setNotice('');setReceiptFor(purchaseId);setPendingReceipt(null);setLocationId('')
+   setError('');setNotice('');setShownReceipt(null);setReceiptFor(purchaseId);setPendingReceipt(null);setLocationId('')
    try{
      const scope=pendingScope(userId,businessId,'purchase.receive',purchaseId)
      const restored=await supplyJournal.load(scope)
@@ -201,8 +203,8 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
      if(!alive.current)return
      await supplyJournal.discard(intent.scope,intent.key)
      if(!alive.current)return
-     setPendingReceipt(null);setReceiptFor(null)
-     setNotice('Recepción confirmada: '+result.movements.length+' movimientos de stock REAL registrados. No repetir.')
+     setPendingReceipt(null);setReceiptFor(null);setShownReceipt(result)
+     setNotice('Recepción confirmada; el detalle muestra los movimientos de stock REAL. No repetir.')
      const rows=await api.purchases()
      if(alive.current){setPurchases(rows);setHasMore(rows.length===100)}
    }catch(err){
@@ -215,7 +217,7 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
  async function checkReceipt(purchaseId?:string){
    const target=purchaseId??receiptFor
    if(!target||busy||loading)return
-   setBusy(true);setError('');setNotice('')
+   setBusy(true);setError('');setNotice('');setShownReceipt(null)
    try{
      const scope=pendingScope(userId,businessId,'purchase.receive',target)
      const fromDisk=await supplyJournal.load(scope)
@@ -229,13 +231,14 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
        return
      }
      const receipt=inspected.receipt
+     setShownReceipt(receipt)
      if(fromDisk&&receipt.request_id===fromDisk.key){
        await supplyJournal.discard(fromDisk.scope,fromDisk.key)
        if(!alive.current)return
        setPendingReceipt(null);setReceiptFor(null)
        setNotice('Recepción ya confirmada con la misma clave; pendiente limpiado sin duplicar stock.')
      }else{
-       setNotice('Existe recepción confirmada en sede '+receipt.location_id+' con '+receipt.movements.length+' movimientos. No la repitas.')
+       setNotice('')
      }
      const rows=await api.purchases()
      if(alive.current){setPurchases(rows);setHasMore(rows.length===100)}
@@ -286,6 +289,9 @@ export function RealPurchasesPage({token,userId,businessId,onNavigate,onUnauthor
        <ul>{p.lines.map(l=><li key={l.id}>{l.description_snapshot} — {milliToDecimal(l.quantity_milli)} {l.unit_snapshot} × {money(l.unit_cost_cents)} = {money(l.line_total_cents)}</li>)}</ul>
        {p.status==='REGISTRADA'&&canReceive&&<button className="real-auth-secondary real-supply-pending-action" type="button" disabled={busy||loading} onClick={()=>void beginReceipt(p.id)}>Pendiente · Confirmar recepción en ubicación</button>}
        {p.status==='RECIBIDA'&&<button className="real-auth-secondary" type="button" disabled={busy||loading} onClick={()=>void checkReceipt(p.id)}>Consultar comprobante</button>}
+       {shownReceipt?.purchase_id===p.id&&<RealReceiptDetail receipt={shownReceipt} purchase={p}
+         locations={locations} viewer={{id:userId,displayName:userDisplayName}}
+         onClose={()=>setShownReceipt(null)}/>}}
      </article>})}
    </div>
    {hasMore&&<button type="button" className="real-auth-secondary" disabled={loading||busy} onClick={()=>void more('purchases')}>Cargar 100 compras más</button>}
