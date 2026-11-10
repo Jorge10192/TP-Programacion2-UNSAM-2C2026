@@ -204,3 +204,26 @@
 
 .real-supply-receipt-focus{min-width:0;outline:none}
 .real-supply-receipt-focus:focus-visible .real-supply-receipt-detail{outline:2px solid #547ac1;outline-offset:3px}
+
+/* T08-1 — lecturas de inventario REAL, sin escrituras, responsive. */
+.real-inventory{min-width:0}
+.real-inventory-business{margin:20px 0;font-size:20px;color:#152c4c}
+.real-inventory-controls{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) auto;gap:12px;align-items:end;margin:20px 0}
+.real-inventory-controls label{display:grid;gap:8px;font-size:13px;font-weight:700;color:#173254;min-width:0}
+.real-inventory-controls select{width:100%;border:1px solid #ccdcf4;border-radius:9px;background:#fff;padding:11px 12px;color:#172d4b;min-width:0}
+.real-inventory-controls button{align-self:end}
+.real-inventory-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 14px}
+.real-inventory-tabs button{width:auto;min-width:115px}
+.real-inventory-catalog-hint{font-size:13px;background:#edf5ff;border-radius:9px;padding:10px 12px;color:#425d80;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.real-inventory-catalog-hint button{width:auto}
+.real-inventory-balances,.real-inventory-movements{display:grid;gap:11px;margin:12px 0 20px}
+.real-inventory-balance,.real-inventory-movement{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:17px;border:1px solid #d1e0f7;border-radius:12px;background:#f8fbff}
+.real-inventory-balance h3,.real-inventory-movement h3{font-size:17px;margin:0 0 6px;color:#162e51}
+.real-inventory-balance p,.real-inventory-movement p{font-size:13px;color:#4a6a90;margin:0 0 5px}
+.real-inventory-balance small,.real-inventory-movement small{font-size:12px;color:#6981a0;line-height:1.5}
+.real-inventory-positive,.real-inventory-negative,.real-inventory-zero{font-size:24px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.real-inventory-positive{color:#13784b}.real-inventory-negative{color:#b13434}.real-inventory-zero{color:#677991}
+.real-inventory-empty{border:1px dashed #b8d2f5;border-radius:10px;background:#f4f8fe;padding:22px;color:#546e91}
+.real-inventory-disclaimer{font-size:12px;color:#667c9a;line-height:1.65;margin:24px 0 4px}
+@media(max-width:810px){.real-inventory-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.real-inventory-controls button{justify-self:start}}
+@media(max-width:530px){.real-inventory-controls{grid-template-columns:minmax(0,1fr)}.real-inventory-balance,.real-inventory-movement{align-items:flex-start}.real-inventory-positive,.real-inventory-negative,.real-inventory-zero{font-size:21px}}
