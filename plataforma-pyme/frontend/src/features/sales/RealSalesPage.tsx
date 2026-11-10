@@ -208,7 +208,9 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
     </div>
     <section aria-label="Ventas confirmadas">
       <div className="real-sales-list-title"><h2>Ventas confirmadas</h2>
-        <small>{status === 'ready' ? rows.length + ' cargadas · ' + (hasMore ? 'Listado parcial' : 'Fin del listado consultado') : 'Consultando…'}</small>
+        <small>{status === 'ready'
+          ? rows.length + ' cargadas · ' + (hasMore ? 'Listado parcial' : 'Fin del listado consultado')
+          : status === 'error' ? 'Error al consultar' : 'Consultando…'}</small>
       </div>
       {status === 'loading' && <p role="status">Consultando ventas autorizadas desde FastAPI…</p>}
       {status === 'error' && <p role="alert" className="real-auth-message real-auth-error">{listError} <button type="button" className="real-auth-link" onClick={refresh}>Reintentar consulta</button></p>}
@@ -229,7 +231,7 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
     </section>
     <section className="real-ops-subpanel" aria-label="Recuperación de comprobantes">
       <h2>Recuperar comprobante por solicitud</h2>
-      <p>Si conservaste el `request_id` de una venta confirmada, podés consultarla sin realizar otra venta. Un 404 no prueba que el POST original nunca haya llegado.</p>
+      <p>Si conservaste el request_id de una venta confirmada, podés consultarla sin realizar otra venta. Un 404 no prueba que el POST original nunca haya llegado.</p>
       <form className="real-sales-request-form" onSubmit={requestSearch}>
         <label>Clave original de solicitud (UUID4)
           <input value={requestInput} onChange={event => setRequestInput(event.target.value)}
