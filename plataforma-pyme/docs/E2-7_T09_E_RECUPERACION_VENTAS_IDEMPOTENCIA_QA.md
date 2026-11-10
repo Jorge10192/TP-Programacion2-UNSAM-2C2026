@@ -38,7 +38,7 @@ Las verificaciones por API leen `GET /sales`, `GET /sales/by-request/{request_id
 - Playwright REAL: **10/10 aprobadas**: 4 T08 inventario, 3 T09-D lectura, **3 T09-E** (venta física, venta de servicio y POST abortado antes del servidor).
 - Playwright DEMO: **6/6 aprobadas**.
 - Los casos T09-E se ejecutaron con `PYME_DISPOSABLE_QA=1` sobre `pyme_t085_ephemeral`. Dos casos verificaron `201` confirmado pero oculto al navegador → GET autorizado tras F5/login → replay `200`, y `409` por otra carga con clave existente. El caso de aborto antes de alcanzar FastAPI verificó `404` y reintento explícito con `201`. Se compararon antes/después saldos, comprobantes y movimientos cuando había bienes físicos.
-- [Backend Python 3.12/3.14 y Docker](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42910407905): matriz del mismo commit; comprobar conclusión por separado antes de cierre T09-F.
+- [Backend Python 3.12/3.14 y Docker](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42910407905): **SUCCESS**, ambos intérpretes y liveness. Segunda ejecución integral [#42910583172](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42910583172), iniciada tras la documentación original de T09-E, también **SUCCESS** con el mismo código.
 
 **Dictamen T09-E:** **APROBADO en CI** para simulación de navegador mediante harness, no implementación POS real. La aceptación manual local de ventas escritas no es necesaria ni aconsejable sobre los datos existentes.
 
