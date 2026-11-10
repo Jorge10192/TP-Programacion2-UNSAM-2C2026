@@ -50,3 +50,22 @@ Tras presentar las reglas de precios y descuentos, el responsable respondió: «
 **T10-D** añadirá revisión final, pagos declarados, confirmación humana explícita, reserva comprobada en IndexedDB antes de POST y resultados `201/200/409` más recuperación de pendientes. Antes de habilitar el botón, testear la seguridad de precio P01 en API y frontend, incluyendo cambio de precio de catálogo después de que se preparó el carrito y antes del POST, y errores sin duplicación.
 
 **El PR #43 sigue DRAFT, sin merge.** Toda creación real para QA debe correr en PostgreSQL efímero, no en TEST Empresa A.
+
+
+## 5. Ajuste funcional tras QA visual del usuario (10/11/2026)
+
+El usuario probó en su computadora el POS con **TEST Empresa A** y compartió capturas del producto **Producto A TEST**, el servicio **Servicio A TEST** y un artículo **Producto T08-4 CONTEO** sin precio de catálogo.
+
+**Observaciones verificables de las capturas previas:** el carrito ya multiplicaba cantidad × precio por artículo y el total general era consistente (ejemplo 5 unidades a $2.000 + 4 servicios a $1.000 = $14.000; descuento $2.000, total $12.000). Sin embargo, el subtotal de **cada artículo** no se distinguía explícitamente, el titular veía el campo unitario editable sin advertencia y, si se seleccionaba un artículo ya incluido, se mostraba un error que obligaba a quitarlo.
+
+**Cambio funcional incorporado:**
+
+1. Precio unitario **precargado desde catálogo y bloqueado por defecto**, incluso para el titular. Encargado/Trabajador lo ven siempre bloqueado. Titular/Administrador conserva P01 a través de una acción **explícita** «Modificar precio excepcionalmente» para autorizar la cotización o precio alternativo. «Restablecer precio de catálogo» cancela la excepción; con catálogo sin precio se exige habilitar explícitamente la modificación gerencial.
+2. Subtotal del artículo antes de agregarlo: `cantidad_milli × precio_unitario_cents`, HALF_UP por renglón con **BigInt**. El carrito muestra por separado nombre, cantidad, precio unitario y **subtotal del producto**, evitando confundir importe unitario con total.
+3. Al seleccionar un artículo ya incluido, el picker recupera su cantidad y precio. El botón se convierte en **«Actualizar en carrito»**; actualiza el mismo renglón sin crear duplicados y admite editarlo desde el carrito.
+4. Como integración funcional pequeña con DEMO, cada ficha muestra **«En carrito: X UNIDAD/SERVICIO»** cuando ya se seleccionó. Se reutiliza **el patrón de interacción**, no modelos DEMO ni datos ficticios.
+5. Se preserva el subtotal general, descuento y total; **no hay POST** ni movimiento de stock. El control «Confirmación de venta disponible en T10-D» permanece deshabilitado.
+
+**No se copia ahora de DEMO:** imágenes, categorías, existencias o botón «Agregar otro» con cantidad acumulativa; la fuente REAL debe obtener catálogos y stock **por empresa/sede con permisos, unidades y versiones**, y no asumir campos presentes solamente en DEMO. Antes de sumar stock disponible hay que consultar Inventario REAL de la sede y revalidar el stock atómicamente al confirmar en T10-D. La armonización estética se deja para una fase de diseño, como solicitó el usuario.
+
+**Regresiones agregadas:** 3 pruebas Node para subtotal individual (incluidos 4 × $1.500, 5 × $2.000, redondeo HALF_UP y límites de centavos) y ampliación de Playwright REAL para asegurar bloqueo inicial de precio, habilitación gerencial explícita, subtotal por artículo, actualización del renglón sin duplicados y **cero POST**. La verificación completa de la última versión debe consignarse después de observar el run final de CI; **las capturas existentes no prueban todavía los controles nuevos**.
