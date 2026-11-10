@@ -1,6 +1,6 @@
 # E2-7 T08-3 — Plan de integración de transferencias REALES
 
-**Estado:** implementación de frontend T08-3 completada en `feature/e2-7-t08-inventario-real` y tests automatizados aprobados; **QA funcional REAL pendiente**. PR #41 continúa como borrador, sin fusionar.
+**Estado:** implementación y tests automatizados aprobados; **primera transferencia manual REAL confirmada**, aún falta verificar los saldos de ambas sedes, permisos y aislamiento antes del cierre funcional de T08-3. Rama `feature/e2-7-t08-inventario-real`, PR #41 en borrador y sin fusionar.
 
 ## 1. Punto de partida verificado
 
@@ -139,3 +139,22 @@ GitHub Actions [#42855668226](https://github.com/Jorge10192/TP-Programacion2-UNS
 ## 8. Criterio de cierre
 
 El subincremento **T08-3 queda listo para pruebas manuales**, no aprobado todavía en PostgreSQL real. Cerrar una vez contrastados 201/200, saldos, exactamente dos movimientos, aislamiento A/B, permisos STORE y regresión DEMO. Los casos de carrera >100 movimientos y pérdida de respuesta permanecerán en T08-5/T11 cuando requieran orquestación full-stack.
+
+## 9. Evidencia funcional REAL recibida — 10/11/2026 (confirmación parcial)
+
+El usuario adjuntó cuatro capturas del navegador tras ejecutar una transferencia desde la cuenta titular de **TEST Empresa A**. A diferencia del ejemplo inicial de 1 unidad, **la operación efectivamente realizada fue de 3 UNIDAD**: no debe documentarse como una transferencia de 1 unidad.
+
+| Paso | Evidencia observada | Resultado |
+|---|---|---|
+| Formulario antes del POST | `Producto A TEST · UNIDAD`, **Sede A TEST** origen, **Sede A TEST 2** destino, **cantidad 3**, motivo y consentimiento; saldo leído por API **11 UNIDAD** en origen | **Aprobado** |
+| Confirmación previa | Diálogo explícito confirma artículo, **3 unidades**, sedes y la operación atómica en backend | **Aprobado** |
+| POST / respuesta / GET por ID | Pantalla **«Traslado confirmado»**, 3 unidades, fecha/hora, dos movimientos vinculados, salida **−3 UNIDAD** y entrada **+3 UNIDAD**; mensaje de comprobación por ID | **Aprobado en interfaz** |
+| Historial sede de origen | **4 movimientos cargados: 3 entradas y 1 salida**; nueva salida «Traslado enviado» **−3** precede las recepciones anteriores **+5, +4, +2** | **Aprobado en interfaz** |
+| Existencias actualizadas | Saldo teórico del origen **11−3=8**; en destino se esperan **+3** sobre su saldo previo, que debe consultarse | **Pendiente de evidencia en pestaña Existencias** |
+| Historial de destino | Debería figurar «Traslado recibido» **+3**, compartiendo `inventory_operation_id` con la salida | **Pendiente de captura específica** |
+| Permisos de trabajador, 403 por sede no asignada | Aún sin prueba manual específica de T08-3 | **Pendiente** |
+| Tenant B y DEMO después del traslado | Aún sin prueba posterior a la transferencia de T08-3 | **Pendiente** |
+
+**Observación:** el formulario muestra saldo consultado (11), pero no se toma esa lectura como prueba de los saldos finales. La pantalla de confirmación sí valida que la API devolvió una salida y una entrada coherentes. Verificar por separado saldos postoperación y, si es posible, las dos líneas del historial filtradas por sede. El usuario ya ejecutó la transferencia: **no repetirla ni crear otra clave para probar la misma acción**.
+
+**Siguiente verificación recomendada:** Inventario REAL → Existencias, comprobar origen **8 UNIDAD** y destino **3 UNIDAD** solo si este último partía de cero. Revisar el historial de la sede destino para la entrada +3 y el mismo identificador de operación. Luego validar permisos y aislamiento. Sin merge a `main` hasta completar T08-4/5.
