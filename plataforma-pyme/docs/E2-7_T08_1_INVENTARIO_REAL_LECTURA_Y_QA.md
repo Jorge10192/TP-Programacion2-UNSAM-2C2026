@@ -1,6 +1,6 @@
 # E2-7 · T08-1 — Lectura de Inventario REAL, saldos y movimientos
 
-**Estado:** primera implementación en `feature/e2-7-t08-inventario-real`, pendiente de revisión y QA manual local. **No fusionar a main sin aprobación.**
+**Estado:** primera implementación completada y CI frontend aprobado en PR #41 (borrador). **QA manual REAL con PostgreSQL pendiente; no fusionar a main sin revisión y autorización.**
 
 ## Objetivo y alcance
 
@@ -75,3 +75,17 @@ Realizar sin modificar existencias, compras ni datos DEMO.
 - **T11:** Playwright full-stack con FastAPI/PostgreSQL en base efímera y casos de corte de red, concurrencia, paginación y trazabilidad end-to-end.
 
 **Limitación explícita:** esta entrega T08-1 es lectura de recursos ya existentes. No implica un ERP comercial terminado ni resuelve cuentas, caja, QR ni ventas POS de T10.
+
+## Resultado de la primera validación automatizada — 10/11/2026
+
+**GitHub Actions:** [run #42818763338](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42818763338), **SUCCESS**.
+
+- `npm ci`: instalación aprobada.
+- `npm run build`: `tsc -b && vite build`, compilación correcta. La advertencia Vite por tamaño del chunk JS superior a 500 kB **sigue visible**: asunto de rendimiento a tratar con carga diferida, no se elevó el umbral ni se ocultó.
+- `npm run lint`: **0 warnings, 0 errors**. Las advertencias iniciales de React sobre estados síncronos en efectos y referencias `.current` en cleanup fueron **corregidas** mediante resets iniciados por eventos y limpieza de AbortController estable, no silenciadas.
+- `npm run test:inventory-real`: **16/16 aprobadas**, 0 fallos. Pruebas de GET, tenant, filtros, paginación, validación de DTO y unidades, signos, abort y HTTP.
+- Resto de las suites de frontend: **165/165 aprobadas** según los totales de los grupos; **181/181 en total** incluyendo las 16 de T08-1.
+- Job Chromium: aprobado. Sus recorridos son para la navegación DEMO (escritorio y móvil), no se debe afirmar que hay Playwright full-stack REAL.
+- **Limitación de evidencia:** GitHub CI no se conectó a PostgreSQL para verificar el saldo concreto del usuario; solo se revisaron contratos y mocks. La aceptación manual T08-1 requiere ejecutar el checklist anterior y comparar con los datos de las compras recibidas en TEST Empresa A.
+
+**Decisión del incremento:** listo para revisión en navegador y estudio del código; PR #41 permanecerá borrador, sin merge. Las mutaciones de inventario de T08-3/T08-4 no forman parte de esta implementación.
