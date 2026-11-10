@@ -10,6 +10,10 @@ import {
   INVENTORY_PAGE_SIZE, inventoryErrorMessage,
 } from './realInventoryGateway.ts'
 import type { StockBalance, InventoryMovement, InventoryQuery } from './realInventoryGateway.ts'
+import {
+  filterLoadedHistory, loadedInventoryCountLabel, loadedMovementCounts, movementTraceFields,
+} from './inventoryHistoryView.ts'
+import type { LoadedHistoryFilter } from './inventoryHistoryView.ts'
 
 type Props = {
   token:string;userId:string;businessId:string
@@ -36,6 +40,8 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
   const [locationId,setLocationId]=useState('')
   const [catalogItemId,setCatalogItemId]=useState('')
   const [tab,setTab]=useState<Tab>('balances')
+  const [historyKind,setHistoryKind]=useState<LoadedHistoryFilter>('TODOS')
+  const [historySearch,setHistorySearch]=useState('')
   const [balances,setBalances]=useState<StockBalance[]>([])
   const [movements,setMovements]=useState<InventoryMovement[]>([])
   const [balancesHasMore,setBalancesHasMore]=useState(false)
@@ -194,6 +200,13 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
   const activePage=tab==='balances'?balances:movements
   const hasMore=tab==='balances'?balancesHasMore:movementsHasMore
   const fetchingMore=tab==='balances'?balancesMoreLoading:movementsMoreLoading
+  const historyCounts=useMemo(()=>loadedMovementCounts(movements),[movements])
+  const filteredMovements=useMemo(()=>filterLoadedHistory(movements,historyKind,historySearch,{
+    itemName:id=>itemLabels.get(id)?.name??'Artículo '+shortId(id),
+    itemSku:id=>itemLabels.get(id)?.sku??'',
+    siteName:id=>locationLabels.get(id)?.name??'Ubicación '+shortId(id),
+  }),[movements,historyKind,historySearch,itemLabels,locationLabels])
+  const filteringHistory=historyKind!=='TODOS'||historySearch.trim()!==''
 
   return <section className="real-auth-card real-business-panel real-inventory" aria-label="Inventario real">
     <nav className="real-business-nav" aria-label="Navegación del inventario REAL">
@@ -202,7 +215,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/compras')}>Compras y recepciones</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>
-    <span className="real-auth-eyebrow">E2-7 · T08-1 · INVENTARIO REAL</span>
+    <span className="real-auth-eyebrow">E2-7 · T08-2 · INVENTARIO REAL</span>
     <h1>Inventario</h1>
     <p>Saldos y movimientos confirmados en FastAPI y PostgreSQL, por empresa y ubicación. Este panel es de solo lectura: no utiliza existencias de DEMO.</p>
     {metadataLoading&&<p role="status">Comprobando empresa, ubicaciones y catálogo REAL…</p>}
@@ -238,11 +251,33 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
         <button type="button" className={tab==='movements'?'real-auth-primary':'real-auth-secondary'}
           aria-pressed={tab==='movements'} onClick={()=>{setTab('movements');setPageError('')}}>Historial de movimientos</button>
       </div>
-      {dataLoading&&<p role="status">Consultando inventario confirmado…</p>}
+      {tab==='movements'&&<div className="real-inventory-history-filters">
+        <label>Tipo de movimiento (registros cargados)
+          <select value={historyKind} onChange={e=>setHistoryKind(e.target.value as LoadedHistoryFilter)}>
+            <option value="TODOS">Todos los movimientos</option>
+            <option value="ENTRADAS">Solo entradas (+)</option>
+            <option value="SALIDAS">Solo salidas (−)</option>
+            {Object.entries(INVENTORY_EVENTS).map(([kind,label])=><option key={kind} value={kind}>{label}</option>)}
+          </select>
+        </label>
+        <label>Buscar en historial cargado
+          <input type="search" maxLength={120} value={historySearch}
+            onChange={e=>setHistorySearch(e.target.value)}
+            placeholder="Artículo, SKU, sede o identificador"/>
+        </label>
+        <p className="real-inventory-local-notice">Estos dos filtros se aplican solo a movimientos ya cargados.
+          Para buscar en todo el historial, seleccioná primero sede y artículo arriba y cargá más páginas cuando estén disponibles.</p>
+      </div>}
+      {dataLoading&&<p role="status">Consultando inventario confirmado…</p>
       {dataError&&<p className="real-auth-error" role="alert">{dataError}</p>}
       {dataLoaded&&!dataLoading&&<>
-        <p className="real-auth-note">{activePage.length} {tab==='balances'?'combinaciones artículo/sede':'movimientos'} cargados{hasMore?' · Puede haber más páginas':' · Última página consultada'}.
-          Las cantidades son las registradas por el servidor, no estimaciones desde compras.</p>
+        <p className="real-auth-note">{loadedInventoryCountLabel(tab,activePage.length,hasMore)}
+          {' '}Las cantidades son las registradas por el servidor, no estimaciones desde compras.</p>
+        {tab==='movements'&&<p className="real-inventory-history-summary" role="status">
+          En los {movements.length} movimientos cargados: <strong>{historyCounts.entries} entradas</strong> y
+          {' '}<strong>{historyCounts.exits} salidas</strong>.
+          {filteringHistory&&<> Se muestran <strong>{filteredMovements.length}</strong> coincidencias del filtro local.</>}
+        </p>
         {tab==='balances'?
           balances.length===0?<p className="real-inventory-empty">No hay saldos registrados para los filtros seleccionados. Esto no significa que todo el catálogo tenga saldo cero.</p>
           :<div className="real-inventory-balances">{balances.map(x=><article className="real-inventory-balance" key={x.location_id+':'+x.catalog_item_id}>
@@ -252,11 +287,20 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
             </div>
             <strong className={x.quantity_milli===0?'real-inventory-zero':'real-inventory-positive'}>{formatMilli(x.quantity_milli)}</strong>
           </article>)}</div>
-          : movements.length===0?<p className="real-inventory-empty">No hay movimientos registrados para los filtros seleccionados.</p>
-          :<div className="real-inventory-movements">{movements.map(x=><article className="real-inventory-movement" key={x.id}>
-            <div><h3>{itemName(x.catalog_item_id)}</h3>
+          : movements.length===0?<p className="real-inventory-empty">No hay movimientos registrados para la empresa, sede y artículo seleccionados.</p>
+          : filteredMovements.length===0?<p className="real-inventory-empty">No hay coincidencias entre los {movements.length} movimientos cargados.
+            {hasMore?' Puede haber coincidencias en otras páginas todavía no consultadas.':' Podés cambiar o quitar el filtro local.'}</p>
+          :<div className="real-inventory-movements">{filteredMovements.map(x=><article className="real-inventory-movement" key={x.id}>
+            <div className="real-inventory-movement-info"><h3>{itemName(x.catalog_item_id)}</h3>
               <p>{INVENTORY_EVENTS[x.event_type]} · {siteName(x.location_id)}</p>
               <small>{formatDate(x.occurred_at)} · {unitName(x.catalog_item_id)} · Movimiento {shortId(x.id)}</small>
+              <details className="real-inventory-trace">
+                <summary>Ver trazabilidad</summary>
+                <dl>{movementTraceFields(x).map(field=><div key={field.label}>
+                  <dt>{field.label}</dt><dd>{field.value}</dd>
+                </div>)}</dl>
+                <p>Son referencias internas de FastAPI y PostgreSQL, no una factura ni un comprobante de pago.</p>
+              </details>
             </div>
             <strong className={x.delta_milli>0?'real-inventory-positive':'real-inventory-negative'}>{formatDelta(x.delta_milli)}</strong>
           </article>)}</div>
