@@ -46,7 +46,7 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
     }).finally(() => {
       if (gate.valid && !controller.signal.aborted) setLoading(false)
     })
-    return () => { controller.abort(); gate.valid = false; assignmentGeneration.current += 1 }
+    return () => { controller.abort(); gate.valid = false }
   }, [gateway, businessId, onUnauthorized])
 
   const authorized = !!business && canManageLocations(business)
