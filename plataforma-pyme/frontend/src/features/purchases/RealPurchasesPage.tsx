@@ -291,7 +291,8 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
        {p.status==='RECIBIDA'&&<button className="real-auth-secondary" type="button" disabled={busy||loading} onClick={()=>void checkReceipt(p.id)}>Consultar comprobante</button>}
        {shownReceipt?.purchase_id===p.id&&<RealReceiptDetail receipt={shownReceipt} purchase={p}
          locations={locations} viewer={{id:userId,displayName:userDisplayName}}
-         onClose={()=>setShownReceipt(null)}/>}}
+         onClose={()=>setShownReceipt(null)}/>}
+
      </article>})}
    </div>
    {hasMore&&<button type="button" className="real-auth-secondary" disabled={loading||busy} onClick={()=>void more('purchases')}>Cargar 100 compras más</button>}
