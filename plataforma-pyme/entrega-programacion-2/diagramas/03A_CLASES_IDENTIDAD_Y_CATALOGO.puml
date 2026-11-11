@@ -1,166 +1,196 @@
 @startuml
-' 03A v0.7 E2-3 E / Asistente PyME · identidad, ubicaciones, asignaciones y catálogo real.
-' La fuente PUML conserva TODAS las asociaciones y multiplicidades.
-' El SVG/PNG corresponde a la composición editorial optimizada: PlantUML
-' aplica su propio motor de distribución y no replica la misma maquetación.
+' 03A v2.1 | T12-C2 | Corte funcional main c6a77137 (PR #45/T11)
+' Fuente conceptual UML, conciliada con SQLAlchemy y Alembic.
+' Cada una de las ocho clases de esta vista tiene una tabla real.
+' El SVG editorial se valida semánticamente contra esta fuente.
 !theme plain
 skinparam backgroundColor #F4F7FB
 skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam linetype ortho
-skinparam nodesep 48
-skinparam ranksep 60
-skinparam ArrowColor #7895AC
-skinparam ClassBorderColor #95AFC4
-skinparam ClassFontColor #18324E
+skinparam nodesep 60
+skinparam ranksep 70
+skinparam ArrowColor #5C7895
+skinparam ClassBorderColor #90A9BE
+skinparam ClassFontColor #17314D
 skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassAttributeFontColor #31485F
 skinparam NoteBackgroundColor #EDF4FA
-skinparam NoteBorderColor #C4D4E2
+skinparam NoteBorderColor #BFCFDD
+skinparam PackageBorderColor #C6D6E5
+skinparam PackageFontColor #193752
 hide empty methods
 left to right direction
 
-title Asistente PyME | Identidad, ubicaciones, asignaciones y catálogo implementado; proveedor TO-BE
+title 03A | Asistente PyME - Identidad, empresa, sedes, catalogo y proveedores (AS-IMPLEMENTED T11)
 
-package "Identidad y acceso" #EAF4FD {
-  class Usuario <<Entidad global>> {
+package "01 - Identidad y acceso" #EAF3FD {
+  class Usuario <<global: users>> {
     +id: UUID
     +emailNormalizado: String
     +passwordHash: String
-    +estado: EstadoUsuario
+    +nombreVisible: String
+    +estado: ACTIVO | DESHABILITADO
   }
-  class Membresia {
+  class Membresia <<memberships>> {
     +id: UUID
+    +empresaId: UUID
+    +usuarioId: UUID
     +rol: RolEmpresa
-    +estado: EstadoMembresia
+    +estado: ACTIVA | INACTIVA
     +puestoTrabajo: String?
   }
-  class Invitacion <<Núcleo E2-1 implementado>> {
+  class Invitacion <<business_invitations>> {
     +id: UUID
-    +emailDestinatario: String
-    +rolPropuesto: RolEmpresa
+    +empresaId: UUID
+    +emisorUserId: UUID
+    +aceptanteUserId: UUID?
+    +emailDestinatarioNormalizado: String
+    +rolPropuesto: ENCARGADO | TRABAJADOR
+    +tokenHash: String
     +estado: EstadoInvitacion
     +venceEn: DateTime
-    +tokenHash: String
-    +fechaAceptacion: DateTime?
+    +aceptadaEn: DateTime?
   }
 }
-package "Empresa y recursos" #E8F7F3 {
-  class Empresa <<Tenant>> {
+
+package "02 - Empresa, sedes y recursos" #E9F7F3 {
+  class Empresa <<businesses: tenant>> {
     +id: UUID
     +nombre: String
-    +tipoActividad: TipoActividad
-    +estado: EstadoEmpresa
+    +rubro: String
+    +tipoActividad: PRODUCTOS | SERVICIOS | MIXTO
+    +fundadorUserId: UUID
+    +estado: ACTIVA | SUSPENDIDA
   }
-  class Ubicacion <<Backend E2-2 C>> {
+  class Ubicacion <<locations>> {
     +id: UUID
+    +empresaId: UUID
     +nombre: String
     +tipo: TipoUbicacion
-    +direccion: String?
-    +urlMapa: String?
+    +direccion: String
+    +urlMapa: String
     +canSell: Boolean
     +canStore: Boolean
     +esPrincipal: Boolean
-    +estado: EstadoUbicacion
-    +creadaEn: DateTime
-    +actualizadaEn: DateTime
+    +estado: ACTIVA | PAUSADA
   }
-  class AsignacionUbicacion <<Backend E2-2 D>> {
+  class AsignacionUbicacion <<location_assignments>> {
     +empresaId: UUID
     +ubicacionId: UUID
     +usuarioId: UUID
-    +estado: EstadoAsignacion
+    +estado: ACTIVA | REVOCADA
     +revocadoEn: DateTime?
   }
-  class ArticuloCatalogo <<Backend E2-3 A/B/C/D>> {
+  class ArticuloCatalogo <<catalog_items>> {
     +id: UUID
     +empresaId: UUID
     +nombre: String
-    +claveNombreNormalizada: String
-    +clase: ClaseArticulo
-    +tipoDerivado: BIEN o SERVICIO
+    +claveNombre: String
+    +clase: ELABORADO | REVENTA | INSUMO | SERVICIO
+    +tipoDerivado: BIEN | SERVICIO
     +categoria: String
     +skuNormalizado: String?
     +unidad: UnidadControl
-    +descripcion: String
-    +observaciones: String
     +vendible: Boolean
     +precioCentavos: Long?
     +costoReferenciaCentavos: Long?
-    +estado: EstadoArticulo
-    +creadaEn: DateTime
-    +actualizadaEn: DateTime
+    +estado: ACTIVO | INACTIVO
   }
-  class Proveedor {
+  class Proveedor <<suppliers>> {
     +id: UUID
+    +empresaId: UUID
     +nombre: String
-    +estado: EstadoProveedor
+    +claveNombre: String
+    +contactoResumen: String
+    +metodosPago: JSONB (array)
+    +promociones: JSONB (array)
+    +estado: ACTIVO | INACTIVO
   }
 }
 
-Usuario "1" -- "0..*" Membresia
-Empresa "1" -- "1..*" Membresia
-Usuario "1" -- "0..*" Empresa : fundador histórico
-Usuario "1" -- "0..*" Invitacion : emisor (invited_by_user_id)
-Usuario "0..1" -- "0..*" Invitacion : aceptante (accepted_by_user_id)
-Empresa "1" -- "0..*" Invitacion
+' Cardinalidades del dominio. "1..*" expresa la empresa valida creada por API;
+' no es una restriccion CHECK de existencia implementada en SQL.
+Usuario "1" -- "0..*" Membresia : identidad global
+Empresa "1" -- "1..*" Membresia : equipo del tenant
+Usuario "1" -- "0..*" Empresa : fundador historico
+
+Empresa "1" -- "0..*" Invitacion : invitaciones del tenant
+Usuario "1" -- "0..*" Invitacion : emisor obligatorio
+Usuario "0..1" -- "0..*" Invitacion : aceptante opcional
+
 Empresa "1" -- "0..*" Ubicacion
-Membresia "1" -- "0..*" AsignacionUbicacion : miembro de este tenant
-Ubicacion "1" -- "0..*" AsignacionUbicacion : sede del mismo tenant
+Membresia "1" -- "0..*" AsignacionUbicacion : membresia del tenant
+Ubicacion "1" -- "0..*" AsignacionUbicacion : sede del tenant
 Empresa "1" -- "0..*" ArticuloCatalogo
 Empresa "1" -- "0..*" Proveedor
 
-note bottom of Membresia
-  UNIQUE(empresa, usuario).
-  Rol según membresía activa del tenant.
-  Alta: 1 titular ACTIVO inicial.
-  Indice SQL: a lo sumo 1 titular ACTIVO.
-  C.4b protege titulares actuales/historicos.
-end note
 note bottom of Empresa
-  Estado inicial ACTIVA.
-  SUSPENDIDA existe en SQL, sin cambio publico.
-  Fundador histórico: founderUserId en SQL.
-  Empresa nueva: 0 ubicaciones, sin stock ficticio.
+  Empresa nueva: ACTIVA, un titular inicial y CERO sedes.
+  fundadorUserId es historico: NO equivale a titularidad legal
+  ni sustituye autorizacion por Membresia.
+  SUSPENDIDA existe en SQL; no hay endpoint publico de cambio.
 end note
-note bottom of Ubicacion
-  SQL: Location, business_id FK obligatoria.
-  Tipos: LOCAL/FERIA/DEPOSITO/OFICINA/CASA/OTRO.
-  ACTIVA / PAUSADA, sin borrado fisico.
-  Unica principal ACTIVA por empresa (a lo sumo 1).
-  Pausar revoca principal; reactivar no la restaura.
-  E2-2 C: permisos de administracion por rol empresa.
-  Asignacion granular implementada en E2-2 D.
-  Uso comercial de politica: futuro E2-4/5/6.
-  No crea stock, venta o deposito ficticio.
+
+note bottom of Membresia
+  UNIQUE(business_id, user_id).
+  Roles: TITULAR_ADMINISTRATIVO / ADMINISTRADOR /
+  ENCARGADO / TRABAJADOR.
+  Indice parcial: A LO SUMO 1 titular ACTIVO por empresa.
+  El servicio protege contra edicion/revocacion del titular;
+  transferencia de titularidad: DIFERIDA.
 end note
-note bottom of AsignacionUbicacion
-  FK compuesta (empresaId,usuarioId) a Membresia.
-  FK compuesta (empresaId,ubicacionId) a Ubicacion.
-  ACTIVA / REVOCADA sin borrar fila.
-  No otorga un rol empresarial adicional.
-  Solo titular/admin gestiona asignaciones.
-  SELL/STORE futuro requiere capacidad y asignacion
-  activa para ENCARGADO/TRABAJADOR.
-end note
-note bottom of ArticuloCatalogo
-  SQL: CatalogItem, business_id FK y UNIQUE(empresaId,id).
-  Clase: ELABORADO/REVENTA/INSUMO/SERVICIO.
-  tipoDerivado BIEN/SERVICIO NO es columna SQL.
-  NameKey NFKC+casefold; UNIQUE(empresaId,nameKey).
-  SKU opcional ASCII canonico: UNIQUE por empresa
-  solo si NO NULL, tambien con ficha INACTIVO.
-  Unidad SERVICIO solo con clase SERVICIO.
-  Precio y costo referencia: BIGINT centavos o NULL.
-  ACTIVO/INACTIVO sin DELETE fisico.
-  Cinco rutas HTTP E2-3 B/C; gestiona titular/admin.
-  Registrar ficha no genera stock, venta ni compra.
-  Historial y regla comercial SELL: E2-4/5/6.
-end note
+
 note bottom of Invitacion
-  Emisor obligatorio; aceptante opcional.
-  Destinatario por email, sin FK previa a Usuario.
-  Crear invitacion NO concede acceso.
-  Aceptacion + Membresia en una transaccion.
-  Token solamente persistido como SHA-256.
+  Emisor FK obligatoria; aceptante FK opcional al aceptar.
+  Destinatario por email, NO FK previa a Usuario.
+  Rol propuesto solo ENCARGADO/TRABAJADOR.
+  UNIQUE parcial (empresa,email) para PENDIENTE.
+  Token se persiste como SHA-256; aceptar vincula membresia.
 end note
+
+note bottom of Ubicacion
+  Tipos: LOCAL/FERIA/DEPOSITO/OFICINA/CASA/OTRO.
+  0..1 principal ACTIVA por empresa: indice parcial.
+  Pausar quita principal; reactivar no la recupera.
+  SELL y STORE son capacidades distintas y ACTIVAS en API.
+  Compra: recepcion STORE; traslado: STORE en ambos destinos.
+  Venta fisica: SELL y STORE en la sede.
+end note
+
+note bottom of AsignacionUbicacion
+  PK(business_id,location_id,user_id).
+  FK compuesta a Membership y FK compuesta a Location.
+  ACTIVA/REVOCADA, revocadoEn coherente.
+  ENCARGADO y TRABAJADOR requieren asignacion ACTIVA
+  para operar SELL/STORE; titular/admin no la necesitan.
+  No crea un rol empresarial nuevo.
+end note
+
+note bottom of ArticuloCatalogo
+  NameKey NFKC+casefold: UNIQUE por empresa.
+  SKU opcional unico por empresa aun con ficha INACTIVO.
+  BIEN/SERVICIO derivado de kind, NO columna persistida.
+  Precio y costo BIGINT centavos o NULL; sin Float.
+  Alta de ficha NO modifica stock.
+  Integrado con compras E2-4, inventario E2-5,
+  ventas POS E2-6/E2-7.
+end note
+
+note bottom of Proveedor
+  SQL: Supplier (suppliers) con business_id FK.
+  UNIQUE(business_id,name_key), incluso INACTIVO.
+  Datos de contacto, web y redes; payment_methods y
+  promotions son campos JSONB con arreglos validados.
+  Baja logica ACTIVO/INACTIVO: no borra compras pasadas.
+  Compra puede referenciar proveedor opcional y guarda
+  supplier_name_snapshot historico.
+end note
+
+legend bottom
+  **Corte verificado:** main c6a77137 (PR #45) | Doc 03 v2.1 (T12-C1)
+  Las clases y sus asociaciones representan el dominio REAL, no todas las columnas.
+  AuthSession y BusinessCreationRequest son soporte tecnico y se describen en la guia.
+  RF-08/09/10 y Mercado Pago QR REAL siguen diferidos. Compras/stock/ventas se detallan en 03B.
+endlegend
 @enduml
