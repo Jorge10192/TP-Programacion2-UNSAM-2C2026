@@ -90,6 +90,7 @@ test('E27-MODE-02: QR, caja y cuenta DEMO no consultan ni escriben negocio REAL'
   const account = page.getByRole('region', { name: 'Agregar cuenta DEMO' })
   await account.getByLabel('Nombre de la cuenta *').fill('Cuenta aislada T11')
   await account.getByLabel('Banco o billetera *').fill('Banco ficticio QA')
+  await account.getByLabel('Alias ficticio (opcional)').fill('cuenta.t11.qa')
   await account.getByRole('button', { name: 'Registrar cuenta DEMO' }).click()
   await expect(page.getByText('Cuenta DEMO «Cuenta aislada T11» registrada', { exact: false }))
     .toBeVisible()
