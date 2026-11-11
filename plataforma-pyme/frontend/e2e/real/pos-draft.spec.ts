@@ -143,3 +143,85 @@ test('T10-C POS REAL: 501 fichas paginadas, filtro local explícito y sin ventas
   expect(observed.filter(offset => offset !== 0)).toEqual([100, 200, 300, 400, 500])
   await expect(page.getByRole('button', { name: 'Revisar venta y pagos' })).toBeDisabled()
 })
+
+test('T10-D: POS genera UNA venta de servicio tras revisión y consentimiento, sin POST automático', async ({ page, request }) => {
+  const fixture = await seed(request)
+  let posts = 0
+  page.on('request', req => {
+    if (req.method() === 'POST' &&
+      req.url().endsWith('/api/v1/businesses/' + fixture.businessId + '/sales')) posts++
+  })
+  await open(page, fixture)
+  await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
+  await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
+  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1500,00')
+  await expect(page.getByRole('button', { name: 'Revisar venta y pagos' })).toBeEnabled()
+  expect(posts).toBe(0)
+
+  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await expect(page.getByRole('button', { name: 'Confirmar y registrar venta REAL' })).toBeDisabled()
+  expect(posts).toBe(0)
+  await page.getByLabel('Acepto registrar esta venta REAL').check()
+  await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
+  await expect(page.getByText('Venta confirmada en PostgreSQL.', { exact: false })).toBeVisible()
+  expect(posts).toBe(1)
+  const list = await request.get(base + '/businesses/' + fixture.businessId + '/sales', {
+    headers: { Authorization: 'Bearer ' + (await (await request.post(base + '/auth/login', {
+      data: { email: fixture.email, password: fixture.password },
+    })).json()).access_token },
+  })
+  expect(list.status(), await list.text()).toBe(200)
+  const entries = await list.json()
+  expect(entries).toHaveLength(1)
+  expect(entries[0].total_cents).toBe(150000)
+
+  await page.reload()
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(fixture.email)
+  await page.getByLabel('Contraseña', { exact: true }).fill(fixture.password)
+  await page.getByRole('button', { name: 'Ingresar', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Revisar venta y pagos' })).toBeDisabled()
+  expect(posts).toBe(1)
+})
+
+test('T10-D: pérdida de respuesta después del 201, F5 y recuperación GET sin repetir POST', async ({ page, request }) => {
+  const fixture = await seed(request)
+  let intercepted = 0
+  let postCalls = 0
+  page.on('request', req => {
+    if (req.method() === 'POST' &&
+      req.url().endsWith('/api/v1/businesses/' + fixture.businessId + '/sales')) postCalls++
+  })
+  await page.route('**/api/v1/businesses/' + fixture.businessId + '/sales', async route => {
+    if (route.request().method() !== 'POST') return route.continue()
+    intercepted++
+    const response = await route.fetch()
+    expect(response.status()).toBe(201) // transaction committed in disposable DB
+    return route.abort('failed') // response lost AFTER commit
+  })
+  await open(page, fixture)
+  await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
+  await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
+  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByLabel('Acepto registrar esta venta REAL').check()
+  await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
+  await expect(page.getByText('Hay una solicitud de venta guardada que requiere recuperación.', {
+    exact: false,
+  })).toBeVisible()
+  expect(intercepted).toBe(1)
+  expect(postCalls).toBe(1)
+
+  await page.reload()
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(fixture.email)
+  await page.getByLabel('Contraseña', { exact: true }).fill(fixture.password)
+  await page.getByRole('button', { name: 'Ingresar', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Recuperar comprobante por solicitud (GET)' })).toBeVisible()
+  expect(postCalls).toBe(1)
+  await page.getByRole('button', { name: 'Recuperar comprobante por solicitud (GET)' }).click()
+  await expect(page.getByText('Venta confirmada en PostgreSQL.', { exact: false })).toBeVisible()
+  expect(postCalls).toBe(1)
+  await expect(page.getByRole('button', { name: 'Preparar otra venta' })).toBeVisible()
+})
