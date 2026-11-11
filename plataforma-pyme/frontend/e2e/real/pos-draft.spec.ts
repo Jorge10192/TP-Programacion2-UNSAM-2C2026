@@ -57,7 +57,7 @@ test('T10-C POS REAL: carrito, sede, precio admin, descuento, sin POST de venta'
       req.url().endsWith('/sales')) salePosts++
   })
   await open(page, fixture)
-  await expect(page.getByText('Vista preliminar, solo preparación.')).toBeVisible()
+  await expect(page.getByText('Modo de validación T10-D.')).toBeVisible()
   await expect(page.locator('.real-pos-product')).toHaveCount(1)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
   await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
@@ -89,7 +89,9 @@ test('T10-C POS REAL: carrito, sede, precio admin, descuento, sin POST de venta'
   await expect(cart.locator('.real-pos-cart-row')).toHaveCount(1)
   await expect(cart).toContainText('5.401,50')
   await expect(page.locator('.real-pos-summary')).toContainText('5.301,50')
-  await expect(page.getByRole('button', { name: 'Confirmación de venta disponible en T10-D' })).toBeDisabled()
+  await expect(page.getByLabel('Importe declarado 1')).toHaveValue('3501,00')
+  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await expect(page.getByRole('button', { name: 'Confirmar y registrar venta REAL' })).toBeDisabled()
   expect(salePosts).toBe(0)
 
   await page.reload()
@@ -139,5 +141,5 @@ test('T10-C POS REAL: 501 fichas paginadas, filtro local explícito y sin ventas
   // deben conservar exactamente su orden y no duplicar artículos en la UI.
   expect(observed.filter(offset => offset === 0).length).toBeGreaterThanOrEqual(1)
   expect(observed.filter(offset => offset !== 0)).toEqual([100, 200, 300, 400, 500])
-  await expect(page.getByRole('button', { name: 'Confirmación de venta disponible en T10-D' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Revisar venta y pagos' })).toBeDisabled()
 })
