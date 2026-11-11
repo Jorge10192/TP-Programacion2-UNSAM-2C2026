@@ -1,119 +1,114 @@
-# E2-7 · T11-E — Auditoría final PRE-MERGE del PR #45
+# E2-7 · T11 — Auditoría final de integración y puerta PRE-MERGE
 
-**Fecha del corte:** 11/11/2026. **Rama auditada:** `feature/e2-7-t11-qa-integral-hardening`. **Destino propuesto:** `main`. **PR:** [#45](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/45), abierto y **DRAFT**, sin merge. Este acta se crea *en* la rama auditada: su propio commit y checks deben comprobarse antes de levantar DRAFT.
+**Fecha de cierre técnico:** 11/11/2026 · **Rama:** `feature/e2-7-t11-qa-integral-hardening` · **PR:** [#45](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/45), **DRAFT**, sin merge.  
+**Commit de código con regresión final aprobada:** `6aecd80e52a0712f7d1088dde8347de7f7a7c186`.  
+**Este documento reemplaza el dictamen NO-GO preliminar emitido antes de las pruebas T11-F.** El commit exclusivamente documental que actualiza este informe requiere revisar sus propios checks antes del merge.
 
-## 1. Dictamen de auditoría
+## 1. Dictamen
 
-**DICTAMEN ESTRICTO: NO-GO para merge inmediato bajo la matriz E27 de escenarios E2E obligatorios.**
+**GO TÉCNICO CON LIMITACIONES EXPLÍCITAS para integrar la etapa funcional E2-7/T11 a `main`, sujeto a revisión humana y autorización expresa del responsable del repositorio.** No implica autorización para ejecutar el merge, habilitar ventas locales o declarar terminada la documentación académica.
 
-No hay defectos funcionales bloqueantes reproducidos abiertos entre los **dos** problemas de sedes descubiertos manualmente; ambos fueron corregidos y revalidados. Sin embargo, **no está acreditada la cobertura E2E completa de los 26 escenarios exigidos** por `E2-7_QA_CRITERIOS_ACEPTACION_Y_RIESGOS.md` (detalle en sección 5), y además hay que comprobar las tres CI del **HEAD final**, no solo del commit funcional anterior. El cumplimiento de esas condiciones **o una aceptación expresa, informada y documentada de las excepciones** es necesario para recomendar pasar el PR a READY y fusionarlo. Este diagnóstico **no significa que el software sea inestable**, sino que la evidencia aún no alcanza el criterio estricto definido por el propio proyecto.
+El informe se basa en:
+- **26 de 26 criterios funcionales E27 con evidencia directa del núcleo exigido** mediante Playwright + FastAPI/PostgreSQL descartable, pruebas de backend y, donde corresponde, retest manual.
+- **Tres workflows en verde en el mismo commit de código `6aecd80`**: frontend, backend y full-stack.
+- **Los dos defectos manuales de sedes SELL/STORE corregidos y retesteados**.
+- GitHub comparó el PR con `main`: **63 commits adelante, 0 detrás, 30 archivos cambiados, `mergeable=true`** en el corte previo a la presente actualización documental. No se detectaron conflictos.
+- El criterio E27-RESP-01 está acreditado en su **alcance de smoke test** (desktop 1440 px, móvil 390 px, teclado, navegación y ocho rutas principales); **no** representa una evaluación WCAG exhaustiva ni aprobación del rediseño visual.
 
-**Integrabilidad técnica:** en el corte previo a este acta, `main=bc91c1ee3fac95753486fbad608ae9b6e9f534e6` y el PR estaban `ahead_by=24`, `behind_by=0`, `mergeable=true`, sin reviews ni threads; es decir, **sin conflicto reportado**, pero mergeable no equivale a aprobar calidad, cobertura o autorización humana.
+El dictamen anterior de 17 directos/8 parciales/1 faltante era correcto **para su fecha de corte**, pero quedó obsoleto tras las suites T11-F. Esta es la matriz vigente.
 
-## 2. Fuentes examinadas y metodología
+## 2. Etapas y evidencia verificable
 
-1. Plan rector `docs/E2-7_T11_0_PLAN_QA_INTEGRAL_HARDENING.md` y matriz inicial de 26 escenarios `docs/E2-7_T11_A_MATRIZ_INICIAL_COBERTURA_QA.md`.
-2. Criterios oficiales internos `docs/E2-7_QA_CRITERIOS_ACEPTACION_Y_RIESGOS.md`, matriz de escenarios E27-AUTH/TEN/PERM/LOC/CAT/SUP/PUR/REC/INV/SAL/PRES/MODE/RESP.
-3. Actas T11-B, T11-C, T11-D y T11-E de sedes; archivos de pruebas REAL `flow-purchase-to-sale.spec.ts`, `security-navigation.spec.ts`, `security-errors.spec.ts`, `responsive-keyboard.spec.ts`, `assigned-location-visibility.spec.ts`, junto a suites preexistentes de inventario, ventas, compras y permisos.
-4. Resultados concretos de GitHub Actions de frontend, backend y full-stack; logs Pytest con warnings y aserciones Playwright.
-5. **Acta manual T11-D2:** `docs/E2-7_T11_D2_ACTA_PRUEBA_MANUAL_REAL.md`, 39 pasos guiados y retest de correcciones. Las capturas se inspeccionaron en la conversación, pero no están anexadas al repositorio; por ello no se declaran «evidencia gráfica versionada» ni se presupone inspección de todas las peticiones HTTP.
-6. Comparación de cambios del PR contra main mediante GitHub, sin modificar el destino.
-
-## 3. Alcance exacto de los cambios del PR
-
-En el corte de 24 commits previos a los pequeños ajustes finales de textos, el diff contenía **17 archivos**, con aproximadamente **1.170 líneas agregadas y 11 eliminadas**; predominaban tests E2E y actas. Código funcional modificado únicamente en la consulta de asignaciones propias (FastAPI/gateway) y filtrado de sedes (POS/transferencias). **El recuento cambia con los commits finales**, por lo que se actualizará antes de aceptación.
-
-- **Backend:** `GET /businesses/{business_id}/locations/my-assignments`; solo consulta IDs activos del actor, dentro del tenant y con sesión válida. Gestión administrativa de asignaciones continúa restringida al titular/administrador.
-- **Frontend POS:** trabajador/encargado ven únicamente sedes SELL activas asignadas; roles de administración pueden seleccionar sedes SELL activas; ventas reales locales permanecen bloqueadas por `VITE_PYME_ENABLE_REAL_SALES` ausente.
-- **Frontend transferencias:** origen y destino STORE filtrados por asignaciones del actor no administrador; con solo una sede no es posible confirmar traslado. Backend sigue revalidando SELL/STORE y stock.
-- **Regresión nueva:** 5 archivos REAL de T11 (flujo comercial, seguridad navegación, errores HTTP, responsive teclado, asignaciones) y actualización de caso existente de permisos.
-- **Texto/UI menor:** singular/plural de proveedores y renglones; aviso T10-E vencido en checkout y aviso T10-D vencido en detalle de empresa. Sin rediseño de pantallas.
-- No se cambió el modelo SQL, las migraciones Alembic ni se añadió nueva acreditación real de dinero.
-
-## 4. Evidencia automatizada y manual confirmada
-
-**Último commit funcional de permisos con triple CI verde:** `d2cdf4e774990a770909b674520b883e9e8cd31a`.
-
-| Runner | Evidencia | Resultado |
+| Etapa | Evidencia | Resultado |
 |---|---|---|
-| Full-stack real | [#43002093357](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43002093357) | **SUCCESS**, 892 Pytest / 32 Playwright REAL / 6 DEMO |
-| Frontend | [#43002093452](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43002093452) | **SUCCESS** |
-| Backend | [#43002093351](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43002093351) | **SUCCESS** |
-| Commit documental previo a esta auditoría | `dd8f7b990eaf1041bd80dd125e9ebb6baa96dbfa` | **Tres SUCCESS**: [full-stack #43002979107](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43002979107), backend #43002979200, frontend #43002979113. 892/32/6 en full-stack. |
-| Manual T11-D2 | Acta de 39 pasos + revalidación con Miguel tras rebuild API | **Dos defectos de sedes cerrados**; consulta stock 7/4/6 sin variación tras cancelar traslado; venta mixta $8.000 − $1.000 = $7.000 y pagos $3.000+$4.000, sin registro comercial |
+| Backend y datos | [Full-stack #43014577888](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43014577888), Pytest con PostgreSQL efímero y `RUN_DB_INTEGRATION=1` | **892 Pytest PASS**, 2 warnings Pydantic |
+| Backend aislado | [Backend #43014577849](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43014577849) | **SUCCESS**, Python 3.12/3.14 e imagen FastAPI |
+| Frontend independiente | [Frontend #43014577698](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43014577698) | **SUCCESS**, build, lint y pruebas unitarias/browser del workflow |
+| Navegador REAL full-stack | [Full-stack #43014577888](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43014577888) | **38 Playwright PASS**, FastAPI/Vite/PostgreSQL QA |
+| Navegador DEMO | Mismo full-stack | **6 Playwright PASS**, estado local independiente |
+| Manual REAL | [Acta T11-D2 de 39 pasos](E2-7_T11_D2_ACTA_PRUEBA_MANUAL_REAL.md) + [retetst SELL/STORE](E2-7_T11_E_FIX_SEDES_ASIGNADAS_QA.md) | Aprobado en casos recorridos; dos defectos corregidos y verificados |
+| Verificación de integración | Comparación de PR #45 `main`→rama | 63 ahead / 0 behind, mergeable=true, sin reviews registradas |
 
-**Aclaración de integridad de datos:** hubo **una revocación administrativa real** de la asignación Miguel–Sede A TEST 2 realizada por el usuario durante la investigación. No se ejecutó ninguna confirmación manual de venta, compra de prueba, recepción, ajuste o transferencia. El inventario leído siguió en 7/4/6 según capturas; eso no equivale a una auditoría SQL del entorno persistente.
+**Guardas críticas:** tests de navegador que hacen POST usan `PYME_DISPOSABLE_QA=1`, API CI `127.0.0.1:18001`, usuarios y empresas QA únicos. No se habilitaron las ventas locales sobre TEST Empresa A. Se conservó el PR como borrador.
 
-**Pydantic/Pytest:** run #43002979107 registró **4 warnings**, tipo `UnsupportedFieldAttributeWarning`, alias `changes` y `offset`, emitidos durante pruebas de concurrencia. Se observaron números variables en otras corridas, sin tests fallidos. **No se ha identificado con certeza la declaración que origina los warnings**, por lo que no se altera a ciegas Pydantic/FastAPI en una etapa de cierre. Riesgo técnico bajo/no bloqueante, pendiente documentado.
+## 3. Matriz vigente de los 26 escenarios obligatorios
 
-## 5. Matriz final de evidencia de los 26 escenarios obligatorios
+**DIRECTO** significa que el núcleo del escenario está comprobado en browser REAL + API/DB efímera (o, cuando el escenario es DEMO, en la UI DEMO vigilando escrituras REAL). La existencia de tests no equivale a cobertura universal de todos los estados y dispositivos.
 
-Convención: **DIRECTO** = test que verifica el núcleo en navegador/API real; **PARCIAL** = prueba backend + pasos manuales o navegadores que no cubren todo el recorrido literal; **FALTA** = escenario integral no identificado/reproducido en la evidencia revisada. No son una medición estadística universal de cobertura.
-
-| ID | Estado | Evidencia y limitación |
+| Escenario | Estado | Prueba principal |
 |---|---|---|
-| E27-AUTH-01 | PARCIAL | Registro/login por API en fixtures + login/GET perfil visto manualmente; falta aserción E2E dedicada del ciclo registro→login→GET /me en UI |
-| E27-AUTH-02 | DIRECTO | `security-navigation.spec.ts`, logout/protección de sesión; cierre manual de Miguel |
-| E27-AUTH-03 | DIRECTO | `responsive-keyboard.spec.ts` y tests de recovery con F5/relogin |
-| E27-TEN-01 | DIRECTO | `security-navigation.spec.ts` A/B, manual de membresías dueño/trabajador |
-| E27-TEN-02 | DIRECTO | `security-navigation.spec.ts` respuesta tardía ignorada/cancelada |
-| E27-TEN-03 | DIRECTO | `security-navigation.spec.ts` acceso a empresa ajena |
-| E27-PERM-01 | DIRECTO | `assigned-location-visibility.spec.ts` + `security-errors.spec.ts`, 403 API y UI sin sedes no asignadas |
-| E27-LOC-01 | PARCIAL | `test_location_api_integration.py` pausar/reactivar y persistencia; no se constató flujo Playwright de pausa/reactivación + F5 |
-| E27-CAT-01 | PARCIAL | Backend alta/inactivación + test T11-B bien/servicio; falta E2E de inactivar y refrescar |
-| E27-SUP-01 | PARCIAL | Backend CRUD integrado; listado y permisos inspeccionados manualmente, rechazo 409 probado; sin CRUD UI completo constatado |
-| E27-PUR-01 | PARCIAL | T11-B compra con bien+servicio sin stock previo; manual concepto libre por separado; no combinación exacta bien+concepto libre en un solo E2E |
-| E27-REC-01 | DIRECTO | `flow-purchase-to-sale.spec.ts`: recepción + saldo + movimiento sólo para bien |
-| E27-REC-02 | DIRECTO | `flow-purchase-to-sale.spec.ts`: replay misma clave y recibo |
-| E27-INV-01 | DIRECTO | `inventory.spec.ts`, T11-B y conciliación manual 7/4/6 |
-| E27-INV-02 | PARCIAL | `inventory.spec.ts` y manual: saldos netos +3/−3 y +1/−1; aserción estricta de ambos eventos con neto cero en mismo flujo no verificada en este corte |
-| E27-INV-03 | DIRECTO | `inventory.spec.ts` ajuste con versión correcta |
-| E27-INV-04 | DIRECTO | `inventory.spec.ts` versión obsoleta y 409 |
-| E27-SAL-01 | DIRECTO | `pos-draft.spec.ts`: venta física, descuento saldo y movimiento |
-| E27-SAL-02 | DIRECTO | `flow-purchase-to-sale.spec.ts`: física + servicio + dos pagos y comprobante; manual descuento sin confirmación |
-| E27-SAL-03 | DIRECTO | `sales-recovery.spec.ts`: POST 201 perdido, GET/replay 200 misma clave sin duplicar |
-| E27-SAL-04 | DIRECTO | `pos-draft.spec.ts` stock insuficiente 409/rollback |
-| E27-SAL-05 | PARCIAL | Política backend de precios/descuentos, pagos invalidables en frontend y manual de roles; no se verificó aquí el rechazo combinado exacto en browser + POST |
-| E27-PRES-01 | DIRECTO | `flow-purchase-to-sale.spec.ts` F5/relogin y consultas, sin auto POST |
-| E27-MODE-01 | DIRECTO | `responsive-keyboard.spec.ts` REAL→DEMO→REAL sin reutilizar sesión |
-| E27-MODE-02 | FALTA | No se encontró E2E dedicado a operar UI de QR, caja/jornadas y cuentas en DEMO y afirmar ausencia de escritura REAL. Mantener como no demostrado |
-| E27-RESP-01 | PARCIAL | `responsive-keyboard.spec.ts` 1440/390 px, teclado, POS sin overflow y DEMO; no auditoría de todos los módulos, lector de pantalla ni WCAG integral |
+| E27-AUTH-01 registro/login/GET me | DIRECTO | `auth-registration-ui.spec.ts` |
+| E27-AUTH-02 logout y protección | DIRECTO | `security-navigation.spec.ts` |
+| E27-AUTH-03 F5 y reautenticación | DIRECTO | `responsive-keyboard.spec.ts`, `sales-recovery.spec.ts` |
+| E27-TEN-01 A/B empresas | DIRECTO | `security-navigation.spec.ts` |
+| E27-TEN-02 respuesta tardía A→B | DIRECTO | `security-navigation.spec.ts` |
+| E27-TEN-03 URL de empresa ajena | DIRECTO | `security-navigation.spec.ts` |
+| E27-PERM-01 SELL/STORE sin asignación | DIRECTO | `assigned-location-visibility.spec.ts`, `security-errors.spec.ts` |
+| E27-LOC-01 sede activa/pausada/reactivada + F5 | DIRECTO | `business-crud-persistence.spec.ts` |
+| E27-CAT-01 bien/servicio/inactivación + F5 | DIRECTO | `business-crud-persistence.spec.ts` |
+| E27-SUP-01 proveedor CRUD y persistencia | DIRECTO | `business-crud-persistence.spec.ts` |
+| E27-PUR-01 bien + concepto libre sin stock antes de recibir | DIRECTO | `purchase-ui-persistence.spec.ts` |
+| E27-REC-01 recepción y movimiento solo para bien físico | DIRECTO | `purchase-ui-persistence.spec.ts`, `flow-purchase-to-sale.spec.ts` |
+| E27-REC-02 recepción idempotente | DIRECTO | `flow-purchase-to-sale.spec.ts` |
+| E27-INV-01 saldos/versiones/ledger | DIRECTO | `inventory.spec.ts` |
+| E27-INV-02 traslado con −1/+1 y neto cero | DIRECTO | `inventory.spec.ts` (par, misma operación y replay) |
+| E27-INV-03 ajuste con versión válida | DIRECTO | `inventory.spec.ts` |
+| E27-INV-04 versión obsoleta 409 | DIRECTO | `inventory.spec.ts` |
+| E27-SAL-01 venta física y salida de stock | DIRECTO | `pos-draft.spec.ts` |
+| E27-SAL-02 venta mixta + pagos divididos | DIRECTO | `flow-purchase-to-sale.spec.ts` |
+| E27-SAL-03 idempotencia 201 perdido → GET/replay 200 | DIRECTO | `sales-recovery.spec.ts` |
+| E27-SAL-04 stock insuficiente 409 | DIRECTO | `pos-draft.spec.ts` |
+| E27-SAL-05 precio/descuento con pagos incoherentes | DIRECTO | `sales-invalid-payment-policy.spec.ts` (rechazo UI y API 422); `responsive-keyboard.spec.ts` |
+| E27-PRES-01 F5 persistencia de compra/venta | DIRECTO | `purchase-ui-persistence.spec.ts`, `flow-purchase-to-sale.spec.ts` |
+| E27-MODE-01 DEMO↔REAL aislados | DIRECTO | `responsive-keyboard.spec.ts` |
+| E27-MODE-02 QR/caja/cuentas DEMO no escriben REAL | DIRECTO | `demo-money-isolation.spec.ts` |
+| E27-RESP-01 móvil, escritorio, teclado, navegación | DIRECTO (smoke) | `responsive-keyboard.spec.ts`, `mobile-core-navigation.spec.ts` |
 
-**Balance de esta matriz:** 17 DIRECTOS, 8 PARCIALES y 1 FALTA, aplicando la convención descrita. Se exige validar cualquier recuento con su tabla y no generalizar a «26 E2E aprobados» solo por tener 32 casos browser.
+**Balance:** **26/26 criterios E27 comprobados en su alcance de aceptación definido.** Responsive/accesibilidad formal más allá de ese smoke, comportamiento en dispositivos reales y WCAG completo siguen pendientes de una etapa UX posterior. No clasificarla como evaluación de accesibilidad exhaustiva.
 
-## 6. Riesgos residuales y tratamiento
+## 4. Auditoría del alcance del PR (no romper compatibilidad)
 
-| Riesgo | Severidad | Impacto/decisión sugerida |
+En la comparación de código previa al commit documental, **30 archivos** en `plataforma-pyme/`; los cambios funcionales en producción son mínimos:
+- `backend/app/modules/locations/assignment_service.py`, `router.py`: consulta de ubicaciones propias activas, limitada por sesión y empresa.
+- `frontend/src/features/businesses/realOperationsGateway.ts`: cliente de asignaciones propias.
+- `frontend/src/features/sales/RealPosPage.tsx`: selector SELL filtrado por sede autorizada.
+- `frontend/src/features/inventory/RealInventoryPage.tsx`, `RealTransferPanel.tsx`: origen/destino STORE limitados a asignaciones del trabajador.
+- Cuatro pantallas con correcciones **solo de texto** (proveedores, compras, empresa y checkout).
+- El resto: tests E2E y documentos de QA. **Sin nuevas migraciones Alembic, tablas o modificaciones de datos de producción.**
+
+Verificaciones de compatibilidad: backend valida nuevamente permisos para cada POST; el filtro de la UI **no** confiere autorización; roles de administración conservan selección de sedes. Compra no mueve stock sin recepción; servicio no genera movimiento físico; idempotencia evita duplicación. El modo DEMO mantiene estado local separado y ninguna acción DEMO de QR/caja/cuentas escribe ventas, compras o inventario REAL.
+
+## 5. Revisión manual y límites de la evidencia
+
+Se siguieron **39 pasos** sobre cuentas de dueño y trabajador, con capturas en la conversación (no adjuntadas como imágenes versionadas). Se recorrieron empresas/equipo, catálogo, proveedores, compras, recepciones, inventario y POS (precio, descuentos, pagos, F5, borrador y logout). El listado de saldos observado fue **7, 4 y 6**; se comprobó visualmente que no cambió tras cancelar un traslado. No se verificó SQL persistente del usuario.
+
+Los hallazgos **T11-D2-01** (POS ofrecía sede no asignada) y **T11-D2-02** (transferencias ofrecían sede no asignada) fueron corregidos y revalidados en navegador local y suite. **Sí hubo una revocación administrativa real** de la asignación de Miguel en Sede A TEST 2 realizada por el usuario; **no** se confirmaron ventas, compras, recepciones o movimientos de stock manuales durante ese recorrido. La política de lectura general de inventario entre sedes del mismo tenant se mantiene intencionalmente para el MVP.
+
+## 6. Riesgos residuales y decisiones explícitas
+
+| Riesgo o límite | Severidad para integración E2-7 | Tratamiento |
 |---|---|---|
-| E27-MODE-02 ausente (DEMO QR/caja/cuentas→REAL sin writes) | **Medio** | Agregar smoke browser de lectura/acciones DEMO + vigilancia de cero POST REAL, o aceptar expresamente la excepción si dichas pantallas siguen excluidas del MVP |
-| LOC/CAT/SUP/PUR y SAL05 de navegador parciales | **Medio** | Completar smoke E2E mínimos de mayor impacto antes de READY; backend existente reduce riesgo pero no prueba UX |
-| Tres warnings Pydantic de alias distintos (4 ocurrencias) | **Bajo** | Anotar en issues/plan; localizar fuente con traceback si se decide corregir, sin cambios especulativos |
-| Accesibilidad/responsive parcial (390 y 1440; teclado limitado) | **Bajo–medio** | QA exploratoria en otros viewport/tamaños y validación de UX diferida a fase visual |
-| Datos comerciales guardados temporalmente sin cifrar en IndexedDB en flujos comerciales | **Medio** | Avisos existentes, evitar dispositivos compartidos; no almacenar tokens; no exponer en evidencia |
-| API propios permisos / assignment GET sin fixture exhaustiva de roles y suspensiones | **Bajo–medio** | Ya hay un E2E de trabajador con revocación y 403 administrativo; ampliar matrices 401/404/tenant si se exige cobertura de seguridad independiente |
-| Plan académico T12 (README/UML/matriz RF/CU/API/UI, documentos 01–05) | **Fuera de T11** | No declarar entrega académica final por aprobar el PR técnico de T11 |
+| **Pydantic `UnsupportedFieldAttributeWarning`**, `Field(alias=...)` | Bajo/no bloqueante | El full-stack del commit final de código reportó **2 warnings** (alias `supplier_id` y `command`) con 892 PASS; variaron entre corridas. No se identificó una fuente única reproducible; evitar cambios especulativos de validación al cerrar la rama |
+| **IndexedDB** con payload comercial local no cifrado en flujos de recuperación | Medio/aceptación informada | No guarda tokens; interfaz advierte evitar dispositivos compartidos; arquitectura y cifrado quedan para endurecimiento posterior |
+| **Ventas REAL** deshabilitadas por defecto localmente | Intencional | `VITE_PYME_ENABLE_REAL_SALES` solo en CI descartable u otros entornos explícitamente autorizados. No activar en TEST Empresa A sin decisión |
+| **Pagos/QR DEMO** no son acreditación bancaria ni Mercado Pago real | Intencional | Los pagos REAL son *declarados*, no verificados por terceros; QR/caja/cuentas DEMO no equivalen a integraciones financieras productivas |
+| UX, WCAG completa, lectores de pantalla, compatibilidad móvil física | Fuera del alcance de smoke E27, deuda de producto | Tratar después de estabilizar MVP; no declararlo certificado |
+| Documentación académica T12 (UML, RF/CU/API/UI, documentos 01–05) | Puerta distinta | Actualizar tras integración, no confundir QA del frontend/backend con entrega final académica |
 
-No hay hallazgo de duplicación de venta, corrupción de stock o fuga cross-tenant **demostrado** en la evidencia examinada. Esto no es garantía de ausencia total de defectos.
+No se detectaron fallos de tests, duplicaciones de operaciones o filtración cross-tenant **en los escenarios probados**. No se afirma ausencia universal de bugs.
 
-## 7. Checklist de aceptación PRE-MERGE
+## 7. Checklist y autorización para main
 
-- [x] Dos defectos detectados manualmente en SELL/STORE corregidos y retesteados.
-- [x] Base `main` sin divergencia al corte comparado; PR mergeable en GitHub.
-- [x] CI triple verde en commit funcional `d2cdf4e` y commit documental anterior `dd8f7b9`.
-- [x] Acta de los 39 pasos manuales con excepción administrativa de revocación registrada.
-- [x] Pago declarado y stock físico no se confunden; confirmación POS local bloqueada.
-- [x] Textos simples detectados manualmente corregidos en rama.
-- [ ] **Verificar backend/frontend/full-stack en el SHA final después de agregar el presente acta.**
-- [ ] Resolver o **aceptar explícitamente** cobertura incompleta de E27-MODE-02 y escenarios parciales.
-- [ ] Responsable revisa diff final del PR y emite consentimiento expreso para fusionar.
-- [ ] T12 académico se tramita en su propia puerta, si corresponde.
+- [x] Integridad de compra/recepción/stock/venta bajo PostgreSQL descartable.
+- [x] Pruebas de registro, sesión, multi-tenant, permisos, HTTP 401/403/404/409/422/503, idempotencia.
+- [x] 26 escenarios de la matriz E27 cubiertos en su alcance funcional.
+- [x] Dos defectos de interfaz detectados manualmente corregidos y reprobados en CI + navegador local.
+- [x] 892 Pytest + 38 Playwright REAL + 6 DEMO PASS en mismo commit funcional; frontend/backend independientes SUCCESS.
+- [x] Sin divergencia ni conflicto GitHub con `main` al corte; cambios limitados a `plataforma-pyme/`.
+- [x] Los riesgos residuales están explicitados, sin disfrazar DEMO de integración bancaria REAL.
+- [ ] **Confirmar tres CI del HEAD final después de actualizar este documento.**
+- [ ] **Revisión y aceptación explícita del responsable**, incluidos riesgos residuales.
+- [ ] Solo entonces pasar PR #45 de DRAFT a READY y, con permiso expreso, fusionar a `main`.
+- [ ] T12 académico se planifica tras el merge técnico, por separado.
 
-## 8. Orden recomendado para pasar a main
-
-1. Verificar tres workflows en el **HEAD exacto** que se vaya a fusionar, sin tests skipped/críticos.
-2. Cerrar E27-MODE-02 con test de no escrituras REAL o registrar su excepción formal; decidir qué escenarios parciales son criterios duros del TP y cuál queda como deuda no bloqueante.
-3. Exigir revisión humana del PR y la constancia de aprobación del responsable; solo entonces convertir PR #45 de DRAFT a READY.
-4. Fusionar **únicamente con autorización explícita** del usuario y preservando main; no hacer cambios en datos locales por merge.
-5. Seguir en T12 con UML/README/documentación académica y decisiones de UX pendientes; no confundir integración técnica con rediseño.
-
-**Dictamen final de este corte: NO-GO estricto por cobertura incompleta y checks pendientes en el HEAD futuro.** Cuando se satisfagan las condiciones y no haya regresión, el estado puede actualizarse a **APTO TÉCNICAMENTE PARA MAIN CON EXCEPCIONES DOCUMENTADAS**, sujeto a aprobación humana.
+**Dictamen:** `APTO TÉCNICAMENTE PARA MAIN (E2-7/T11)`, con limitaciones descritas; pendiente checks del commit documental y consentimiento humano. **No fusionado.**
