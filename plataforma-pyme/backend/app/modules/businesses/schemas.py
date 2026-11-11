@@ -16,6 +16,8 @@ class CreateBusinessRequest(BaseModel):
     @field_validator("name", "category")
     @classmethod
     def normalize_text(cls, value: str) -> str:
+        if "\x00" in value:
+            raise ValueError("El texto no puede contener caracteres nulos")
         value = value.strip()
         if len(value) < 2:
             raise ValueError("Se necesitan al menos dos caracteres")
@@ -76,6 +78,8 @@ class UpdateBusinessProfileRequest(BaseModel):
     def normalize_optional_text(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if "\x00" in value:
+            raise ValueError("El texto no puede contener caracteres nulos")
         result = value.strip()
         if len(result) < 2:
             raise ValueError("Se necesitan al menos dos caracteres")
