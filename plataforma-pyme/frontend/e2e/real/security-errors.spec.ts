@@ -116,3 +116,99 @@ test('T11-C: 409 de proveedor duplicado y 422 de compra inválida son atómicos'
   expect(purchases.status(), await purchases.text()).toBe(200)
   expect(await purchases.json()).toEqual([])
 })
+
+test('T11-C: trabajador miembro sin sede no puede recibir ni registrar venta desde POS', async ({ page, request }) => {
+  const owner = await setup(request)
+  const workerEmail = 't11-worker-' + randomUUID() + '@example.com'
+  const workerPassword = 'Trabajador T11 descartable 2026!'
+  const reg = await request.post(api + '/auth/register', {
+    data: { email: workerEmail, password: workerPassword, display_name: 'Trabajador sin sede QA' },
+  })
+  expect(reg.status(), await reg.text()).toBe(201)
+  const workerLogin = await request.post(api + '/auth/login', {
+    data: { email: workerEmail, password: workerPassword },
+  })
+  expect(workerLogin.status(), await workerLogin.text()).toBe(200)
+  const workerHeaders = { Authorization: 'Bearer ' + (await workerLogin.json()).access_token }
+
+  const invitationResp = await request.post(api + owner.root + '/invitations', {
+    headers: owner.headers, data: { email: workerEmail, role: 'TRABAJADOR' },
+  })
+  expect(invitationResp.status(), await invitationResp.text()).toBe(201)
+  const invitation = await invitationResp.json()
+  const accepted = await request.post(api + '/invitations/accept', {
+    headers: workerHeaders, data: { invitation_token: invitation.invitation_token },
+  })
+  expect(accepted.status(), await accepted.text()).toBe(200)
+
+  const location = await request.post(api + owner.root + '/locations', {
+    headers: owner.headers,
+    data: { name: 'Sede SIN asignación T11', kind: 'LOCAL', can_sell: true, can_store: true },
+  })
+  expect(location.status(), await location.text()).toBe(201)
+  const site = await location.json()
+  const service = await request.post(api + owner.root + '/catalog', {
+    headers: owner.headers,
+    data: { name: 'Servicio venta no autorizada T11', kind: 'SERVICIO',
+      unit: 'SERVICIO', sellable: true, price_cents: 250000 },
+  })
+  expect(service.status(), await service.text()).toBe(201)
+  const catalog = await service.json()
+  const sale = {
+    location_id: site.id,
+    lines: [{ catalog_item_id: catalog.id, quantity_milli: 1000, unit_price_cents: 250000 }],
+    payments: [{ method: 'EFECTIVO', amount_cents: 250000 }],
+  }
+  const denied = await request.post(api + owner.root + '/sales', {
+    headers: { ...workerHeaders, 'Idempotency-Key': randomUUID() }, data: sale,
+  })
+  expect(denied.status(), await denied.text()).toBe(403)
+
+  const purchase = await request.post(api + owner.root + '/purchases', {
+    headers: { ...owner.headers, 'Idempotency-Key': randomUUID() },
+    data: { purchased_on: '2026-11-11', reference: 'Compra QA asignación',
+      lines: [{ catalog_item_id: null, description: 'Concepto de compra',
+        unit: 'CONCEPTO', quantity_milli: 1000, unit_cost_cents: 100 }] },
+  })
+  expect(purchase.status(), await purchase.text()).toBe(201)
+  // An actual physical item is needed to exercise STORE rather than a concept-only purchase.
+  const physical = await request.post(api + owner.root + '/catalog', {
+    headers: owner.headers, data: { name: 'Bien T11 permisos', kind: 'REVENTA',
+      unit: 'UNIDAD', sellable: true, price_cents: 100000 },
+  })
+  expect(physical.status(), await physical.text()).toBe(201)
+  const item = await physical.json()
+  const pending = await request.post(api + owner.root + '/purchases', {
+    headers: { ...owner.headers, 'Idempotency-Key': randomUUID() },
+    data: { purchased_on: '2026-11-11', reference: 'Pendiente T11 permisos',
+      lines: [{ catalog_item_id: item.id, description: 'Bien T11 permisos',
+        unit: 'UNIDAD', quantity_milli: 1000, unit_cost_cents: 50000 }] },
+  })
+  expect(pending.status(), await pending.text()).toBe(201)
+  const toReceive = await request.post(api + owner.root + '/purchases/' + (await pending.json()).id + '/receive', {
+    headers: { ...workerHeaders, 'Idempotency-Key': randomUUID() },
+    data: { location_id: site.id },
+  })
+  expect(toReceive.status(), await toReceive.text()).toBe(403)
+
+  await page.goto('/real/empresas/' + owner.company.id + '/pos')
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(workerEmail)
+  await page.getByLabel('Contraseña', { exact: true }).fill(workerPassword)
+  await page.getByRole('button', { name: 'Ingresar', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible()
+  await expect(page.getByText('Solo podés vender en sedes donde tengas asignación activa.', { exact: false })).toBeVisible()
+  await page.getByLabel('Sede del punto de venta').selectOption(site.id)
+  await page.getByRole('button', { name: /Servicio venta no autorizada T11/ }).click()
+  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByLabel('Acepto registrar esta venta REAL').check()
+  await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
+  await expect(page.getByText('Venta confirmada en PostgreSQL.', { exact: false })).toHaveCount(0)
+  await expect(page.getByRole('alert')).toContainText(/permiso|denegó|solicitud/i)
+  const sales = await request.get(api + owner.root + '/sales', { headers: owner.headers })
+  expect(sales.status(), await sales.text()).toBe(200)
+  expect(await sales.json()).toEqual([])
+  const balance = await request.get(api + owner.root + '/inventory/balances', { headers: owner.headers })
+  expect(balance.status(), await balance.text()).toBe(200)
+  expect(await balance.json()).toEqual([])
+})
