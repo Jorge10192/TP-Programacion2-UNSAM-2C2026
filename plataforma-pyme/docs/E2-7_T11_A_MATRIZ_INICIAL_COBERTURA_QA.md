@@ -79,3 +79,20 @@ El listado de tests ejecutados por Playwright REAL consta de cinco archivos, sin
 **Antes de escribir ese test:** inspeccionar fuentes reales de compra/recepción y su contrato, los helpers/fixtures de QA y los scripts CI, y enumerar pruebas backend ya existentes para no replicarlas. Después agregar un E2E integral con guardas `PYME_DISPOSABLE_QA=1`, API fija al PostgreSQL efímero y seguimiento de balances/versiones/movimientos. Mantener PR #45 DRAFT, sin merge; `main` y TEST Empresa A permanecen intactos.
 
 **Estado de T11-A:** evidencia de suite REAL inventariada y matriz reclasificada; el inventario nominativo de todos los tests backend/front-end de proveedores y compras aún está **pendiente**, por lo que esta matriz no debe presentarse como cobertura exhaustiva de todo el repositorio.
+
+## 6. T11-A — Cobertura backend adicional verificada por nombre de test
+
+Se abrieron los archivos de pruebas integradas con PostgreSQL y se verificaron las funciones de test existentes. Las pruebas de los siguientes archivos tienen guarda `RUN_DB_INTEGRATION=1` y son parte de la regresión Pytest, pero **no prueban por sí solas la navegación React de un flujo de usuario completo**.
+
+| Componente y archivo existente | Evidencia comprobada en código | Criterios que mejor soporta |
+|---|---|---|
+| `backend/tests/test_location_api_integration.py` | `test_pause_primary_releases_primary_and_resume_does_not_restore_it`, `test_member_of_two_companies_does_not_mix_records`, permisos, sedes cross-tenant | LOC-01, TEN-01/03, PERM-01 **a nivel API** |
+| `backend/tests/test_catalog_api_integration.py` | `test_deactivate_reactivate_and_idempotent_status_does_not_delete`, `test_create_list_get_edit_persisted_and_no_stock_created`, paginación y tenant | CAT-01 **a nivel API** |
+| `backend/tests/test_supplier_api_integration.py` | `test_create_get_list_update_full_contact_and_no_inventory`, rollback, accesos y cross-tenant | SUP-01 **a nivel API** |
+| `backend/tests/test_purchase_api_integration.py` | `test_mixed_purchase_and_snapshots_survive_catalog_supplier_edits`, `test_retries_return_same_purchase_and_reused_key_with_new_data_conflicts`, rollback y aislamiento | PUR-01 y parte de PRES-01 **a nivel API** |
+| `backend/tests/test_receipt_api_integration.py` | `test_receive_first_stock_atomic_and_replay_exact`, `test_balance_after_snapshot_on_replay_does_not_follow_later_entries`, `test_assigned_employee_can_store_and_unassigned_employee_cannot` | REC-01/02, INV-01 y PERM-01 **a nivel API** |
+| `backend/tests/test_sales_api_integration.py` y `test_sales_price_policy_integration.py` | venta mixta, ledger, rollback por stock insuficiente y políticas P01 de cuatro roles | SAL-01/02/04/05 y PERM-01 **a nivel API** |
+
+**Corrección del diagnóstico:** proveedores, compras y recepción **sí** tienen regresión de integración FastAPI/PostgreSQL identificable; lo que no está cubierto por los 19 tests REAL del navegador es una ejecución **continua de esos módulos desde la UI**. Por tanto, no hace falta reconstruir backend ni inventar contratos en T11-B: hay que enlazar flujos existentes en un E2E transversal y verificar el estado de la base.
+
+**Pendiente para completar exhaustividad T11-A:** inventario nominativo del resto de archivos backend de autenticación/equipo, y pruebas unitarias frontend de proveedores/compras/recepción. Esta limitación no bloquea la preparación del primer escenario T11-B, pero sí impide declarar auditados todos los tests del repositorio.
