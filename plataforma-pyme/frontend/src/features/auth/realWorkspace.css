@@ -1,0 +1,74 @@
+/* E3-1B: CSS scoped to REAL workspace. Never import HTML Tailwind CDN. */
+:root {
+  --pyme-ui-nav: #162a47;
+  --pyme-ui-nav-hover: #234268;
+  --pyme-ui-primary: #2563eb;
+  --pyme-ui-bg: #f4f6fa;
+  --pyme-ui-surface: #fff;
+  --pyme-ui-border: #dce5ef;
+  --pyme-ui-ink: #172943;
+  --pyme-ui-muted: #64748b;
+  --pyme-ui-radius: 14px;
+  --pyme-ui-shadow: 0 5px 22px rgba(23, 41, 67, .055);
+  --pyme-ui-sidebar: 254px;
+}
+.real-workspace-mode { background: var(--pyme-ui-bg); color: var(--pyme-ui-ink); }
+.real-workspace-mode .real-auth-main { display: block; max-width: none; min-width: 0; width: auto; margin: 0 0 0 var(--pyme-ui-sidebar); padding: 28px clamp(16px, 3vw, 46px) 60px; }
+.real-workspace-mode .real-auth-main > .real-auth-card { max-width: 1550px; margin: 0 auto; }
+.real-workspace-mode .real-auth-main > .real-auth-card:not(.real-business-panel) { max-width: 900px; }
+.real-workspace-mode .real-auth-aside { display: none; }
+.real-workspace-mode .real-auth-card { border-radius: var(--pyme-ui-radius); box-shadow: var(--pyme-ui-shadow); }
+.real-workspace-mode .real-auth-main > .real-business-panel { width: 100%; }
+.real-workspace-mode .real-auth-main .real-business-nav { border-color: var(--pyme-ui-border); }
+.rw-sidebar { position: fixed; inset: 0 auto 0 0; width: var(--pyme-ui-sidebar); background: var(--pyme-ui-nav); color: #e6effb; display: flex; flex-direction: column; z-index: 70; }
+.rw-brand { min-height: 77px; display: flex; align-items: center; gap: 12px; padding: 15px 16px; border-bottom: 1px solid #ffffff24; }
+.rw-logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg,#397ddd,#518be8); display: grid; place-items: center; flex: none; }
+.rw-brand strong, .rw-brand small { display: block; }
+.rw-brand strong { font-size: 15px; line-height: 1.2; color: #fff; }
+.rw-brand small { font-size: 11px; color: #abc5e8; margin-top: 4px; }
+.rw-sidebar-scroll { flex: 1; min-height: 0; overflow: auto; padding: 16px 10px 24px; }
+.rw-nav-section { margin-top: 18px; border-top: 1px solid #ffffff1e; padding-top: 13px; }
+.rw-nav-caption { font-size: 10px; text-transform: uppercase; letter-spacing: 1.1px; font-weight: 800; color: #a4bbd8; margin: 8px 10px 11px; }
+.rw-nav-item { width: 100%; min-height: 43px; display: flex; align-items: center; gap: 11px; color: #e2edf9; background: transparent; border: none; border-radius: 10px; padding: 10px 12px; text-align: left; font-size: 13px; font-weight: 680; }
+.rw-nav-item:hover, .rw-nav-item:focus-visible { background: var(--pyme-ui-nav-hover); color: white; }
+.rw-nav-item.rw-active { background: #315c92; color: white; }
+.rw-nav-helper, .rw-nav-warning { border-radius: 10px; padding: 12px; font-size: 12px; line-height: 1.5; color: #d2e3f6; background: #ffffff13; }
+.rw-nav-warning { border-left: 3px solid #fbbf24; }
+.rw-sidebar-footer { display: grid; gap: 10px; padding: 15px 17px 21px; border-top: 1px solid #ffffff1e; }
+.rw-mode { font-size: 11px; color: #b9d2ee; font-weight: 750; }
+.rw-demo-link { font-size: 11px; color: #d6e5ff; text-decoration: underline; }
+.rw-topbar { margin-left: var(--pyme-ui-sidebar); min-height: 77px; background: #fff; border-bottom: 1px solid var(--pyme-ui-border); padding: 12px clamp(16px, 3vw, 42px); display: flex; gap: 16px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 60; flex-wrap: wrap; }
+.rw-topbar-left, .rw-topbar-actions { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.rw-title-block { display: grid; gap: 3px; }
+.rw-breadcrumb { font-size: 11px; color: var(--pyme-ui-muted); }
+.rw-title-block strong { font-size: clamp(16px, 1.6vw, 20px); color: var(--pyme-ui-ink); }
+.rw-real-badge { border-radius: 8px; padding: 7px 9px; background: #dff4ec; color: #0b7054; font-size: 10px; font-weight: 850; letter-spacing: .8px; }
+.rw-company-select-label { display: grid; gap: 3px; font-size: 10px; font-weight: 800; color: var(--pyme-ui-muted); }
+.rw-company-select-label select { border: 1px solid #cdd9e8; background: #fff; color: var(--pyme-ui-ink); min-height: 38px; padding: 7px 10px; border-radius: 9px; max-width: 205px; min-width: 125px; }
+.rw-profile-button, .rw-signout, .rw-trigger, .rw-close { background: #f3f6fb; color: var(--pyme-ui-ink); border: 1px solid var(--pyme-ui-border); border-radius: 9px; padding: 9px 11px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 730; }
+.rw-role-note { font-size: 10px; color: var(--pyme-ui-muted); max-width: 140px; line-height: 1.4; }
+.rw-profile-button span { max-width: 125px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rw-signout:hover, .rw-profile-button:hover { background: #e8f0fc; }
+.rw-trigger, .rw-close { display: none; }
+.rw-overlay { display: none; }
+.rw-shell-error { flex: 1 0 100%; color: #a22942; font-size: 12px; padding: 0; margin: 0; }
+@media(max-width: 1050px) { .rw-profile-button span { display: none; } .rw-topbar-actions { gap: 9px; } }
+@media(max-width: 900px) {
+  .real-workspace-mode .real-auth-main { margin: 0; padding: 20px 14px 55px; }
+  .rw-topbar { margin: 0; padding: 10px 14px; min-height: 66px; }
+  .rw-sidebar { transform: translateX(-101%); transition: transform .2s ease; width: min(315px, 87vw); z-index: 120; }
+  .rw-sidebar.rw-sidebar-open { transform: translateX(0); }
+  .rw-trigger, .rw-close { display: inline-flex; }
+  .rw-close { margin-left: auto; background: #ffffff1c; color: #fff; border-color: #ffffff42; width: 34px; height: 34px; font-size: 20px; }
+  .rw-overlay { position: fixed; inset: 0; display: block; z-index: 110; background: rgba(15, 29, 51, .52); border: none; }
+}
+@media(max-width: 600px) {
+  .rw-topbar { align-items: flex-start; }
+  .rw-topbar-actions { flex: 1 0 100%; width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  .rw-company-select-label { flex: 1; min-width: 0; }
+  .rw-company-select-label select { width: 100%; max-width: none; }
+  .rw-profile-button, .rw-signout { flex: none; }
+  .rw-role-note { display: none; }
+  .real-workspace-mode .real-auth-main > .real-auth-card { padding: 18px 15px; }
+}
+@media(prefers-reduced-motion: reduce) { .rw-sidebar { transition: none; } }

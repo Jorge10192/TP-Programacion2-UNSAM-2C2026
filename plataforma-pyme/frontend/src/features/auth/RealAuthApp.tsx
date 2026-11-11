@@ -13,6 +13,8 @@ import { RealSalesPage } from '../sales/RealSalesPage'
 import { RealPosPage } from '../sales/RealPosPage'
 import { RealTeamPage } from '../team/RealTeamPage'
 import { RealAcceptInvitationPage } from '../team/RealAcceptInvitationPage'
+import { RealWorkspaceShell } from './RealWorkspaceShell.tsx'
+import { realWorkspaceBusinessId } from './realWorkspaceNavigation.ts'
 import { authErrorMessage, createAuthGateway } from './authGateway'
 import type { AuthUser, LoginInput, RegisterInput } from './authGateway'
 import './auth.css'
@@ -210,12 +212,27 @@ export function RealAuthApp() {
   const isProfile = session !== null && !showBusinesses && !showOperations
   const isRegistration = path === '/real/registro' && !session
   const showLogin = !session && !isRegistration
+  // A change in business remounts the REAL shell and every tenant-scoped page.
+  // No demoStore or shared cross-tenant cache is involved.
+  const workspaceBusinessId = session ? realWorkspaceBusinessId(path) : null
 
-  return <div className="real-auth-layout">
-    <header className="real-auth-header">
+  return <div className={'real-auth-layout' + (session ? ' real-workspace-mode' : '')}>
+    {session
+      ? <RealWorkspaceShell
+          key={session.user.id + ':' + (workspaceBusinessId ?? 'personal')}
+          token={session.token}
+          userId={session.user.id}
+          userName={session.user.display_name}
+          businessId={workspaceBusinessId}
+          path={path}
+          onNavigate={(next) => go(next as Route)}
+          onUnauthorized={onBusinessAuthLost}
+          onLogout={onLogout}
+        />
+      : <header className="real-auth-header">
       <div className="real-auth-brand"><span className="real-auth-logo" aria-hidden="true">▦</span><div><strong>Asistente PyME</strong><small>Acceso conectado a FastAPI</small></div></div>
       <div className="real-auth-header-actions"><span className="real-auth-badge">REAL · Identidad</span><a href="/inicio">Entrar a DEMO</a></div>
-    </header>
+    </header>}
     <main className={'real-auth-main' + (showBusinesses || showOperations ? ' real-business-main' : '')}>
       {showOperations && session
         ? showInvitation
@@ -314,6 +331,6 @@ export function RealAuthApp() {
         <div className="real-auth-state">Esta vista no accede a `demoStore`, cuentas, caja ni stock ficticio.</div>
       </aside>
     </main>
-    <footer className="real-auth-footer">Modo REAL · E2-7 T09 · Token solo en memoria · Inventario y consulta de ventas por empresa</footer>
+    {!session && <footer className="real-auth-footer">Modo REAL · Token solo en memoria · Identidad y operaciones por empresa</footer>}
   </div>
 }
