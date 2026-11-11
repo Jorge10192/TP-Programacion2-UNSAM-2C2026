@@ -6,6 +6,7 @@ import {
   businessErrorMessage, canEditBusiness, createBusinessGateway,
 } from './businessGateway.ts'
 import type { ActivityKind, BusinessChanges, NewBusiness, RealBusiness } from './businessGateway.ts'
+import '../auth/realPeopleBusiness.css'
 
 export type BusinessRoute = { kind: 'list' } | { kind: 'create' } | { kind: 'detail'; businessId: string }
 export type PendingBusinessCreation = { key: string; body: NewBusiness }
@@ -218,23 +219,35 @@ export function RealBusinessesPage({
     </>
   }
 
-  return <section className="real-auth-card real-business-panel" aria-label="Empresas reales">
+  return <section className={"real-auth-card real-business-panel" + (route.kind === "list" ? " e3-companies-page" : "")} aria-label="Empresas reales">
     <div className="real-business-nav">
-      <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/perfil')}>Mi perfil real</button>
+      <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/perfil')}>Volver al perfil</button>
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas')}>Mis empresas</button>
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/nueva')}>Crear empresa</button>
     </div>
-    <span className="real-auth-eyebrow">E2-7 · T03 · PostgreSQL</span>
+    <span className="real-auth-eyebrow">{route.kind === 'list' ? 'Tu espacio de trabajo' : route.kind === 'create' ? 'Nueva organización' : 'Datos de la empresa'}</span>
     {route.kind === 'list' ? <>
-      <h1>Mis empresas reales</h1>
-      <p>Solo aparecen negocios con una membresía activa de tu usuario autenticado. Las empresas DEMO no forman parte de este listado.</p>
+      <div className="e3-company-heading">
+        <div>
+          <h1>Mis empresas</h1>
+          <p>Elegí un negocio para gestionar sus datos y operaciones.</p>
+        </div>
+        {!loading && items && <span className="e3-company-count" role="status">{items.length} {items.length === 1 ? 'empresa vinculada' : 'empresas vinculadas'}</span>}
+      </div>
       {loading && <p role="status">Consultando empresas en FastAPI…</p>}
-      {!loading && items?.length === 0 && <div className="real-business-empty">Aún no tenés empresas reales asociadas. Podés crear la primera.</div>}
+      {!loading && items?.length === 0 && <div className="real-business-empty e3-company-empty">
+        <strong>Tu primer negocio comienza acá</strong>
+        <p>Creá una empresa para configurar su equipo, sus ubicaciones y sus operaciones.</p>
+      </div>}
       {!loading && items && items.length > 0 && <div className="real-business-grid">
-        {items.map((item) => <button key={item.id} className="real-business-tile" type="button" onClick={() => onNavigate('/real/empresas/' + item.id)}>
+        {items.map((item) => <button key={item.id} className="real-business-tile e3-company-tile" type="button" onClick={() => onNavigate('/real/empresas/' + item.id)}>
+          <span className="e3-company-icon" aria-hidden="true">▦</span>
           <strong>{item.name}</strong>
-          <span>{item.category} · {item.activity_kind}</span>
-          <small>{item.membership.role.replaceAll('_', ' ')} · {item.status}</small>
+          <span>{item.category} · {item.activity_kind === 'MIXTO' ? 'Productos y servicios' : item.activity_kind === 'PRODUCTOS' ? 'Productos' : 'Servicios'}</span>
+          <span className="e3-company-meta">
+            <small className="e3-company-role">{item.membership.role.replaceAll('_', ' ')}</small>
+            <small className={item.status === 'ACTIVA' ? 'e3-company-state e3-company-active' : 'e3-company-state'}>{item.status}</small>
+          </span>
           <span className="real-business-tile-action">Abrir empresa</span>
         </button>)}
       </div>}

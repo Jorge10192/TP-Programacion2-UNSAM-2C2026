@@ -57,7 +57,7 @@ test('T11-C: cambiar A→B ignora respuesta tardía de A y no filtra proveedores
   await expect(page.getByText(supplierB)).toBeVisible()
   await expect(page.getByText(supplierA)).toHaveCount(0)
   await page.getByRole('button', { name: 'Mis empresas' }).click()
-  await expect(page.getByRole('heading', { name: 'Mis empresas reales' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Mis empresas' })).toBeVisible()
   await page.getByRole('button', { name: /T11 Empresa Alfa/ }).click()
   await expect(page.getByRole('heading', { name: 'Empresa real' })).toBeVisible()
 
@@ -75,7 +75,7 @@ test('T11-C: cambiar A→B ignora respuesta tardía de A y no filtra proveedores
   try {
     await interceptedA
     await page.getByRole('button', { name: 'Mis empresas' }).click()
-    await expect(page.getByRole('heading', { name: 'Mis empresas reales' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Mis empresas' })).toBeVisible()
     await page.getByRole('button', { name: /T11 Empresa Beta/ }).click()
     await expect(page.getByRole('heading', { name: 'Empresa real' })).toBeVisible()
     await page.getByRole('button', { name: 'Proveedores REAL' }).click()
@@ -108,11 +108,11 @@ test('T11-C: actor ajeno no puede consultar tenant; logout/F5 borra acceso en UI
   await expect(page.getByText(secret)).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Agregar proveedor REAL' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Mis empresas' }).click()
-  await expect(page.getByRole('heading', { name: 'Mis empresas reales' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Mis empresas' })).toBeVisible()
   await expect(page.getByText('T11 C Privada')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Mi perfil real' }).click()
-  await expect(page.getByRole('heading', { name: 'Mi perfil real' })).toBeVisible()
+  await page.getByRole('button', { name: 'Mi perfil' }).click()
+  await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible()
   await page.getByRole('button', { name: 'Cerrar sesión' }).click()
   await expect(page.getByRole('heading', { name: 'Iniciar sesión real' })).toBeVisible()
   await page.reload()
@@ -121,8 +121,8 @@ test('T11-C: actor ajeno no puede consultar tenant; logout/F5 borra acceso en UI
 
   // A fresh login with the real owner must not inherit outsider's UI state.
   await loginBrowser(page, owner)
-  await expect(page.getByRole('heading', { name: 'Mi perfil real' })).toBeVisible()
-  await page.getByRole('button', { name: 'Mis empresas reales' }).click()
+  await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible()
+  await page.getByRole('button', { name: 'Mis empresas' }).click()
   // The company is also rendered in the topbar <select>; assert the actual card.
   await expect(page.getByRole('button', { name: /T11 C Privada/ })).toBeVisible()
 })
