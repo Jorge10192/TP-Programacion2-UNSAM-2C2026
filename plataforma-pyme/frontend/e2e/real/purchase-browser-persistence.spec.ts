@@ -60,7 +60,7 @@ test('T11-F: compra UI de bien + concepto libre sin stock hasta recepción, F5 p
   await second.getByLabel('Descripción').fill('Envío logístico QR prueba')
   await second.getByLabel('Cantidad (hasta 3 decimales)').fill('1')
   await second.getByLabel('Costo unitario ($)').fill('300')
-  await expect(form.getByText('2.700,00')).toBeVisible()
+  await expect(form.getByText('2700,00')).toBeVisible()
   await form.getByRole('checkbox', { name: /Acepto guardar temporalmente/ }).check()
   await form.getByRole('button', { name: 'Registrar compra sin stock' }).click()
   await expect(page.getByText('La compra NO agregó stock', { exact: false })).toBeVisible()
