@@ -412,3 +412,22 @@
 .real-pos-line-total{font-size:15px;color:#215da6;margin-top:4px}
 .real-pos-cart-actions{display:flex;gap:12px;flex-direction:row;align-items:center;flex-wrap:wrap}
 @media(max-width:660px){.real-pos-line-preview{align-items:flex-start;flex-direction:column}.real-pos-cart-actions{justify-content:flex-start}}
+
+/* T10-D · checkout simple y semántico, sin replicar estilos del POS DEMO. */
+.real-pos-draft-fieldset{border:0;margin:0;padding:0;min-width:0}
+.real-pos-draft-fieldset:disabled{opacity:.72}
+.real-pos-payment{margin:14px 0;padding:14px;border:1px solid #d2e0f3;border-radius:12px;background:#fbfdff;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 14px;align-items:end}
+.real-pos-payment label{min-width:0;margin:0}
+.real-pos-payment input,.real-pos-payment select{max-width:none}
+.real-pos-payment button{justify-self:start}
+.real-pos-payment-summary{padding:13px 0;border-bottom:1px solid #dde8f6;display:flex;gap:10px;flex-wrap:wrap}
+.real-pos-checkout textarea{width:100%;max-width:800px;min-height:80px;padding:10px 12px;border-radius:10px;border:1px solid #c8d8ef;color:#193052;background:#fff}
+.real-pos-final-review{border:1px solid #bcd5f3;border-radius:14px;background:#f7fbff;padding:20px;margin:16px 0}
+.real-pos-final-review h3{margin:0 0 14px;font-size:18px}
+.real-pos-final-review p{margin:9px 0;overflow-wrap:anywhere}
+.real-pos-final-total{border-top:1px solid #d2e0f1;padding-top:13px;display:flex;justify-content:space-between;gap:10px;font-size:20px}
+.real-pos-ack{display:flex!important;flex-direction:row!important;align-items:flex-start!important;gap:11px!important;font-size:13px!important;max-width:1000px;margin:20px 0!important}
+.real-pos-ack input{width:19px!important;min-width:19px;max-width:19px!important;min-height:19px!important;margin:1px 0 0;padding:0}
+.real-pos-confirm-actions{display:flex;gap:13px;flex-wrap:wrap;align-items:center}
+.real-pos-checkout code{word-break:break-all}
+@media(max-width:760px){.real-pos-payment{grid-template-columns:1fr}.real-pos-final-review{padding:14px}.real-pos-final-total{font-size:17px}.real-pos-confirm-actions button{width:100%}}
