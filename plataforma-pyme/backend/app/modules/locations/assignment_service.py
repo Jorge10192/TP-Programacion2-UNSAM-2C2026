@@ -5,9 +5,10 @@ compuesta impide atribuir una membresía de otra empresa a una ubicación.
 """
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.models import LocationAssignment
+from app.infrastructure.models import Location, LocationAssignment
 from app.modules.auth.tokens import now_utc
 from app.modules.locations.assignment_repository import LocationAssignmentRepository
 from app.modules.locations.assignment_schemas import (
@@ -110,6 +111,33 @@ class LocationAssignmentService:
             result = LocationAssignmentView.from_record(assignment, membership_id)
             self.db.commit()
             return result
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def list_my_active_location_ids(
+        self, actor_id: UUID, session_id: UUID, business_id: UUID,
+    ) -> list[UUID]:
+        """Read only the authenticated actor's active assignments; no team data."""
+        try:
+            self.locations._authorize(actor_id, session_id, business_id, writing=False)
+            rows = self.db.scalars(
+                select(LocationAssignment.location_id)
+                .join(
+                    Location,
+                    (Location.business_id == LocationAssignment.business_id)
+                    & (Location.id == LocationAssignment.location_id),
+                )
+                .where(
+                    LocationAssignment.business_id == business_id,
+                    LocationAssignment.user_id == actor_id,
+                    LocationAssignment.status == "ACTIVA",
+                    Location.status == "ACTIVA",
+                )
+                .order_by(LocationAssignment.location_id)
+            ).all()
+            self.db.rollback()
+            return list(rows)
         except Exception:
             self.db.rollback()
             raise
