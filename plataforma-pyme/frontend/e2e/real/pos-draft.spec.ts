@@ -187,6 +187,53 @@ test('T10-D: POS genera UNA venta de servicio tras revisión y consentimiento, s
   expect(posts).toBe(1)
 })
 
+test('T10-E: pagos mixtos, precio excepcional y descuento quedan en comprobante REAL', async ({ page, request }) => {
+  const fixture = await seed(request)
+  let posts = 0
+  page.on('request', req => {
+    if (req.method() === 'POST' &&
+      req.url().endsWith('/api/v1/businesses/' + fixture.businessId + '/sales')) posts++
+  })
+  await open(page, fixture)
+  await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
+  await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
+  await page.getByRole('button', { name: 'Modificar precio excepcionalmente' }).click()
+  await page.getByLabel('Precio unitario de la venta').fill('1800')
+  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByLabel('Descuento de la venta').fill('300')
+  await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1500,00')
+  await page.getByLabel('Importe declarado 1').fill('1000')
+  await page.getByRole('button', { name: 'Agregar otro medio de pago' }).click()
+  await page.getByLabel('Medio de pago 2').selectOption('TRANSFERENCIA')
+  await page.getByLabel('Importe declarado 2').fill('500')
+  await page.getByLabel('Referencia de pago 2').fill('Referencia T10 E QA')
+  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  const review = page.getByLabel('Revisión final de la venta')
+  await expect(review).toContainText('1.800,00')
+  await expect(review).toContainText('300,00')
+  await expect(review).toContainText('1.500,00')
+  expect(posts).toBe(0)
+  await page.getByLabel('Acepto registrar esta venta REAL').check()
+  await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
+  await expect(page.getByText('Venta confirmada en PostgreSQL.', { exact: false })).toBeVisible()
+  expect(posts).toBe(1)
+
+  const login = await request.post(base + '/auth/login', {
+    data: { email: fixture.email, password: fixture.password },
+  })
+  expect(login.status(), await login.text()).toBe(200)
+  const token = (await login.json()).access_token
+  const res = await request.get(base + '/businesses/' + fixture.businessId + '/sales', {
+    headers: { Authorization: 'Bearer ' + token },
+  })
+  expect(res.status(), await res.text()).toBe(200)
+  const sales = await res.json()
+  expect(sales).toHaveLength(1)
+  expect(sales[0].subtotal_cents).toBe(180000)
+  expect(sales[0].discount_cents).toBe(30000)
+  expect(sales[0].total_cents).toBe(150000)
+})
+
 test('T10-D: pérdida de respuesta después del 201, F5 y recuperación GET sin repetir POST', async ({ page, request }) => {
   const fixture = await seed(request)
   let intercepted = 0
