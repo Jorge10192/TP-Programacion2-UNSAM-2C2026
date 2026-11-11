@@ -121,7 +121,7 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
       </nav>
       <div className="rw-sidebar-footer">
         <span className="rw-mode">REAL · FastAPI / PostgreSQL</span>
-        <a className="rw-demo-link" href="/inicio">Abrir prototipo DEMO</a>
+        <a className="rw-demo-link" href="/inicio">Entrar a DEMO</a>
       </div>
     </aside>
     <header className="rw-topbar">
