@@ -6,6 +6,7 @@ import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
 import { CATALOG_PAGE_SIZE, centsToPesos, createCatalogGateway, pesosToCents } from '../catalog/realCatalogGateway.ts'
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
 import type { PosCartLine } from './realPosDraft.ts'
+import { RealPosCheckout } from './RealPosCheckout.tsx'
 import { canOverrideSalesPrice, parsePosQuantity, posLineTotalCents, posQuantityText, previewPosCart } from './realPosDraft.ts'
 
 type Props = {
@@ -20,9 +21,9 @@ const ars = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' 
 const money = (c: number) => ars.format(c / 100)
 
 /**
- * T10-C is a draft-only POS UI. There is deliberately NO createSale,
- * sendApproved, journal.reserve or POST request in this component.
- * Actual confirmation is T10-D with the reviewed/saved command and P01.
+ * T10-D: draft selection stays separate from the explicitly reviewed checkout.
+ * The checkout holds/fails-closed the cart while inspecting any IndexedDB
+ * pending attempt. No auto POST, no DEMO fallback.
  */
 export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthorized }: Props) {
   const companyApi = useMemo(() => createOperationsGateway(token, userId), [token, userId])
@@ -45,6 +46,11 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const [discountText, setDiscountText] = useState('0')
   const [cart, setCart] = useState<PosCartLine[]>([])
   const [draftError, setDraftError] = useState('')
+  const [checkoutLocked, setCheckoutLocked] = useState(true)
+  const onDraftLock = useCallback((locked: boolean) => setCheckoutLocked(locked), [])
+  const onSaleConfirmed = useCallback(() => {
+    setCart([]); setDiscountText('0'); setSelectedId(''); setDraftError('')
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -173,10 +179,10 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId + '/ventas')}>Historial de ventas</button>
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId + '/catalogo')}>Catálogo</button>
     </nav>
-    <span className="real-auth-eyebrow">E2-7 · T10-C · POS REAL en preparación</span>
+    <span className="real-auth-eyebrow">E2-7 · T10-D · POS REAL · pagos y revisión</span>
     <h1>Punto de venta</h1>
     <p>Armá el carrito con artículos y servicios de esta empresa. Los precios y permisos se comprobarán otra vez en FastAPI al confirmar una venta.</p>
-    <p className="real-auth-note"><strong>Vista preliminar, solo preparación.</strong> Todavía no registra ventas, pagos, movimientos de stock ni guarda un intento pendiente. La confirmación segura se habilitará en T10-D.</p>
+    <p className="real-auth-note"><strong>Modo de validación T10-D.</strong> Podés preparar un carrito, declarar pagos y revisar la venta. El registro final sigue deshabilitado por defecto fuera de los ensayos aislados con PostgreSQL descartable. Nunca se acredita dinero externo automáticamente.</p>
     {loadState === 'loading' && <p role="status">Cargando empresa, sedes y catálogo REAL desde FastAPI…</p>}
     {loadState === 'error' && <p role="alert" className="real-auth-message real-auth-error">{loadError}</p>}
     {loadState === 'ready' && company && <>
@@ -185,6 +191,7 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
         <span>{role.replaceAll('_', ' ')} · {company.status}</span>
       </div>
       {!canWork && <p role="alert" className="real-auth-message real-ops-warning">La empresa o tu membresía no está activa. No podés preparar ventas.</p>}
+      <fieldset className="real-pos-draft-fieldset" disabled={checkoutLocked}>
       <section className="real-ops-subpanel" aria-label="Ubicación para la venta">
         <h2>1. Ubicación de venta</h2>
         <label>Elegí la sede
@@ -282,9 +289,14 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
           <span>Descuento <strong>−{money(preview.total.discount_cents)}</strong></span>
           <span>Total estimado <strong>{money(preview.total.total_cents)}</strong></span>
         </div>}
-        <button type="button" disabled className="real-auth-primary">Confirmación de venta disponible en T10-D</button>
-        <p className="real-auth-note">Los medios de pago y la confirmación de stock se incorporarán en T10-D. Cambiar de página descarta este carrito preliminar: todavía no es una venta ni un intento enviado.</p>
+        <p className="real-auth-note">El carrito todavía no es una venta. La revisión de pagos y la confirmación quedan separadas en el paso siguiente. Si existe un intento pendiente, se bloquea la edición para evitar duplicados.</p>
       </section>
+      </fieldset>
+      <RealPosCheckout token={token} userId={userId} businessId={businessId}
+        businessName={company.name} role={role} businessActive={canWork}
+        location={location} items={items} cart={cart} discountText={discountText}
+        onDraftLock={onDraftLock} onConfirmed={onSaleConfirmed}
+        onUnauthorized={onUnauthorized} onNavigate={onNavigate}/>
     </>}
   </section>
 }
