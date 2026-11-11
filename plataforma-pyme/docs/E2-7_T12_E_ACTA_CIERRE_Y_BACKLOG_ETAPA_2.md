@@ -4,7 +4,7 @@
 **Proyecto:** Asistente PyME — plataforma de gestión generalista multiempresa/multirrubro (UNSAM, Programación 2, segundo cuatrimestre 2026). WALOS es únicamente una empresa de ejemplo.  
 **Base funcional fija:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` (PR #45, T11).  
 **Rama y PR de documentación:** `docs/e2-7-t12-cierre-academico`, [PR #46](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/46), DRAFT hasta autorización expresa del merge.  
-**Naturaleza del cierre:** auditoría **estática y documental**, contrastada con los archivos del repositorio y antecedentes T11. No es auditoría de penetración, evaluación WCAG, certificación de producción, ejecución nueva de Pytest/PostgreSQL ni revisión exhaustiva de toda la consigna original de TP3.
+**Naturaleza del cierre:** auditoría **estática y documental**, contrastada con los archivos del repositorio y antecedentes T11. No constituye auditoría de penetración, evaluación WCAG, certificación de producción ni cotejo exhaustivo de la consigna TP3. Se consultó el estado de GitHub Actions por SHA; las ejecuciones CI se informan por separado y no se atribuyen al proceso de redacción.
 
 ## 1. Dictamen
 
@@ -13,7 +13,7 @@
 Se resolvieron los principales desfases que causaban un **NO-GO documental**: Documento 04 obsoleto; portadas de entrega/frontend/backend; índice UML 03A/03B/03C; segundo SVG 03B; CHANGELOG; encabezados de Documento 03 y 05. Se preservó el historial y se respetó `plataforma-pyme/`.
 
 **Reservas que no se ocultan:**
-1. No hay CI nuevo del HEAD documental: los workflows vigentes tienen filtros de rutas de frontend/backend/Compose y no se disparan para cambios exclusivamente Markdown/PUML/SVG. El histórico T11 **no** equivale a checks del PR #46.
+1. **CI del cierre en evolución:** al iniciar T12 no había ejecuciones registradas para la rama documental, pero luego de publicar el acta GitHub inició **tres workflows** (​Frontend, Backend e Inventario REAL full-stack) sobre el commit `a71c946c4070602e91e1439b206ac4e1dcd1f953`, evento `pull_request`; al último control los tres estaban **IN_PROGRESS, sin conclusión**, no PASS. Los filtros por ruta de los YAML no autorizan suponer que no correrán. Un nuevo commit del acta cambia el SHA de HEAD y requiere verificar sus checks de nuevo; el antecedente T11 no equivale a CI de T12.
 2. Fuentes `03A/03B/03C.puml`: se verificó su existencia y estructura textual, **pero la compilación con el ejecutable oficial PlantUML sigue sin ejecutarse** en este entorno por falta del JAR/binario. No declarar `PASS`.
 3. La **consigna original TP3** no fue contrastada íntegramente contra cada RF/CU; no afirmar que todos los requisitos heredados están absorbidos. El alcance académico implementado conocido es RF-01 a RF-07.
 4. El desarrollo académico no equivale a un despliegue bancario/comercial de producción: no realizar ventas ni pagos reales de prueba sobre empresas o credenciales personales.
@@ -59,8 +59,8 @@ Documentos académicos completos: [01](../entrega-programacion-2/01_ANALISIS_DE_
 
 - **T11 — antecedente de calidad, NO ejecutado en T12:** [auditoría técnica](E2-7_T11_E_AUDITORIA_FINAL_PREMERGE.md) registra **892 Pytest + 38 Playwright REAL + 6 DEMO** en el commit funcional específico `6aecd80e52a0712f7d1088dde8347de7f7a7c186`. La aprobación de PR #45 llevó esas funcionalidades a `main`.
 - **T12-B:** el [Documento 05](../entrega-programacion-2/05_MATRIZ_API_Y_TRAZABILIDAD.md) documenta **46 rutas/métodos** en **13 routers** y la correspondencia con pantallas/test. Se contrastaron decoradores de los 13 routers del código y coincidió ese total.
-- **T12-E:** se comprobó la configuración de `.github/workflows/plataforma-pyme-frontend.yml`, `plataforma-pyme-backend.yml` e `inventory-real.yml`: no son controles generales de Markdown o PlantUML; se conservan sin cambios para cumplir el alcance de PR documental.
-- **Enlaces Markdown:** control de existencia de rutas relativas contra el árbol GitHub de la rama (ver manifiesto de verificación al pie); distinguir destino existente de anclaje o URL externa verificados.
+- **T12-E:** se comprobó la configuración de `.github/workflows/plataforma-pyme-frontend.yml`, `plataforma-pyme-backend.yml` e `inventory-real.yml`: no son validadores específicos de Markdown o PlantUML; se conservan sin cambios. **GitHub Actions sí inició tres ejecuciones automáticas** contra el SHA de evidencia `a71c946c` (IDs 43049799155, 43049799104 y 43049799167; estado observado: `in_progress`). Este dato prevalece sobre la ausencia de runs durante la auditoría inicial.
+- **Enlaces Markdown:** se cotejaron **215 enlaces relativos en 17 Markdown** de la entrega y documentos T12 contra el árbol del HEAD `a71c946c` de GitHub (**562 entradas**); **215/215 destinos existentes, 0 rotos**. La comprobación no abarca anclajes `#fragment`, enlaces externos ni URLs generadas en tiempo de ejecución.
 - **SVG:** los cuatro gráficos presentan `viewBox` y texto con atributo de color `fill`; siguen siendo diagramas editoriales y no exportaciones literales de PlantUML.
 - **PlantUML:** `@startuml` y `@enduml` presentes; compilación semántica/renderización pendientes de un ambiente con PlantUML. Se preserva la advertencia, no se simula validación.
 
@@ -83,7 +83,7 @@ Validar visualmente el SVG generado por el motor en cada caso, pero **no sustitu
 |---|---|---|---|
 | R-01 | P1 para cierre técnico ampliado | No hay compilación PlantUML acreditada | Ejecutar `-checkonly` y archivar salida; no falsear PASS |
 | R-02 | P1 si la rúbrica lo exige | Consigna TP3 no cotejada exhaustivamente | Comparar requisito heredado → RF/CU → archivo/test; no declarar absorción automática |
-| R-03 | P2 | Ningún check CI del HEAD T12, por filtros de rutas | Auditoría manual reproducible; workflow solo en PR futuro independiente |
+| R-03 | P2 | Tres workflows de CI iniciados sobre `a71c946c`, pendientes de conclusión al auditar; la documentación no tiene validador dedicado | Verificar resultado de los 3 runs del último HEAD antes de merge; validador Markdown/PUML en PR posterior, sin añadir YAML aquí |
 | R-04 | P2 | README históricos extensos: secciones antiguas aún contienen palabras «pendiente» | Respetar encabezados vigentes y delimitador de archivo histórico |
 | R-05 | P2 | Warns Pydantic `Field(alias=...)` reportados en QA histórico | Evaluar con pruebas antes de cambiar el contrato |
 | R-06 | P2 | Intentos pendientes en IndexedDB sin cifrado; riesgo en equipos compartidos | Evaluar ciclo de vida, expiración, minimización y cifrado |
@@ -102,9 +102,9 @@ Validar visualmente el SVG generado por el motor en cada caso, pero **no sustitu
 | 03A/03B/03C y segundo flujo 03B incluidos | **Cumplido documentalmente** |
 | Relación RF/CU→API→UI/test en 05 | **Cumplido con base T11, no retesteado** |
 | README de entrega/frontend/backend, índice UML y changelog actualizados | **Cumplido** |
-| Ámbito único `plataforma-pyme/`, sin archivos de app/DB/infra | **Comprobar diff exacto del PR antes de merge** |
-| Enlaces internos existentes | **Comprobar manifiesto**, no equivale a validar anchors |
-| Build/tests/CI ejecutados para HEAD T12 | **No ejecutados, debido a filtros de rutas documentales** |
+| Ámbito único `plataforma-pyme/`, sin archivos de app/DB/infra | **Verificado:** 23 archivos documentales, 14 commits sobre `main` al SHA `a71c946c`, ningún cambio de código/DB/infraestructura |
+| Enlaces internos existentes | **215/215 destinos existentes en el árbol GitHub**, 0 rotos; no valida anclajes ni enlaces externos |
+| Build/tests/CI ejecutados para HEAD T12 | **3 workflows lanzados para `a71c946c`, en ejecución al último control**. Sin conclusión: NO declarar PASS; el commit de actualización del acta requiere consultar su propio SHA |
 | PlantUML oficial | **Pendiente** |
 | Consigna original TP3 | **Pendiente de cotejo completo** |
 | Aprobación humana explícita para pasar PR READY y hacer merge | **NO otorgada por esta acta** |
@@ -135,11 +135,11 @@ Validar visualmente el SVG generado por el motor en cada caso, pero **no sustitu
 | Repositorio | `Jorge10192/TP-Programacion2-UNSAM-2C2026` |
 | Base funcional | `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` |
 | PR documental | [#46](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/46), rama `docs/e2-7-t12-cierre-academico` |
-| Integración final | **La SHA del HEAD se verifica mediante el PR después del commit que contiene esta acta**; el documento no puede autorreferenciar de forma estable su propio SHA |
+| Integración final | El último SHA de evidencia antes de la aclaración de CI era `a71c946c4070602e91e1439b206ac4e1dcd1f953`; **verificar el HEAD vigente y sus checks directamente en PR #46** después de esta nota. El acta no puede autorreferenciar su propio commit de forma estable |
 | Inventario técnico | `backend/app/api/v1/router.py` y 13 routers; `backend/app/infrastructure/models/` y Alembic; `frontend/src/App.tsx` y `src/api/httpClient.ts` |
 | Evidencia T11 | `docs/E2-7_T11_E_AUDITORIA_FINAL_PREMERGE.md` |
 | Manifiesto de cambios y comprobación final | `git diff --name-only origin/main...HEAD`, `git log -1 --oneline`, estado de PR y controles de enlaces/PUML |
 
-**Control de privacidad e integridad:** no se escribieron pruebas, migraciones ni ventas contra bases de datos. Ningún secreto, token de usuario o dirección real debe incorporarse al informe.
+**Control de privacidad e integridad:** esta auditoría no ejecutó personalmente comandos de migración, tests ni ventas contra bases de datos. Los workflows de CI de GitHub operan en su infraestructura de pruebas según sus YAML y no deben confundirse con operaciones sobre la base local del usuario. No se incorporan secretos, tokens de usuario ni direcciones reales.
 
 **Aprobación requerida:** el usuario aprobó la ejecución y el cierre documental de T12, **no expresó en este mensaje autorización separada para fusionar el PR #46 a `main`**. Solicitarla antes de cualquier merge; mantener DRAFT hasta entonces.
