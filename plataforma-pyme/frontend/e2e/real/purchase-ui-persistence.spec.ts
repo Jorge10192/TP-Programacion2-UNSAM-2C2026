@@ -102,7 +102,7 @@ test('T11-F: compra UI bien + concepto libre, F5, recepción y ledger real', asy
   expect(submitted.balances_after).toEqual([
     { catalog_item_id: product.id, quantity_milli: 5000, version: 1 },
   ])
-  await expect(page.getByText('Recepción confirmada', { exact: false })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Recepción confirmada;' })).toBeVisible()
   expect((await get(root + '/purchases'))[0].status).toBe('RECIBIDA')
 
   const receipt = await get(root + '/purchases/' + purchases[0].id + '/receipt')
