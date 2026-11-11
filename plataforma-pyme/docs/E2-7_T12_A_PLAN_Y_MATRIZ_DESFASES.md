@@ -1,6 +1,6 @@
 # E2-7 · T12-A — Plan de cierre académico y matriz inicial de desfases
 
-**Estado:** T12-A iniciada; inventario documental y diagnóstico preliminar, **no certificación académica final**.  
+**Estado de seguimiento:** T12-A inventario completado; **T12-B conciliación documental terminada** (ver [acta T12-B](E2-7_T12_B_CONCILIACION_RF_CU_API_UI_TEST.md)). T12-C/D/E pendientes; **no certificación académica final**.  
 **Fecha:** 11/11/2026. **Rama exclusiva:** `docs/e2-7-t12-cierre-academico`.  
 **Base estable:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec`, merge [PR #45](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/45) E2-7/T11.  
 **Alcance permitido:** `plataforma-pyme/`. Sin cambios en datos, migraciones, funcionalidades ni ramas históricas. Se usará un PR documental DRAFT para revisión.
@@ -75,8 +75,8 @@ No declarar REAL una funcionalidad solo porque exista una pantalla DEMO. Separar
 
 | Incremento | Objetivo | Puerta concreta |
 |---|---|---|
-| **T12-A — Base** | Inventario, baseline SHA, matriz de desfases, orden y decisiones; **este documento** | Inventario y riesgos fechados, sin tocar fuentes antiguas |
-| **T12-B — RF/CU/trazabilidad** | Revisar y actualizar **01, 02, 05** juntos con RF/CU→API→UI→test; comprobar rutas en routers | Ninguna fila «REAL» sin ruta + módulo + evidencia |
+| **T12-A — Base (completada)** | Inventario, baseline SHA, matriz de desfases, orden y decisiones; **este documento** | Inventario y riesgos fechados, sin tocar fuentes antiguas |
+| **T12-B — RF/CU/trazabilidad (completada)** | Actualizados **01, 02, 05**; 46 rutas reales verificadas contra 13 routers, CU-01..12 trazados | [Acta de cierre T12-B](E2-7_T12_B_CONCILIACION_RF_CU_API_UI_TEST.md) y archivo por RF/CU/API/UI/test |
 | **T12-C — Dominio/UML** | Revisar **03 + 03A/03B/03C**, relaciones e invariantes según modelos/Alembic; comprobar SVG antes de publicar | Diagrama fuente coherente con SQL + limitaciones señalizadas |
 | **T12-D — Arquitectura y reproducibilidad** | Revisar **04**, README frontend/backend/entrega, CHANGELOG, ADRs y guía PowerShell/Docker segura | Ejecución documentada y reproducible sin tocar DB persistente ni secretos |
 | **T12-E — Control y entrega** | Validar links, etiquetas REAL/DEMO, matriz de inconsistencias resueltas, QA CI y manifiesto de entrega | Diff documental revisado, CI del HEAD, dictamen de cierre/pendientes, aprobación humana y merge |
@@ -94,4 +94,4 @@ No declarar REAL una funcionalidad solo porque exista una pantalla DEMO. Separar
 
 ## 7. Próxima acción
 
-**T12-B:** abrir y contrastar en detalle el contrato API actual (routers, DTO y permisos), los estados de frontend REAL y pruebas de T11; actualizar conjuntamente 01/02/05 en la misma rama. Validar que la matriz cite **archivos concretos** en lugar de ejemplos históricos. Después avanzar a T12-C UML, sin eliminar las versiones editoriales previamente entregadas.
+**T12-C (siguiente etapa):** confrontar Documento 03 y los diagramas editables 03A/03B/03C contra clases SQLAlchemy, esquema/migraciones Alembic, contratos REAL y CU vigentes en T12-B; conservar fuentes históricas y contrastar las láminas SVG editoriales antes de modificarlas. No cambiar backend ni `main` en el PR documental.
