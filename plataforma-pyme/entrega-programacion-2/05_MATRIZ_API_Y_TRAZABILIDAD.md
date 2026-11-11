@@ -1,6 +1,131 @@
+# 05 — Matriz de API, permisos y trazabilidad
+
+**Versión vigente de consulta:** E2-7/T12-B, 11/11/2026. **Código auditado:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` (PR #45).  
+**Estado:** API v1 REAL + React REAL para RF-01 a RF-07, con **46 endpoints declarados en routers** y 12 CU nucleares. RF-08–RF-10 permanecen exclusivamente DEMO/diferidos.  
+**Alcance de la revisión:** reconciliar rutas concretas de FastAPI, pantalla React y test reproducible. Esta matriz **no autoriza** funcionalidades bancarias ni cambios de permisos.
+
+> **Precedencia documental:** el inventario y las matrices siguientes son la vista **AS-IMPLEMENTED** de T12-B. El material original completo figura después como **histórico E2-1 a E2-5**, incluso cuando usa expresiones «vigente», «RF-07 diferido», «React sigue DEMO» o tablas TO-BE: esas afirmaciones fueron correctas *a su fecha de corte*, pero ya no representan el estado de `main` post-T11. El mapa de clases SQL se revisará específicamente en T12-C; no convertir todavía esta matriz en certificación UML.
+
+## 1. Tabla maestra vigente — RF → CU → API → UI → prueba
+
+Convención: `B` = `/api/v1/businesses/{business_id}`; `E` = `/real/empresas/{business_id}`. Las rutas en la columna API son **representativas**: el inventario exhaustivo de métodos y rutas está en la sección 2.
+
+| RF | CU / resultado comprobable | API y autorización efectiva | React REAL | Evidencia principal |
+|---|---|---|---|---|
+| **RF-01** | **CU-01** registro de identidad | `POST /api/v1/auth/register`; validación pública, email único | `/real/registro`, `RealAuthApp.tsx` | `auth-registration-ui.spec.ts`; tests de registro |
+| **RF-01** | **CU-02** login, identidad, logout | `POST /auth/login`, `GET /auth/me`, `POST /auth/logout`; Bearer revocable | `/real/login`, `/real/perfil` | `auth-registration-ui.spec.ts`, `security-navigation.spec.ts` |
+| **RF-02** | **CU-03** crear/consultar/editar empresa | `POST/GET /businesses`, `GET/PATCH B`; membresía/tenant/rol, creación idempotente | `/real/empresas`, `/real/empresas/nueva`, `E` | `security-navigation.spec.ts`, backend de empresas |
+| **RF-02** | **CU-12** invitaciones, aceptación, equipo | `POST B/invitations`, `POST /invitations/accept`, `GET/PATCH B/memberships...`, `GET/PUT B/locations/{location_id}/assignments...`; roles protegidos | `E/equipo`, `/real/invitaciones/aceptar` | `test_business_acceptance_*.py`, `test_business_team_*.py`, manual T11 |
+| **RF-03** | **CU-04** sedes, estados, principal, asignación | `B/locations` (GET/POST/PATCH/PUT según ruta); SELL/STORE y asignaciones propias | `E/ubicaciones`, `RealLocationsPage.tsx` | `business-crud-persistence.spec.ts`, `assigned-location-visibility.spec.ts` |
+| **RF-04** | **CU-05** catálogo bienes/servicios con estado y precio | `B/catalog` (GET/POST/PATCH); nombre/SKU por empresa, roles y paginación | `E/catalogo`, `RealCatalogPage.tsx` | `business-crud-persistence.spec.ts`, `pos-draft.spec.ts` |
+| **RF-05** | **CU-06** proveedor y compra sin stock | `B/suppliers` (CRUD y estado), `B/purchases` (POST/GET); proveedor y snapshots | `E/proveedores`, `E/compras` | `purchase-ui-persistence.spec.ts`, `business-crud-persistence.spec.ts` |
+| **RF-05+RF-06** | **CU-07** recepción física completa | `POST B/purchases/{purchase_id}/receive`, `GET .../receipt`; sede STORE y replay | `E/compras`, `RealReceiptDetail.tsx` | `flow-purchase-to-sale.spec.ts`, `purchase-ui-persistence.spec.ts` |
+| **RF-06** | **CU-08** saldo/version/ledger | `GET B/inventory/balances`, `GET B/inventory/movements` | `E/inventario`, `RealInventoryPage.tsx` | `inventory.spec.ts`; conciliación manual T11 |
+| **RF-06** | **CU-09** traslado atómico | `POST B/inventory/transfers`, `GET .../{transfer_id}`; STORE en origen y destino | `E/inventario`, `RealTransferPanel.tsx` | `inventory.spec.ts`, `assigned-location-visibility.spec.ts` |
+| **RF-06** | **CU-11** ajuste con versión y stock inicial | `POST B/inventory/adjustments`, `GET .../{adjustment_id}`; STORE, rol, `expected_version` | `E/inventario`, `RealAdjustmentPanel.tsx` | `inventory.spec.ts`, `security-errors.spec.ts` |
+| **RF-07** | **CU-10** POS, venta, comprobante y recuperación | `POST/GET B/sales`, `GET B/sales/{sale_id}`, `GET B/sales/by-request/{request_id}`; SELL, rol/precio y clave idempotente | `E/pos`, `E/ventas`, `RealPosPage.tsx`, `RealSalesPage.tsx` | `pos-draft.spec.ts`, `flow-purchase-to-sale.spec.ts`, `sales-recovery.spec.ts`, `sales-invalid-payment-policy.spec.ts` |
+| **RF-08** | Gastos y jornadas de caja | **Sin router real equivalente** | `/b/{demoId}/gastos`, `/b/{demoId}/jornadas` | `demo-money-isolation.spec.ts`; DEMO |
+| **RF-09** | Cuentas financieras referenciales | **Sin router real equivalente** | `/b/{demoId}/cuentas` | `demo-money-isolation.spec.ts`; DEMO |
+| **RF-10** | Intentos QR ilustrativos | **Sin cobro REAL ni endpoints OAuth/webhook MP** | `/b/{demoId}/ventas`, `QrDemoPanel.tsx` | `demo-money-isolation.spec.ts`; DEMO |
+
+**Precisiones de CU:** CU-11 corresponde a **RF-06** (no RF-07); CU-07 soporta RF-05+RF-06, pero no implica segunda recepción parcial; CU-12 abarca invitación, aceptación y gestión del equipo, no alta pública por QR. En operaciones SELL/STORE de trabajadores, **asignación activa a cada sede** es condición adicional al rol: un trabajador que solo opera en una sede no puede hacer traslado con otra. Consulta general de balances por empresa ≠ autorización para modificar sus saldos.
+
+## 2. Inventario completo de rutas FastAPI v1 implementadas
+
+**Fuente de verdad:** los `APIRouter(prefix=...)` y decoradores `@router.get/post/patch/put` en los **13 routers realmente montados** por [`backend/app/api/v1/router.py`](../backend/app/api/v1/router.py). Las rutas siguientes son **relativas a `/api/v1`**. Por ejemplo, `GET /businesses` significa `GET /api/v1/businesses`. Se incluyen **46 operaciones**; métodos distintos en la misma URL cuentan como operaciones distintas. Fuera de este mapa de negocio quedan `GET /health` (liveness) y `GET /ready` (readiness de BD), no prefijados con `/api/v1`.
+
+| Método | Ruta bajo `/api/v1` | RF / CU | Archivo de definición |
+|---|---|---|---|
+| `POST` | `/auth/register` | RF-01; CU-01/02 | [`auth/router.py`](../backend/app/modules/auth/router.py) |
+| `POST` | `/auth/login` | RF-01; CU-01/02 | [`auth/router.py`](../backend/app/modules/auth/router.py) |
+| `GET` | `/auth/me` | RF-01; CU-01/02 | [`auth/router.py`](../backend/app/modules/auth/router.py) |
+| `POST` | `/auth/logout` | RF-01; CU-01/02 | [`auth/router.py`](../backend/app/modules/auth/router.py) |
+| `POST` | `/businesses` | RF-02; CU-03/12 | [`businesses/router.py`](../backend/app/modules/businesses/router.py) |
+| `GET` | `/businesses` | RF-02; CU-03/12 | [`businesses/router.py`](../backend/app/modules/businesses/router.py) |
+| `GET` | `/businesses/{business_id}` | RF-02; CU-03/12 | [`businesses/router.py`](../backend/app/modules/businesses/router.py) |
+| `PATCH` | `/businesses/{business_id}` | RF-02; CU-03/12 | [`businesses/router.py`](../backend/app/modules/businesses/router.py) |
+| `POST` | `/businesses/{business_id}/invitations` | RF-02; CU-03/12 | [`businesses/router.py`](../backend/app/modules/businesses/router.py) |
+| `GET` | `/businesses/{business_id}/memberships` | RF-02; CU-03/12 | [`businesses/router.py`](../backend/app/modules/businesses/router.py) |
+| `PATCH` | `/businesses/{business_id}/memberships/{membership_id}` | RF-02; CU-03/12 | [`businesses/router.py`](../backend/app/modules/businesses/router.py) |
+| `POST` | `/invitations/accept` | RF-02; CU-12 | [`businesses/invitations_router.py`](../backend/app/modules/businesses/invitations_router.py) |
+| `GET` | `/businesses/{business_id}/locations` | RF-03; CU-04 | [`locations/router.py`](../backend/app/modules/locations/router.py) |
+| `GET` | `/businesses/{business_id}/locations/my-assignments` | RF-03; CU-04 | [`locations/router.py`](../backend/app/modules/locations/router.py) |
+| `GET` | `/businesses/{business_id}/locations/{location_id}` | RF-03; CU-04 | [`locations/router.py`](../backend/app/modules/locations/router.py) |
+| `POST` | `/businesses/{business_id}/locations` | RF-03; CU-04 | [`locations/router.py`](../backend/app/modules/locations/router.py) |
+| `PATCH` | `/businesses/{business_id}/locations/{location_id}` | RF-03; CU-04 | [`locations/router.py`](../backend/app/modules/locations/router.py) |
+| `PATCH` | `/businesses/{business_id}/locations/{location_id}/status` | RF-03; CU-04 | [`locations/router.py`](../backend/app/modules/locations/router.py) |
+| `PUT` | `/businesses/{business_id}/locations/{location_id}/primary` | RF-03; CU-04 | [`locations/router.py`](../backend/app/modules/locations/router.py) |
+| `GET` | `/businesses/{business_id}/locations/{location_id}/assignments` | RF-02/03; CU-04/12 | [`locations/assignment_router.py`](../backend/app/modules/locations/assignment_router.py) |
+| `PUT` | `/businesses/{business_id}/locations/{location_id}/assignments/{membership_id}` | RF-02/03; CU-04/12 | [`locations/assignment_router.py`](../backend/app/modules/locations/assignment_router.py) |
+| `GET` | `/businesses/{business_id}/catalog` | RF-04; CU-05 | [`catalog/router.py`](../backend/app/modules/catalog/router.py) |
+| `GET` | `/businesses/{business_id}/catalog/{item_id}` | RF-04; CU-05 | [`catalog/router.py`](../backend/app/modules/catalog/router.py) |
+| `POST` | `/businesses/{business_id}/catalog` | RF-04; CU-05 | [`catalog/router.py`](../backend/app/modules/catalog/router.py) |
+| `PATCH` | `/businesses/{business_id}/catalog/{item_id}` | RF-04; CU-05 | [`catalog/router.py`](../backend/app/modules/catalog/router.py) |
+| `PATCH` | `/businesses/{business_id}/catalog/{item_id}/status` | RF-04; CU-05 | [`catalog/router.py`](../backend/app/modules/catalog/router.py) |
+| `GET` | `/businesses/{business_id}/suppliers` | RF-05; CU-06 | [`suppliers/router.py`](../backend/app/modules/suppliers/router.py) |
+| `GET` | `/businesses/{business_id}/suppliers/{supplier_id}` | RF-05; CU-06 | [`suppliers/router.py`](../backend/app/modules/suppliers/router.py) |
+| `POST` | `/businesses/{business_id}/suppliers` | RF-05; CU-06 | [`suppliers/router.py`](../backend/app/modules/suppliers/router.py) |
+| `PATCH` | `/businesses/{business_id}/suppliers/{supplier_id}` | RF-05; CU-06 | [`suppliers/router.py`](../backend/app/modules/suppliers/router.py) |
+| `PATCH` | `/businesses/{business_id}/suppliers/{supplier_id}/status` | RF-05; CU-06 | [`suppliers/router.py`](../backend/app/modules/suppliers/router.py) |
+| `POST` | `/businesses/{business_id}/purchases` | RF-05; CU-06 | [`purchases/router.py`](../backend/app/modules/purchases/router.py) |
+| `GET` | `/businesses/{business_id}/purchases` | RF-05; CU-06 | [`purchases/router.py`](../backend/app/modules/purchases/router.py) |
+| `GET` | `/businesses/{business_id}/purchases/{purchase_id}` | RF-05; CU-06 | [`purchases/router.py`](../backend/app/modules/purchases/router.py) |
+| `POST` | `/businesses/{business_id}/purchases/{purchase_id}/receive` | RF-05/06; CU-07 | [`purchases/receipt_router.py`](../backend/app/modules/purchases/receipt_router.py) |
+| `GET` | `/businesses/{business_id}/purchases/{purchase_id}/receipt` | RF-05/06; CU-07 | [`purchases/receipt_router.py`](../backend/app/modules/purchases/receipt_router.py) |
+| `GET` | `/businesses/{business_id}/inventory/balances` | RF-06; CU-08 | [`purchases/inventory_router.py`](../backend/app/modules/purchases/inventory_router.py) |
+| `GET` | `/businesses/{business_id}/inventory/movements` | RF-06; CU-08 | [`purchases/inventory_router.py`](../backend/app/modules/purchases/inventory_router.py) |
+| `POST` | `/businesses/{business_id}/inventory/transfers` | RF-06; CU-09 | [`purchases/transfer_router.py`](../backend/app/modules/purchases/transfer_router.py) |
+| `GET` | `/businesses/{business_id}/inventory/transfers/{transfer_id}` | RF-06; CU-09 | [`purchases/transfer_router.py`](../backend/app/modules/purchases/transfer_router.py) |
+| `POST` | `/businesses/{business_id}/inventory/adjustments` | RF-06; CU-11 | [`purchases/adjustment_router.py`](../backend/app/modules/purchases/adjustment_router.py) |
+| `GET` | `/businesses/{business_id}/inventory/adjustments/{adjustment_id}` | RF-06; CU-11 | [`purchases/adjustment_router.py`](../backend/app/modules/purchases/adjustment_router.py) |
+| `POST` | `/businesses/{business_id}/sales` | RF-07; CU-10 | [`sales/router.py`](../backend/app/modules/sales/router.py) |
+| `GET` | `/businesses/{business_id}/sales` | RF-07; CU-10 | [`sales/router.py`](../backend/app/modules/sales/router.py) |
+| `GET` | `/businesses/{business_id}/sales/by-request/{request_id}` | RF-07; CU-10 | [`sales/router.py`](../backend/app/modules/sales/router.py) |
+| `GET` | `/businesses/{business_id}/sales/{sale_id}` | RF-07; CU-10 | [`sales/router.py`](../backend/app/modules/sales/router.py) |
+
+### Contrato de seguridad y consistencia (transversal)
+
+- **Identidad:** `/auth/register` pública; `/auth/login` devuelve token opaco; `/auth/me` y `/auth/logout` requieren sesión válida. React mantiene token **en memoria**, sin conservarlo tras F5. No se presume correo verificado ni refresh token.
+- **Tenant:** los UUID no conceden acceso. Cada operación real verifica la empresa y la membresía, protege estados y actor. `404` puede ocultar recurso ajeno; `403` deniega una acción de rol/permisos; `401` invalida credenciales. Una consulta GET sobre saldos de sedes del mismo tenant puede ser global por política MVP, sin permitir operaciones no asignadas.
+- **Ubicaciones:** `can_sell` y `can_store` son capacidades independientes. El nuevo `GET /businesses/{business_id}/locations/my-assignments` solo consulta IDs asignados al actor, no permite administrar equipo; `GET/PUT .../{location_id}/assignments` sigue restringido por privilegios administrativos.
+- **Compras:** `POST /purchases` guarda snapshots; no elige recepción ni altera inventario. `POST /receive` confirma **una recepción completa** y entradas únicamente de líneas físicas. El servicio no se transforma artificialmente en stock ni se admite recepción vacía.
+- **Stock:** se mantiene saldo atómico + ledger firmado, cantidad en milésimas y versionado. Los traslados debitan y acreditan en un único commit; ajustes con versión obsoleta, stock insuficiente o stock inicial repetido responden conflicto sin movimiento falso.
+- **Ventas:** POS REAL requiere sede SELL autorizada para bienes. Los precios/descuentos se verifican también en FastAPI; pagos declarados suman exactamente el total. Se almacena dinero en centavos enteros y totales por renglón HALF_UP; **no hay acreditación bancaria automática**.
+- **Idempotencia y recuperación:** `Idempotency-Key` UUID4 para altas/comandos transaccionales que lo requieren; mismo key y cuerpo recupera resultado `200`, operación inicial `201`; key reutilizada con otro contenido o actor se rechaza. Pérdida de respuesta/timeout: consultar comprobante por `request_id`, nunca reenviar un comando automáticamente con otro key.
+- **Errores esperables según operación:** `401` sesión, `403` autorización, `404` recurso fuera de alcance, `409` conflicto transaccional/idempotencia/stock/versión, `422` esquema/campos, y `5xx`/red como fallo incierto. Esta lista es **transversal**: no afirma que cada endpoint produzca todos estos códigos.
+- **DEMO:** rutas `/b/{demoId}/...` conservan almacenamiento local e intenciones QR **ilustrativas**, sin pagar ni consultar la API REAL. No realizar migración ficticia de IDs DEMO a UUID FastAPI.
+
+## 3. Matriz de pruebas trazables por capacidad
+
+| Cobertura | Archivos / evidencia | Resultado acreditado |
+|---|---|---|
+| Identidad, registro, sesión, logout, F5 | `frontend/e2e/real/auth-registration-ui.spec.ts`, `security-navigation.spec.ts`, `responsive-keyboard.spec.ts` | REAL navegador → API/BD, tokens en memoria |
+| Tenancy, respuestas tardías, 401/403/404, roles y sedes | `security-navigation.spec.ts`, `security-errors.spec.ts`, `assigned-location-visibility.spec.ts` | Cambio A/B sin fuga, acceso ajeno denegado, sedes SELL/STORE filtradas |
+| Sede, catálogo, proveedor CRUD y persistencia | `business-crud-persistence.spec.ts`, `mobile-core-navigation.spec.ts` | Altas/estados y F5 en REAL; smoke móvil |
+| Compra bien+concepto libre, recepción e idempotencia | `purchase-ui-persistence.spec.ts`, `flow-purchase-to-sale.spec.ts` | Sin stock previo, recepción una vez, ledger físico |
+| Saldos, traslado, conteo, ajuste y concurrencia | `inventory.spec.ts`; `backend/tests/test_*concurrency_integration.py` | Par firmado, versión, rollback, un solo efecto |
+| Venta física y mixta, dos pagos, price/discount, replay 201 perdido | `pos-draft.spec.ts`, `sales-recovery.spec.ts`, `sales-invalid-payment-policy.spec.ts`, `flow-purchase-to-sale.spec.ts` | Comprobante, débito físico, 409 y 422, recuperación sin duplicación |
+| Aislamiento DEMO QR/caja/cuentas | `demo-money-isolation.spec.ts`, pruebas DEMO | Cero operaciones reales desde UI DEMO |
+| Manual dueño/trabajador y retest de sedes | [Acta de 39 pasos](../docs/E2-7_T11_D2_ACTA_PRUEBA_MANUAL_REAL.md) y [T11-E fix](../docs/E2-7_T11_E_FIX_SEDES_ASIGNADAS_QA.md) | Dos defectos de permisos corregidos; capturas revisadas en conversación, no versionadas |
+
+**Regresión de referencia:** PR #45 fusionado, [full-stack #43015544889](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43015544889) — **892 Pytest, 38 Playwright REAL, 6 Playwright DEMO PASS**. CI frontend [#43015544947](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43015544947) y backend [#43015544819](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43015544819) SUCCESS. Matriz de [26 escenarios E27](../docs/E2-7_T11_E_AUDITORIA_FINAL_PREMERGE.md) aprobada **en su alcance funcional/smoke**, no garantía universal de seguridad/WCAG. Las capturas de QA manual se observaron en conversación; no se adjuntaron al repositorio.
+
+## 4. Riesgos, declaraciones de alcance y continuidad T12
+
+1. **RF-01 a RF-07** son núcleo académico REAL; **RF-08 a RF-10** DEMO/diferido; transferencia con recepción logística asincrónica, devoluciones, producción por receta, reservas y pagos MP webhooks permanecen fuera del MVP.
+2. El POS REAL local permanece deshabilitado para registrar ventas por defecto salvo `VITE_PYME_ENABLE_REAL_SALES` en entorno explícitamente autorizado. Los tests con escritura corrieron en PostgreSQL **descartable**, no en la base persistente `TEST Empresa A`.
+3. Los pagos REAL son **declarados**, no acreditados. IndexedDB conserva algunas intenciones comerciales pendientes sin cifrado; no almacenar tokens allí; evitar dispositivos compartidos. Quedan advertencias Pydantic `UnsupportedFieldAttributeWarning` no bloqueantes.
+4. No inferir paridad UML a partir de nombres conceptuales. **T12-C** confrontará 03A/03B/03C con tablas SQLAlchemy/Alembic y su representación gráfica; **T12-D** actualizará README, arquitectura y procedimientos reproducibles; **T12-E** comprobará que los documentos no contradigan el último SHA de `main`.
+
+---
+
+## Archivo histórico — matriz incremental anterior al cierre T12 (preservada)
+
+La siguiente matriz es el **documento previo íntegro**, incluyendo adendas y tablas por corte E2-1..E2-5. Está preservado para auditoría de evolución; «pendiente» o «estado vigente» en sus párrafos se refiere **solo** al corte temporal indicado y no sustituye las secciones actuales de T12-B anteriores.
+
 > **ADENDA VIGENTE E2-5 (09/11/2026; prevalece sobre estados históricos de esta matriz):** RF-06/CU-08 (balances y ledger), **CU-09 (traslados)** y **CU-11 (ajustes y stock inicial)** están implementados en backend y probados en el corte `main` `748e69319d8d04900c009d5184168a264a9deeac` (PR #21–#23), `e25a_inventory_ops`, CI 816/826/840 pruebas por corte en Python3.12/3.14 y Windows E2-5 C 840 pruebas reportadas. **CU-11 pertenece a RF-06**, no a RF-07: cualquier fila histórica de esta matriz que etiquete CU-11 bajo RF-07 está desactualizada. **RF-07/CU-10 ventas reales continúa DIFERIDO**. Los endpoints de E2-5 añadidos son `GET /inventory/balances`, `GET /inventory/movements`, `POST/GET /inventory/transfers` y `POST/GET /inventory/adjustments` bajo `/api/v1/businesses/{business_id}`. Esta adenda **no reescribe las tablas históricas** de versiones anteriores; consultar el [cierre E2-5](../docs/revisiones/E2-5_CIERRE/00_LEEME.md) y el [encargo de auditoría pendiente de ejecución](../docs/revisiones/E2-5_ENTREGA_PARA_REVISION.md). **La integración React ↔ backend, el hardening de producción y la auditoría independiente no están completados**.
 
-# 05 — Matriz de API, permisos y trazabilidad
+### 05 — Matriz de API, permisos y trazabilidad (versión histórica)
 
 **Proyecto:** Asistente PyME — Programación 2  
 **Versión:** 1.5 — E2-3 E, catálogo real y 580 pruebas Windows
