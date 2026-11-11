@@ -31,9 +31,8 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
   // Keyed by session + tenant in RealAuthApp. Abort old requests during remount.
   useEffect(() => {
     const controller = new AbortController()
-    setCompanies([])
-    setState('loading')
-    setError('')
+    // The session/tenant key remounts this shell with fresh initial state.
+    // Request results are asynchronous, so no synchronous state reset is needed.
     void gateway.list(controller.signal).then((result) => {
       if (controller.signal.aborted) return
       setCompanies(result)
@@ -54,6 +53,7 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
   useEffect(() => {
     if (!drawerOpen) return
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const opener = triggerRef.current
     closeRef.current?.focus()
     function onKey(event: KeyboardEvent) {
       if (event.key === 'Escape') setDrawerOpen(false)
@@ -73,7 +73,7 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
     return () => {
       document.removeEventListener('keydown', onKey)
       if (previous?.isConnected) previous.focus()
-      else triggerRef.current?.focus()
+      else opener?.focus()
     }
   }, [drawerOpen])
 

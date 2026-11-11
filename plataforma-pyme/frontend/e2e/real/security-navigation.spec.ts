@@ -123,5 +123,6 @@ test('T11-C: actor ajeno no puede consultar tenant; logout/F5 borra acceso en UI
   await loginBrowser(page, owner)
   await expect(page.getByRole('heading', { name: 'Mi perfil real' })).toBeVisible()
   await page.getByRole('button', { name: 'Mis empresas reales' }).click()
-  await expect(page.getByText('T11 C Privada')).toBeVisible()
+  // The company is also rendered in the topbar <select>; assert the actual card.
+  await expect(page.getByRole('button', { name: /T11 C Privada/ })).toBeVisible()
 })
