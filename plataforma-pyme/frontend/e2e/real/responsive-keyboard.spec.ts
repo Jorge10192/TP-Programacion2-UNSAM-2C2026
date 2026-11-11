@@ -93,6 +93,12 @@ for (const viewport of [
     await page.getByRole('button', { name: 'Agregar al carrito' }).click()
     await expect(page.getByRole('region', { name: 'Carrito de venta' }))
       .toContainText('3.100,00')
+    // E27-SAL-05: client must not advance an inconsistent payment declaration.
+    await page.getByLabel('Importe declarado 1').fill('3000')
+    await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+    await expect(page.getByRole('alert')).toContainText('Los pagos declarados deben sumar exactamente el total.')
+    await expect(page.getByLabel('Revisión final de la venta')).toHaveCount(0)
+    await page.getByLabel('Importe declarado 1').fill('3100')
     await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
     await expect(page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }))
       .toBeDisabled()
