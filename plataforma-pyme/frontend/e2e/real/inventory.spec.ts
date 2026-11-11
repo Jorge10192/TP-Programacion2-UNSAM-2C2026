@@ -80,6 +80,20 @@ for (const transfer of [false, true]) {
     await expect(panel.getByRole('alert')).toContainText('Resultado incierto')
     const before = await f.get('movements')
     expect(before).toHaveLength(transfer ? 3 : 2)
+    if (transfer) {
+      // Strict E27-INV-02: one atomic transfer, two opposite signed movements,
+      // one shared operation, net zero across the two locations.
+      const pair = before.filter((movement: { event_type: string }) =>
+        movement.event_type === 'TRASLADO_SALIDA' ||
+        movement.event_type === 'TRASLADO_ENTRADA')
+      expect(pair).toHaveLength(2)
+      expect(pair.map((m: { delta_milli: number }) => m.delta_milli)
+        .sort((a: number, b: number) => a - b)).toEqual([-1000, 1000])
+      expect(pair.map((m: { location_id: string }) => m.location_id).sort())
+        .toEqual([f.source.id, f.target.id].sort())
+      expect(new Set(pair.map((m: { inventory_operation_id: string }) =>
+        m.inventory_operation_id)).size).toBe(1)
+    }
     await page.reload()
     await login(page, f)
     await page.getByRole('button', { name: transfer ? 'Transferir entre ubicaciones' : 'Stock inicial y ajustes', exact: true }).click()
