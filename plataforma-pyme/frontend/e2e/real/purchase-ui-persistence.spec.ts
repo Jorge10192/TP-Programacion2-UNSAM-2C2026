@@ -98,8 +98,9 @@ test('T11-F: compra UI bien + concepto libre, F5, recepción y ledger real', asy
   expect(receipt.movements[0]).toMatchObject({
     catalog_item_id: product.id, delta_milli: 5000,
   })
+  expect(receipt.balances_after).toEqual([{catalog_item_id: product.id, quantity_milli: 5000, version: 1}])
   const balances = await get(root + '/inventory/balances')
-  expect(balances).toHaveLength(1)
+  expect(balances, 'Consulta de saldos posterior a recepción; must be committed atomically').toHaveLength(1)
   expect(balances[0]).toMatchObject({
     location_id: site.id, catalog_item_id: product.id,
     quantity_milli: 5000, version: 1,
