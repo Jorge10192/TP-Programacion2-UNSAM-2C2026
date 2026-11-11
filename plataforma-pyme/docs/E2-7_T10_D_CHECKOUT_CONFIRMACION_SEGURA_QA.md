@@ -34,10 +34,17 @@ La UI usa `VITE_PYME_ENABLE_REAL_SALES === '1'` para habilitar el botón **«Con
 - **8 Node nuevas** en `tests/sales-real-checkout.test.mjs`: venta mixta 5×$2000 + 4×$1000 −$2000=$12000; mezcla de pagos, límites, suma exacta, texto de referencia, rechazo de métodos acreditados y normalización.
 - **2 Playwright REAL nuevas** en `e2e/real/pos-draft.spec.ts`: consentimiento humano, POST única vez y comprobante en servicio; respuesta `201` perdida tras COMMIT, F5/login y GET de recuperación **sin segundo POST**.
 - Se adaptaron los 2 tests originales T10-C para la pantalla de checkout: el precio sigue bloqueado por defecto, el carrito/edición se prueban sin enviar venta y 501 fichas mantienen paginación.
-- Deben aprobar **todas** las suites full-stack: backend, frontend, Chromium REAL (incluidos T08/09) y DEMO. **CI final pendiente de registrar**. No marcar QA completo hasta observar el run verde del último commit funcional.
+- **CI T10-D COMPLETA Y APROBADA:** [Full-stack #42928402751](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42928402751), commit funcional `f3286c6d500190407294be9d38a5e5399cecbcc9`, **SUCCESS**. **892/892 Pytest** sobre PostgreSQL efímero (**2 advertencias no bloqueantes**), **8/8** pruebas Node checkout, **15/15 Playwright REAL** (incluye las 2 de T10-D) y **6/6 Playwright DEMO**, sin fallos; TypeScript build/Oxlint también aprobados. [Frontend independiente #42928402676](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42928402676) y [Backend Python 3.12/3.14 + Docker #42928402678](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42928402678) también **SUCCESS**. Estos 3 runs verifican el **mismo commit funcional**, antes de actualizaciones documentales.
 
 ## Pendientes de aceptación
 
 - **T10-E:** escenarios de producto físico y stock, venta mixta, roles operativos, errores HTTP, conflicto/insuficiencia de stock, navegador F5 y pago mixto; ejecutar sobre empresa y PostgreSQL descartables y comprobar el ledger, unicidad y snapshots.
 - **QA visual local sin mutaciones:** revisar selección, total por producto, medios declarados, confirmación deshabilitada y mensajes de ayuda. **No pedir al usuario que registre ventas en TEST Empresa A**.
 - **T10-F:** auditoría de seguridad, reconciliación con QA, decisión explícita de habilitar POST REAL fuera de CI y merge con autorización humana. Las reglas futuras de Mercado Pago real/QR de cobro son otro alcance.
+
+
+## Dictamen T10-D
+
+**T10-D aprobado técnicamente para pasar a T10-E.** La UI de pagos y revisión funciona; la prueba de servicio con POST original y el escenario de pérdida del `201` tras COMMIT se comprobaron con navegador y PostgreSQL **descartables**, sin duplicados. No atribuir estas ejecuciones a datos locales del usuario.
+
+**T10-D NO habilita operaciones de venta en el navegador local por defecto.** Permanecen pendientes la batería ampliada de T10-E (stock físico/ventas mixtas, pagos declarados mixtos, errores 403/409/422, permisos de operador y recuperaciones), la QA manual sin mutaciones y la auditoría T10-F. No fusionar PR #43 ni activar `VITE_PYME_ENABLE_REAL_SALES` en un entorno persistente hasta aceptación explícita.
