@@ -274,7 +274,7 @@ export function RealBusinessesPage({
           <div><dt>Tu membresía</dt><dd>{selected.membership.status}</dd></div>
           <div><dt>Identificador del negocio</dt><dd className="real-auth-id">{selected.id}</dd></div>
         </dl>
-        <p className="real-auth-note">Ya podés consultar inventario, movimientos y el historial de ventas REALES confirmado en PostgreSQL. Crear ventas desde el POS se incorporará más adelante.</p>
+        <p className="real-auth-note">Ya podés consultar inventario, movimientos e historial de ventas REALES. El POS preliminar permite preparar un carrito sin registrar operaciones: la confirmación se incorporará en T10-D.</p>
         <div className="real-auth-actions">
           <button className="real-auth-primary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/ubicaciones')}>Ubicaciones reales</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/equipo')}>Equipo e invitaciones</button>
@@ -282,6 +282,7 @@ export function RealBusinessesPage({
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/proveedores')}>Proveedores REAL</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/compras')}>Compras y recepciones REAL</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/inventario')}>Inventario REAL</button>
+          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/pos')}>Punto de venta REAL · preparar carrito</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/ventas')}>Historial de ventas REAL · consulta</button>
         </div>
         {canEditBusiness(selected) && !editing && <button className="real-auth-secondary" type="button" onClick={() => setEditing(true)}>Editar perfil empresarial</button>}

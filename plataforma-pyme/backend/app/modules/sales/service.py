@@ -49,6 +49,16 @@ class SaleInsufficientStock(Exception):
     pass
 
 
+class SalePricePolicyDenied(Exception):
+    """T10-P01: rol operativo no puede modificar precio ni descuento."""
+    pass
+
+
+class SaleMissingCatalogPrice(Exception):
+    """T10-P01: operador requiere precio de catálogo definido."""
+    pass
+
+
 @dataclass(frozen=True)
 class SaleCreated:
     body: SaleView
@@ -142,6 +152,23 @@ class SaleService:
                 if item.unit in ("UNIDAD", "PAQUETE", "CAJA", "SERVICIO"):
                     if line.quantity_milli % 1000 != 0:
                         raise SaleInvalidReference()
+
+            # T10-P01 — se valida EN FASTAPI antes de cualquier INSERT, ledger
+            # o débito. Tomamos price_cents bajo bloqueo compartido de catálogo,
+            # no un precio proporcionado/confiado por el navegador.
+            # El replay idéntico ya se resolvió antes de leer catálogo: una
+            # edición posterior del precio NO duplica ni reescribe la venta.
+            if member.role in ("ENCARGADO", "TRABAJADOR"):
+                if command.discount_cents != 0:
+                    raise SalePricePolicyDenied()
+                for line in command.lines:
+                    current_price = items[line.catalog_item_id].price_cents
+                    if current_price is None:
+                        raise SaleMissingCatalogPrice()
+                    if line.unit_price_cents != current_price:
+                        raise SalePricePolicyDenied()
+            elif member.role not in ("TITULAR_ADMINISTRATIVO", "ADMINISTRADOR"):
+                raise SalePermissionDenied()
 
             physical = [line for line in command.lines
                         if items[line.catalog_item_id].item_type == "BIEN"]

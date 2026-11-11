@@ -15,6 +15,7 @@ from app.modules.sales.schemas import CreateSaleRequest, SaleSummaryView, SaleVi
 from app.modules.sales.service import (
     SaleService, SaleBusinessSuspended, SaleIdempotencyConflict, SaleInvalidReference,
     SaleLocationNotEnabled, SaleNotFound, SalePermissionDenied, SaleInsufficientStock,
+    SalePricePolicyDenied, SaleMissingCatalogPrice,
 )
 
 router = APIRouter(prefix="/businesses/{business_id}/sales", tags=["ventas"])
@@ -25,6 +26,10 @@ def _http(error: Exception) -> HTTPException:
         return HTTPException(404, detail="Empresa o venta no disponible")
     if isinstance(error, (PurchasePermissionDenied, SalePermissionDenied)):
         return HTTPException(403, detail="Sin permiso de venta en esta empresa")
+    if isinstance(error, SalePricePolicyDenied):
+        return HTTPException(403, detail="Tu rol no puede cambiar precios ni aplicar descuentos")
+    if isinstance(error, SaleMissingCatalogPrice):
+        return HTTPException(422, detail="El articulo debe tener precio de catalogo para este rol")
     if isinstance(error, SaleBusinessSuspended):
         return HTTPException(409, detail="Empresa suspendida")
     if isinstance(error, SaleIdempotencyConflict):
@@ -66,6 +71,7 @@ def create_sale(
         PurchaseBusinessUnavailable, PurchasePermissionDenied, SalePermissionDenied,
         SaleBusinessSuspended, SaleIdempotencyConflict, SaleInvalidReference,
         SaleInsufficientStock, SaleLocationNotEnabled,
+        SalePricePolicyDenied, SaleMissingCatalogPrice,
     ) as error:
         raise _http(error) from None
     response.status_code = 200 if result.replayed else 201

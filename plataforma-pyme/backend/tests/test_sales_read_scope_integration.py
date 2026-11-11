@@ -138,6 +138,11 @@ def test_assignment_revocation_denies_even_own_sale_and_its_original_key(isolate
     bid = business(client, owner)
     a = location(client, bid, owner, name="Sede revocación")
     product = item(client, bid, owner)
+    set_price = client.patch(
+        f"/api/v1/businesses/{bid}/catalog/{product}",
+        headers=owner, json={"price_cents": 2000},
+    )
+    assert set_price.status_code == 200, set_price.text
     worker, worker_id = user(client)
     membership(db, bid, worker_id, "TRABAJADOR")
     assign(db, bid, a, worker_id)
