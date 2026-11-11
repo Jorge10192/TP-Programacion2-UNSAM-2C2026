@@ -244,6 +244,53 @@ test('T10-E: pagos mixtos, precio excepcional y descuento quedan en comprobante 
   expect(receipt.payments[1].reference).toBe('Referencia T10 E QA')
 })
 
+test('T10-E: POST perdido antes de llegar a API, GET 404 y replay manual conserva identidad', async ({ page, request }) => {
+  const fixture = await seed(request)
+  const attempts: { key: string | null; body: string | null }[] = []
+  await page.route('**/api/v1/businesses/' + fixture.businessId + '/sales', async route => {
+    if (route.request().method() !== 'POST') return route.continue()
+    attempts.push({
+      key: route.request().headers()['idempotency-key'] ?? null,
+      body: route.request().postData(),
+    })
+    if (attempts.length === 1) return route.abort('failed') // Sin llegar a PostgreSQL
+    return route.continue()
+  })
+  await open(page, fixture)
+  await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
+  await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
+  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByLabel('Acepto registrar esta venta REAL').check()
+  await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
+  await expect(page.getByText('Hay una solicitud de venta guardada que requiere recuperación.', {
+    exact: false,
+  })).toBeVisible()
+  expect(attempts).toHaveLength(1)
+  await page.getByRole('button', { name: 'Recuperar comprobante por solicitud (GET)' }).click()
+  await expect(page.getByText('GET devolvió 404:', { exact: false })).toBeVisible()
+  expect(attempts).toHaveLength(1)
+  await page.getByLabel('Acepto reenviar la misma solicitud').check()
+  await page.getByRole('button', { name: 'Reintentar exactamente esta venta' }).click()
+  await expect(page.getByText('Venta confirmada en PostgreSQL.', { exact: false })).toBeVisible()
+  expect(attempts).toHaveLength(2)
+  expect(attempts[0].key).toMatch(/^[0-9a-f-]{36}$/i)
+  expect(attempts[1]).toEqual(attempts[0])
+
+  const login = await request.post(base + '/auth/login', {
+    data: { email: fixture.email, password: fixture.password },
+  })
+  expect(login.status(), await login.text()).toBe(200)
+  const token = (await login.json()).access_token
+  const list = await request.get(base + '/businesses/' + fixture.businessId + '/sales', {
+    headers: { Authorization: 'Bearer ' + token },
+  })
+  expect(list.status(), await list.text()).toBe(200)
+  const sales = await list.json()
+  expect(sales).toHaveLength(1)
+  expect(sales[0].total_cents).toBe(150000)
+})
+
 test('T10-D: pérdida de respuesta después del 201, F5 y recuperación GET sin repetir POST', async ({ page, request }) => {
   const fixture = await seed(request)
   let intercepted = 0
