@@ -33,7 +33,7 @@ type Props = {
 
 /**
  * T10-D: explicit confirmation + IndexedDB-first POST, no automatic replay.
- * The local QA entry keeps mutations OFF by default until T10-E acceptance.
+ * REAL sale mutation is OFF by default outside explicitly authorized environments.
  * This front-end switch is not RBAC: FastAPI validates every write.
  */
 const MUTATIONS_ENABLED = import.meta.env.VITE_PYME_ENABLE_REAL_SALES === '1'
