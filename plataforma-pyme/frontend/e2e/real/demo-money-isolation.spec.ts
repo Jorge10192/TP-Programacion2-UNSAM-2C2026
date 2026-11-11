@@ -75,7 +75,7 @@ test('E27-MODE-02: QR, caja y cuenta DEMO no consultan ni escriben negocio REAL'
     .getAttribute('value')
   expect(itemValue).toBeTruthy()
   await selectItem.selectOption(itemValue!)
-  await page.getByLabel('Medio de pago 1').selectOption('MERCADO_PAGO')
+  await page.getByLabel('Medio de pago 1', { exact: true }).selectOption('MERCADO_PAGO')
   await page.getByRole('button', { name: 'Completar último medio con el saldo pendiente' }).click()
   await page.getByRole('button', { name: 'Generar QR DEMO' }).click()
   await expect(page.getByText('Se creó una intención QR DEMO pendiente', { exact: false }))
