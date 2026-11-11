@@ -123,5 +123,5 @@ test('E27-MODE-02: QR, caja y cuenta DEMO no consultan ni escriben negocio REAL'
   await expect(page.getByText('Cuenta aislada T11')).toHaveCount(0)
   await expect(page.getByText('Servicio QR aislado T11')).toHaveCount(0)
   await expect(page.getByText('0 cargadas', { exact: false })).toBeVisible()
-  expect(calls.filter(call => /\\/businesses\\/[^/]+\\/(sales|purchases|inventory)/.test(call) && !call.startsWith('GET '))).toEqual([])
+  expect(calls.filter(call => call.includes('/businesses/') && !call.startsWith('GET ') && ['/sales', '/purchases', '/inventory'].some(part => call.includes(part)))).toEqual([])
 })
