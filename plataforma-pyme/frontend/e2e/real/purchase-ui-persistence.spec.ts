@@ -73,6 +73,12 @@ test('T11-F: compra UI bien + concepto libre, F5, recepción y ledger real', asy
   const purchases = await get(root + '/purchases')
   expect(purchases).toHaveLength(1)
   expect(purchases[0].lines).toHaveLength(2)
+  expect(purchases[0].lines.find((line: { catalog_item_id: string | null }) =>
+    line.catalog_item_id === product.id)).toMatchObject({
+      catalog_item_id: product.id, quantity_milli: 5000,
+    })
+  expect(purchases[0].lines.filter((line: { catalog_item_id: string | null }) =>
+    line.catalog_item_id === null)).toHaveLength(1)
   expect(purchases[0].total_cents).toBe(400000)
   expect(await get(root + '/inventory/balances')).toEqual([])
   expect(await get(root + '/inventory/movements')).toEqual([])
@@ -87,6 +93,11 @@ test('T11-F: compra UI bien + concepto libre, F5, recepción y ledger real', asy
   await page.getByRole('button', { name: 'Confirmar recepción REAL' }).click()
   await expect(page.getByText('Recepción confirmada', { exact: false })).toBeVisible()
 
+  const receipt = await get(root + '/purchases/' + purchases[0].id + '/receipt')
+  expect(receipt.movements).toHaveLength(1)
+  expect(receipt.movements[0]).toMatchObject({
+    catalog_item_id: product.id, delta_milli: 5000,
+  })
   const balances = await get(root + '/inventory/balances')
   expect(balances).toHaveLength(1)
   expect(balances[0]).toMatchObject({
