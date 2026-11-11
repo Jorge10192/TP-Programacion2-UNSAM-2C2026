@@ -65,7 +65,7 @@ test('T11-F: compra UI bien + concepto libre, F5, recepción y ledger real', asy
   await lines.nth(1).getByLabel('Descripción').fill('Flete documentado T11-F')
   await lines.nth(1).getByLabel('Cantidad (hasta 3 decimales)').fill('1')
   await lines.nth(1).getByLabel('Costo unitario ($)').fill('500')
-  await expect(form.locator('.real-supply-grand-total')).toContainText('4.000,00')
+  await expect(form.locator('.real-supply-grand-total')).toContainText('4000,00')
   await form.getByLabel('Acepto guardar temporalmente los datos de esta compra en este navegador.').check()
   await form.getByRole('button', { name: 'Registrar compra sin stock' }).click()
   await expect(page.getByText('La compra NO agregó stock', { exact: false })).toBeVisible()
