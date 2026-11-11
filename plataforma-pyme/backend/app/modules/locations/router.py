@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
 from app.modules.auth.dependencies import current_auth, unauthorized
 from app.modules.auth.session_service import AuthContext
+from app.modules.locations.assignment_service import LocationAssignmentService
 from app.modules.locations.schemas import (
     CreateLocationRequest, LocationView, UpdateLocationRequest,
     ChangeLocationStatusRequest,
@@ -49,6 +50,31 @@ def list_locations(
 ) -> list[LocationView]:
     try:
         return LocationService(db).list_for_business(
+            context.user.id, context.auth_session.id, business_id,
+        )
+    except LocationSessionInvalid:
+        raise unauthorized() from None
+    except (LocationBusinessUnavailable, LocationPermissionDenied) as error:
+        raise _location_http_error(error) from None
+
+
+
+@router.get(
+    "/my-assignments", response_model=list[UUID],
+    responses={
+        401: {"description": "Sesión inválida"},
+        403: {"description": "Sin permiso de consulta"},
+        404: {"description": "Empresa no disponible"},
+    },
+    summary="Consultar solamente las sedes asignadas al usuario autenticado",
+)
+def my_location_assignments(
+    business_id: UUID,
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> list[UUID]:
+    try:
+        return LocationAssignmentService(db).list_my_active_location_ids(
             context.user.id, context.auth_session.id, business_id,
         )
     except LocationSessionInvalid:

@@ -93,7 +93,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
    <h1>Proveedores</h1>
    <p>Proveedores de {business?.name??'la empresa'} consultados en FastAPI y PostgreSQL. Sin datos DEMO.</p>
    {loading&&<p role="status">Consultando proveedores…</p>}
-   <div className="real-ops-toolbar"><strong>{items.length} proveedores cargados{hasMore?' (hay más páginas posibles)':''}</strong>
+   <div className="real-ops-toolbar"><strong>{items.length} {items.length === 1 ? 'proveedor cargado' : 'proveedores cargados'}{hasMore?' (hay más páginas posibles)':''}</strong>
      <button type="button" className="real-auth-secondary" disabled={loading||busy} onClick={()=>void reload()}>Actualizar</button></div>
    {!loading&&items.length===0&&<div className="real-business-empty">No hay proveedores registrados en esta empresa.</div>}
    <div className="real-business-grid">

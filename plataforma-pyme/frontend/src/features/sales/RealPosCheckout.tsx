@@ -33,7 +33,7 @@ type Props = {
 
 /**
  * T10-D: explicit confirmation + IndexedDB-first POST, no automatic replay.
- * The local QA entry keeps mutations OFF by default until T10-E acceptance.
+ * REAL sale mutation is OFF by default outside explicitly authorized environments.
  * This front-end switch is not RBAC: FastAPI validates every write.
  */
 const MUTATIONS_ENABLED = import.meta.env.VITE_PYME_ENABLE_REAL_SALES === '1'
@@ -318,7 +318,7 @@ export function RealPosCheckout({
           checked={ack} onChange={e => setAck(e.target.checked)}/>
         Confirmo empresa, sede, precios, cantidades y medios declarados. Entiendo que una venta confirmada registra comprobante y afecta stock físico.
       </label>
-      {!MUTATIONS_ENABLED && <p className="real-auth-note">T10-D en validación: el registro REAL está bloqueado en tu entorno hasta completar la aceptación T10-E. Podés revisar todos los datos sin generar ventas.</p>}
+      {!MUTATIONS_ENABLED && <p className="real-auth-note">El registro de ventas REAL está deshabilitado en este entorno. Solo se habilita mediante configuración explícita en un entorno autorizado; podés revisar los datos sin registrar operaciones.</p>}
       <div className="real-pos-confirm-actions">
         <button type="button" className="real-auth-secondary" onClick={() => {
           setStage('editing'); setReview(null); setAck(false); onDraftLock(false)
