@@ -268,3 +268,20 @@ def test_rollback_on_error_after_sql_flush(isolated, monkeypatch) -> None:
     with pytest.raises(RuntimeError, match="failure after SQL flush"):
         patch(client, owner, business_id, {"name": "Cambio revertido"})
     assert saved_profile(connection, business_id) == before
+
+@pytest.mark.parametrize("field", ["name", "category"])
+def test_patch_rejects_nul_and_preserves_business(isolated, field):
+    client, connection = isolated
+    headers, _ = actor(client)
+    business_id = company(client, headers)
+    before = connection.execute(
+        select(Business.name, Business.category).where(Business.id == business_id)
+    ).one()
+    response = client.patch(
+        f"/api/v1/businesses/{business_id}", headers=headers,
+        json={field: "Texto\x00invalido"},
+    )
+    assert response.status_code == 422, response.text
+    assert connection.execute(
+        select(Business.name, Business.category).where(Business.id == business_id)
+    ).one() == before

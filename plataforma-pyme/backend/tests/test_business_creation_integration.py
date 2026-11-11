@@ -176,3 +176,20 @@ def test_no_orphan_business_if_membership_insert_fails(isolated, monkeypatch) ->
     assert not connection.execute(
         select(Business.id).where(Business.name == "Tienda de prueba")
     ).all()
+
+@pytest.mark.parametrize("field", ["name", "category"])
+def test_create_rejects_nul_without_company_or_idempotency_record(isolated, field):
+    client, connection = isolated
+    headers, user_id = actor(client)
+    key = uuid4()
+    response = create(client, headers, {**cmd(), field: "Texto\x00invalido"}, key)
+    assert response.status_code == 422, response.text
+    assert connection.execute(
+        select(Business.id).where(Business.founder_user_id == user_id)
+    ).first() is None
+    assert connection.execute(
+        select(BusinessCreationRequest.business_id).where(
+            BusinessCreationRequest.actor_user_id == user_id,
+            BusinessCreationRequest.idempotency_key == key,
+        )
+    ).first() is None

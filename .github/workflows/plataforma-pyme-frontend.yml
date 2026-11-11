@@ -64,7 +64,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Preparar Chromium
         working-directory: plataforma-pyme/frontend/e2e
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Recorridos reales de navegador
         working-directory: plataforma-pyme/frontend/e2e
         run: npm test
