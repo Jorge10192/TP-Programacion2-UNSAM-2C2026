@@ -89,8 +89,10 @@ test('T10-C POS REAL: carrito, sede, precio admin, descuento, sin POST de venta'
   await expect(cart.locator('.real-pos-cart-row')).toHaveCount(1)
   await expect(cart).toContainText('5.401,50')
   await expect(page.locator('.real-pos-summary')).toContainText('5.301,50')
-  await expect(page.getByLabel('Importe declarado 1')).toHaveValue('3501,00')
+  // El importe automático debe seguir el NUEVO total, no el importe previo.
+  await expect(page.getByLabel('Importe declarado 1')).toHaveValue('5301,50')
   await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await expect(page.getByLabel('Revisión final de la venta')).toContainText('5.301,50')
   await expect(page.getByRole('button', { name: 'Confirmar y registrar venta REAL' })).toBeDisabled()
   expect(salePosts).toBe(0)
 
