@@ -322,6 +322,54 @@ test('T10-E: venta física desde POS debita stock y registra un solo movimiento'
   expect(debits[0].sale_id).toBe(sales[0].id)
 })
 
+test('T10-E: 409 stock insuficiente conserva pendiente y no reenvía automáticamente', async ({ page, request }) => {
+  const fixture = await seed(request)
+  const login = await request.post(base + '/auth/login', {
+    data: { email: fixture.email, password: fixture.password },
+  })
+  expect(login.status(), await login.text()).toBe(200)
+  const headers = { Authorization: 'Bearer ' + (await login.json()).access_token }
+  const root = '/businesses/' + fixture.businessId
+  const product = await request.post(base + root + '/catalog', {
+    headers,
+    data: {
+      name: 'Producto sin stock T10-E', kind: 'REVENTA', unit: 'UNIDAD',
+      sellable: true, price_cents: 120000,
+    },
+  })
+  expect(product.status(), await product.text()).toBe(201)
+  let posts = 0
+  page.on('request', req => {
+    if (req.method() === 'POST' && req.url().endsWith(root + '/sales')) posts++
+  })
+  await open(page, fixture)
+  await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
+  await page.getByRole('button', { name: /Producto sin stock T10-E/ }).click()
+  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByLabel('Acepto registrar esta venta REAL').check()
+  const response = page.waitForResponse(resp =>
+    resp.request().method() === 'POST' && resp.url().endsWith(root + '/sales'))
+  await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
+  expect((await response).status()).toBe(409)
+  await expect(page.getByText('Hay una solicitud de venta guardada que requiere recuperación.', {
+    exact: false,
+  })).toBeVisible()
+  expect(posts).toBe(1)
+  await page.reload()
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(fixture.email)
+  await page.getByLabel('Contraseña', { exact: true }).fill(fixture.password)
+  await page.getByRole('button', { name: 'Ingresar', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Recuperar comprobante por solicitud (GET)' })).toBeVisible()
+  expect(posts).toBe(1)
+  await page.getByRole('button', { name: 'Recuperar comprobante por solicitud (GET)' }).click()
+  await expect(page.getByText('GET devolvió 404:', { exact: false })).toBeVisible()
+  expect(posts).toBe(1)
+  const sales = await request.get(base + root + '/sales', { headers })
+  expect(sales.status(), await sales.text()).toBe(200)
+  expect(await sales.json()).toHaveLength(0)
+})
+
 test('T10-E: POST perdido antes de llegar a API, GET 404 y replay manual conserva identidad', async ({ page, request }) => {
   const fixture = await seed(request)
   const attempts: { key: string | null; body: string | null }[] = []
