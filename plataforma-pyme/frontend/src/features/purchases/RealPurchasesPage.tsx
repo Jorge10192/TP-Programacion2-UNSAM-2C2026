@@ -17,13 +17,18 @@ type Props={token:string;userId:string;userDisplayName:string;businessId:string;
 type DraftLine={catalogId:string;description:string;quantity:string;unitCost:string;totalDraft:string|null}
 type Draft={date:string;supplierId:string;reference:string;notes:string;lines:DraftLine[]}
 const emptyLine=():DraftLine=>({catalogId:'concept',description:'Concepto de compra',quantity:'1',unitCost:'0',totalDraft:null})
-const emptyDraft=():Draft=>({date:new Date().toISOString().slice(0,10),supplierId:'',reference:'',notes:'',lines:[emptyLine()]})
+function todayLocal():string{
+ const date=new Date()
+ return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-')
+}
+const emptyDraft=():Draft=>({date:todayLocal(),supplierId:'',reference:'',notes:'',lines:[emptyLine()]})
 const money=(n:number)=>'$ '+centsToPesos(n)
 export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNavigate,onUnauthorized}:Props){
  const api=useMemo(()=>createSupplyGateway(token,businessId),[token,businessId])
  const catalogApi=useMemo(()=>createCatalogGateway(token,businessId),[token,businessId])
  const companies=useMemo(()=>createOperationsGateway(token,userId),[token,userId])
  const alive=useRef(true)
+ const receiptLookup=useRef(false)
  const receiptDetailRef=useRef<HTMLDivElement|null>(null)
  const [business,setBusiness]=useState<RealBusiness|null>(null)
  const [purchases,setPurchases]=useState<Purchase[]>([])
@@ -181,7 +186,9 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
    }finally{if(alive.current)setBusy(false)}
  }
  async function beginReceipt(purchaseId:string){
-   if(busy||loading)return
+   if(busy||loading||receiptLookup.current)return
+   receiptLookup.current=true
+   setBusy(true)
    setError('');setNotice('');setShownReceipt(null);setReceiptFor(purchaseId);setPendingReceipt(null);setLocationId('')
    try{
      const scope=pendingScope(userId,businessId,'purchase.receive',purchaseId)
@@ -193,9 +200,13 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
        setNotice('Recepción pendiente recuperada: comprobá primero si existe un comprobante.')
      }
    }catch(err){failed(err)}
+   finally{receiptLookup.current=false;if(alive.current)setBusy(false)}
  }
  async function sendReceipt(){
-   if(!receiptFor||!canReceive||busy||loading)return
+   if(!receiptFor||!canReceive||busy||loading||receiptLookup.current)return
+   if(pendingReceipt&&pendingReceipt.purchaseId!==receiptFor){
+     setError('La recepción recuperada corresponde a otra compra. Cerrá la selección y volvé a abrirla.');return
+   }
    if(!window.confirm('Confirmar recepción COMPLETA de la compra en la ubicación elegida. Esta acción incrementa stock real en PostgreSQL y no admite recepción parcial. ¿Continuar?'))return
    const intent:Extract<SupplyPending,{kind:'purchase.receive'}>=pendingReceipt??newReceiptIntent(userId,businessId,receiptFor,locationId)
    if(!activeSites.some(x=>x.id===intent.body.location_id)){
