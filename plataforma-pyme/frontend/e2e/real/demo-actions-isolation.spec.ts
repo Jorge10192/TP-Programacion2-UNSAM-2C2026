@@ -63,6 +63,7 @@ test('E27-MODE-02: QR, caja y cuentas DEMO modifican solo estado local, cero wri
   const label = 'Cuenta DEMO aislada ' + randomUUID().slice(0, 6)
   await page.getByRole('textbox', { name: 'Nombre de la cuenta *' }).fill(label)
   await page.getByRole('textbox', { name: 'Banco o billetera *' }).fill('Banco de ficción')
+  await page.getByRole('textbox', { name: 'Alias ficticio (opcional)' }).fill('cuenta.qa.t11')
   await page.getByRole('button', { name: 'Registrar cuenta DEMO' }).click()
   await expect(page.getByText('Cuenta DEMO «' + label + '» registrada', { exact: false })).toBeVisible()
   await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
