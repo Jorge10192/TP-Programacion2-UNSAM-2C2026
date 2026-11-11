@@ -134,6 +134,12 @@ export function createOperationsGateway(token: string, userId: string, fetchImpl
       return list(await api.request<unknown>(locations(businessId), { signal }),
         (value) => parseLocation(value, businessId))
     },
+    async myAssignedLocationIds(businessId: string, signal?: AbortSignal): Promise<string[]> {
+      const raw = await api.request<unknown>(locations(businessId) + '/my-assignments', { signal })
+      if (!Array.isArray(raw) || raw.some(id => typeof id !== 'string' || !UUID_PATTERN.test(id))
+        || new Set(raw).size !== raw.length) return fail()
+      return raw as string[]
+    },
     async createLocation(businessId: string, input: LocationInput) {
       return parseLocation(await api.request<unknown>(locations(businessId), { method: 'POST', body: input }), businessId)
     },
