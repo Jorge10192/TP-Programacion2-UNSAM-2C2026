@@ -229,9 +229,19 @@ test('T10-E: pagos mixtos, precio excepcional y descuento quedan en comprobante 
   expect(res.status(), await res.text()).toBe(200)
   const sales = await res.json()
   expect(sales).toHaveLength(1)
-  expect(sales[0].subtotal_cents).toBe(180000)
-  expect(sales[0].discount_cents).toBe(30000)
   expect(sales[0].total_cents).toBe(150000)
+  const detail = await request.get(base + '/businesses/' + fixture.businessId + '/sales/' + sales[0].id, {
+    headers: { Authorization: 'Bearer ' + token },
+  })
+  expect(detail.status(), await detail.text()).toBe(200)
+  const receipt = await detail.json()
+  expect(receipt.subtotal_cents).toBe(180000)
+  expect(receipt.discount_cents).toBe(30000)
+  expect(receipt.total_cents).toBe(150000)
+  expect(receipt.lines[0].unit_price_cents).toBe(180000)
+  expect(receipt.payments.map((p: { amount_cents: number }) => p.amount_cents)).toEqual([100000, 50000])
+  expect(receipt.payments[1].method).toBe('TRANSFERENCIA')
+  expect(receipt.payments[1].reference).toBe('Referencia T10 E QA')
 })
 
 test('T10-D: pérdida de respuesta después del 201, F5 y recuperación GET sin repetir POST', async ({ page, request }) => {
