@@ -88,6 +88,10 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
     : businessId ? 'Empresa sin verificar' : 'Seleccioná una empresa'
   const title = realWorkspaceTitle(path)
   const sections = ['Administración', 'Operaciones'] as const
+  // The business-detail/list screen already has its own «Mis empresas» button.
+  // Avoid duplicate accessible names while the screens are incrementally redesigned.
+  const hasExistingCompaniesLink = path === '/real/empresas' || path === '/real/empresas/nueva'
+    || (businessId !== null && path === realWorkspaceHref(businessId))
 
   return <>
     {drawerOpen && <button type="button" className="rw-overlay" aria-label="Cerrar navegación" onClick={() => setDrawerOpen(false)} />}
@@ -100,9 +104,9 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
       </div>
       <nav className="rw-sidebar-scroll" aria-label="Secciones disponibles en REAL">
         <p className="rw-nav-caption">Mi espacio</p>
-        <button type="button" className={'rw-nav-item' + (path === '/real/empresas' ? ' rw-active' : '')}
+        {!hasExistingCompaniesLink && <button type="button" className={'rw-nav-item' + (path === '/real/empresas' ? ' rw-active' : '')}
           aria-current={path === '/real/empresas' ? 'page' : undefined} onClick={() => navigate('/real/empresas')}>
-          <Icon name="home" size={18}/>Mis empresas</button>
+          <Icon name="home" size={18}/>Mis empresas</button>}
         <button type="button" className={'rw-nav-item' + (path === '/real/perfil' ? ' rw-active' : '')}
           aria-current={path === '/real/perfil' ? 'page' : undefined} onClick={() => navigate('/real/perfil')}>
           <Icon name="user" size={18}/>Mi perfil</button>
@@ -121,7 +125,6 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
       </nav>
       <div className="rw-sidebar-footer">
         <span className="rw-mode">REAL · FastAPI / PostgreSQL</span>
-        <a className="rw-demo-link" href="/inicio">Entrar a DEMO</a>
       </div>
     </aside>
     <header className="rw-topbar">
@@ -133,6 +136,7 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
       </div>
       <div className="rw-topbar-actions">
         <span className="rw-real-badge">REAL</span>
+        <a className="rw-demo-link rw-demo-topbar" href="/inicio">Entrar a DEMO</a>
         <label className="rw-company-select-label">Empresa
           <select aria-label="Cambiar de empresa REAL" value={active?.id ?? ''}
             disabled={state !== 'ready' || companies.length === 0}
@@ -143,7 +147,7 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
         </label>
         {active && <span className="rw-role-note" title={active.membership.role}>{active.membership.role.replaceAll('_', ' ')} · {active.status}</span>}
         <button className="rw-profile-button" type="button" onClick={() => navigate('/real/perfil')}
-          title={userName}><Icon name="user" size={17}/><span>{userName}</span></button>
+          title={userName} aria-label="Abrir perfil"><Icon name="user" size={17}/></button>
         <button className="rw-signout" type="button" onClick={onLogout}>Salir</button>
       </div>
       {state === 'error' && <p className="rw-shell-error" role="alert">{error}</p>}
