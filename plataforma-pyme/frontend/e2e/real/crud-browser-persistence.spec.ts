@@ -63,7 +63,8 @@ test('T11-F: CRUD sedes, fichas y proveedores UI → PostgreSQL → F5', async (
   await paused.getByRole('button', { name: 'Reactivar' }).click()
   await expect(paused).toContainText('ACTIVA')
 
-  await page.goto('/real/empresas/' + u.business.id + '/catalogo')
+  await page.getByRole('button', { name: 'Empresa', exact: true }).click()
+  await page.getByRole('button', { name: 'Catálogo REAL' }).click()
   await expect(page.getByRole('heading', { name: 'Catálogo de artículos' })).toBeVisible()
   await page.getByRole('button', { name: 'Crear artículo REAL' }).click()
   const itemName = 'T11 catálogo ' + randomUUID().slice(0, 5)
@@ -84,7 +85,8 @@ test('T11-F: CRUD sedes, fichas y proveedores UI → PostgreSQL → F5', async (
   expect(catalog).toHaveLength(1)
   expect(catalog[0]).toMatchObject({ name: itemName, status: 'INACTIVO' })
 
-  await page.goto('/real/empresas/' + u.business.id + '/proveedores')
+  await page.getByRole('button', { name: 'Empresa', exact: true }).click()
+  await page.getByRole('button', { name: 'Proveedores REAL' }).click()
   await expect(page.getByRole('heading', { name: 'Proveedores' })).toBeVisible()
   const supplierName = 'T11 proveedor ' + randomUUID().slice(0, 6)
   await page.getByLabel('Nombre comercial').fill(supplierName)
