@@ -35,6 +35,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
   const inventoryApi=useMemo(()=>createInventoryGateway(token,businessId),[token,businessId])
   const [company,setCompany]=useState<RealBusiness|null>(null)
   const [locations,setLocations]=useState<LocationRecord[]>([])
+  const [assignedLocationIds,setAssignedLocationIds]=useState<string[]>([])
   const [catalog,setCatalog]=useState<CatalogItem[]>([])
   const [catalogHasMore,setCatalogHasMore]=useState(false)
   const [metadataLoading,setMetadataLoading]=useState(true)
@@ -70,8 +71,11 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
       companyApi.business(businessId,controller.signal),
       companyApi.locations(businessId,controller.signal),
       catalogApi.page(0,CATALOG_PAGE_SIZE,controller.signal),
-    ]).then(([business,sites,items])=>{
+    ]).then(async ([business,sites,items])=>{
+      const assigned=['TITULAR_ADMINISTRATIVO','ADMINISTRADOR'].includes(business.membership.role)
+        ? [] : await companyApi.myAssignedLocationIds(businessId,controller.signal)
       if(controller.signal.aborted||epoch!==metadataEpoch.current)return
+      setAssignedLocationIds(assigned)
       setCompany(business);setLocations(sites);setCatalog(items)
       setCatalogHasMore(items.length===CATALOG_PAGE_SIZE)
       setMetadataError('')
@@ -267,7 +271,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
           onClick={()=>setAdjustmentOpen(true)}>Stock inicial y ajustes</button>
         <span>Operaciones REALES: permisos STORE, auditoría, versiones y saldos desde FastAPI.</span>
       </div>
-      {transferOpen&&<RealTransferPanel token={token} actorId={userId} business={company} locations={locations} catalog={catalog}
+      {transferOpen&&<RealTransferPanel token={token} actorId={userId} business={company} locations={locations} assignedLocationIds={assignedLocationIds} catalog={catalog}
         onUnauthorized={onUnauthorized} onClose={()=>setTransferOpen(false)} onConfirmed={refreshAfterTransfer}
         onReview={reviewAfterTransfer}/>}
       {adjustmentOpen&&<RealAdjustmentPanel token={token} actorId={userId} business={company} locations={locations} catalog={catalog}
