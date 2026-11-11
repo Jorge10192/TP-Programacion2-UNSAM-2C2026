@@ -28,7 +28,7 @@ test('E27-AUTH-01: registro por UI, login explícito y GET /me de PostgreSQL', a
   expect(registrations).toBe(1)
   await page.getByLabel('Contraseña', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Ingresar', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Mi perfil real' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible()
   await expect(page.getByText(name, { exact: true })).toBeVisible()
   await expect(page.getByText(email, { exact: true })).toBeVisible()
 

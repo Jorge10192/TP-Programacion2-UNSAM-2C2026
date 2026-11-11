@@ -18,6 +18,7 @@ import { realWorkspaceBusinessId } from './realWorkspaceNavigation.ts'
 import { authErrorMessage, createAuthGateway } from './authGateway'
 import type { AuthUser, LoginInput, RegisterInput } from './authGateway'
 import './auth.css'
+import './realPeopleBusiness.css'
 
 type Session = { token: string; expiresAt: string; user: AuthUser }
 type Route = '/real/login' | '/real/registro' | '/real/perfil' | '/real/empresas' | '/real/empresas/nueva' | '/real/invitaciones/aceptar' | `/real/empresas/${string}`
@@ -282,21 +283,29 @@ export function RealAuthApp() {
           pendingCreation={pendingCreation}
           setPendingCreation={setPendingCreation}
         />
-        : <section className="real-auth-card" aria-label="Autenticación real">
-        <span className="real-auth-eyebrow">E2-7 · T02</span>
+        : <section className={"real-auth-card" + (isProfile ? " e3-profile-page" : "")} aria-label="Autenticación real">
+        <span className="real-auth-eyebrow">{isProfile ? 'Cuenta personal' : 'Acceso seguro'}</span>
         {isProfile ? <>
-          <h1>Mi perfil real</h1>
-          <p>Identidad obtenida desde FastAPI y PostgreSQL. Ahora podés gestionar tus empresas REAL, sin mezclar datos de demostración.</p>
-          <dl className="real-auth-profile">
+          <div className="e3-profile-heading">
+            <span className="e3-profile-avatar" aria-hidden="true">{session.user.display_name.slice(0, 1).toUpperCase() || 'U'}</span>
+            <div>
+              <h1>Mi perfil</h1>
+              <p>Consultá los datos de tu cuenta y administrá el acceso a tus empresas.</p>
+            </div>
+          </div>
+          <dl className="real-auth-profile e3-profile-grid">
             <div><dt>Nombre</dt><dd>{session.user.display_name}</dd></div>
             <div><dt>Correo</dt><dd>{session.user.email}</dd></div>
             <div><dt>Teléfono</dt><dd>{session.user.contact_phone || 'No informado'}</dd></div>
-            <div><dt>Estado</dt><dd>{session.user.status}</dd></div>
-            <div><dt>ID de usuario</dt><dd className="real-auth-id">{session.user.id}</dd></div>
+            <div><dt>Estado de tu cuenta</dt><dd><span className="e3-status-pill">{session.user.status}</span></dd></div>
           </dl>
-          <p className="real-auth-note">La sesión se guarda solo en memoria. Si actualizás la página con F5, tendrás que volver a ingresar.</p>
+          <details className="e3-technical-details">
+            <summary>Información técnica de la cuenta</summary>
+            <p>Identificador de usuario: <code>{session.user.id}</code></p>
+            <p>Por seguridad, la sesión solo se mantiene mientras esté abierta. Después de actualizar con F5, deberás iniciar sesión nuevamente.</p>
+          </details>
           <div className="real-auth-actions">
-            <button type="button" className="real-auth-primary" onClick={() => go('/real/empresas')}>Mis empresas reales</button>
+            <button type="button" className="real-auth-primary" onClick={() => go('/real/empresas')}>Mis empresas</button>
             <button type="button" className="real-auth-secondary" onClick={() => go('/real/invitaciones/aceptar')}>Aceptar invitación</button>
             <button type="button" className="real-auth-secondary" onClick={() => void onRefreshProfile()} disabled={busy}>{busy ? 'Consultando…' : 'Actualizar desde API'}</button>
             <button type="button" className="real-auth-secondary" onClick={onLogout}>Cerrar sesión</button>

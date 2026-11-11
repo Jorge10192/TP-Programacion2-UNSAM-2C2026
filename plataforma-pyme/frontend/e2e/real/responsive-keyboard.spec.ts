@@ -67,7 +67,7 @@ for (const viewport of [
     })
     await page.goto('/real/empresas')
     await loginByKeyboard(page, f)
-    await expect(page.getByRole('heading', { name: 'Mis empresas reales' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Mis empresas' })).toBeVisible()
     await expect(page.getByRole('button', { name: new RegExp('T11-D responsive') })).toBeVisible()
     // Native button activation via keyboard must navigate without a pointer.
     const companyButton = page.getByRole('button', { name: /T11-D responsive/ })
