@@ -70,7 +70,7 @@ test('T11-F: UI sede, catálogo y proveedor con estados persistentes después de
   ]) {
     await page.getByRole('button', { name: 'Crear artículo REAL' }).click()
     await page.getByLabel('Nombre', { exact: true }).fill(name)
-    await page.getByLabel('Tipo', { exact: true }).selectOption(kind)
+    await page.locator('form.real-ops-form select').first().selectOption(kind)
     await page.getByLabel('Rubro o categoría').fill('QA pruebas')
     await page.getByLabel('Precio (pesos, opcional)').fill(price)
     await page.getByRole('button', { name: 'Guardar artículo' }).click()
