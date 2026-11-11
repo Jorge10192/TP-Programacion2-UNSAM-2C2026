@@ -164,14 +164,6 @@ test('T11-C: trabajador miembro sin sede no puede recibir ni registrar venta des
   })
   expect(denied.status(), await denied.text()).toBe(403)
 
-  const purchase = await request.post(api + owner.root + '/purchases', {
-    headers: { ...owner.headers, 'Idempotency-Key': randomUUID() },
-    data: { purchased_on: '2026-11-11', reference: 'Compra QA asignación',
-      lines: [{ catalog_item_id: null, description: 'Concepto de compra',
-        unit: 'CONCEPTO', quantity_milli: 1000, unit_cost_cents: 100 }] },
-  })
-  expect(purchase.status(), await purchase.text()).toBe(201)
-  // An actual physical item is needed to exercise STORE rather than a concept-only purchase.
   const physical = await request.post(api + owner.root + '/catalog', {
     headers: owner.headers, data: { name: 'Bien T11 permisos', kind: 'REVENTA',
       unit: 'UNIDAD', sellable: true, price_cents: 100000 },
@@ -204,7 +196,8 @@ test('T11-C: trabajador miembro sin sede no puede recibir ni registrar venta des
   await page.getByLabel('Acepto registrar esta venta REAL').check()
   await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
   await expect(page.getByText('Venta confirmada en PostgreSQL.', { exact: false })).toHaveCount(0)
-  await expect(page.getByRole('alert')).toContainText(/permiso|denegó|solicitud/i)
+  await expect(page.getByRole('alert').filter({ hasText: 'La API denegó esta venta por permisos' })).toBeVisible()
+  await expect(page.getByRole('alert').filter({ hasText: 'Hay una solicitud de venta guardada' })).toBeVisible()
   const sales = await request.get(api + owner.root + '/sales', { headers: owner.headers })
   expect(sales.status(), await sales.text()).toBe(200)
   expect(await sales.json()).toEqual([])
