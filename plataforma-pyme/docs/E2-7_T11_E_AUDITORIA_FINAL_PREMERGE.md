@@ -79,7 +79,7 @@ Convención: **DIRECTO** = test que verifica el núcleo en navegador/API real; *
 | E27-MODE-02 | FALTA | No se encontró E2E dedicado a operar UI de QR, caja/jornadas y cuentas en DEMO y afirmar ausencia de escritura REAL. Mantener como no demostrado |
 | E27-RESP-01 | PARCIAL | `responsive-keyboard.spec.ts` 1440/390 px, teclado, POS sin overflow y DEMO; no auditoría de todos los módulos, lector de pantalla ni WCAG integral |
 
-**Balance de esta matriz:** 16 DIRECTOS, 9 PARCIALES y 1 FALTA, aplicando la convención descrita. Se exige validar cualquier recuento con su tabla y no generalizar a «26 E2E aprobados» solo por tener 32 casos browser.
+**Balance de esta matriz:** 17 DIRECTOS, 8 PARCIALES y 1 FALTA, aplicando la convención descrita. Se exige validar cualquier recuento con su tabla y no generalizar a «26 E2E aprobados» solo por tener 32 casos browser.
 
 ## 6. Riesgos residuales y tratamiento
 
