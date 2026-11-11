@@ -274,7 +274,7 @@ export function RealBusinessesPage({
           <div><dt>Tu membresía</dt><dd>{selected.membership.status}</dd></div>
           <div><dt>Identificador del negocio</dt><dd className="real-auth-id">{selected.id}</dd></div>
         </dl>
-        <p className="real-auth-note">Ya podés consultar inventario, movimientos e historial de ventas REALES. El POS preliminar permite preparar un carrito sin registrar operaciones: la confirmación se incorporará en T10-D.</p>
+        <p className="real-auth-note">Podés consultar inventario, movimientos e historial de ventas REALES. El punto de venta permite preparar y revisar operaciones; su registro requiere habilitación explícita del entorno y autorización de FastAPI.</p>
         <div className="real-auth-actions">
           <button className="real-auth-primary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/ubicaciones')}>Ubicaciones reales</button>
           <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/equipo')}>Equipo e invitaciones</button>
