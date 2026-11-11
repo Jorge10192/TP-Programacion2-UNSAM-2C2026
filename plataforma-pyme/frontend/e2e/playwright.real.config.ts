@@ -9,6 +9,11 @@ export default defineConfig({
   webServer: {
     command: 'npm --prefix .. run dev -- --host 127.0.0.1',
     url: 'http://127.0.0.1:5173/real/login', reuseExistingServer: false,
-    env: { PYME_API_PROXY_TARGET: 'http://127.0.0.1:18001' },
+    // Only this disposable CI/QA runner can submit POST from the POS.
+    // Normal Vite startup leaves real-sale registration DISABLED.
+    env: {
+      PYME_API_PROXY_TARGET: 'http://127.0.0.1:18001',
+      VITE_PYME_ENABLE_REAL_SALES: '1',
+    },
   },
 })
