@@ -15,7 +15,7 @@ Se resolvieron los principales desfases que causaban un **NO-GO documental**: Do
 **Reservas que no se ocultan:**
 1. **CI del cierre en evolución:** al iniciar T12 no había ejecuciones registradas para la rama documental, pero luego de publicar el acta GitHub inició **tres workflows** (​Frontend, Backend e Inventario REAL full-stack) sobre el commit `a71c946c4070602e91e1439b206ac4e1dcd1f953`, evento `pull_request`; al último control los tres estaban **IN_PROGRESS, sin conclusión**, no PASS. Los filtros por ruta de los YAML no autorizan suponer que no correrán. Un nuevo commit del acta cambia el SHA de HEAD y requiere verificar sus checks de nuevo; el antecedente T11 no equivale a CI de T12.
 2. Fuentes `03A/03B/03C.puml`: se verificó su existencia y estructura textual, **pero la compilación con el ejecutable oficial PlantUML sigue sin ejecutarse** en este entorno por falta del JAR/binario. No declarar `PASS`.
-3. La **consigna original TP3** no fue contrastada íntegramente contra cada RF/CU; no afirmar que todos los requisitos heredados están absorbidos. El alcance académico implementado conocido es RF-01 a RF-07.
+3. La **consigna original TP3** no fue contrastada íntegramente contra cada RF/CU; no afirmar que todos los requisitos heredados están absorbidos. El [ADR-008 histórico](ADR/ADR-008-integracion-con-tp.md) menciona **≥10 tests unitarios ejecutados**: el total de 892 Pytest incluye pruebas de integración y **no basta por sí solo** para certificar ese requisito sin clasificar los casos. El alcance académico implementado conocido es RF-01 a RF-07.
 4. El desarrollo académico no equivale a un despliegue bancario/comercial de producción: no realizar ventas ni pagos reales de prueba sobre empresas o credenciales personales.
 
 Estas reservas se diferencian de bugs demostrados: **no se detectó un nuevo bug funcional** porque el control T12 es documental y no ejecutó pruebas sobre una base de datos.
@@ -32,7 +32,7 @@ Estas reservas se diferencian de bugs demostrados: **no se detectó un nuevo bug
 | T12-C4 | [03C](../entrega-programacion-2/diagramas/03C_EXPLICACION_CASOS_DE_USO.md) | PlantUML + SVG + guía; 12 CU, 13 óvalos (CU-12a/b) |
 | T12-D1 | [Documento 04 AS-IMPLEMENTED](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md) | Arquitectura REAL al principio, archivo E2-3 histórico preservado, patrones con evidencia |
 | T12-D2 | [Portada de entrega](../entrega-programacion-2/README.md), [índice UML](../entrega-programacion-2/diagramas/README.md), [Frontend](../frontend/README.md), [Backend](../backend/README.md), [CHANGELOG](../CHANGELOG.md) | Encabezados y navegación actualizados, histórico preservado |
-| T12-E | **Este documento** | Conciliación final, reservas, procedimiento de verificación y backlog |
+| T12-E | **Este documento** | Conciliación final, reservas, procedimiento de verificación y backlog; [índice de ADR-001..008](ADR/README.md) reconciliado con estado vigente |
 
 Documentos académicos completos: [01](../entrega-programacion-2/01_ANALISIS_DE_REQUERIMIENTOS.md), [02](../entrega-programacion-2/02_CASOS_DE_USO.md), [03](../entrega-programacion-2/03_MODELO_DE_DOMINIO_Y_UML.md), [04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md), [05](../entrega-programacion-2/05_MATRIZ_API_Y_TRAZABILIDAD.md).
 

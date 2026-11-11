@@ -128,6 +128,7 @@ cd ../..
 - [Diagrama 03B explicativo](diagramas/03B_FLUJO_COMERCIAL_EXPLICATIVO.svg) — lectura de negocio para exposición.
 - [Diagrama 03C](diagramas/03C_CASOS_DE_USO_REDISENADO.svg) — actores funcionales, permisos y CU.
 - [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) — 46 endpoints y correspondencia UI/test.
+- [Índice ADR vigente T12](../docs/ADR/README.md) — estado aplicado/parcial/diferido de ADR-001..008, con fuentes históricas preservadas.
 - [README de entrega](README.md) y [guía de diagramas](diagramas/README.md).
 - [Acta T12-B](../docs/E2-7_T12_B_CONCILIACION_RF_CU_API_UI_TEST.md) y [Plan T12-A](../docs/E2-7_T12_A_PLAN_Y_MATRIZ_DESFASES.md).
 
