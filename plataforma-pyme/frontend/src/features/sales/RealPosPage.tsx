@@ -30,6 +30,7 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const catalogApi = useMemo(() => createCatalogGateway(token, businessId), [token, businessId])
   const [company, setCompany] = useState<RealBusiness | null>(null)
   const [locations, setLocations] = useState<LocationRecord[]>([])
+  const [assignedLocationIds, setAssignedLocationIds] = useState<string[]>([])
   const [items, setItems] = useState<CatalogItem[]>([])
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [loadError, setLoadError] = useState('')
@@ -58,8 +59,12 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
       companyApi.business(businessId, controller.signal),
       companyApi.locations(businessId, controller.signal),
       catalogApi.page(0, CATALOG_PAGE_SIZE, controller.signal),
-    ]).then(([business, sites, first]) => {
+    ]).then(async ([business, sites, first]) => {
+      // No permisos por defecto: los roles no administrativos consultan su propia asignación.
+      const assigned = canOverrideSalesPrice(business.membership.role)
+        ? [] : await companyApi.myAssignedLocationIds(businessId, controller.signal)
       if (controller.signal.aborted) return
+      setAssignedLocationIds(assigned)
       setCompany(business); setLocations(sites)
       setItems(first); setHasMore(first.length === CATALOG_PAGE_SIZE)
       setLoadState('ready'); setLoadError('')
@@ -73,9 +78,11 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
 
   const role = company?.membership.role ?? ''
   const manager = canOverrideSalesPrice(role)
-  const location = locations.find(row => row.id === siteId) ?? null
+  const authorizedSites = locations.filter(site =>
+    canOverrideSalesPrice(role) || assignedLocationIds.includes(site.id))
+  const location = authorizedSites.find(row => row.id === siteId) ?? null
   const canWork = company?.status === 'ACTIVA' && company.membership.status === 'ACTIVA'
-  const saleSites = locations.filter(site => site.status === 'ACTIVA' && site.can_sell)
+  const saleSites = authorizedSites.filter(site => site.status === 'ACTIVA' && site.can_sell)
   const selected = items.find(row => row.id === selectedId) ?? null
   const selectedInCart = selected ? cart.some(row => row.catalog_item_id === selected.id) : false
   const linePreview = useMemo(() => {
@@ -157,7 +164,7 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
         throw new RangeError('El artículo no tiene precio. Un administrador debe definirlo.')
       if (!siteId && (!manager || selected.item_type === 'BIEN'))
         throw new RangeError('Seleccioná una ubicación habilitada antes de agregar.')
-      if (siteId && (!location || location.status !== 'ACTIVA' || !location.can_sell ||
+      if (siteId && (!saleSites.some(site => site.id === siteId) || !location || location.status !== 'ACTIVA' || !location.can_sell ||
         (selected.item_type === 'BIEN' && !location.can_store)))
         throw new RangeError('La ubicación seleccionada no admite este artículo.')
       if (!canWork) throw new RangeError('La empresa o membresía no está activa.')
