@@ -244,6 +244,84 @@ test('T10-E: pagos mixtos, precio excepcional y descuento quedan en comprobante 
   expect(receipt.payments[1].reference).toBe('Referencia T10 E QA')
 })
 
+test('T10-E: venta física desde POS debita stock y registra un solo movimiento', async ({ page, request }) => {
+  const fixture = await seed(request)
+  const login = await request.post(base + '/auth/login', {
+    data: { email: fixture.email, password: fixture.password },
+  })
+  expect(login.status(), await login.text()).toBe(200)
+  const auth = { Authorization: 'Bearer ' + (await login.json()).access_token }
+  const root = '/businesses/' + fixture.businessId
+  const product = await request.post(base + root + '/catalog', {
+    headers: auth,
+    data: {
+      name: 'Producto físico T10-E', kind: 'REVENTA', unit: 'UNIDAD',
+      sellable: true, price_cents: 200000,
+    },
+  })
+  expect(product.status(), await product.text()).toBe(201)
+  const productId = (await product.json()).id
+  const stock = await request.post(base + root + '/inventory/adjustments', {
+    headers: { ...auth, 'Idempotency-Key': randomUUID() },
+    data: {
+      kind: 'STOCK_INICIAL', catalog_item_id: productId,
+      location_id: fixture.locationId, quantity_milli: 5000,
+      expected_version: 0, reason: 'Stock inicial QA T10-E descartable',
+    },
+  })
+  expect(stock.status(), await stock.text()).toBe(201)
+
+  let posts = 0
+  page.on('request', req => {
+    if (req.method() === 'POST' && req.url().endsWith(root + '/sales')) posts++
+  })
+  await open(page, fixture)
+  await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
+  await page.getByRole('button', { name: /Producto físico T10-E/ }).click()
+  await expect(page.getByLabel('Precio unitario de la venta')).toHaveValue('2000,00')
+  await page.getByLabel('Cantidad del artículo').fill('2')
+  await expect(page.locator('.real-pos-line-preview')).toContainText('4.000,00')
+  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await expect(page.getByLabel('Revisión final de la venta')).toContainText('4.000,00')
+  expect(posts).toBe(0)
+  await page.getByLabel('Acepto registrar esta venta REAL').check()
+  await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
+  await expect(page.getByText('Venta confirmada en PostgreSQL.', { exact: false })).toBeVisible()
+  expect(posts).toBe(1)
+
+  const list = await request.get(base + root + '/sales', { headers: auth })
+  expect(list.status(), await list.text()).toBe(200)
+  const sales = await list.json()
+  expect(sales).toHaveLength(1)
+  const detail = await request.get(base + root + '/sales/' + sales[0].id, { headers: auth })
+  expect(detail.status(), await detail.text()).toBe(200)
+  const receipt = await detail.json()
+  expect(receipt.total_cents).toBe(400000)
+  expect(receipt.lines).toHaveLength(1)
+  expect(receipt.lines[0].catalog_item_id).toBe(productId)
+  expect(receipt.lines[0].quantity_milli).toBe(2000)
+  expect(receipt.balances_after).toHaveLength(1)
+  expect(receipt.balances_after[0].quantity_milli).toBe(3000)
+  expect(receipt.balances_after[0].version).toBe(2)
+
+  const balances = await request.get(base + root + '/inventory/balances', { headers: auth })
+  expect(balances.status(), await balances.text()).toBe(200)
+  const rows = await balances.json()
+  const balance = rows.find((row: { catalog_item_id: string; location_id: string }) =>
+    row.catalog_item_id === productId && row.location_id === fixture.locationId)
+  expect(balance).toBeTruthy()
+  expect([balance.quantity_milli, balance.version]).toEqual([3000, 2])
+  const movements = await request.get(base + root + '/inventory/movements', { headers: auth })
+  expect(movements.status(), await movements.text()).toBe(200)
+  const history = await movements.json()
+  const debits = history.filter((m: { catalog_item_id: string; event_type: string }) =>
+    m.catalog_item_id === productId && m.event_type === 'VENTA_SALIDA')
+  expect(debits).toHaveLength(1)
+  expect(debits[0].delta_milli).toBe(-2000)
+  expect(debits[0].sale_id).toBe(sales[0].id)
+})
+
 test('T10-E: POST perdido antes de llegar a API, GET 404 y replay manual conserva identidad', async ({ page, request }) => {
   const fixture = await seed(request)
   const attempts: { key: string | null; body: string | null }[] = []
