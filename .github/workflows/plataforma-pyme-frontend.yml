@@ -64,9 +64,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Preparar Chromium
         working-directory: plataforma-pyme/frontend/e2e
-        run: # El runner Ubuntu de GitHub ya incluye las bibliotecas del navegador.
-        # Evitar apt --with-deps cuando el mirror de Ubuntu no resuelve DNS.
-        npx playwright install chromium
+        run: npx playwright install chromium
       - name: Recorridos reales de navegador
         working-directory: plataforma-pyme/frontend/e2e
         run: npm test
