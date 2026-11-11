@@ -1,5 +1,58 @@
 # 02 — Especificación de casos de uso
 
+**Versión vigente de consulta:** T12-B / E2-7, 11/11/2026 · **Base:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec`.  
+**Estado:** doce casos de uso nucleares con API implementada y evidencia de integración. **Los flujos descriptivos de las versiones antiguas se conservan debajo como historial**; cuando un detalle TO-BE diverja del código, prevalece la tabla vigente y la [matriz de rutas del Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
+
+## Estado vigente T12-B — CU-01 a CU-12 después de integración REAL
+
+**Actores reales:** visitante; usuario global autenticado; titular administrativo; administrador; encargado o trabajador con membresía activa y permisos efectivos; invitado con cuenta global cuyo correo coincida con la invitación. Los permisos **no** se deducen de controles visibles en React: los confirma FastAPI por tenant, rol, estado y, cuando corresponde, asignaciones a sedes. Proveedor y cliente **no** son usuarios de plataforma por el solo hecho de figurar en una operación.
+
+**Rutas:** todas las API de la matriz llevan prefijo `/api/v1`; `B` representa `/api/v1/businesses/{business_id}` y `E` representa `/real/empresas/{business_id}`. Las pantallas React REAL no utilizan el `demoStore` como fuente de verdad.
+
+### Catálogo de CU vigente con postcondiciones observables
+
+| CU / RF | Objetivo del actor | API REAL representativa | Pantalla REAL | Postcondición, evidencia y límites |
+|---|---|---|---|---|
+| **CU-01 / RF-01** | Registrarse | `POST /api/v1/auth/register` | `/real/registro` | Identidad creada; `auth-registration-ui.spec.ts` y pruebas de registro. No implica correo verificado |
+| **CU-02 / RF-01** | Iniciar/cerrar sesión y consultar identidad | `POST /auth/login`, `GET /auth/me`, `POST /auth/logout` | `/real/login`, `/real/perfil` | Sesión Bearer opaca activa o revocada; `auth-registration-ui.spec.ts`, `security-navigation.spec.ts`. Token solo en memoria y F5 exige reingreso |
+| **CU-03 / RF-02** | Crear empresa y administrarla | `POST/GET /businesses`, `GET/PATCH B` | `/real/empresas`, `/real/empresas/nueva`, `E` | Empresa + titular inicial, aislamiento y edición autorizada; `security-navigation.spec.ts` y backend de empresas. El idempotency key evita dos altas con misma solicitud |
+| **CU-04 / RF-03** | Crear y gestionar ubicación | `POST/GET B/locations`, `PATCH B/locations/{location_id}`, `PATCH .../status`, `PUT .../primary`, `GET .../my-assignments` | `E/ubicaciones` | Sede persistida, pausa/reactivación/principal y permisos SELL/STORE; `business-crud-persistence.spec.ts`, `assigned-location-visibility.spec.ts`; una asignación no es permiso sobre todas las sedes |
+| **CU-05 / RF-04** | Crear, editar y desactivar artículo o servicio | `POST/GET B/catalog`, `GET/PATCH B/catalog/{item_id}`, `PATCH .../status` | `E/catalogo` | SKU/nombre por empresa, ficha activa/inactiva y precio opcional; `business-crud-persistence.spec.ts`; crear ficha **no** genera stock |
+| **CU-06 / RF-05** | Registrar compra | `POST/GET B/purchases`, `GET B/purchases/{purchase_id}` | `E/compras` | Compra y snapshots persistentes; puede contener bien físico, servicio o concepto libre; **no** incrementa stock antes de CU-07. `purchase-ui-persistence.spec.ts` |
+| **CU-07 / RF-05+RF-06** | Confirmar recepción completa | `POST B/purchases/{purchase_id}/receive`, `GET .../receipt` | `E/compras` | Entrada física por renglón recepcionable, única transacción y comprobante; replay idempotente sin segundo ingreso. `flow-purchase-to-sale.spec.ts`, `purchase-ui-persistence.spec.ts`; recepción parcial/multidestino **no** es MVP |
+| **CU-08 / RF-06** | Consultar saldos y movimientos | `GET B/inventory/balances`, `GET B/inventory/movements` | `E/inventario` | Saldos por sede/artículo, versión y ledger firmados de servidor; `inventory.spec.ts`. La lectura general incluye sedes de la empresa; **es decisión del MVP**, no derecho de operar allí |
+| **CU-09 / RF-06** | Trasladar stock entre sedes | `POST B/inventory/transfers`, `GET .../transfers/{transfer_id}` | `E/inventario`, panel traslado | Dos movimientos en una operación, salida −/entrada +, suma neta cero y sin stock negativo; `inventory.spec.ts`, `assigned-location-visibility.spec.ts`. Requiere STORE **en ambas sedes**; recepción logística asincrónica entre trabajadores queda diferida |
+| **CU-10 / RF-07** | Registrar venta con pagos declarados | `POST/GET B/sales`, `GET B/sales/{sale_id}`, `GET B/sales/by-request/{request_id}` | `E/pos`, `E/ventas` | Ventas de bienes y servicios, descuento/precio autorizado, suma exacta de pagos, comprobante y replay seguro. `pos-draft.spec.ts`, `flow-purchase-to-sale.spec.ts`, `sales-invalid-payment-policy.spec.ts`. **No acredita pagos bancarios**; escritura POS local deshabilitada salvo activación explícita |
+| **CU-11 / RF-06** | Registrar stock inicial o ajuste justificado | `POST B/inventory/adjustments`, `GET .../adjustments/{adjustment_id}` | `E/inventario`, panel ajustes/conteo | Versión `expected_version` y motivo, movimientos firmados, 409 ante versión obsoleta y sin saldo negativo; `inventory.spec.ts`. Stock inicial limitado a administradores y par sede/artículo sin historial |
+| **CU-12 / RF-02** | Invitar, aceptar y administrar colaboración | `POST B/invitations`, `POST /api/v1/invitations/accept`, `GET/PATCH B/memberships...`, `GET/PUT B/locations/{location_id}/assignments...` | `E/equipo`, `/real/invitaciones/aceptar` | Invitación nominativa **no** concede membresía al emitir; aceptación autenticada crea/reactiva membresía del destinatario y rol propuesto; titular gestiona roles no titulares. `test_business_acceptance_*.py`, `test_business_team_*.py` y validación manual de asignaciones. No envío automático de correos/QR público |
+
+**Todas las rutas abreviadas `/auth`, `/businesses` y `/invitations` en esta tabla se entienden bajo `/api/v1`; `B` ya incluye dicho prefijo.** El inventario exhaustivo de métodos y URLs se encuentra en el Documento 05; los campos y respuestas se rigen por los esquemas realmente montados en `backend/app/modules/*`, no por borradores antiguos.
+
+### Flujos transaccionales y alternativas vigentes
+
+**Compra → recepción → inventario → venta.** El operador registra una compra y la consulta con sus renglones; no se permite suponer que esté recibida ni incrementar stock desde React. Un operador autorizado de la sede STORE confirma la recepción completa, que genera un movimiento por bien físico. Servicios y conceptos libres no originan entradas físicas. Una venta posterior de bienes exige sede SELL autorizada, stock suficiente y cargo de pagos declarados exactamente igual al total; una venta de servicio no descuenta existencias. El comprobante REAL se recupera por ID y por `request_id`.
+
+**Transferencia y conteo.** El traslado confirma débito/crédito atómicos entre dos sedes STORE; el trabajador asignado únicamente a una sede **no** puede trasladar a otra. Los ajustes versionados rechazan un `expected_version` obsoleto; un saldo cero con historial no permite duplicar carga inicial. La consulta de existencias por empresa puede incluir ubicaciones sin asignación del trabajador, pero esa consulta **no** le autoriza a mutarlas.
+
+**Alternativas y errores para cualquier CU que los admita:** `401` token/sesión ausente o revocada; `403` rol o permiso insuficiente; `404` recurso no visible, inexistente o de otro tenant; `409` conflicto de negocio, idempotencia, versión o inventario; `422` solicitud inválida; `5xx`/pérdida de respuesta es **resultado incierto**, no «rechazo confirmado». Para comandos con identidad durable, recuperar primero y nunca duplicar con otro key por una respuesta perdida. Las rutas de `GET` históricas no son instrucciones de reenvío `POST`.
+
+### Fuera del alcance de estos CU REAL
+
+RF-08 gastos/caja, RF-09 cuentas financieras y RF-10 QR están **DEMO/diferidos**. Los controles DEMO no generan escrituras en la API REAL, verificado por `demo-money-isolation.spec.ts`. No se implementaron acreditación de Mercado Pago, webhooks, reservas de inventario, pagos efectivamente conciliados, fabricación por receta ni recepción logística en dos tiempos.
+
+### Evidencia y nivel de garantía
+
+- [Auditoría T11 final](../docs/E2-7_T11_E_AUDITORIA_FINAL_PREMERGE.md): **26/26 escenarios E27 cubiertos en alcance funcional/smoke**, sin afirmación de accesibilidad WCAG completa.
+- [Playwright + PostgreSQL CI final](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43015544889): **892 Pytest, 38 REAL y 6 DEMO PASS** (base descartable).
+- [Prueba manual guiada, 39 pasos](../docs/E2-7_T11_D2_ACTA_PRUEBA_MANUAL_REAL.md): dos defectos de permisos de sede corregidos y retesteados; capturas observadas en conversación, no incorporadas como adjuntos Git.
+
+---
+
+## Archivo histórico de especificaciones y cortes previos (conservado)
+
+La especificación que sigue contiene **flujos propuestos cuando RF-03–RF-07 todavía se estaban construyendo** y apéndices incrementales E2-1/E2-3. Se mantiene para evaluar la evolución del diseño; expresiones antiguas «backend pendiente», «futuro» o «TO-BE» **no contradicen ni sustituyen** el estado REAL T12-B anterior.
+
+
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
 **Versión:** 1.8 — E2-3 E, catálogo real y 580 pruebas Windows

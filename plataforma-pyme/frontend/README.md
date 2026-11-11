@@ -1,3 +1,33 @@
+# Asistente PyME — Frontend React (REAL + DEMO)
+
+**Estado vigente E2-7/T11 (11/11/2026):** el frontend ya no es exclusivamente DEMO. Las rutas `/real/...` trabajan con **FastAPI + PostgreSQL**; las rutas `/inicio` y `/b/{demoId}/...` conservan la **DEMO local**. Los datos y las identidades de DEMO no se importan automáticamente a REAL. Referencia funcional: `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` (PR #45).
+
+## Operación vigente y puesta en marcha
+
+Desde la raíz del repositorio en PowerShell:
+
+```powershell
+cd plataforma-pyme/frontend
+npm.cmd ci
+npm.cmd run build
+npm.cmd run lint
+npm.cmd run dev
+```
+
+La interfaz de desarrollo se abre en la dirección local que indique Vite (comúnmente `http://localhost:5173/`). Para operar `/real` necesitás **backend y PostgreSQL levantados, con su configuración de URL/proxy correcta y una cuenta de prueba**. La [guía del backend](../backend/README.md) detalla la instalación de servicios. La autenticación REAL usa Bearer opaco **en memoria**; al actualizar con F5 se requiere volver a ingresar.
+
+**Recorridos REAL:** registro/login/perfil; selección y administración de empresas; ubicaciones y asignaciones; catálogo; proveedores; compras, recepción, saldos y movimientos; traslados, stock inicial y ajustes; POS REAL, ventas, comprobantes y recuperación. Las operaciones comerciales conservan aislamiento por empresa, controles de rol, SELL/STORE e idempotencia en la API, no en los botones.
+
+**Límites:** RF-08 gastos y jornadas de caja, RF-09 cuentas financieras y RF-10 QR Mercado Pago continúan **DEMO/diferidos**. El medio `MERCADO_PAGO_DECLARADO` no procesa cobros ni acredita pagos; la DEMO QR es ilustrativa y no debe escanearse para pagos reales. No usar datos de clientes, cuentas reales ni secretos en la DEMO. Comandos comerciales pendientes guardados en IndexedDB no están cifrados; no guardar tokens allí ni usar equipos compartidos para datos sensibles.
+
+**Validación:** el [informe T11](../docs/E2-7_T11_E_AUDITORIA_FINAL_PREMERGE.md) registra 892 Pytest + 38 Playwright REAL + 6 DEMO para su **commit técnico específico**. No implica ejecución actual de CI sobre el PR #46, que solo cambia documentación. El [Documento 05](../entrega-programacion-2/05_MATRIZ_API_Y_TRAZABILIDAD.md) identifica ruta→UI→test y la [arquitectura 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md) diferencia REAL/DEMO.
+
+> **Extensión post-T12:** asimilar estética/navegación DEMO al recorrido REAL sin mezclar persistencia, probar usabilidad responsive/móvil y preparar una demostración desplegable. Es un backlog de producto, no una funcionalidad certificada por el cierre académico.
+
+---
+
+## Archivo histórico E1 — DEMO inicial (preservado)
+
 # Asistente PyME — Frontend (DEMO)
 
 Plataforma generalista de gestión para múltiples empresas y rubros, desarrollada dentro del TP de Programación 2. WALOS es sólo un negocio de ejemplo, **no** el producto ni su rubro obligatorio.

@@ -1,201 +1,269 @@
 @startuml
-' 03B · Asistente PyME · Modelo conceptual MVP TO-BE
-' Fuente PlantUML editable equivalente a la lámina vectorial 03B.
-' El motor de disposición de PlantUML puede ubicar las clases de forma
-' diferente a la lámina SVG maquetada manualmente.
+' 03B v2.1 | T12-C3 | Corte funcional main c6a77137 (PR #45/T11)
+' Modelo de clases conceptual AS-IMPLEMENTED, conciliado con SQLAlchemy/Alembic.
+' Fuente editable. El SVG editorial reproduce los 9 modelos comerciales
+' principales y resume las relaciones transversales en una banda de trazabilidad.
+' No es un DER fisico exhaustivo. Ver guia y Documento 03 v2.1.
 !theme plain
-skinparam backgroundColor #F5F8FC
+skinparam backgroundColor #F4F7FB
 skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam linetype ortho
-skinparam nodesep 52
-skinparam ranksep 64
-skinparam defaultFontName "DejaVu Sans"
-skinparam class {
-  BackgroundColor #FFFFFF
-  BorderColor #9AB1C8
-  ArrowColor #60738B
-  FontColor #142C48
-  AttributeFontColor #273A50
-  FontSize 16
-  AttributeFontSize 13
-}
-skinparam package {
-  BorderColor #CBD7E4
-  FontColor #142C48
-  FontSize 19
-  FontStyle bold
-}
+skinparam nodesep 55
+skinparam ranksep 65
+skinparam ArrowColor #5C7895
+skinparam ClassBorderColor #90A9BE
+skinparam ClassFontColor #17314D
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassAttributeFontColor #31485F
+skinparam NoteBackgroundColor #EDF4FA
+skinparam NoteBorderColor #BFCFDD
+skinparam PackageBorderColor #C6D6E5
+skinparam PackageFontColor #193752
 hide empty methods
 left to right direction
 
-title 03B | Asistente PyME - Compras, recepcion, inventario y ventas (MVP TO-BE)
+title 03B | Asistente PyME - Compras, recepcion, inventario y ventas (REAL / T11)
 
-package "01  COMPRAS Y RECEPCION" #E9F4FF {
-  class Proveedor <<Referencia>> {
+package "01 - Compras y recepcion" #E9F3FD {
+  class Compra <<purchases>> {
     +id: UUID
-    +businessId: UUID
-    +nombre: String
-    +estado: Estado
-  }
-  class Compra {
-    +id: UUID
-    +businessId: UUID
+    +empresaId: UUID
+    +requestId: UUID
+    +requestSha256: String?
     +proveedorId: UUID?
-    +estado: EstadoCompra
+    +proveedorNombreSnapshot: String
     +fechaCompra: Date
+    +estado: EstadoCompra
     +totalCentavos: Long
-    +creadaPor: UUID
+    +referencia: String
+    +notas: String
+    +creadaPorId: UUID
+    +creadaEn: DateTime
   }
-  class DetalleCompra {
+  class DetalleCompra <<purchase_lines>> {
     +id: UUID
+    +empresaId: UUID
     +compraId: UUID
+    +numeroLinea: 1..30
     +articuloId: UUID?
     +descripcionSnapshot: String
-    +tipoSnapshot: TipoArticulo
-    +unidadSnapshot: UnidadControl
+    +tipoSnapshot: BIEN | SERVICIO | CONCEPTO
+    +unidadSnapshot: String
+    +skuSnapshot: String
     +cantidadMilli: Long
     +costoUnitarioCentavos: Long
     +totalCentavos: Long
   }
-  class Recepcion {
+  class Recepcion <<purchase_receipts>> {
     +id: UUID
+    +empresaId: UUID
     +compraId: UUID
-    +businessId: UUID
     +ubicacionId: UUID
+    +requestId: UUID
+    +requestSha256: String
+    +confirmadaPorId: UUID
     +confirmadaEn: DateTime
-    +confirmadaPor: UUID
+    +balancesAfter: JSONB (array)
   }
-  Proveedor "0..1" -- "0..*" Compra
-  Compra "1" *-- "1..*" DetalleCompra
-  Compra "1" *-- "0..1" Recepcion
-  note bottom of Recepcion
-    Una sola recepcion completa por compra,
-    en una ubicacion. Registrar no genera stock.
-  end note
+  enum EstadoCompra <<CHECK SQL>> {
+    REGISTRADA
+    RECIBIDA
+    CERRADA_SIN_RECEPCION
+    CANCELADA
+  }
+  Compra "1" *-- "1..30" DetalleCompra : renglones
+  Compra "1" *-- "0..1" Recepcion : recepcion unica
+  Compra ..> EstadoCompra : estado
 }
 
-package "02  VENTAS Y PAGOS" #F1EDFF {
-  class Venta {
+package "02 - Ventas y pagos declarados" #EEEAFE {
+  class Venta <<sales>> {
     +id: UUID
-    +businessId: UUID
+    +empresaId: UUID
     +ubicacionId: UUID?
+    +requestId: UUID
+    +requestSha256: String
     +estado: CONFIRMADA
     +subtotalCentavos: Long
     +descuentoCentavos: Long
     +totalCentavos: Long
-    +requestId: UUID
-    +creadaPor: UUID
-    +fechaHora: DateTime
+    +notas: String
+    +creadaPorId: UUID
+    +creadaEn: DateTime
+    +balancesAfter: JSONB (array)
   }
-  class DetalleVenta {
+  class DetalleVenta <<sale_lines>> {
     +id: UUID
+    +empresaId: UUID
     +ventaId: UUID
+    +numeroLinea: 1..30
     +articuloId: UUID
     +descripcionSnapshot: String
-    +tipoSnapshot: TipoArticulo
-    +unidadSnapshot: UnidadControl
+    +tipoSnapshot: BIEN | SERVICIO
+    +unidadSnapshot: String
+    +skuSnapshot: String
     +cantidadMilli: Long
     +precioUnitarioCentavos: Long
     +totalCentavos: Long
   }
-  class AplicacionPago {
+  class AplicacionPago <<sale_payments>> {
     +id: UUID
+    +empresaId: UUID
     +ventaId: UUID
-    +medio: MedioPago
+    +numeroSecuencia: 1..6
+    +medio: MedioPagoDeclarado
     +importeCentavos: Long
-    +referencia: String?
+    +referencia: String
   }
-  Venta "1" *-- "1..*" DetalleVenta
-  Venta "1" *-- "1..*" AplicacionPago
-  note bottom of AplicacionPago
-    Subtotal = SUM(lineas redondeadas HALF_UP).
-    Total = subtotal - descuento = SUM(pagos).
-    No equivale a acreditacion externa.
-  end note
+  enum MedioPagoDeclarado <<CHECK SQL>> {
+    EFECTIVO
+    TRANSFERENCIA
+    CUENTA_DNI
+    TARJETA
+    MERCADO_PAGO_DECLARADO
+  }
+  Venta "1" *-- "1..30" DetalleVenta : renglones
+  Venta "1" *-- "1..6" AplicacionPago : declaracion de cobro
+  AplicacionPago ..> MedioPagoDeclarado : medio
 }
 
-package "03  INVENTARIO TRANSACCIONAL" #E7F8F4 {
-  class OperacionInventario {
+package "03 - Inventario y movimientos" #E8F7F3 {
+  class OperacionInventario <<inventory_operations>> {
     +id: UUID
-    +businessId: UUID
-    +tipo: TRASLADO | AJUSTE
+    +empresaId: UUID
+    +requestId: UUID
+    +requestSha256: String
+    +tipo: TipoOperacion
+    +articuloId: UUID
+    +unidadSnapshot: String
+    +cantidadMilli: Long
+    +ubicacionOrigenId: UUID?
+    +ubicacionDestinoId: UUID?
     +motivo: String
     +actorId: UUID
-    +fechaHora: DateTime
-    +requestId: UUID
-  }
-  class MovimientoInventario <<Historial inmutable>> {
-    +id: UUID
-    +businessId: UUID
-    +articuloId: UUID
-    +ubicacionId: UUID
-    +tipo: TipoMovimiento
-    +deltaMilli: Long
-    +fechaHora: DateTime
-    +actorId: UUID
-    +motivo: String?
-    +recepcionId: UUID?
-    +ventaId: UUID?
-    +operacionInventarioId: UUID?
-  }
-  class SaldoInventario <<Proyeccion transaccional>> {
-    +businessId: UUID
-    +ubicacionId: UUID
-    +articuloId: UUID
-    +cantidadMilli: Long
-    +version: Long
-  }
-  OperacionInventario "0..1" -- "1..*" MovimientoInventario
-  MovimientoInventario ..> SaldoInventario : misma transaccion
-  note bottom of MovimientoInventario
-    Origen XOR: exactamente uno entre
-    recepcionId, ventaId u operacionInventarioId.
-    No borrar movimientos historicos.
-  end note
-  note bottom of SaldoInventario
-    UNIQUE(empresa, ubicacion, articulo).
-    Saldo >= 0. Sin fila = 0 para una salida.
-    Primer ingreso: UPSERT concurrente seguro.
-  end note
-}
-
-package "04  CONTEXTO Y CONTROL" #FFF5E5 {
-  class SolicitudIdempotente {
-    +id: UUID
-    +businessId: UUID?
-    +actorId: UUID
-    +operacion: String
-    +clave: String
-    +hashSolicitud: String
-    +estado: EstadoSolicitud
-    +statusHttp: Integer?
-    +resultadoJson: JSON?
     +creadaEn: DateTime
-    +completadaEn: DateTime?
   }
-  class Empresa <<Referencia>>
-  class Ubicacion <<Referencia>>
-  class ArticuloCatalogo <<Referencia>>
-  class Membresia <<Referencia>>
-  SolicitudIdempotente "0..*" --> "0..1" Empresa
-  note bottom of SolicitudIdempotente
-    Contexto de empresa opcional antes de crearla.
-    La idempotencia no debe duplicar operaciones.
-  end note
+  class MovimientoInventario <<stock_movements: ledger>> {
+    +id: UUID
+    +empresaId: UUID
+    +ubicacionId: UUID
+    +articuloId: UUID
+    +tipoEvento: TipoEventoStock
+    +deltaMilli: Long con signo
+    +recepcionId: UUID?
+    +detalleCompraId: UUID?
+    +operacionInventarioId: UUID?
+    +tipoOperacionOrigen: String? (SQL: operation_kind)
+    +ventaId: UUID?
+    +detalleVentaId: UUID?
+    +actorId: UUID
+    +ocurridoEn: DateTime
+  }
+  class SaldoInventario <<stock_balances: proyeccion>> {
+    +empresaId: UUID [PK]
+    +ubicacionId: UUID [PK]
+    +articuloId: UUID [PK]
+    +cantidadMilli: Long (>= 0)
+    +version: Long (>= 1)
+    +actualizadoEn: DateTime
+  }
+  enum TipoOperacion <<CHECK SQL>> {
+    TRASLADO
+    AJUSTE_ENTRADA
+    AJUSTE_SALIDA
+    STOCK_INICIAL
+  }
+  enum TipoEventoStock <<CHECK SQL>> {
+    COMPRA_RECEPCION
+    TRASLADO_SALIDA
+    TRASLADO_ENTRADA
+    AJUSTE_ENTRADA
+    AJUSTE_SALIDA
+    STOCK_INICIAL
+    VENTA_SALIDA
+  }
+  OperacionInventario "1" -- "1..2" MovimientoInventario : eventos manuales
+  MovimientoInventario ..> SaldoInventario : actualiza en misma transaccion
+  OperacionInventario ..> TipoOperacion : tipo
+  MovimientoInventario ..> TipoEventoStock : evento
 }
 
-' Relaciones transversales principales reflejadas por identificadores en cada
-' clase: todas se validan con claves compuestas y permisos. Se evitan flechas
-' entre grupos para mantener legibilidad en la lámina de presentación.
-' Recepcion y Venta son origenes posibles de MovimientoInventario;
-' DetalleCompra.articuloId es opcional, DetalleVenta.articuloId es obligatorio.
+package "04 - Referencias de contexto (ver 03A)" #FFF5E5 {
+  class Empresa <<businesses / referencia>>
+  class Ubicacion <<locations / referencia>>
+  class ArticuloCatalogo <<catalog_items / referencia>>
+  class Proveedor <<suppliers / referencia>>
+  class Membresia <<memberships / referencia>>
+}
+
+' Origen de cada evento (mutuamente excluyente segun el CHECK de stock_movements):
+' COMPRA_RECEPCION requiere receipt_id + purchase_line_id.
+' VENTA_SALIDA requiere sale_id + sale_line_id.
+' Operaciones manuales requieren inventory_operation_id + operation_kind.
+Recepcion "0..1" -- "0..*" MovimientoInventario : origen COMPRA_RECEPCION
+Venta "0..1" -- "0..*" MovimientoInventario : origen VENTA_SALIDA
+Proveedor "0..1" -- "0..*" Compra : proveedor opcional
+
+note right of Compra
+  REGISTRADA => RECIBIDA tras una recepcion completa.
+  Sin bien fisico => CERRADA_SIN_RECEPCION.
+  CANCELADA existe en CHECK, pero no hay endpoint publico.
+  Registrar compra NO modifica existencias.
+end note
+
+note right of DetalleCompra
+  tipoSnapshot = BIEN, SERVICIO o CONCEPTO.
+  NO es catalog_items.kind (ELABORADO, REVENTA, etc.).
+  articuloId es NULL solamente para CONCEPTO libre.
+end note
+
+note right of Recepcion
+  Una sola recepcion por compra; una sede STORE.
+  Solo lineas BIEN generan entradas.
+  balancesAfter es snapshot de respuesta, no saldo alternativo.
+end note
+
+note right of Venta
+  Estado persistido solo CONFIRMADA.
+  Venta fisica exige sede SELL + STORE y stock suficiente.
+  Suma de pagos declarados = total de venta.
+end note
+
+note right of AplicacionPago
+  Registro de medio DECLARADO, sin acreditacion externa.
+  MERCADO_PAGO_DECLARADO no equivale a QR REAL.
+end note
+
+note right of OperacionInventario
+  TRASLADO => 2 movimientos, suma neta 0.
+  AJUSTE +/- o STOCK_INICIAL => 1 movimiento.
+  quantity_milli es positivo; el delta del ledger lleva signo.
+  expected_version es dato del comando de ajuste,
+  NO columna de inventory_operations.
+end note
+
+note right of MovimientoInventario
+  CHECK: origen + evento + signo compatibles.
+  Recepcion: receipt_id + purchase_line_id.
+  Venta: sale_id + sale_line_id.
+  Operacion manual: inventory_operation_id + operation_kind.
+  Unicidades evitan duplicar eventos por origen/renglon.
+end note
+
+note right of SaldoInventario
+  PK (business_id, location_id, catalog_item_id).
+  Sin fila equivale a saldo 0 para egreso.
+  Entrada: UPSERT; egreso: UPDATE condicional.
+end note
 
 legend bottom
-  **Convenciones de esta vista**
-  *-- : composicion  |  -- : asociacion  |  ..> : dependencia de sincronizacion
-  Se muestran relaciones internas de cada area.
-  Las asociaciones transversales se documentan mediante atributos FK y reglas.
-  Compra no genera stock; servicios no provocan salidas automaticas.
+  **AS-IMPLEMENTED / T11:** 9 entidades comerciales persistidas; 5 referencias de contexto ya modeladas en 03A.
+  La idempotencia del comercio se guarda por agregado como requestId + requestSha256;
+  NO existe una tabla SQL generica SolicitudIdempotente.
+  Campos UML en español = equivalencias conceptuales; ver tabla UML -> SQL de la guia.
+  FK compuestas con business_id impiden referencia cruzada; permisos se comprueban en servicio.
+  Importes en centavos enteros; cantidades en milesimos; HALF_UP por linea.
+  *-- composicion | -- asociacion | ..> dependencia/actualizacion coordinada.
 endlegend
 @enduml

@@ -1,445 +1,474 @@
 # 03 — Modelo de dominio y diagramas UML
 
 **Proyecto:** Asistente PyME — Plataforma generalista de gestión multiempresa y multirrubro  
-**Materia:** Programación 2  
-**Versión:** 1.8 — E2-3 E, catálogo real y 580 pruebas Windows
-**Estado:** **MODELO CONCEPTUAL + ANEXO AS-IMPLEMENTED E2-1** — 03A sincronizado con API y esquema SQL; 03B/03C preservados, comerciales pendientes  
-**Fecha:** 8 de noviembre de 2026  
-**Referencias:** `01_ANALISIS_DE_REQUERIMIENTOS.md` (v0.7), `02_CASOS_DE_USO.md` (v0.8), políticas del frontend DEMO E1-D2.  
+**Materia:** Programación 2 — UNSAM, segundo cuatrimestre de 2026  
+**Versión:** 2.1 — E2-7 / T12-C1 (aprobado para publicación documental)  
+**Fecha de corte:** 11 de noviembre de 2026  
+**Referencia funcional:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` (merge PR #45, T11).  
+**Referencia documental:** PR #46, rama `docs/e2-7-t12-cierre-academico`, **documento actualizado en T12-C1**.  
+**Estado documental:** **T12-C1 aprobado y publicado en rama documental; PR #46 permanece DRAFT**. Redacción AS-IMPLEMENTED contrastada con modelos ORM, reglas de servicio y migraciones del corte técnico; los diagramas 03A/03B/03C, sus SVG y guías fueron conciliados y publicados durante T12-C2/C3/C4; la revisión transversal se documenta en el acta T12-E. **No se ejecutaron pruebas nuevas para elaborar este documento.**
+**Decisión de publicación:** aprobada expresamente la sustitución del Documento 03 en la rama documental el 11/11/2026. Esta aprobación no autoriza merge a `main` ni modificaciones del código o la base de datos.
 
-> **Criterio de lectura:** AS-IS describe el modelo DEMO ya construido; TO-BE propone el dominio de la futura API FastAPI/SQLAlchemy/PostgreSQL. El diagrama conceptual **no es todavía el esquema SQL implementado**. Las extensiones posteriores aparecen separadas y no se incluyen en el núcleo evaluable.
+> **Convención de lectura.** Este texto describe el núcleo **REAL** ya implementado al corte indicado. Los aspectos **DEMO**, **DIFERIDOS** y **PROPUESTOS POST-T12** se indican expresamente. No confundir un modelo de dominio conceptual con una reproducción exhaustiva de todas las columnas del esquema SQL; la [matriz de trazabilidad del Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) y el código son la fuente de verdad de la API. Los diagramas 03A/03B/03C están ahora actualizados y enlazados en el [índice de diagramas](diagramas/README.md); la compilación con el motor PlantUML permanece como control externo pendiente.
 
-> **Cierre E2-1 / C.5 — 08/11/2026:** C.1 (98), C.2 (125), C.3 (147), C.4a (171) y **C.4b (195/195 pruebas locales aprobadas; `195 passed in 23.86s`)**. Alembic `e213c4_acceptance (head)`, `No new upgrade operations detected.`; Docker FastAPI/PostgreSQL `healthy` y `/ready` = `ready`/`ok`. GitHub Actions **3/3** corresponde al commit funcional `8cd1674`. C.5 es **exclusivamente documental**; no se reejecutaron pruebas ni cambiaron endpoints, modelos SQL o migraciones. React sigue DEMO; RF-03–RF-07 no tienen backend; transferencia de titularidad, verificación de correo y endurecimiento para producción siguen pendientes.
+---
 
-> **Estado vigente E2-2 (08/11/2026):** RF-03/CU-04 y E2-2 A/A.1/B/C/D implementados, con ubicaciones, asignaciones de colaboradores, autorización por tenant y política operacional reutilizable. **371/371 pruebas en Windows (47.57s)**; `e22d_assignments (head)`; Alembic sin operaciones pendientes; Docker FastAPI/PostgreSQL `healthy` y `/ready` = `ready/ok`. [CI del código E2-2 D: 3/3 y 371 pruebas en Python 3.12 y 3.14](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047). **No** existe todavía integración React–API ni operaciones comerciales de compras/stock/ventas que consuman la política; corresponden a bloques posteriores. Los párrafos de cortes previos que mencionan validaciones o funciones «pendientes» se conservan como **histórico**, no como estado actual. El TP integral no se declara terminado.
+## 1. Objetivo y límites del documento
 
+El modelo explica cómo una identidad global administra o integra varias empresas aisladas (*tenants*), cómo se registran recursos comerciales y cómo se preserva la integridad de compras, recepciones, saldos, movimientos y ventas. Se documentan **entidades, asociaciones, cardinalidades, estados, restricciones, autorización y operaciones atómicas**, así como la relación entre las clases conceptuales y las entidades persistidas.
 
-## 1. Finalidad y alcance
+**Núcleo vigente:** RF-01 a RF-07 y CU-01 a CU-12, con React REAL, FastAPI y PostgreSQL. Esta clasificación identifica las capacidades nucleares implementadas, no una equivalencia total entre el backend y todos los componentes visuales de la DEMO. **No son backend REAL del recorte:** RF-08 (gastos/jornadas de caja), RF-09 (cuentas financieras) y RF-10 (QR ilustrativo/cobro Mercado Pago). Sus pantallas DEMO no acreditan dinero, no son contabilidad bancaria y no deben mutar la API REAL. Tampoco se implementaron reservas de stock, producción por receta/lotes, recepción parcial o multidestino, devoluciones, reembolsos, conciliación bancaria, OAuth ni webhooks de Mercado Pago.
 
-El propósito del modelo de dominio es identificar conceptos comerciales, relaciones, cardinalidades, invariantes y límites transaccionales necesarios para implementar los casos de uso CU-01 a CU-12. Un mismo usuario puede integrar varias empresas y sus datos comerciales deben permanecer aislados por empresa.
+La plataforma es multirrubro; **WALOS es solo un ejemplo de negocio**. La creación de una empresa no crea ficticiamente locales, productos ni saldos. Es válido operar como empresa de servicios sin inventario físico.
 
-**Núcleo propuesto de primera API:** usuarios y autenticación (RF-01), empresas y membresías básicas (RF-02), ubicaciones mínimas (RF-03), catálogo (RF-04), compras y recepciones (RF-05), existencias y movimientos (RF-06), ventas y pagos declarados (RF-07). La invitación real (CU-12) se considera soporte propuesto a confirmar, no requisito de correo electrónico. Este documento diferencia las **relaciones conceptuales UML** de las **claves/índices concretos SQL** que se definirán durante la implementación.
+### 1.1 Criterios de evidencia
 
-**Fuera del backend MVP:** gastos/caja (RF-08), cuentas financieras (RF-09), QR DEMO/MP real (RF-10), reservas de stock, recepción parcial o multidestino, producción/lotes, conciliación bancaria y el consumo planificado de insumos por servicios. Esas capacidades existen parcialmente como frontend DEMO o se contemplan para versiones futuras; ninguna se declara operativa en la API.
+- **Implementado:** clase, contrato, migración o regla verificable en el corte de código indicado.
+- **Probado:** existe evidencia de ejecución referenciada; no confundir ejecución anterior de T11 con una ejecución nueva de T12.
+- **Conceptual:** relación o nombre útil para comprender el negocio, aunque no tenga tabla con el mismo nombre.
+- **Diferido:** funcionalidad o evolución propuesta que no debe aparecer en UML como persistencia operativa.
+- **Histórico:** texto perteneciente a un corte anterior, sin precedencia sobre esta versión.
+- **Propuesto post-T12:** objetivo explícito de evolución, sin clases persistidas, rutas ni pruebas actualmente acreditadas.
+- **No certificado:** que un contrato y una prueba existan no prueba preparación para producción, acreditación bancaria o accesibilidad integral.
 
-## 2. Vocabulario del dominio
+## 2. Vocabulario y convenciones
 
-| Término | Significado | Precisión importante |
-|---|---|---|
-| Usuario | Identidad global autenticable | No pertenece en forma exclusiva a una empresa |
-| Empresa | Unidad independiente de gestión (*tenant*) | Sus registros comerciales no se comparten con otras empresas |
-| Membresía | Relación Usuario–Empresa con rol y estado | Autorización efectiva se valida en servidor |
-| Ubicación | Local, feria, depósito u otro espacio empresarial | Puede vender, almacenar, ambas cosas o ninguna según configuración |
-| Artículo de catálogo | Bien físico o servicio | El servicio no genera movimiento físico en el MVP |
-| Compra | Registro comercial de adquisición, con líneas y costos | No incrementa existencias al registrarse |
-| Recepción | Confirmación de entrada física de una compra | MVP: completa, única y hacia una sola ubicación |
-| Movimiento de stock | Hecho histórico de entrada o salida firmado | Inmutable; la corrección requiere un movimiento compensatorio trazado |
-| Saldo de stock | Existencia por Empresa–Ubicación–Artículo | Se controla transaccionalmente; debe reconciliar con el historial |
-| Venta | Operación comercial confirmada con detalles | El pago registrado es **declarado**, no acreditación bancaria comprobada |
-| Aplicación de pago | Importe asignado a un medio de pago en una venta | La suma debe coincidir con el total exacto |
-| Idempotencia | Identidad de una operación reintentada | La misma petición no debe generar efectos dobles |
-
-### 2.1 Decisiones funcionales confirmadas
-
-**D-DOM-01 — Compra antes que recepción.** Se puede registrar una compra sin seleccionar ubicación. Solo el acto posterior de recibir físicamente exige una ubicación activa apta para almacenar.
-
-**D-DOM-02 — Recepción en MVP.** Una compra con bienes físicos se recibe **completa, en una única operación y en una única ubicación**. No se admite distribución inicial a varias ubicaciones ni recepción fraccionada. La compra puede permanecer registrada sin recibir durante el tiempo necesario; conserva cantidades y precios acordados. La espera **no se considera stock vendible**.
-
-**D-DOM-03 — Servicios en MVP.** Un servicio puede venderse sin ubicación de almacenamiento y **no descuenta insumos automáticamente**. Las compras de insumos sí pueden registrarse como bienes físicos y recibirse en una ubicación. La vinculación de insumos, su consumo por servicio y la planificación mínima para jornadas laborales serán una segunda versión.
-
-**D-DOM-04 — No crear ubicación ficticia.** Registrar una empresa no genera depósito ni existencias por defecto. Una actividad solo de servicios puede funcionar sin stock. Para recibir bienes o vender bienes físicos se exige configurar la ubicación adecuada.
-
-### 2.2 Convenciones técnicas del diseño
-
-- Los identificadores conceptuales `id`, `businessId`, `userId` y demás son estables. En SQL se propondrán claves foráneas y restricciones que impidan referencias entre empresas; las entidades globales, como Usuario, no necesitan `businessId`.
-- Se representan importes en **centavos enteros ARS** (`BIGINT`, con rangos definidos; alternativa `NUMERIC/Decimal`). Ningún cálculo monetario persistido usa `Float`. El frontend DEMO redondea **cada renglón** con `HALF_UP` y el backend deberá reproducir esa política antes de integrarse: `totalLineaCentavos = HALF_UP(cantidadMilli × precioUnitarioCentavos / 1000)`. Para cantidades y precios no negativos, el redondeo `HALF_UP` se aplica al centavo más cercano.
-- **Invariantes monetarias obligatorias:** `Compra.totalCentavos = Σ DetalleCompra.totalCentavos`; `Venta.subtotalCentavos = Σ DetalleVenta.totalCentavos`; `Venta.totalCentavos = Venta.subtotalCentavos − Venta.descuentoCentavos`; `Σ AplicacionPago.importeCentavos = Venta.totalCentavos`. No recalcular el subtotal multiplicando cantidades agregadas de varias líneas después de haberlas redondeado. **Las líneas repetidas de un mismo bien se agregan únicamente para comprobar/descontar existencias**, sin alterar sus precios ni totales históricos.
-- Si `ArticuloCatalogo.precioCentavos` es `NULL`, el cliente deberá indicar un **precio de venta explícito y válido**; la API recalcula el total y exige venta total estrictamente positiva. **Un renglón puede tener `precioUnitarioCentavos = 0` (bonificación/muestra) dentro de una venta con total positivo; no está habilitada por defecto una venta completa de total cero.** Esta distinción conserva la política actual del frontend y evita confundir precio de línea y total de comprobante. El costo de referencia de catálogo no sustituye el costo histórico del detalle de compra.
-- Las cantidades se expresan con **unidad y escala explícitas**. El frontend usa `quantityMilli`/`deltaMilli` enteros (milésimas de unidad), con algunas unidades discretas que obligan múltiplos de 1.000. Se preservará el principio de exactitud en API.
-- Una referencia a un artículo o proveedor puede conservar un *snapshot* de nombre, unidad, SKU y costo/precio histórico. Modificaciones posteriores del catálogo no deben reescribir transacciones antiguas.
-- Solo las operaciones confirmadas afectan stock. Un error comercial o de permisos deja cero efectos parciales.
-- El modelo muestra multiplicidades conceptuales. El esquema SQL, índices, `ON DELETE`, endpoints y permisos finos se precisarán en los Documentos 04 y 05.
-
-## 3. Entidades del núcleo y sus responsabilidades
-
-### 3.1 Identidad y estructura empresarial
-
-| Entidad | Atributos conceptuales mínimos | Responsabilidad / invariantes |
-|---|---|---|
-| **Usuario** | `id`, `emailNormalizado`, `passwordHash`, `nombre`, `estado`, fechas | Identidad única global; contraseña no reversible; email único normalizado |
-| **Empresa** | `id`, `nombre`, `rubro`, `tipoActividad`, `fundadorUserId`, `estado`, fechas | Tenant comercial; estado inicial `ACTIVA`, fundador histórico; no crea stock ni ubicación en el alta. `SUSPENDIDA` es una capacidad de ciclo de vida prevista, **sin endpoint de suspensión comprometido en el MVP** |
-| **Membresía** | `id`, `businessId`, `userId`, `rol`, `estado`, fechas | Une una identidad global con una empresa; unicidad `(businessId,userId)`; solo membresía activa y permisos válidos habilitan operaciones |
-| **Invitación** (emisión C.3 y aceptación C.4a implementadas en SQL) | `id`, `businessId`, `invitedByUserId`, `emailNormalizado`, `rolPropuesto`, `tokenHash`, `venceEn`, `estado`, fechas | Crear invitación no concede acceso; hash SHA-256, 7 días, único pendiente por empresa+email; aceptar una vez creará/activará membresía en C.4 |
-| **Ubicación** | `id`, `businessId`, `nombre`, `tipo` (`LOCAL/FERIA/DEPOSITO/OFICINA/CASA/OTRO`), `dirección?`, `mapUrl?`, `canSell`, `canStore`, `isPrimary`, `estado`, fechas | Tabla `locations` en E2-2 A; capacidades deben verificarse en operaciones posteriores; nunca crear por defecto |
-
-**Titularidad:** al crear Empresa se genera en la misma transacción una Membresía activa con la responsabilidad administrativa inicial; el fundador histórico no se confunde con un socio legal. La transferencia de titularidad queda diferida. Roles definitivos, expiración de invitaciones y permisos se completarán en Documento 04/05.
-
-### 3.2 Catálogo, proveedores y compras
-
-| Entidad | Atributos conceptuales mínimos | Responsabilidad / invariantes |
-|---|---|---|
-| **ArtículoCatalogo** | `id`, `businessId`, `nombre`, `tipo` (`BIEN`/`SERVICIO`), `subtipo?`, `sku?`, `unidad`, `precioCentavos?`, `costoReferenciaCentavos?`, `estado` | SKU único por empresa cuando se informa; el costo de referencia es informativo y existe en el frontend DEMO; un servicio no crea stock físico |
-| **Proveedor** | `id`, `businessId`, `nombre`, `datosContacto`, `estado` | Referencia comercial opcional de una compra |
-| **Compra** | `id`, `businessId`, `proveedorId?`, `fechaCompra`, `estado`, `totalCentavos`, `referencia?`, `creadaPor` | Registra adquisición y sus condiciones; **no recibe** mercadería por sí misma |
-| **DetalleCompra** | `id`, `compraId`, `articuloId?`, `descripcionSnapshot`, `tipoSnapshot`, `unidadSnapshot`, `cantidadMilli`, `costoUnitarioCentavos`, `totalCentavos` | Línea física, servicio o concepto libre; permite reconstruir qué se compró aunque cambie el catálogo |
-| **Recepción** | `id`, `compraId`, `businessId`, `ubicacionId`, `fechaHora`, `confirmadaPor` | Confirma entrada **completa en un destino**; `UNIQUE(compraId)` garantiza **0..1 por compra** en MVP |
-
-Una compra puede contener líneas físicas y líneas administrativas (servicios/conceptos) simultáneamente. Solo las líneas físicas del snapshot originan movimientos al recibir. Una compra sin líneas físicas queda en `CERRADA_SIN_RECEPCION` y no puede tener Recepción; una compra con físicos comienza `REGISTRADA`.
-
-**Compra a futuro / precio acordado:** una compra sin recibir conserva la cantidad y el costo registrado, lo que permite registrar la adquisición antes de la entrega. Esto **no acredita que el proveedor garantice contractualmente el precio** ni crea inventario disponible; no implementamos todavía reservas, pagos anticipados ni calendario de entregas.
-
-### 3.3 Inventario, venta y pago declarado
-
-| Entidad | Atributos conceptuales mínimos | Responsabilidad / invariantes |
-|---|---|---|
-| **MovimientoInventario** | `id`, `businessId`, `articuloId`, `ubicacionId`, `tipo`, `deltaMilli`, `fechaHora`, `actorId`, `motivo?`, `recepcionId?`, `ventaId?`, `operacionInventarioId?` | Registro histórico firmado e inmutable; **exactamente una referencia de origen** debe estar informada y validada mediante FK y restricción local |
-| **OperaciónInventario** | `id`, `businessId`, `tipo` (`TRASLADO`/`AJUSTE`), `fechaHora`, `actorId`, `motivo`, `requestId` | Agrupa movimientos manuales; traslado genera un egreso y un ingreso atómicos |
-| **SaldoInventario** | `businessId`, `ubicacionId`, `articuloId`, `cantidadMilli`, `version` | Proyección técnica **bloqueable/actualizable de forma atómica** para evitar sobreventa concurrente; unicidad del trío |
-| **Venta** | `id`, `businessId`, `ubicacionId?`, `subtotalCentavos`, `descuentoCentavos`, `totalCentavos`, `estado`, `requestId`, `creadaPor`, `fechaHora` | Operación registrada de forma atómica; no equivale a acreditación bancaria |
-| **DetalleVenta** | `id`, `ventaId`, `articuloId`, `descripcionSnapshot`, `tipoSnapshot`, `unidadSnapshot`, `cantidadMilli`, `precioUnitarioCentavos`, `totalCentavos` | Snapshot de cada línea comercial |
-| **AplicaciónPago** | `id`, `ventaId`, `medio`, `importeCentavos`, `referencia?` | Asignación declarada; `SUM(importeCentavos) = venta.totalCentavos` |
-| **SolicitudIdempotente** | `id`, `businessId?`, `operacion`, `actorId`, `clave`, `hashSolicitud`, `estado`, `statusHttp?`, `resultadoJson?`, `creadaEn`, `completadaEn?` | Garantía de reintentos, resultado y código HTTP; el `businessId` puede ser nulo para una operación personal previa a la existencia de empresa (p. ej., CU-03). Scope, estado intermedio y retención por definir |
-
-**Una fuente de verdad auditable, no dos saldos independientes:** `MovimientoInventario` describe el historial de hechos. `SaldoInventario` es un mecanismo materializado para **sincronización y consulta**; se actualiza en la **misma transacción SQL** que los movimientos y se reconcilia regularmente con su suma. La existencia de la tabla de saldos no habilita edición directa desde la UI. Esta es la solución propuesta, no una tabla ya implementada.
-
-La integridad de `businessId` debe cubrir el trío **Empresa–Ubicación–Artículo** mediante verificaciones de dominio y claves compuestas/restricciones apropiadas en SQL. No basta con guardar `businessId` en una columna si se permite referenciar un artículo de otra empresa.
-
-**Origen de movimientos:** `MovimientoInventario` referencia **una y sólo una** de `Recepcion`, `Venta` u `OperacionInventario` (XOR). Se propone modelar el origen en el esquema SQL mediante **tres FK opcionales**, un `CHECK` local que obligue a exactamente una no nula y FK compuestas por empresa hacia el padre correspondiente. Una simple cadena `referenciaOrigen` no garantiza integridad referencial. Un movimiento histórico no se elimina ni se reasigna.
-
-**Clave de idempotencia:** la identidad de una petición se delimita por operación, actor/ámbito y empresa cuando ya existe. La creación de una empresa ocurre antes de contar con `businessId`: su ámbito puede ser `actorId + operacion + clave`. El `statusHttp` y `resultadoJson` se conservan al completar una operación para replays correctos; la estrategia ante peticiones `EN_PROCESO`, errores transitorios y limpieza se definirá en Documento 05. **No imponer ahora un TTL de 48/72 h:** después del vencimiento no puede reaparecer una venta o recepción duplicada; además del registro de reintentos, cada operación crítica conservará su identificador único de solicitud en el registro comercial o una garantía equivalente.
-
-### 3.4 Relaciones y cardinalidades principales
-
-| Relación | Multiplicidad | Restricción |
-|---|---|---|
-| Usuario — Membresía — Empresa | Usuario `1 → 0..*` Membresías; Empresa `1 → 1..*` Membresías | Una membresía corresponde a exactamente un usuario y una empresa; uno solo titular administrativo activo inicial |
-| Empresa — Ubicación / Artículo / Proveedor | Empresa `1 → 0..*` de cada uno | Cada recurso pertenece a exactamente una empresa |
-| Empresa — Compra / Venta | Empresa `1 → 0..*` | Historial asociado al tenant, sin mezcla |
-| Proveedor — Compra | Proveedor `0..1` por Compra; Proveedor `1 → 0..*` Compras | Proveedor opcional, pero si existe pertenece a la misma empresa |
-| Compra — DetalleCompra | Compra `1 → 1..*` Detalles | Líneas inmutables después de confirmar en MVP |
-| Compra — Recepción | Compra `1 → 0..1` Recepción | Solo compra con físicos; única recepción completa, una ubicación |
-| Ubicación — Recepción | Ubicación `1 → 0..*` Recepciones | Destino apto para almacenamiento al confirmar |
-| Artículo — DetalleCompra | Artículo `0..1` por Detalle | Concepto libre sin artículo; snapshot conserva histórico |
-| Venta — DetalleVenta | Venta `1 → 1..*` Detalles | Cada línea corresponde a un artículo de la empresa |
-| Venta — AplicaciónPago | Venta `1 → 1..*` Aplicaciones | Importes positivos cuya suma concilia exactamente |
-| Venta — Ubicación | Venta `0..1` Ubicación | `null` solo si la venta es de servicios sin bienes físicos |
-| Empresa + Ubicación + Artículo — SaldoInventario | `0..1` saldo por trío | Exclusivo de bienes físicos, nunca negativo |
-| Recepción / Venta / OperaciónInventario — Movimiento | Origen `1 → 0..*` movimientos | Cada movimiento posee un origen verificable; transferencias y ajustes quedan agrupados |
-| Empresa — Invitación | Empresa `1 → 0..*` Invitaciones | Aceptación no crea doble membresía |
-
-**Nota UML:** las relaciones entre clases expresan vínculos conceptuales; las FK físicas se reflejan en el esquema relacional. En `03A`, la asociación «Usuario fundador → Empresa» representa el dato que en SQL se almacenará como `fundadorUserId`: se evita duplicarlo dentro del recuadro conceptual. `03B` incluye algunos identificadores de vínculo con fines técnicos, indicados de forma consistente con sus asociaciones.
-
-**Baja lógica:** catálogos, ubicaciones y proveedores pasan a `INACTIVO`/`PAUSADA`, no a eliminación física si existen referencias históricas. Evitar cascadas destructivas sobre movimientos, ventas, compras y snapshots; desactivar no reescribe los hechos pasados. Un artículo inactivo no puede venderse en una operación nueva. Una empresa podría incorporar `SUSPENDIDA` para bloquear operaciones nuevas en una etapa posterior; en el primer MVP nace `ACTIVA` y no se exige construir un panel de suspensión.
-
-## 4. Estados y transiciones permitidas
-
-### 4.1 Compra
-
-| Estado | Origen / transición | Regla |
-|---|---|---|
-| `REGISTRADA` | Alta con al menos un bien físico recepcionable | No altera stock; puede esperar recepción |
-| `RECIBIDA` | `REGISTRADA` → recepción completa en una ubicación | Crea entradas físicas y confirma estado juntos |
-| `CERRADA_SIN_RECEPCION` | Alta de compra con solo servicios/conceptos | Estado administrativo final, cero entradas físicas |
-| `CANCELADA` | Desde `REGISTRADA`, solo si la operación se implementa | No crea saldos; cancelación futura opcional en API MVP |
-
-Una compra `RECIBIDA`, `CERRADA_SIN_RECEPCION` o `CANCELADA` no puede recepcionarse. Una segunda solicitud de recepción con misma clave/carga devuelve el primer resultado; una con clave nueva debe fallar por estado/unicidad. No se registra estado `PARCIALMENTE_RECIBIDA` en MVP.
-
-### 4.2 Ubicación, catálogo y venta
-
-- **Ubicación:** `ACTIVA ↔ PAUSADA` (reactivación solo si se define endpoint); una ubicación pausada conserva historial, pero no se admite como destino operativo nuevo. `canSell` y `canStore` se verifican durante la transacción.
-- **Artículo:** `ACTIVO ↔ INACTIVO`; desactivar no elimina historial ni las referencias existentes. Las ventas no pueden confirmar bienes inactivos.
-- **Venta:** estado MVP `REGISTRADA`/`CONFIRMADA` según contrato; se persiste **solo al confirmar**, cuando ya se validaron pagos y stock. El carrito es un borrador de interfaz, no una Venta persistida. Devolución, reembolso y anulación posterior quedan diferidos; no dibujar transiciones todavía inexistentes.
-- **Invitación (soporte):** `PENDIENTE → ACEPTADA / RECHAZADA / CANCELADA / EXPIRADA`. Ninguna invitación pendiente es una membresía activa.
-
-## 5. Operaciones transaccionales y prueba de concurrencia
-
-### 5.1 Recepción completa: CU-06 y CU-07
-
-1. Registrar Compra, DetalleCompra y precio/cantidad histórica. Si tiene físicos: `REGISTRADA`. **SaldoInventario no cambia**.
-2. Más adelante elegir una Ubicación del **mismo** negocio, activa y con `canStore=true`.
-3. Abrir transacción: comprobar membresía y permisos, bloquear Compra `REGISTRADA` o hacer transición condicional equivalente, validar unicidad de recepción.
-4. Calcular entradas para **todos** los renglones físicos del snapshot; actualizar saldos afectados, crear Recepción y MovimientosInventario.
-5. Cambiar Compra a `RECIBIDA`, confirmar idempotencia y hacer **commit conjunto**. Si falla cualquier validación: rollback completo.
-6. No aceptar recepción parcial ni más de una ubicación: son extensiones posteriores.
-
-### 5.2 Venta con stock: CU-10
-
-1. El usuario selecciona empresa, ubicación de venta y artículos; puede combinar bienes y servicios, con precios y pagos declarados.
-2. El servidor recalcula subtotales, descuento y pagos con aritmética exacta; suma cantidades repetidas de un mismo bien físico.
-3. Abre transacción y comprueba nuevamente membresía, estados de artículos y capacidades de ubicación. Obtiene control de concurrencia **para cada trío Empresa–Ubicación–Artículo afectado**.
-4. Si hay stock suficiente para **todos** los bienes, descuenta saldos y crea la Venta, Detalles, AplicacionesPago, MovimientosInventario e idempotencia en **un mismo commit**. Un servicio genera línea comercial, no salida de insumo.
-5. Si falta stock en una sola línea, rechaza **toda** la venta sin guardar pagos, comprobante ni movimientos.
-6. El segundo pedido concurrente por una única unidad recibe rechazo controlado; no hay saldos negativos.
-
-**Implementación PostgreSQL a evaluar en E2:** actualizar condicionalmente `SaldoInventario.cantidadMilli` (`WHERE cantidadMilli >= solicitado`) dentro de la transacción, o bloquear filas con `SELECT ... FOR UPDATE` antes de verificar y restar. Para operaciones multiartículo, aplicar orden estable de bloqueo. `MovimientoInventario` no sustituye este control.
-
-**Arranque en frío — fila de saldo inexistente:** `SELECT ... FOR UPDATE` **no bloquea** un saldo que no existe. Por ello se definen comportamientos distintos:
-
-1. **Salida o venta con saldo inexistente:** interpretarlo como disponibilidad **cero** y rechazar por stock insuficiente. **No es obligatorio insertar una fila con cero para intentar la salida**; una actualización condicional sin filas afectadas también rechaza correctamente.
-2. **Primera entrada (recepción o ajuste positivo):** crear o incrementar el saldo de forma segura y concurrente, por ejemplo `INSERT ... ON CONFLICT (business_id, ubicacion_id, articulo_id) DO UPDATE SET cantidad_milli = saldos_inventario.cantidad_milli + EXCLUDED.cantidad_milli, version = saldos_inventario.version + 1`, junto con el movimiento correspondiente, **en el mismo commit**. Alternativamente, insertar cero con `ON CONFLICT DO NOTHING` y después bloquear/actualizar la fila dentro de la transacción. **No usar un patrón de leer e insertar sin manejar conflictos.**
-3. **Control de concurrencia:** la clave única compuesta, `CHECK (cantidad_milli >= 0)` y el bloqueo/actualización condicionada son complementarios. Un conflicto real de SQL o un deadlock debe traducirse a manejo controlado según el contrato; nunca confirmar saldo sin movimiento o viceversa.
-4. **Pruebas:** venta inicial sin saldo (rechazo), dos entradas concurrentes sobre saldo ausente (suma correcta), dos ventas concurrentes sobre una unidad (una sola confirmación) y venta simultánea con recepción/traslado (sin negativo ni pérdida de movimientos).
-
-La estrategia concreta se cerrará al implementar SQLAlchemy/Alembic y se validará con PostgreSQL real, no solamente SQLite.
-
-### 5.3 Claves únicas, aislamiento y restricciones SQL propuestas
-
-Las siguientes son **restricciones recomendadas del futuro esquema PostgreSQL**, no SQL ya implementado ni una obligación de fijar hoy los nombres físicos:
-
-| Tabla lógica | Restricción | Para qué sirve |
-|---|---|---|
-| `articulos_catalogo` | `UNIQUE (business_id, sku_normalizado)` si no es `NULL` | SKU puede repetirse entre empresas; un mismo SKU normalizado no se repite dentro de una empresa. PostgreSQL permite múltiples `NULL` en un índice único común, o puede declararse un índice parcial. |
-| `membresias` | `UNIQUE (business_id, user_id)` | Un usuario no obtiene dos membresías de la misma empresa. |
-| `saldos_inventario` | `UNIQUE (business_id, ubicacion_id, articulo_id)` y `CHECK (cantidad_milli >= 0)` | Controlar cada saldo y bloquear por recurso correcto. |
-| `recepciones` | `UNIQUE (compra_id)` | Una única recepción completa por compra en el MVP. |
-| `movimientos_inventario` | `CHECK (num_nonnulls(recepcion_id, venta_id, operacion_inventario_id) = 1)` | Cada movimiento tiene exactamente un origen verificable. |
-| `solicitudes_idempotentes` y registros comerciales | Unicidad por ámbito + actor + operación + clave; identificador persistente del comando; tratamiento explícito de `business_id IS NULL` | Reintentos no crean segunda operación, incluso si se archiva una respuesta. |
-| Relaciones de recursos empresariales | FK compuestas `(business_id, articulo_id)` / `(business_id, ubicacion_id)` hacia claves únicas correspondientes (por ejemplo, `(business_id, id)` en las tablas referenciadas) | Impedir mezclar recursos de empresas distintas, también a nivel de base de datos. |
-
-**Precisión:** `CHECK` solo puede verificar columnas de su propia fila; **no** puede consultar que el artículo y la ubicación de otra tabla pertenezcan a la empresa. Para esto se proponen **claves foráneas compuestas** (además de la verificación de autorización en el servicio). El índice parcial y los nombres SQL exactos se concretarán en la migración de Alembic.
-
-**Caso borde de idempotencia sin empresa:** una restricción `UNIQUE(business_id, actor_id, operacion, clave)` de PostgreSQL permite por defecto varias filas con `business_id = NULL`; por eso **no garantiza por sí sola** la unicidad para crear empresa (CU-03). En PostgreSQL 15+ puede utilizarse `UNIQUE NULLS NOT DISTINCT` o definir **dos índices únicos parciales**: uno por `(business_id, actor_id, operacion, clave)` para solicitudes empresariales y otro por `(actor_id, operacion, clave)` cuando `business_id IS NULL`. Su elección y manejo ante solicitudes simultáneas quedan para el contrato SQL de E2. Referencia: [PostgreSQL 16 — restricciones únicas](https://www.postgresql.org/docs/16/ddl-constraints.html#DDL-CONSTRAINTS-UNIQUE-CONSTRAINTS).
-
-**Solicitud concurrente con la misma clave:** no basta con leer una fila con estado `EN_PROCESO`; la operación debe impedir dos ejecuciones efectivas mediante transacción/índice y ofrecer una respuesta controlada o espera definida. El HTTP preciso (por ejemplo, conflicto temporal) se especificará en Documento 05; **429 no se adopta automáticamente** por tratarse de un reintento simultáneo.
-
-### 5.4 Ajustes y traslados: CU-09 y CU-11
-
-- **Traslado:** dos movimientos (egreso en origen e ingreso en destino) y dos saldos actualizados en **una transacción**. No transfiere entre empresas ni permite origen = destino.
-- **Ajuste justificado:** actualiza un saldo e inserta un movimiento con motivo obligatorio; no altera retrospectivamente ventas/recepciones. Para un **conteo absoluto** debe verificarse `version` del saldo observado y rechazar un conteo obsoleto.
-- **Idempotencia:** clave y hash de petición asociados a empresa/actor/operación; repetición idéntica recupera el resultado, distinta carga con misma clave produce conflicto sin efectos adicionales.
-
-### 5.5 Prueba ET-03: dos usuarios venden la última unidad
-
-| Preparación | Ejecución | Resultado obligatorio |
-|---|---|---|
-| Usuario A y B con membresía autorizada en Empresa E, Ubicación U vendible, Bien P con saldo **1** | Dos clientes HTTP y **dos transacciones reales independientes** contra PostgreSQL; peticiones concurrentes, claves diferentes | **1 venta confirmada, 1 error controlado por falta de stock, saldo final 0, 1 salida física y ningún pago/comprobante parcial del intento rechazado** |
-
-Esto se prueba con `pytest` e integración FastAPI/PostgreSQL (por ejemplo, `httpx.AsyncClient` y `asyncio.gather`) usando **sesiones DB independientes**, sin simular dos personas ni depender de que un clic manual coincida en milisegundos. Es una prueba de **integración/concurrencia**, adicional a los diez tests **unitarios** exigidos por la cátedra. Para robustez, repetir el test y ejecutar variantes de transferencias y ajustes concurrentes.
-
-## 6. Diagramas UML editables
-
-Los archivos fuente se preparan en `diagramas/`. En el diagrama de casos de uso, **CU-12 se representa en dos subflujos (CU-12a invita y CU-12b acepta)** porque cada actor persigue un objetivo distinto; ambos remiten a la especificación unificada CU-12 del Documento 02. **Los actores operativos representan roles efectivos de la membresía en la empresa seleccionada, no subclases permanentes de Usuario.** Si el invitado todavía no posee cuenta, realiza CU-01 y CU-02 antes de aceptar CU-12b; la aceptación exige identidad autenticada. Las vistas de clases se dividen para evitar un gráfico ilegible. Los tipos y cardinalidades siguen este documento; el modelo SQL definitivo puede refinar clases técnicas sin cambiar las reglas comerciales.
-
-### 6.1 Clases: identidad, empresa y catálogo
-
-![03A — Identidad, empresas y catálogo](diagramas/03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg)
-
-**Lectura detallada:** [Guía 03A — entidades, cardinalidades y recorridos](diagramas/03A_EXPLICACION_IDENTIDAD_EMPRESAS_CATALOGO.md). **Fuentes:** [SVG editorial](diagramas/03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg) · [PlantUML](diagramas/03A_CLASES_IDENTIDAD_Y_CATALOGO.puml).
-
-### 6.2 Clases: compras, inventario y ventas
-
-![03B — Compras, recepción, inventario y ventas](diagramas/03B_COMERCIO_INVENTARIO_REDISENADO.svg)
-
-**Lectura detallada:** [Guía 03B — operaciones, dinero, stock e idempotencia](diagramas/03B_EXPLICACION_COMPRAS_INVENTARIO_VENTAS.md). **Fuentes:** [SVG editorial](diagramas/03B_COMERCIO_INVENTARIO_REDISENADO.svg) · [PlantUML](diagramas/03B_CLASES_COMERCIO_E_INVENTARIO.puml).
-
-### 6.3 Casos de uso: actores externos y límite del sistema
-
-![03C — Casos de uso de la primera API](diagramas/03C_CASOS_DE_USO_REDISENADO.svg)
-
-**Lectura detallada:** [Guía 03C — actores, objetivos y recorridos CU-01 a CU-12](diagramas/03C_EXPLICACION_CASOS_DE_USO.md). **Fuentes:** [SVG editorial](diagramas/03C_CASOS_DE_USO_REDISENADO.svg) · [PlantUML](diagramas/03C_CASOS_DE_USO.puml).
-
-**Distinción de fuentes:** los SVG reproducen exactamente las láminas visuales revisadas y se visualizan desde GitHub. Las fuentes `.puml` son editables y permiten regenerar los diagramas mediante PlantUML, pero el motor redistribuye los elementos. **03A conserva en PlantUML la asociación completa de fundador; 03B simplifica visualmente asociaciones entre paneles**, documentadas por identificadores y reglas de integridad. No se deben interpretar los paneles editoriales como clases ni asumir que todo vínculo SQL esté dibujado.
-
-**Criterio académico:** el sistema no aparece como actor de sus propios casos de uso. Los actores se conectan a objetivos; los pasos internos detallados quedan en Documento 02. PlantUML conserva el diagrama completamente editable.
-
-## 7. Evoluciones válidas, expresamente diferidas
-
-### 7.1 Compras a futuro y recepciones parciales/multidestino
-
-El registro anticipado de compras permite conocer cantidades **pendientes de recepción** y costos acordados, pero **no aumenta el stock físico ni disponible**. La compra puede quedar registrada hasta su entrega; los conceptos "pedido a proveedor", "pago anticipado" y "reserva de precio" requieren contratos y estados adicionales si se implementan.
-
-Para una segunda versión se propone extender Compra ↔ Recepción desde `0..1` a `0..*`, añadir `cantidadRecibidaMilli`/`cantidadPendienteMilli` por línea mediante detalle de recepción, y estados como `PARCIALMENTE_RECIBIDA`. Cada entrega podrá tener ubicación propia y fecha; una entrega podrá dividirse entre múltiples destinos **solo si se define una regla explícita** (p. ej., múltiples recepciones por destino o líneas de recepción por ubicación). El total recibido de cada línea nunca podrá superar lo comprado. **No modelar esta complejidad como si ya estuviera en el MVP**.
-
-### 7.2 Insumos y planificación para servicios
-
-**Necesidad funcional identificada:** un negocio ofrece un servicio (por ejemplo, baño de perros) que requiere shampoo y acondicionador. Aunque la venta del servicio no debe descontar automáticamente stock en el MVP, el responsable desea saber si tiene insumos suficientes **antes de comenzar la jornada** y, luego, justificar qué cantidad realmente utilizó.
-
-En una **segunda versión** podrían introducirse los siguientes conceptos, que **no son clases del diagrama MVP**:
-
-| Concepto futuro | Responsabilidad |
+| Concepto | Significado vigente |
 |---|---|
-| `RequerimientoInsumoServicio` | Asociar Servicio a Bien/Insumo y cantidad teórica por prestación; unidad compatible |
-| `StockMinimoOperativo` | Configurar umbral de insumos por Empresa–Ubicación–Artículo, eventualmente asociado a servicios ofrecidos (ejemplo: mantener 10 unidades de cada producto antes del turno) |
-| `ConsumoInsumoServicio` | Registrar consumo real, motivo, fecha, servicio prestado y movimientos de stock asociados; nunca tratarlo automáticamente como robo o merma |
-| `ControlDiarioDeInsumos` | Comparar stock inicial/final, reposiciones, consumos justificados y diferencias pendientes de investigar |
+| **Usuario** | Identidad global; no tiene rol empresarial global. |
+| **Empresa / tenant** | Ámbito independiente de datos, permisos y registros comerciales. |
+| **Membresía** | Vínculo Usuario–Empresa con rol y estado; habilita autorización contextual. |
+| **Asignación** | Vínculo de miembro a sede; condiciona SELL/STORE para roles operativos. |
+| **Ubicación** | Local, feria, depósito, oficina, casa u otro espacio con capacidades `can_sell` y `can_store` separadas. |
+| **Artículo** | Registro de catálogo: elaborado, reventa, insumo o servicio. `BIEN`/`SERVICIO` es una clasificación **derivada** del tipo de artículo. |
+| **Proveedor** | Contacto comercial de una empresa; no es usuario autenticado por ser proveedor. |
+| **Compra** | Registro de adquisición; no modifica existencias por sí mismo. |
+| **Recepción** | Confirmación física completa y única de los bienes de una compra hacia una sede. |
+| **Saldo** | Proyección transaccional por empresa, sede y artículo, con versión. |
+| **Movimiento** | Hecho inmutable de entrada/salida que permite reconstruir el origen de la variación. |
+| **Operación inventario** | Agrupación de traslado, ajuste de entrada/salida o carga inicial. |
+| **Venta** | Hecho comercial `CONFIRMADA`, con detalle, pagos **declarados** y eventual débito físico. |
+| **Idempotencia** | Misma identidad de solicitud + mismo contenido + actor/ámbito produce el mismo efecto, no duplicados. |
 
-**Separación conceptual importante:** cantidad requerida por servicio ≠ mínimo operativo para una jornada ≠ cantidad efectivamente consumida. Si un baño usa 100 ml de shampoo y se desea iniciar con 10 unidades en la ubicación, son dos reglas diferentes. No crear descontroles automáticos basados solo en "vender servicio". Las compras y recepciones de shampoo/acondicionador como **bienes físicos** sí forman parte del MVP y elevan stock al recepcionarse.
+**Dinero:** enteros de centavos, sin `float` persistido. **Cantidades:** enteros en milésimas (`quantity_milli`, `delta_milli`); unidades discretas como `UNIDAD`, `PAQUETE`, `CAJA` y `SERVICIO` requieren múltiplos de 1.000 cuando corresponda. **Redondeo comercial:** `HALF_UP` por **línea**, no por subtotal agregado.
 
-En el MVP, CU-11 permite registrar **ajustes justificados** de inventario según su contrato, pero eso **no equivale** a conciliación diaria ni a un vínculo automático entre servicios vendidos e insumos consumidos. La funcionalidad específica de consumo por servicio y sus reportes queda diferida.
+La nomenclatura de dominio (por ejemplo, `MovimientoInventario`) sirve para explicar el concepto. La implementación utiliza nombres Python/SQL en inglés (`StockMovement`, `stock_movements`). No inferir que el nombre UML es una tabla distinta.
 
-## 8. Trazabilidad de entidades a requerimientos y casos de uso
+## 3. Inventario de clases persistentes — correspondencia conceptual ↔ ORM ↔ SQL
 
-| Grupo de entidades | Requerimiento | Casos de uso |
+**Resultado del inventario:** 19 modelos ORM de dominio e infraestructura identificados en `backend/app/infrastructure/models/` (sin contar `base.py` ni `__init__.py`). El esquema vigente se deriva de migraciones hasta `e26a_sales_foundation`.
+
+| Área | Clase conceptual / soporte | Modelo SQLAlchemy | Tabla SQL |
+|---|---|---|---|
+| Identidad | Usuario | `User` | `users` |
+| Identidad | Sesión técnica | `AuthSession` | `auth_sessions` |
+| Empresa | Empresa | `Business` | `businesses` |
+| Empresa | Membresía | `Membership` | `memberships` |
+| Empresa | Invitación | `BusinessInvitation` | `business_invitations` |
+| Soporte | Solicitud de creación empresarial | `BusinessCreationRequest` | `business_creation_requests` |
+| Sedes | Ubicación | `Location` | `locations` |
+| Sedes | AsignaciónUbicación | `LocationAssignment` | `location_assignments` |
+| Catálogo | ArtículoCatalogo | `CatalogItem` | `catalog_items` |
+| Proveedores | Proveedor | `Supplier` | `suppliers` |
+| Compras | Compra | `Purchase` | `purchases` |
+| Compras | DetalleCompra | `PurchaseLine` | `purchase_lines` |
+| Recepción | Recepción | `PurchaseReceipt` | `purchase_receipts` |
+| Inventario | SaldoInventario | `StockBalance` | `stock_balances` |
+| Inventario | MovimientoInventario | `StockMovement` | `stock_movements` |
+| Inventario | OperaciónInventario | `InventoryOperation` | `inventory_operations` |
+| Ventas | Venta | `Sale` | `sales` |
+| Ventas | DetalleVenta | `SaleLine` | `sale_lines` |
+| Ventas | AplicaciónPago | `SalePayment` | `sale_payments` |
+
+**Corrección respecto del diagrama anterior:** no existe en el esquema vigente una tabla genérica `SolicitudIdempotente` para todos los comandos. `BusinessCreationRequest` protege específicamente la creación empresarial; `Purchase`, `PurchaseReceipt`, `InventoryOperation` y `Sale` conservan `request_id` y digest de la solicitud en su propio registro. La idempotencia es una **regla distribuida por agregado**, no una única asociación física universal.
+
+## 4. Identidad, empresa y equipo (RF-01, RF-02 y RF-03)
+
+### 4.1 Usuario, sesión y titularidad
+
+`User` representa la identidad global. El correo normalizado es único, la contraseña se conserva como hash y el usuario puede tener múltiples membresías. `AuthSession` registra el hash del token, su vencimiento y eventual revocación; **el token opaco en claro no es una relación de empresa ni un dato del UML comercial**. El frontend REAL conserva el Bearer **solo en memoria de ejecución** y requiere volver a iniciar sesión al refrescar la página (`F5`). Esto es una **limitación de experiencia vigente** y una decisión de seguridad, no una falla de integridad del modelo.
+
+**Evolución post-T12 (no implementada):** estudiar un mecanismo de sesión renovable mediante cookies `HttpOnly`, `Secure` y `SameSite` y medidas apropiadas contra CSRF, fijación de sesión y uso indebido. No guardar Bearer en `localStorage` o `sessionStorage` sin un análisis de amenazas, ni presentar el mecanismo futuro como ya disponible.
+
+`Business` guarda nombre, rubro/categoría, tipo de actividad (`PRODUCTOS`, `SERVICIOS`, `MIXTO`), estado y `founder_user_id` **histórico**. Al crear la empresa, la transacción produce la empresa y la membresía inicial `TITULAR_ADMINISTRATIVO` activa, sin crear una ubicación por defecto. No interpretar el fundador histórico como titular legal ni como una autorización perpetua independiente de la membresía.
+
+`Membership` une un usuario con una empresa, con PK independiente, rol y estado. Se exige `UNIQUE(business_id,user_id)`. Los roles persistidos son `TITULAR_ADMINISTRATIVO`, `ADMINISTRADOR`, `ENCARGADO`, `TRABAJADOR`; los estados son `ACTIVA` e `INACTIVA`. El índice parcial `uq_memberships_one_active_owner` garantiza **a lo sumo un titular activo** en una empresa; **no prueba por sí solo que siempre exista uno**. La **existencia inicial** del titular la asegura la creación transaccional empresa+membresía; las modificaciones posteriores están restringidas por el servicio. En particular, el método de edición del equipo rechaza tanto la autoedición de la propia membresía como la modificación de una membresía de rol `TITULAR_ADMINISTRATIVO` (incluidas las históricas), por lo que **no existe actualmente una operación pública para degradar o revocar al titular**. La aceptación de invitación tampoco debe sobrescribir una titularidad histórica. **No es correcto proponer aquí una regla de servicio `COUNT(owners) > 1`** como si estuviera implementada: la transferencia de titularidad está diferida. El índice SQL, por sí solo, impone solamente *a lo sumo uno* activo.
+
+### 4.2 Invitaciones y aceptación
+
+`BusinessInvitation` conserva empresa, emisor obligatorio, correo normalizado del destinatario, rol propuesto, hash del token, vencimiento, estado y, tras aceptación, aceptante y fecha. **No exige que exista previamente un `User` para el correo invitado**. Una invitación pendiente no crea membresía ni permisos. La aceptación autenticada verifica identidad/correo y crea o reactiva la membresía en una misma transacción.
+
+Estados almacenables: `PENDIENTE`, `ACEPTADA`, `RECHAZADA`, `CANCELADA`, `EXPIRADA`. No equiparar fecha de vencimiento superada con transición física inmediata del valor `status`: la vigencia se comprueba durante la operación. El rol propuesto en la invitación está restringido a `ENCARGADO` o `TRABAJADOR`; no se permite invitar un titular por este mecanismo. Existe un índice parcial de invitación pendiente única por empresa/correo y el secreto solo se persiste como hash SHA-256.
+
+### 4.3 Ubicaciones y asignaciones
+
+`Location` pertenece a una empresa; admite `LOCAL`, `FERIA`, `DEPOSITO`, `OFICINA`, `CASA` u `OTRO`, estado `ACTIVA`/`PAUSADA`, campos de referencia de dirección/mapa, capacidades independientes `can_sell` y `can_store`, e indicador `is_primary`. Un índice parcial garantiza **a lo sumo una sede principal activa** por empresa; no exige al menos una. Pausar una principal retira esa condición; reactivarla no la restituye automáticamente.
+
+`LocationAssignment` vincula `(business_id, location_id, user_id)` y guarda estado `ACTIVA`/`REVOCADA`, con fecha de revocación. Sus claves foráneas compuestas verifican que la sede y la membresía pertenecen al mismo tenant. **La asignación no crea un rol empresarial nuevo**.
+
+**Autorización operacional vigente:**
+
+- Titular y administrador actúan conforme a permisos empresariales y capacidades de la ubicación, sin requerir asignación individual a cada sede.
+- Encargado y trabajador necesitan membresía activa y **asignación activa en la sede** para operaciones SELL/STORE; la asignación se revalida en FastAPI, incluso si React no muestra una sede.
+- `can_sell` no implica `can_store`, ni viceversa. Transferencias exigen STORE en **origen y destino**. Una venta de bien físico exige **SELL y STORE en su misma sede**: SELL para operar la venta y STORE para descontar las existencias. La lectura de saldos puede abarcar sedes del propio tenant sin conceder derecho a operar allí.
+- Los permisos por función no son idénticos: por ejemplo, crear una compra requiere titular/administrador; `STOCK_INICIAL` requiere titular/administrador, mientras los ajustes ordinarios también pueden ser autorizados para encargado conforme al servicio. No afirmar que todo trabajador puede ajustar saldos.
+
+La autorización efectiva siempre depende del backend: usuario, sesión, membresía, empresa, rol, sede, estado, capacidad y asignación según corresponda.
+
+## 5. Catálogo y proveedores (RF-04, RF-05)
+
+`CatalogItem` pertenece a un tenant y registra `kind` (`ELABORADO`, `REVENTA`, `INSUMO`, `SERVICIO`), nombre y clave de normalización, categoría, SKU opcional, unidad, condición `sellable`, precio y costo referencial opcionales en centavos, estado y metadatos. `BIEN`/`SERVICIO` se **deriva** de `kind`; no es otra columna persistida. Un servicio utiliza unidad `SERVICIO`; los bienes utilizan unidades físicas compatibles.
+
+El nombre normalizado es único por empresa; el SKU normalizado es único **cuando se informa**, incluso para artículos inactivos. `ACTIVO`/`INACTIVO` son bajas lógicas: las transacciones históricas conservan el snapshot y la FK. El alta del artículo **no crea existencias**. Una ficha inactiva no debe venderse como operación nueva.
+
+`Supplier` es **REAL**, no TO-BE: mantiene nombre y clave normalizada única por empresa, datos de contacto, redes, referencias, notas, métodos de pago y promociones referenciales en JSONB, más estado `ACTIVO`/`INACTIVO`. Una compra puede no tener proveedor; si lo tiene, se valida el tenant y se conserva el nombre histórico del proveedor. La información comercial del proveedor **no implica pagos acreditados ni cuentas bancarias integradas**.
+
+## 6. Compras y recepciones (RF-05; CU-06 y CU-07)
+
+### 6.1 Compra y detalle
+
+`Purchase` contiene `business_id`, `request_id`, `request_sha256` (nullable en el modelo por compatibilidad), proveedor opcional, `supplier_name_snapshot`, fecha de compra, estado, importe total, referencia/notas, actor y fecha de creación. `PurchaseLine` contiene su empresa, compra, `line_number`, artículo opcional, snapshots de descripción, tipo, unidad y SKU, cantidad, costo unitario y total de línea.
+
+La línea puede ser un **bien físico**, **servicio** o **concepto libre sin artículo**. Solo los bienes de catálogo originan recepción de existencias. La API calcula montos desde cantidades y costos con regla exacta de redondeo; el cliente no puede imponer un subtotal inconsistente. El registro de la compra **no modifica stock**.
+
+**Estados en el modelo SQL:**
+
+| Estado | Sentido y transición vigente |
+|---|---|
+| `REGISTRADA` | Compra con bienes físicos pendiente de recepción. |
+| `RECIBIDA` | Compra física tras una recepción completa confirmada. |
+| `CERRADA_SIN_RECEPCION` | Compra exclusivamente de servicios/conceptos que no admite ingreso físico. |
+| `CANCELADA` | **Capacidad del esquema SQL, endpoint público diferido**. Que el CHECK permita el valor no implementa la transición ni una operación `PATCH/POST` de cancelación. |
+
+### 6.2 Recepción completa
+
+`PurchaseReceipt` almacena empresa, compra, ubicación STORE, `request_id`, `request_sha256`, actor, momento de confirmación y `balances_after` JSONB (snapshot de respuesta, **no** segundo saldo autoritativo). Una compra puede poseer **0..1** recepción y la unicidad `(business_id,purchase_id)` impide una segunda confirmación física. La recepción del MVP es **completa y en un único destino**. Servicios/conceptos no crean movimientos.
+
+La transacción revalida membresía, capacidades STORE y estado de sede; persiste recepción, mueve balances y genera movimientos por líneas físicas, marcando compra como `RECIBIDA`. Fallar en cualquier paso deja rollback íntegro. Repetir con igual clave/cuerpo/actor recupera el resultado; volver a recibir con otra clave no crea una segunda recepción.
+
+## 7. Inventario físico, ledger y operaciones (RF-06; CU-08, CU-09, CU-11)
+
+### 7.1 Saldo y unidades
+
+`StockBalance` utiliza PK compuesta `(business_id,location_id,catalog_item_id)`, `quantity_milli >= 0` y `version` positiva, con fecha de actualización. Representa el saldo materializado para consultar y proteger concurrencia; **no reemplaza** al ledger de hechos. Una fila ausente se interpreta como cero para decidir una salida; no se inventan existencias. Para una primera entrada se usa creación/actualización concurrente segura, no lectura+inserción sin control.
+
+### 7.2 Movimiento auditable
+
+`StockMovement` guarda empresa, sede, artículo, actor, tipo de evento, delta firmado y fecha, más referencias de origen compatibles. En el esquema actual aparecen: `receipt_id`, `purchase_line_id`, `inventory_operation_id`, `operation_kind`, `sale_id`, `sale_line_id`.
+
+La regla no es simplemente “tres FK opcionales”: `ck_stock_movements_origin_and_sign` verifica **combinaciones permitidas** de origen, evento y signo. Ejemplos:
+
+| Evento | Identificador de origen | Efecto |
 |---|---|---|
-| Usuario | RF-01 | CU-01, CU-02 |
-| Empresa, Membresía, Invitación | RF-02 | CU-03, CU-12 (soporte propuesto) |
-| Ubicación | RF-03 | CU-04, CU-07, CU-09, CU-10, CU-11 |
-| ArtículoCatalogo | RF-04 | CU-05, CU-06, CU-10 |
-| Proveedor, Compra, DetalleCompra, Recepción | RF-05 | CU-06, CU-07 |
-| SaldoInventario, MovimientoInventario, OperaciónInventario | RF-06 | CU-07, CU-08, CU-09, CU-10, CU-11 |
-| Venta, DetalleVenta, AplicaciónPago | RF-07 | CU-10 |
-| SolicitudIdempotente | RN-03 / RNF-02 | CU-07, CU-09, CU-10, CU-11; recomendada también CU-06 |
+| `COMPRA_RECEPCION` | `receipt_id` + `purchase_line_id` | Delta positivo por bien recibido. |
+| `TRASLADO_SALIDA` | `inventory_operation_id` + `operation_kind=TRASLADO` | Delta negativo en sede origen. |
+| `TRASLADO_ENTRADA` | Misma operación de traslado | Delta positivo en sede destino. |
+| `AJUSTE_ENTRADA` / `AJUSTE_SALIDA` | Operación de inventario del tipo coherente | Delta positivo/negativo según caso. |
+| `STOCK_INICIAL` | Operación de inventario de carga inicial | Alta inicial positiva, con reglas de ausencia de historia. |
+| `VENTA_SALIDA` | `sale_id` + `sale_line_id` | Delta negativo por línea física vendida. |
 
-## 9. Decisiones aún abiertas para aprobación técnica
+Los nombres y variantes exactas están restringidos por el CHECK vigente; no agregar un tipo nuevo a la documentación sin cotejar el modelo. Existen FK compuestas por empresa y unicidades que impiden duplicar líneas de recepción/venta y eventos de operación. El hecho comercial no se “corrige” editando o borrando un movimiento histórico.
 
-| ID | Decisión pendiente | Recomendación actual |
+### 7.3 Operaciones de inventario
+
+`InventoryOperation` soporta `TRASLADO`, `AJUSTE_ENTRADA`, `AJUSTE_SALIDA` y `STOCK_INICIAL`; contiene artículo, unidad/cantidad snapshot, sede origen/destino cuando aplique, motivo obligatorio, actor, `request_id`, hash y fecha. Un traslado exige sedes distintas STORE del mismo tenant y realiza **dos movimientos** con suma algebraica cero en **un único commit**.
+
+Los ajustes positivos/negativos se justifican y respetan permisos por rol y sede; el conteo absoluto utiliza `expected_version` en el comando para impedir confirmar sobre un saldo observado obsoleto. `STOCK_INICIAL` es una operación especial con privilegios más fuertes y no puede usarse para duplicar el alta sobre un artículo/sede que ya tiene historia. Los checks y permisos se implementan entre DTO, servicio, transacción y SQL; no atribuir todo a un `CHECK` de fila.
+
+## 8. Ventas y pagos declarados (RF-07; CU-10)
+
+`Sale` contiene empresa, ubicación opcional, estado persistido **solo** `CONFIRMADA`, `request_id`, `request_sha256`, importes (subtotal/descuento/total), notas, actor, fecha y `balances_after`. `SaleLine` guarda catálogo, numeración, descripción/tipo/unidad/SKU snapshot, cantidad, precio unitario y total. `SalePayment` registra secuencia, método, importe positivo y referencia. El modelo admite **1 a 30 líneas** y **1 a 6 aplicaciones de pago** según controles implementados.
+
+**Reglas principales:**
+
+1. La venta es un evento confirmado, no un carrito persistente. En SQL se aplica `status = 'CONFIRMADA'`.
+2. `subtotal_centavos = Σ total_linea_centavos`; `total_centavos = subtotal_centavos − descuento_centavos`; `Σ pagos_declarados = total_centavos`. El servidor comprueba las sumas; la DB verifica restricciones por fila y no sustituye la comprobación de agregados entre varias tablas.
+3. `total_linea_centavos = HALF_UP(cantidad_milli × precio_unitario_centavos / 1000)`. No redondear después de fusionar líneas de productos distintos. Un renglón de precio cero puede formar parte de una venta de total positivo, según el contrato; no se habilitan ventas completas de total cero. Las restricciones de subtotal, descuento y total se verifican además en la persistencia.
+4. Titular y administrador pueden operar con la política de precios/descuentos autorizada. `ENCARGADO` y `TRABAJADOR` **no pueden modificar el precio del catálogo ni agregar descuentos**: FastAPI exige precio de catálogo definido e igualdad exacta; no basta con bloquear inputs en React.
+5. La venta de bienes exige sede activa con **SELL+STORE**, autorización efectiva y stock suficiente para todas las líneas físicas. Para una venta solo de servicios, la ubicación puede omitirse únicamente para un titular/administrador según el servicio vigente; sin sede, un rol operativo no puede confirmar.
+6. Una venta de servicio no descuenta automáticamente insumos. Una venta mixta descuenta **solo las líneas físicas**; agrupa cantidades repetidas de un bien para comprobar el saldo sin perder precios/snapshots de cada línea.
+7. Confirmar venta, detalles, pagos declarados, saldos, movimientos y `balances_after` sucede dentro de una sola transacción. Si falta una unidad, **ninguna parte** queda confirmada.
+8. El listado/consulta de ventas para roles operativos se restringe a sedes con asignación activa; incluso el autor histórico puede perder acceso si perdió la asignación. La lectura de inventario tiene una política distinta y no se debe extrapolar.
+
+**Pago declarado ≠ pago acreditado.** Los métodos persistidos son `EFECTIVO`, `TRANSFERENCIA`, `CUENTA_DNI`, `TARJETA` y `MERCADO_PAGO_DECLARADO`; son declaraciones, no conciliación. Los registros no demuestran transferencias bancarias, cobros efectivamente recibidos, operación acreditada de Mercado Pago ni documento fiscal. La habilitación de POST REAL desde el frontend local permanece controlada por `VITE_PYME_ENABLE_REAL_SALES` y no debe activarse para probar el documento sobre la base personal persistente.
+
+## 9. Idempotencia, recuperación y pérdida de respuesta
+
+Las claves de solicitud son UUID que identifican el **comando**, no al carrito ni al producto. Las altas y comandos comerciales pertinentes comparan identidad, cuerpo canónico (digest) y ámbito antes de recuperar resultados anteriores. **No inventar una tabla `SolicitudIdempotente` que abarque todos los casos**.
+
+| Operación | Dónde persiste la identidad del comando | Garantía observable |
 |---|---|---|
-| D03-01 | Restricción de unicidad y normalización de SKU | Índice único por `(businessId, skuNormalizado)` solo cuando SKU no nulo |
-| D03-02 | Tipos y escala de cantidades monetarias/físicas | Centavos enteros + milésimas exactas, con límites documentados |
-| D03-03 | Permisos de membresía y roles concretos | Mínimos por operación, comprobados por API; no mezclar cargo laboral con autorización |
-| D03-04 | Mecanismo SQL contra sobreventa | Saldo bloqueable/actualización condicional + ledger, con prueba de concurrencia y arranque en frío en PostgreSQL |
-| D03-05 | Persistencia y origen referencial de movimientos | FK comprobables a origen comercial u operación de stock; no un `sourceId` polimórfico sin garantía de integridad |
-| D03-06 | Alcance exacto de invitación en primera API | Si se incluye CU-12, aceptación por token y pertenencia real; sin correo automático |
-| D03-07 | Manejo de imágenes | `imageKey`/URL opcional por ficha; almacenamiento binario compartido diferido |
-| D03-08 | Estado de Venta e idempotencia y retención | Venta confirmada como único estado comercial MVP; replay y retención sin duplicar operaciones definidos en Documento 05 |
-| D03-09 | Estado de empresa | Alta inicial `ACTIVA`; eventual suspensión prevista pero sin caso de uso ni endpoint comprometidos para la primera API |
-| D03-10 | Moneda, unidad y líneas repetidas | Redondeo `HALF_UP` por renglón; subtotal es suma de renglones, se agregan cantidades repetidas solo para validar inventario |
+| Crear empresa | `BusinessCreationRequest`, PK `(actor_user_id,idempotency_key)` y digest | Un actor no crea dos empresas con la misma clave y contenido. |
+| Registrar compra | `Purchase.request_id`, `request_sha256`, `created_by_id` | Unicidad por tenant/solicitud y replay controlado. |
+| Confirmar recepción | `PurchaseReceipt.request_id`, `request_sha256`, actor y compra única | Una única entrada completa, con recuperación del comprobante. |
+| Traslado/ajuste | `InventoryOperation.request_id`, `request_sha256`, `actor_id`, `kind` | Un comando físico no produce movimientos duplicados. |
+| Registrar venta | `Sale.request_id`, `request_sha256`, autor | Relectura por ID y `request_id`, sin segunda venta. |
 
-## 10. Condiciones de aprobación
+La comparación de hash/actor se revalida en el servicio y la unicidad de PostgreSQL es la segunda defensa frente a carreras. Una repetición idéntica puede devolver la operación ya confirmada; la misma clave con contenido/actor incompatible produce conflicto. **Timeout o respuesta perdida no significa rechazo confirmado:** la lógica de recuperación debe tratar la respuesta como *resultado incierto* y usar la identidad original del comando para verificar si hubo commit. La consulta REAL `GET /api/v1/businesses/{business_id}/sales/by-request/{request_id}` permite buscar un comprobante de venta autorizado; la disponibilidad del endpoint **no acredita** que cualquier cliente realice la consulta automáticamente en todos los fallos. No reenviar automáticamente un `POST` con una clave nueva.
 
-**Aprobación documental:** el modelo y las tres láminas se incorporan como base conceptual de entrega, manteniendo AS-IS/TO-BE separados. Las decisiones de diseño SQL, permisos específicos, endpoints, validaciones Pydantic y pruebas reales se fijarán y evidenciarán durante E2 y los Documentos 04–06. Se comprobará que los RF y CU permanezcan alineados con recepción completa, sin stock anticipado ni consumo automático de insumos por servicios. **Esta aprobación no certifica código backend implementado ni tests de API ejecutados.**
+**Mejora UX post-T12:** evaluar un estado visual `Verificando resultado…` que consulte por `request_id`, distinga comprobante confirmado de resultado aún no determinado y ofrezca recuperación segura sin duplicar ventas. No afirmar esta automatización como comportamiento implementado sin un test específico.
 
-## 11. Cambios de la versión 0.2 respecto de 0.1
+El frontend guarda ciertos comandos comerciales pendientes en IndexedDB para recuperación controlada (sin credenciales) y conserva limitaciones documentadas: esos datos no están cifrados; pueden perderse al borrar el navegador o cambiar de dispositivo. No prometer semántica global de entrega exactamente una vez para sistemas externos todavía no integrados.
 
-- Se alinearon texto y diagramas en costo de referencia, estado inicial de empresa, datos de auditoría, saldos e idempotencia.
-- Se aclararon los actores dinámicos por membresía y el recorrido de invitación de una persona aún no registrada.
-- Se explicitó el redondeo por renglón y la conciliación exacta de pagos.
-- Se separó el control de un saldo inexistente en **ventas** del alta concurrente de saldo por **recepciones/ajustes positivos**.
-- Se propusieron restricciones SQL que evitan cruces entre empresas y una única referencia de origen por movimiento.
-- Se mantuvieron como diferidos: recepción parcial/multidestino, servicios con consumo automático, suspensión administrativa real, QR y conciliación externa.
-- **No se declara implementación ni ejecución de pruebas de API o validación gráfica PlantUML.**
-## 12. Revisión documental v0.3 y láminas aprobadas
+## 10. Relaciones y cardinalidades del dominio
 
-- Se incorporan las **tres láminas vectoriales 03A/03B/03C**, sus fuentes PlantUML y una explicación individual extensa por diagrama.
-- Se aclara el precio cero **por línea** frente al total positivo de la venta; los importes y redondeos por renglón permanecen exactos.
-- Se incorpora el caso de **idempotencia con `business_id = NULL`** y su efecto en los índices únicos de PostgreSQL.
-- Se conserva sin alterar el diseño visual aprobado; las diferencias deliberadas entre SVG editorial y PUML se describen en cada guía.
-- No se extiende el MVP con recepción parcial, servicios con consumo automático, cobros reales ni procesos de suspensión de empresas.
+Las siguientes multiplicidades son **conceptuales del estado válido**, no promesas de que cada una esté impuesta mediante una FK aislada.
 
-## 13. Correspondencia conceptual ↔ esquema implementado (actualizado C.5; corte inicial E2-1.3C.1)
+| Relación | Multiplicidad y regla |
+|---|---|
+| Usuario — Membresía — Empresa | Usuario `1 → 0..*` membresías; empresa inicia con titular activo, sin unicidad global del usuario; `(business_id,user_id)` único. |
+| Usuario — Empresa (fundador) | Una empresa tiene exactamente un fundador histórico; usuario `1 → 0..*` empresas creadas. |
+| Empresa — Invitación | Empresa `1 → 0..*`; invitación tiene emisor `1` y aceptante `0..1`, correo destinatario sin FK previa. |
+| Empresa — Ubicación / Artículo / Proveedor | Empresa `1 → 0..*` de cada recurso; cada recurso pertenece a exactamente un tenant. |
+| Membresía + Ubicación — Asignación | Cada asignación referencia exactamente una membresía y una sede del mismo tenant; puede estar revocada. |
+| Proveedor — Compra | Compra `0..1` proveedor; proveedor `1 → 0..*` compras, con snapshot histórico. |
+| Compra — DetalleCompra | Compra `1 → 1..*` líneas al confirmar la API; cada línea pertenece a una compra. |
+| Compra — Recepción | Compra `1 → 0..1` recepción completa; la recepción identifica una única sede STORE. |
+| DetalleCompra — Catálogo | Línea `0..1` artículo; la línea libre no necesita artículo, pero conserva snapshot. |
+| Empresa + Sede + Artículo — Saldo | `0..1` fila de saldo por triple único; ausencia no significa stock positivo. |
+| Recepción / Operación / Venta — Movimiento | Cada movimiento tiene **una familia de origen válida** y, cuando corresponde, el detalle de compra o venta específico. |
+| OperaciónInventario — Movimiento | Traslado confirmado `1 → 2` eventos físicos; ajuste/stock inicial confirmado `1 → 1` evento. |
+| Venta — DetalleVenta | Venta `1 → 1..*` líneas, cada una ligada a un artículo de ese tenant. |
+| Venta — AplicaciónPago | Venta `1 → 1..*` pagos declarados, cuya suma concilia con el total. |
+| Venta — Ubicación | Ubicación `0..1` en la venta; `null` solo para servicio bajo reglas y roles específicos. |
 
-| Concepto de 03A | Implementación SQLAlchemy/PostgreSQL actual | Matiz |
+Un SVG puede ocultar asociaciones transversales por legibilidad, **pero no debe inventar cardinalidades**. Las FK físicas y las asociaciones omitidas han de figurar en su guía o anexo de correspondencia.
+
+## 11. Integridad: qué garantiza SQL y qué valida la aplicación
+
+| Invariante | Capa y referencia concreta |
+|---|---|
+| Unicidad de membresía | SQL `uq_memberships_business_user`. |
+| A lo sumo un titular activo | Índice parcial SQL `uq_memberships_one_active_owner`; mantenimiento de titular inicial y protecciones de edición en servicio. |
+| A lo sumo una sede principal activa | Índice parcial SQL `uq_locations_one_active_primary` y CHECK de principal activa. |
+| Nombre/SKU de artículo por tenant | SQL `uq_catalog_items_business_name`, índice parcial `uq_catalog_items_business_sku`. |
+| Identidad entre empresa y recurso enlazado | FK compuestas por `business_id` en tablas operativas + comprobaciones de autorización de FastAPI. |
+| Una recepción por compra | SQL `uq_purchase_receipts_business_purchase`; servicio valida estado y transacción. |
+| Stock no negativo y saldo versionado | SQL `ck_stock_balances_quantity_nonnegative`, `ck_stock_balances_version`; debit condicional, UPSERT y lock transaccional en servicio. |
+| Origen/evento/signo coherentes | SQL `ck_stock_movements_origin_and_sign` y FK compuestas; servicio crea eventos correctos. |
+| No duplicar eventos físicos | Unicidades `uq_stock_movements_receipt_line`, `uq_stock_movements_operation_event`, `uq_stock_movements_sale_line`. |
+| Precio/redondeo de línea | CHECK de línea `ck_sale_lines_half_up_total` / `ck_purchase_lines_half_up_total`; comprobación y cálculo del comando en servicio. |
+| Total/desc/pagos | SQL controla importes y relación aritmética dentro de `Sale`; **sumas entre filas** se verifican en servicio transaccional. |
+| Rol, sede, SELL/STORE, asignación | FastAPI, sesión/membresía y servicios de autorización; no puede resolverse con un CHECK que consulte otras tablas. |
+| Idempotencia por comando | PK o UNIQUE en tabla comercial, digest y actor comprobados por servicio; replay controlado. |
+
+### 11.1 Errores de conflicto y comunicación al operador
+
+Los contratos HTTP vigentes contemplan errores como `401` (sesión inválida), `403` (permiso insuficiente), `404` (recurso no visible o inexistente), `409` (conflicto) y `422` (validación). **No significa que todos los endpoints devuelvan todos los códigos.** En particular, el router de ajustes mapea el conflicto de versión a HTTP `409` con detalle textual «Version de saldo obsoleta o saldo inexistente»; no se verificó un código de error estructurado denominado `STALE_BALANCE_VERSION`.
+
+**Evolución UX/API, no implementada en este documento:** evaluar respuestas de error estables y tipadas, más mensajes específicos en React (por ejemplo: «El stock cambió desde el último conteo. Actualizá los saldos antes de ajustar»). Cualquier nuevo contrato de errores exigiría cambio de código y pruebas en una etapa posterior: T12 no lo introduce.
+
+**Nota académica:** PostgreSQL no permite usar un `CHECK` de una fila para garantizar valores actuales de otra tabla. Las FK compuestas resuelven pertenencia referencial al tenant, mientras los estados, la autorización y las sumatorias de agregados necesitan lógica de servicio y transacciones. Tampoco debe afirmarse que una restricción de “a lo sumo uno” asegura “existe exactamente uno”.
+
+## 12. Transacciones y concurrencia
+
+### 12.1 Alta empresarial
+
+Comprobar sesión/actor, registrar identidad idempotente de creación, crear `Business` y titular inicial `Membership` en un commit. Evitar duplicados por `BusinessCreationRequest` y unicidad. No crear automáticamente `Location`, `CatalogItem` ni saldo.
+
+### 12.2 Compra → recepción → existencia
+
+1. Crear `Purchase` y `PurchaseLine` con snapshots, sin stock.
+2. Registrar estado `REGISTRADA` si tiene físicos, o `CERRADA_SIN_RECEPCION` si solo contiene conceptos no recepcionables.
+3. Al recibir, revalidar actor, tenant, estado y sede STORE; impedir segunda recepción.
+4. Crear `PurchaseReceipt`; acreditar bienes con UPSERT concurrente seguro sobre `StockBalance`, generar entradas `StockMovement` por línea física y persistir `balances_after`.
+5. Cambiar compra a `RECIBIDA` y realizar un solo commit; cualquier excepción exige rollback total.
+
+### 12.3 Traslado de stock
+
+1. Verificar misma empresa, artículo físico activo, sedes diferentes, ambas STORE, permisos y asignaciones.
+2. Debitar origen condicionalmente (`quantity_milli >= solicitado`); si no existe saldo, rechazar.
+3. Acreditar destino con UPSERT; persistir `InventoryOperation` y dos `StockMovement` (`TRASLADO_SALIDA`, `TRASLADO_ENTRADA`).
+4. Commit conjunto y replay por la clave original. **Variación neta del artículo entre ambas sedes: cero.**
+
+### 12.4 Ajuste / carga inicial
+
+Verificar rol permitido, sede STORE, motivo, cantidad/unidad y, para conteo absoluto, versión esperada. El servidor controla el histórico de carga inicial y registra operación/movimiento/saldo atómicos. Una diferencia cero no justifica crear un movimiento ficticio. No se debe editar un movimiento pasado para “corregir” el saldo.
+
+### 12.5 Venta mixta
+
+1. Revalidar empresa, membresía, rol, política de precios y sede. Para bienes: SELL+STORE y asignación cuando corresponde.
+2. Validar fichas activas/vendibles, cantidades, precio/descuento y suma exacta de pagos declarados.
+3. Agregar cantidades físicas por artículo para control de disponibilidad, preservando las líneas individuales de venta.
+4. Debitar saldos con condición de suficiencia; registrar `Sale`, `SaleLine`, `SalePayment`, movimientos `VENTA_SALIDA` y `balances_after` dentro de la misma transacción.
+5. Confirmar íntegramente; ante faltante/concurrencia, revertir el comprobante, pagos declarados y movimientos del intento.
+
+### 12.6 Casos de concurrencia que se deben conservar como evidencia
+
+- Dos ventas sobre la última unidad: una confirma y otra recibe conflicto controlado, sin saldo negativo ni pago parcial.
+- Dos recepciones de la misma compra con claves distintas: una sola recepción; ningún doble ingreso.
+- Dos entradas simultáneas sobre saldo inexistente: suma correcta sin duplicar fila.
+- Traslado y venta simultáneos: consistencia del origen/destino y el ledger tras commit/rollback.
+- Ajuste con `expected_version` obsoleta: rechazo sin movimiento.
+- Repetición de un `request_id` con hash diferente: conflicto y ningún efecto añadido.
+- Trabajador revocado o asignado solo a una sede: no obtiene capacidad operativa sobre otra.
+- Empresa A/B: las consultas y escrituras de un tenant nunca se habilitan por conocer el UUID de otro.
+
+Las pruebas de transacción/concurrencia deben ejecutarse **contra PostgreSQL aislado**, no deducirse de un test puramente unitario o de simular dos clics.
+
+## 13. Estados de las entidades — síntesis
+
+| Entidad | Estados persistidos y precisión |
+|---|---|
+| Usuario | `ACTIVO`, `DESHABILITADO`; no inferir rol empresarial de `User.status`. |
+| Empresa | `ACTIVA`, `SUSPENDIDA`; **no** se declara API pública para suspender aunque el estado exista en SQL. |
+| Membresía | `ACTIVA`, `INACTIVA`; titularidad protegida por índice y reglas. |
+| Invitación | `PENDIENTE`, `ACEPTADA`, `RECHAZADA`, `CANCELADA`, `EXPIRADA`; emisión ≠ acceso. |
+| Ubicación | `ACTIVA`, `PAUSADA`; principal solo activa. |
+| AsignaciónUbicación | `ACTIVA`, `REVOCADA`; fecha de revocación coherente. |
+| Artículo | `ACTIVO`, `INACTIVO`; baja lógica sin destruir snapshots. |
+| Proveedor | `ACTIVO`, `INACTIVO`; baja lógica. |
+| Compra | `REGISTRADA`, `RECIBIDA`, `CERRADA_SIN_RECEPCION`, `CANCELADA` (último sin endpoint público comprometido). |
+| Venta | Únicamente `CONFIRMADA` en tabla `sales`; borrador de carrito vive en UI. |
+| Operación inventario | Su `kind` discrimina operación, no es un estado de borrador comercial. |
+
+## 14. Patrones de diseño y decisiones arquitectónicas observables
+
+El documento 04 desarrolla la arquitectura; aquí se presenta la correspondencia entre **patrón, implementación real, beneficio y límite** para facilitar la defensa técnica. No confundir *patrones GoF clásicos* con patrones de arquitectura empresarial, contratos HTTP o restricciones SQL. Una regla de estados no equivale automáticamente al patrón GoF **State**; copiar atributos históricos no implica haber implementado una clase **Memento**.
+
+| Patrón / técnica | Evidencia concreta en el proyecto | Beneficio y precisión |
 |---|---|---|
-| Usuario | `users`, UUID global, email normalizado UNIQUE, hash Argon2id generado por servicio | No tiene `business_id` ni rol global |
-| Sesión técnica | `auth_sessions`: usuario, `token_hash`, vencimiento/revocación | Infraestructura técnica; no convierte sesión en membresía |
-| Empresa | `businesses`: nombre, categoría, tipo de actividad, `founder_user_id`, estado y fechas | Fundador histórico ≠ titular legal |
-| Membresía | `memberships`: empresa, usuario, rol, estado, puesto opcional | UNIQUE por empresa/usuario; índice parcial limita a uno el titular activo |
-| Idempotencia del alta | `business_creation_requests` con PK compuesta `actor_user_id, idempotency_key` | El PK ya es UNIQUE; no duplicar constraint; respuesta previa por hash canónico |
-| Invitación | `business_invitations`: FK de empresa e invitador, destinatario por correo y aceptante opcional, hash/expiración y auditoría de aceptación | Emisión/aceptación reales; solo aceptación autenticada genera/reactiva membresía |
+| **Repository (patrón de persistencia)** | Archivos como `businesses/repository.py`, `purchases/repository.py`, `catalog/repository.py`; otras áreas, como `sales/service.py`, ejecutan consultas SQLAlchemy directamente | Encapsula consultas en varios módulos; **no** declarar que todos los accesos están abstraídos por un repositorio uniforme. |
+| **Service Layer (capa de aplicación)** | `app/modules/*/service.py`; revalidación de sesión, tenant, permisos, cálculos e invariantes | Coordina casos de uso; evita confiar en datos o controles solo del frontend. |
+| **Unit of Work como límite transaccional** | `Session` de SQLAlchemy, `flush()`, `commit()` y `rollback()` en operaciones comerciales | Garantiza atomicidad por operación en una unidad de trabajo; **no** se identifica una clase propia `UnitOfWork` genérica en el inventario revisado. |
+| **Snapshot de datos comerciales** | `purchase_lines.*_snapshot`, `sale_lines.*_snapshot`, `purchases.supplier_name_snapshot`, `balances_after` | Preserva el contexto de una transacción pese a cambios posteriores del catálogo; es técnica de snapshot, **no** implementación demostrada del GoF Memento. `balances_after` es evidencia de respuesta, no otra fuente de saldo. |
+| **Idempotent request / replay seguro** | `BusinessCreationRequest` y las columnas `request_id`/`request_sha256` de compras, recepciones, operaciones y ventas | Evita duplicar efectos ante respuestas perdidas; no se presenta como consumidor de cola ni como garantía de *exactly once* sobre proveedores externos. |
+| **Máquina de estados como reglas de dominio** | `Purchase.status`, `BusinessInvitation.status`, `Location.status`; validaciones y transiciones en servicios | Controla cambios válidos; **no** se afirma que existan clases polimórficas del patrón GoF State. |
 
-En C.5 se sincronizó **03A** con las relaciones reales de invitador y aceptante, sin añadir sesiones, idempotencia ni políticas RBAC como clases empresariales. La nota previa correspondía al corte histórico C.1, antes de existir el circuito de invitaciones. **03B no se rehace**. La política pure-function `has_business_permission` no es una clase persistente del UML de dominio; se documenta en 04/05. Se exige verificar la pertenencia real de cada Membresía a la Empresa consultada al aplicar la política en endpoints; el rol de otra empresa no autoriza esta.
+**Ejemplo defendible:** `POST /sales` valida sesión, rol, precios y permisos de ubicación en el servicio; en una única transacción SQL crea `Sale` con sus líneas/pagos, debita `StockBalance` y genera `StockMovement`; `request_id` y `request_sha256` hacen posible recuperar el comprobante y rechazar reintentos incompatibles. Cada componente resuelve un problema distinto: **separación de responsabilidades, atomicidad, trazabilidad e idempotencia**.
 
-## 14. Correspondencia E2-1.3C.2 con modelo y UML
+**Criterio para la defensa:** acreditar patrones que aparecen efectivamente en el código y diferenciarlos de refactorizaciones propuestas. La consigna oficial de la asignatura es la fuente para precisar mínimos y ponderaciones de evaluación: no inferir porcentajes de nota a partir de una revisión externa sin comprobar dicha consigna.
 
-La edición del perfil de Empresa reutiliza exactamente `users`, `auth_sessions`, `businesses` y `memberships` vigentes. **No altera columnas, FK, cardinalidades, migraciones ni estados**; por eso no es correcto rehacer los diagramas 03A o 03B en este corte. El campo `businesses.founder_user_id` permanece histórico e inmutable por la nueva API; las atribuciones se comprueban por rol de la membresía vigente, no por fundador ni rol global.
+## 15. Trazabilidad a requisitos, API y pruebas
 
-El servicio de escritura bloquea con SQL las filas de identidad/sesión y el par empresa/membresía del mismo tenant. La matriz de permisos implementada en C.1 es una **política de aplicación**, no entidad persistente del modelo; en C.2 empieza a decidir realmente la autorización de una operación HTTP. El modelo conceptual 03A se revisará al cerrar el bloque funcional E2-1 y cuando se incorpore invitación/membresía completa.
+| RF / CU | Entidades centrales | API / recorrido REAL | Evidencia disponible |
+|---|---|---|---|
+| RF-01 / CU-01 y CU-02 | `User`, `AuthSession` | Registro, login, `me`, logout | T11 E2E de registro/sesión y suites backend. |
+| RF-02 / CU-03 y CU-12 | `Business`, `Membership`, `BusinessInvitation`, `BusinessCreationRequest` | Empresas, invitación, aceptación, equipo | Backend de invitaciones/equipo y navegación multiempresa. |
+| RF-03 / CU-04 | `Location`, `LocationAssignment` | Ubicaciones, sede principal, asignaciones | QA de permisos y visibilidad por sede T11. |
+| RF-04 / CU-05 | `CatalogItem` | Alta/edición/estado y paginación | E2E CRUD/persistencia. |
+| RF-05 / CU-06 y CU-07 | `Supplier`, `Purchase`, `PurchaseLine`, `PurchaseReceipt` | Proveedor/compra/recepción única | Flujo compra→recepción y recuperación. |
+| RF-06 / CU-08, CU-09 y **CU-11** | `StockBalance`, `StockMovement`, `InventoryOperation` | Saldos, ledger, traslado y ajuste | Tests PostgreSQL, Playwright REAL de inventario. |
+| RF-07 / CU-10 | `Sale`, `SaleLine`, `SalePayment`, `StockMovement` | POS, listado, comprobante y consulta por `request_id` | T11 venta mixta, replay y políticas de pago/precio. |
+| RF-08 a RF-10 | **Sin tablas homólogas del núcleo REAL** | DEMO/diferido | Aislamiento DEMO verificado; no cobro real. |
 
-**Validación C.2:** por ejecutar (el último control local verificado corresponde a 98 pruebas de C.1). Contrato y escenarios detallados en Documento 02 v0.5 y Documento 05 v0.2.
+**Fuente de rutas y pruebas:** [Documento 05 vigente](05_MATRIZ_API_Y_TRAZABILIDAD.md) y [Documento 02 vigente](02_CASOS_DE_USO.md). La reconciliación T12-B comprobó **46 combinaciones método+ruta** de **13 routers** montados bajo `/api/v1`; `GET /health` y `GET /ready` son técnicas aparte.
 
-## 15. Correspondencia C.3: `business_invitations` y UML 03A
+**Evidencia técnica preexistente T11, no ejecutada para este borrador:** [Full-stack GitHub Actions #43015544889](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43015544889): **892 Pytest, 38 Playwright REAL y 6 Playwright DEMO aprobadas**; [auditoría T11 de 26 criterios E27](../docs/E2-7_T11_E_AUDITORIA_FINAL_PREMERGE.md) y [acta manual de 39 pasos](../docs/E2-7_T11_D2_ACTA_PRUEBA_MANUAL_REAL.md). T11 cubre alcance funcional/smoke: no es una certificación general de accesibilidad, seguridad ni producción comercial.
 
-La tabla real `business_invitations` implementa la **entidad Invitación ya prevista conceptualmente** en 03A. Incluye identificador UUID, FK de empresa, FK del invitador, correo normalizado, rol propuesto, huella única SHA-256, estado, expiración y fechas. La migración `e213c3_invitations` depende de `e213b_business_creation`. Se incorporó un índice UNIQUE parcial `uq_business_invitations_pending_email` sobre `(business_id,email_normalizado)` cuando estado `PENDIENTE` y restricciones CHECK para rol, estado, correo y huella.
+## 16. Especificación que deberán cumplir los diagramas (T12-C2/C3/C4)
 
-**Relaciones:** cada invitación pertenece a una empresa, tiene un usuario invitador identificado y **no se vincula aún a un miembro invitado**. La invitación puede dirigirse a un correo sin cuenta global existente. El modelo de `Membership` y su unicidad `(business_id,user_id)` no cambió. Crear la invitación no concede permisos ni crea una segunda titularidad. En C.4 se concretará la aceptación con identidad autenticada y transición de estado.
+**03A — Identidad, empresas, sedes, catálogo y proveedor.** Mostrar las clases y relaciones de negocio vigentes. Representar `LocationAssignment` y las cardinalidades correctas; no declarar `Supplier`, SELL/STORE o invitaciones como TO-BE. Diferenciar `founder_user_id` histórico de `Membership` activo. Sesiones y solicitudes de creación son soporte técnico y pueden ir en un panel/guía, no necesariamente en la vista principal.
 
-**UML:** en el corte intermedio C.3 se conservó 03A. En C.5 se revisaron fuente PlantUML y SVG editorial: emisor obligatorio, aceptante opcional y destinatario por email, no por FK previa a Usuario. No se altera 03B (dominio comercial). El hash evita persistir el token en claro pero no sustituye TLS ni controles de entrega del secreto. El estado `PENDIENTE` con fecha pasada no implica vigencia: `expires_at` será obligatorio durante la aceptación.
+**03B — Compras, recepción, inventario y ventas.** Usar `Purchase`, `PurchaseLine`, `PurchaseReceipt`, `StockBalance`, `StockMovement`, `InventoryOperation`, `Sale`, `SaleLine` y `SalePayment` como mapeo verificable. Corregir los cuatro `kind` de inventario, relaciones de movimiento con línea física, FK por empresa, estados, snapshots y `request_id`/digest. Sustituir la clase persistente ficticia `SolicitudIdempotente` por explicación de identidad de comando distribuida. En una lámina general puede resumirse metadata técnica para mantener legibilidad; la guía contiene el detalle.
 
-## 16. C.4a — Correspondencia entidad Invitación y alta de Membresía
+**03C — Casos de uso.** Mantener CU-01 a CU-12, con CU-12a/12b como dos objetivos del CU-12. Usar actores externos como visitante, persona autenticada y funciones comerciales ejercidas por miembros con roles **persistidos** (`TITULAR_ADMINISTRATIVO`, `ADMINISTRADOR`, `ENCARGADO`, `TRABAJADOR`); un actor funcional «operador de inventario» puede permanecer si se aclara que **no es un quinto rol SQL**. Respetar sede/asignación; no dibujar API, base de datos o sistema como actor externo. Rotular REAL y diferido con precisión. CU-11 corresponde a **RF-06**, no a RF-07.
 
-La invitación conceptual de 03A incorpora dos atributos técnicos de auditoría en la entidad real: `accepted_by_user_id` (FK opcional a Usuario) y `accepted_at` (fecha de aceptación). La migración aditiva `e213c4_acceptance` añade ambas columnas, FK y restricción de coherencia con `status=ACEPTADA`. **Relaciones:** Invitación sigue perteneciendo a una Empresa, fue emitida por un Usuario y, si está aceptada, conserva la identidad global de quien la consumió; la cuenta destinataria se identifica por correo normalizado. Una Membresía conecta exactamente un Usuario con una Empresa. Ninguna invitación pendiente concede acceso; el estado ACEPTADA y la membresía ACTIVA se confirman conjuntamente.
+**Control SVG vs PlantUML:** las láminas editoriales actuales no son renderizados literales de las fuentes `.puml`; cada corrección exige comprobar equivalencia semántica, texto, relaciones y legibilidad. **Las imágenes anteriores todavía muestran rótulos TO-BE y no deben presentarse como diagramas vigentes aprobados.** Hasta completar C2/C3/C4, consultar las [fuentes y guías históricas](diagramas/README.md) con esta advertencia.
 
-Al aceptar se crea una nueva Membresía si no existía, o se reactiva la misma fila INACTIVA con rol operativo de la invitación. La PK/UNIQUE por empresa y usuario impide duplicados; se protege la titularidad administrativa histórica en una membresía inactiva. **No cambian las cardinalidades Empresa–Membresía ni el 03B.** 03A se actualizó en C.5; C.4a se validó con 171 pruebas locales y CI aprobado.
+## 17. Decisiones y capacidades diferidas
 
-## 17. C.4b — Administración de Membresía sin modificar UML estructural
+| Tema | Decisión de esta versión |
+|---|---|
+| Recepciones parciales/multidestino | No modelar como REAL; futura recepción por líneas y entregas múltiples requerirá rediseño de cardinalidades. |
+| Servicios con insumos | Un servicio no consume stock automáticamente; recetas, consumos y mínimos operativos diferidos. |
+| Fabricación/lotes/reservas | No se incluyen en el núcleo persistido actual. |
+| Devolución/anulación de ventas | No dibujar estados/endpoints inexistentes como operativos. |
+| Gastos, caja y cuentas financieras | RF-08/09 DEMO, sin conciliación bancaria en backend REAL. |
+| Cobro QR, Mercado Pago | RF-10 DEMO ilustrativa; OAuth, preferencia de cobro, webhook y acreditación futura. |
+| Estado de negocio suspendido | Existe en SQL, no se atribuye API pública no verificada. |
+| Seguridad de datos pendientes | IndexedDB sin cifrar es un riesgo residual; no almacenar tokens ni prometer recuperación entre dispositivos. |
+| UX, accesibilidad y despliegue | La documentación de modelos no constituye auditoría WCAG ni certificación de producción. |
 
-Los métodos de lista y edición de equipo **reutilizan** `Membership` y `User` con los atributos existentes: `business_id`, `user_id`, `role`, `status`, `job_title`, `created_at`, `updated_at`. La relación conceptual Usuario–Membresía–Empresa y su UNIQUE `(business_id,user_id)` permanece intacta, así como el índice parcial de único titular administrativo activo. La prohibición de cambiar una Membresía de rol TITULAR (activa o inactiva) es **invariante de aplicación adicional**, no una nueva tabla o asociación UML.
+## 18. Objetivos posteriores a T12 — hoja de evolución, NO alcance implementado
 
-`members.read` autoriza a titular/administrador a consultar la composición del equipo; `members.manage` autoriza solo al titular a actualizar **roles operativos** y estado de colaboradores. No se concede capacidad de convertir a otro usuario en titular ni de eliminar el único titular activo. El fundador es un hecho histórico, no la fuente de autorización. No se regeneran los SVG/PlantUML 03A y 03B en este corte, porque no cambia cardinalidad; el cierre E2-1 revisará el 03A contra las tablas reales y dejará toda modificación estructural posterior trazada.
+Este apartado registra necesidades confirmadas para el proyecto **después del cierre documental T12**. No modifica la evaluación del núcleo RF-01..07 ni transforma pantallas DEMO en API. Su función es evitar que la documentación técnica cierre el camino a la evolución posterior.
 
-**Evidencia:** CI 3/3 del código C.4b y **195/195 pruebas locales**; Alembic sin deriva y contenedores Docker saludables. Sin migración nueva: Alembic debe permanecer en `e213c4_acceptance`.
+### 18.1 Convergencia de experiencia REAL ↔ DEMO
 
-## 18. C.5 — Conciliación final de 03A con modelos PostgreSQL
+**Objetivo:** mejorar el uso y la presentación de las pantallas REAL tomando la DEMO ya trabajada como referencia funcional y visual: navegación, menú lateral, panel de empresa, catálogo, compras, inventario, ventas, composición de formularios, mensajes y comportamiento responsive. **No se plantea sustituir el backend autoritativo por `demoStore`**.
 
-- **Usuario–Membresía–Empresa:** unicidad `(business_id, user_id)` y permisos por membresía ACTIVA del tenant. El usuario no tiene rol global.
-- **Titular:** creación transaccional con titular inicial; el índice `uq_memberships_one_active_owner` impone **como máximo uno** activo, no garantiza por sí solo la existencia de un titular. C.4b impide modificar titulares actuales o históricos; transferencia diferida.
-- **Invitación:** cada registro tiene un invitador obligatorio `invited_by_user_id`, un destinatario **por `email_normalizado` (sin FK de usuario previo)** y un `accepted_by_user_id` opcional hasta aceptación. El CHECK exige aceptante y fecha `accepted_at` conjuntamente solo en ACEPTADA; token guardado exclusivamente como SHA-256.
-- **Aceptación:** confirma membresía única y consumo de invitación en una transacción; equipo C.4b reutiliza tablas sin migración nueva.
-- **Límite conceptual:** Ubicación, Artículo y Proveedor siguen TO-BE; sesiones, idempotencia y permisos son soporte técnico, no asociaciones comerciales adicionales. 03B y 03C permanecen intactos.
+Criterios para el futuro incremento:
 
-**Evidencia:** pruebas Windows 195/195, CI 3/3 del código `8cd1674`, Alembic `e213c4_acceptance (head)` sin cambios, API y PostgreSQL `healthy`. C.5 solo actualiza documentación y diagramas.
+1. Inventariar pantallas y flujos **DEMO** frente a su contraparte **REAL**, con una matriz *conservar / adaptar / diferir*.
+2. Mantener el aislamiento por empresa, los límites de roles y las validaciones efectivas del servidor mientras se reorganiza la interfaz.
+3. Separar mejoras puramente estéticas de funcionalidades DEMO que aún no cuentan con contratos REAL (caja, cuentas financieras, QR); estas últimas no deben presentarse como operativas.
+4. Unificar nombre visible de campos, precio unitario no editable para roles restringidos, cantidad, total por renglón, avisos de ubicación y manejo accesible de errores; validar escritorio, teclado y móvil.
+5. Exigir pruebas de regresión E2E REAL y DEMO después de cada adaptación, sin importar automáticamente datos locales al tenant.
 
-## 19. E2-2 A — Correspondencia Ubicación ↔ SQL (sin alterar 03A/03B/03C)
+**Estado:** PROPUESTO POST-T12; no constituye requisito de alterar el Documento 03 en esta entrega.
 
-**E2-2 A — persistencia de Ubicaciones (08/11/2026):** se publicó `Location`/`locations` con FK obligatoria `business_id → businesses.id` (`RESTRICT`), seis tipos, `can_sell`/`can_store` independientes, campos de referencia opcionales, `ACTIVA/PAUSADA`, `is_primary`, índice parcial que permite como máximo una principal activa por tenant y CHECK que impide principal pausada. Migración aditiva `20261108_0008_business_locations.py` (`e22a_locations`, descendiente de `e213c4_acceptance`). La empresa continúa iniciándose **sin ubicaciones**. **No hay todavía rutas HTTP de ubicaciones**, ni inventario/compra/venta conectado, ni permisos de ubicación; esos cambios pertenecen a E2-2 B/C y bloques siguientes. El CI del código del corte se verificó en `300fa6f` (GitHub Actions [run 42491816481](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42491816481)): resultado `success`. La validación local Windows del nuevo corte aún se requiere; los 195 tests anteriores correspondían a E2-1.
+### 18.2 Visualización del esquema de PostgreSQL (diagrama ER)
 
-**Cardinalidad:** `Business (1) — (0..*) Location`; `Location.business_id` no nulo, FK `RESTRICT`. `is_primary` con índice `uq_locations_one_active_primary` asegura a lo sumo una ubicación principal ACTIVA por empresa, no exige que exista una. `ck_locations_primary_active` exige principal solo ACTIVA; para pausar la principal, el futuro servicio actualizará `status` e `is_primary=false` atómicamente, sin restaurar el rol principal por reactivar. `can_sell`/`can_store` son booleanos independientes; ambos falsos se admiten para espacios administrativos. No hay entidad de asignación de miembros por ubicación aún, ni referencias físicas de inventario/ventas. **03A sigue expresando el dominio conceptual anterior y se conciliará al cerrar E2-2; 03B y 03C no se modifican.**
+**Objetivo:** producir una vista **entidad–relación del esquema físico real**, complementaria de los UML conceptuales 03A/03B. Un diagrama ER generado por introspección enseña tablas, PK, FK y cardinalidades de base; los diagramas UML explican además casos de uso, reglas y conceptos. **No son el mismo artefacto**.
+
+**Alternativa inicial recomendada:** DBeaver o una herramienta ERD equivalente conectada **en modo lectura** a una instancia PostgreSQL de prueba aislada, con Alembic migrado a `e26a_sales_foundation`; generar una vista general de las 19 tablas y vistas parciales por identidad, comercio e inventario. DBeaver permite diagramas de esquemas existentes y exportación en formatos gráficos (según la edición). [Documentación de diagramas de DBeaver](https://dbeaver.com/docs/dbeaver/ER-Diagrams/).
+
+**Otras opciones:** ERD de pgAdmin, DBML/dbdiagram.io a partir de un esquema revisado o una instancia alojada en Supabase **solo si se decide expresamente cambiar el entorno**. Supabase no es requisito de la entrega ni implica un traslado automático de PostgreSQL. La herramienta de visualización **no debe modificar, borrar, migrar ni publicar datos reales**, y cualquier exportación debe excluir credenciales y registros personales.
+
+**Criterio de aceptación posterior:** diagrama trazable al head real de Alembic, legible a nivel global y por módulos, sin relaciones inventadas ni cambios en `main`/base local por la tarea visual.
+
+### 18.3 Demostración navegable tipo web y móvil
+
+El sistema ya cuenta con React/TypeScript y Vite: la demostración inicial deberá usar la **aplicación REAL existente** en un navegador y un entorno aislado de FastAPI/PostgreSQL, con datos de prueba; no requiere compilar una aplicación móvil nativa. Mostrar vistas responsive mediante herramientas de desarrollo del navegador (viewport teléfono/tablet) y automatización Playwright. Si se desea una PWA o aplicación móvil empaquetada, será una decisión posterior y separada.
+
+La demo de exposición debe acreditar el recorrido registro/login → empresa/sedes → catálogo → compra/recepción → inventario → POS → comprobante, con límites de roles y respuestas de error. Cuando se presenten pantallas locales DEMO, identificarlas de forma explícita y no mezclarlas con datos REAL. No habilitar ventas físicas sobre la base persistente de pruebas manuales solo por realizar una presentación.
+
+### 18.4 Mercado Pago QR REAL por empresa
+
+**Objetivo futuro:** que cada empresa conecte **su propia cuenta autorizada de Mercado Pago**, sin compartir credenciales entre tenants. Distinguir **QR de artículo** (identificación, catálogo o acceso a la intención de compra) de **QR de cobro** (pago de una orden o transacción) y distinguir siempre la declaración de un pago de la confirmación efectiva del proveedor.
+
+El diseño futuro requiere decidir el producto QR vigente de Mercado Pago para terceros, su flujo de autorización de vendedor (p. ej., OAuth cuando corresponda), almacenamiento seguro de credenciales en backend, identificación de empresa/sede/orden, idempotencia de creación de órdenes, notificaciones webhook verificadas, consulta del estado autoritativo y conciliación. El modelo comercial actual `SalePayment` **no registra acreditaciones bancarias** y no debe sobrecargarse silenciosamente como si fueran pagos conciliados; probablemente requiera entidades y estados de **intención/orden de cobro**, evento de proveedor y conciliación, a diseñar y aprobar antes de migrar SQL.
+
+Posibles estados de diseño, **no implementados**, incluyen pendiente, confirmado/aprobado, rechazado/cancelado/expirado, sujeto a los estados exactos de la API elegida. Se deben probar expiraciones, webhooks duplicados/fuera de orden, fallos de red, desconexión de cuenta, cobros duplicados y recuperación tras F5, con credenciales y entornos de prueba. **No generar un QR ilustrativo y presentarlo como cobro real.** Referencias iniciales: [Mercado Pago — QR](https://www.mercadopago.com.ar/developers/es/docs/qr-code/overview), [OAuth](https://www.mercadopago.com.ar/developers/es/docs/security/oauth/introduction) y [notificaciones QR](https://www.mercadopago.com.ar/developers/es/docs/qr-code/notifications).
+
+### 18.5 Orden futuro sugerido y puerta de entrada
+
+1. **Cerrar T12** con documentación coherente, UML y CI final; no incorporar cambios comerciales nuevos al PR #46.
+2. **Convergencia visual/funcional REAL–DEMO** y recorrido demostrable web/móvil con pruebas; conservar backend y contratos, salvo decisiones separadas.
+3. **ERD de PostgreSQL** desde una base desechable para exposición y revisión estructural; puede realizarse en paralelo a la mejora visual.
+4. **Diseñar y luego integrar Mercado Pago QR REAL** como trabajo autónomo con análisis de seguridad, contratos, migraciones, pruebas y autorización del responsable.
+
+Este orden no implica que QR esté integrado cuando se termine T12, ni que el software pase a ser productivo por mostrarlo en el navegador.
+
+## 19. Fuentes de verdad, versionado y antecedentes
+
+1. **Esquema y modelos:** `backend/app/infrastructure/models/*.py` y `backend/alembic/versions/*.py`. Última revisión documentada del esquema: `e26a_sales_foundation`, sucesora de `e25a_inventory_ops`. No se editan ni reordenan migraciones históricas para hacer coincidir un dibujo.
+2. **Operaciones y autorizaciones:** `backend/app/modules/*/{service,permissions,router,schemas}.py` donde existan. El servicio es necesario para conocer invariantes no expresables como CHECK.
+3. **API / UI / pruebas:** [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md), [Documento 02](02_CASOS_DE_USO.md), `frontend/src/features/` y `frontend/e2e/real/`.
+4. **Historia del Documento 03:** la versión anterior (E2-3 E, 08/11/2026) permanece recuperable, sin modificaciones, en [Documento 03 antes de T12-C, commit `c6a77137`](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/blob/c6a77137cf82dcb9aad225645e84b1265b1da3ec/plataforma-pyme/entrega-programacion-2/03_MODELO_DE_DOMINIO_Y_UML.md). Sus apartados E2-1 a E2-3 describen cortes anteriores y **no prevalecen** sobre este estado AS-IMPLEMENTED.
+5. **Preservación documental:** por defecto, el enlace inmutable del punto anterior conserva íntegramente la fuente previa y esta versión resume sus hitos; si el responsable exige disponer del texto histórico completo dentro de la rama de entrega, archivar una copia separada y expresamente rotulada `HISTORICO` antes del reemplazo. No mezclar ambos estados bajo el mismo encabezado «vigente».
+6. **Puerta de publicación:** aprobación humana del Documento 03, actualización posterior 03A/03B/03C y control global de enlaces, gráficos y CI final. Este archivo es **candidato definitivo sujeto a aprobación**, no un documento ya fusionado.
+
+## 20. Lista de aceptación para T12-C1
+
+- [ ] El revisor aprueba que el estado vigente sea el de T11 y que lo histórico no se mezcle con él.
+- [ ] Se confirma la correspondencia de los **19 modelos ORM** con sus tablas SQL (incluyendo soporte técnico).
+- [ ] No queda una supuesta tabla única `SolicitudIdempotente` en el modelo REAL.
+- [ ] Se documentan roles, permisos por sede y la exigencia SELL+STORE en venta física.
+- [ ] Se distinguen los estados SQL de transiciones con endpoint REAL (en especial `CANCELADA` de compras).
+- [ ] Se representan las reglas de compra/recepción, traslado, ajustes y venta sin stock negativo.
+- [ ] Las invariantes SQL y las validaciones de servicio no se atribuyen a la capa equivocada.
+- [ ] RF-08 a RF-10 continúan DEMO/diferidas; pagos REAL siguen declarados.
+- [ ] Los diagramas actuales se señalan como pendientes de T12-C2/C3/C4 y no se anuncian como sincronizados.
+- [ ] El titular no se puede degradar ni revocar por una operación pública; no se inventa un conteo `COUNT(owners)>1`.
+- [ ] La sección de patrones distingue lo realmente codificado de etiquetas GoF no implementadas literalmente.
+- [ ] Los objetivos de convergencia DEMO, ERD, presentación web/móvil y QR Mercado Pago quedan rotulados **post-T12**.
+- [ ] Se preserva el texto histórico recuperable por commit y, si se solicita, mediante anexo archivado antes de publicar.
+
+**Dictamen de esta entrega:** **T12-C1 APROBADO Y PUBLICADO EN LA RAMA DOCUMENTAL**. Los diagramas 03A/03B/03C, sus SVG y la revisión T12-E siguen pendientes. Esta publicación solo modifica documentación; no se ejecutaron nuevas pruebas, migraciones u operaciones de base de datos y no implica autorización de merge a `main`.
 
 
-### E2-2 A.1 — Nuevo tipo CASA (08/11/2026)
+## 21. Registro de decisiones ante la revisión externa de T12-C1
 
-Se incorporó `CASA` como sexto tipo de ubicación, sin cambiar el contrato de capacidades independientes `can_sell` y `can_store`, ni los estados `ACTIVA`/`PAUSADA`. Una casa puede vender, almacenar, ambas actividades o ninguna (domicilio administrativo). **No se crean direcciones ni ubicaciones automáticamente** y no se presupone habilitación comercial. La migración nueva `e22b_location_casa`, descendiente de `e22a_locations`, amplía `ck_locations_kind` sin reescribir la migración anterior ni alterar filas existentes; impide su reversión mientras queden filas CASA. La DEMO React admite CASA en el selector y en validación/lectura del almacenamiento local, pero sigue separada de la API. CI del código `b50bf200`: **backend 217/217 pruebas, Alembic sin deriva y Docker 3/3** ([run backend](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492475011)); **frontend 2/2, incluido E2E de escritorio y móvil** ([run frontend](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42492474999)). Resultado Windows anterior de E2-2 A: 212 pruebas; **validación local de A.1 pendiente**. CRUD HTTP y permisos por ubicación siguen para E2-2 B/C. E2-1/03B/03C no se alteran.
+| Observación recibida | Tratamiento en esta versión |
+|---|---|
+| Índice parcial admite cero titulares | Se precisa que el servicio **prohíbe** la edición de miembros titulares y la autoedición; no se propone como implementado un `COUNT(owners)>1`. Transferencia de titularidad diferida. |
+| Bearer en memoria pierde sesión con F5 | Se declara limitación actual y se propone evaluar cookies seguras después de T12, **sin** introducir persistencia de token en el borrador. |
+| `CANCELADA` existe en SQL sin ruta de cancelación | Se rotula **capacidad de esquema con endpoint diferido**. |
+| Hacer visibles los patrones | Se documentan Repository, Service Layer, límite Unit of Work, snapshot e idempotencia; se evita atribuir implementaciones formales de State/Memento. |
+| Recuperación automática tras timeout | Se documenta la ruta real `by-request` y el manejo conservador; la automatización uniforme queda como evolución UX, no como hecho verificado. |
+| Código de error `STALE_BALANCE_VERSION` | No se inventa; se documenta el `409` y mensaje actualmente usado. Un error tipado queda como mejora API futura. |
+| Diagrama ER, demo web/móvil y Mercado Pago QR | Se incorpora hoja de evolución **post-T12**, con separación REAL/DEMO y credenciales por empresa. |
 
-## 20. E2-2 B — Aplicación real del modelo Location
-
-**Estado E2-2 B (08/11/2026):** se publicaron tres rutas reales para ubicaciones bajo `/api/v1/businesses/{business_id}/locations` (`POST` 201, `GET` lista 200, `GET /{location_id}` 200). La creación valida DTO sin campos protegidos, revalida identidad/sesión, bloquea la empresa y membresía del actor, exige tenant `ACTIVA` y rol `TITULAR_ADMINISTRATIVO` o `ADMINISTRADOR`, y confirma una única transacción. Una primera ubicación recibe `is_primary=true`; las posteriores no la reemplazan. Los miembros activos de cualquier rol reconocido pueden consultar las ubicaciones propias, incluso con empresa suspendida; una empresa suspendida no permite crear. Empresa ajena o membresía inactiva devuelve 404; rol sin permiso 403; sesión inválida 401; empresa suspendida al crear 409; cuerpo incorrecto 422. `CASA` y Google Maps HTTPS validado están incluidos. **No hay PATCH/DELETE, ni pausa/reactivación, cambio de principal, asignación individual de personal o consumo comercial de ubicaciones todavía.** La DEMO permanece independiente. Backend sin migración nueva respecto de `e22b_location_casa`.
-
-**Correspondencia de capas:** `LocationService` revalida actor/sesión/empresa/membresía; `LocationRepository` usa `Location.business_id` en todas las lecturas de la colección/detalle y evita que el UUID de otra empresa funcione como atajo de acceso. Bloquear la empresa serializa la decisión de qué ubicación nace como principal; el índice parcial SQL conserva la protección final. No hay alteración de columnas ni migración respecto del head `e22b_location_casa`. 03A conserva la relación conceptual Empresa–Ubicación; 03B/03C no se modifican en este corte.
-
-**Evidencia de CI:** commit funcional `bdd2c84653dafb976c8cd6b49d8c2d577cc345de`; [GitHub Actions E2-2 B](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42493624747) **3/3** (Python 3.12 y 3.14 con PostgreSQL, Docker), **277 pruebas aprobadas**, `e22b_location_casa (head)` y Alembic sin deriva. La salida local de Windows aportada previamente para **E2-2 A.1** fue **217 passed in 23.90s**. Posteriormente E2-2 B **fue validado en Windows con `277 passed in 31.22s`**, Alembic sin deriva y Docker saludable; E2-2 C agrega nuevas pruebas por verificar localmente. La revisión de E2-1 por el compañero sigue anclada en el commit entregado.
-
-## 21. E2-2 C — Transiciones operativas de Location
-
-**E2-2 C (08/11/2026) — operaciones reales sobre ubicaciones:** `PATCH /api/v1/businesses/{business_id}/locations/{location_id}` permite editar únicamente `name`, `kind`, `address`, `map_url`, `can_sell` y `can_store` (campos opcionales en el cuerpo, pero se rechazan `null`, cuerpos vacíos, valores inválidos y campos protegidos). `PATCH /{location_id}/status` recibe solo `ACTIVA` o `PAUSADA`: pausar revoca `is_primary` en la misma transacción y reactivar **no** recupera la titularidad de ubicación automáticamente. `PUT /{location_id}/primary` designa una ubicación `ACTIVA`, desmarca la anterior y marca la elegida dentro del **mismo tenant y de una transacción única**, serializada por bloqueo de empresa y protegida con el índice SQL `uq_locations_one_active_primary`. La operación sobre una ubicación ya principal no realiza cambios adicionales. Titular/administrador con membresía ACTIVA pueden administrar; encargado/trabajador solo consultan. Empresa `SUSPENDIDA` admite lectura pero no cambios; recurso ajeno/inexistente 404, rol sin permiso 403, sesión inválida 401, estado incompatible 409 y cuerpo inválido 422. No se habilitó DELETE ni se crearon tablas nuevas.
-
-**Invariantes SQL conservados:** FK `Location.business_id`, `ck_locations_primary_active` e índice parcial `uq_locations_one_active_primary` permanecen iguales. El repositorio hace `SELECT ... FOR UPDATE` dentro del tenant y, para el cambio de principal, desmarca y hace flush antes de promover; el servicio mantiene una única transacción de negocio y rollback frente a excepciones. La lógica no requiere nuevas tablas ni versiones Alembic. Las relaciones del UML 03A siguen siendo referencia conceptual y se armonizarán al cierre de E2-2; los diagramas 03B y 03C no se modifican.
-
-**Evidencia:** código funcional `7abafd8208965cd99b0116e02ffc5240d23f218f`, [GitHub Actions E2-2 C](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42495567321) **3/3 exitoso**, 325/325 pruebas en Python 3.12 y 3.14 con PostgreSQL, Alembic `e22b_location_casa (head)` sin deriva y Docker correcto. Windows había validado previamente E2-2 B (`277 passed in 31.22s`, `/ready` = `ready`/`ok`). **Los 325 tests todavía deben reproducirse en Windows para dar por cerrado localmente E2-2 C.** La integración React/API, la asignación individual de miembros a ubicaciones, control de existencias al quitar `can_store`, recepciones/ventas y gestión de cajas operativas son trabajos futuros; no se atribuyen a este incremento. E2-1 y UML 03B/03C no fueron modificados.
-
-## 22. E2-2 D — Modelo de asociación Membresía–Ubicación
-
-**E2-2 D (08/11/2026) — implementado, pendiente de validación local:** tabla `location_assignments` con clave triple `(business_id,location_id,user_id)`; FK compuesta `(business_id,user_id)` a `memberships` y `(business_id,location_id)` a `locations` para impedir cruces de empresa aun en SQL directo. Migración aditiva `e22d_assignments`, sin modificar migraciones de E2-1; UNIQUE auxiliar `(business_id,id)` en `locations`. Asignaciones `ACTIVA`/`REVOCADA` con `revoked_at` coherente (CHECK). GET de colección de asignaciones y PUT de estado de una membresía de la sede, solamente por titular/administrador de la empresa; activar asignaciones se limita a ENCARGADO/TRABAJADOR. Revocar preserva la fila y puede hacerse con sede pausada o miembro inactivo; activar exige ambos activos. Empresa suspendida permite consulta pero impide escrituras. La función pura `can_operate_at_location` requiere ubicación y empresa activas, membresía activa, capacidad `SELL`/`STORE` pertinente y, para encargados/trabajadores, asignación ACTIVA. **No se invoca aún desde inventario, compras o ventas**, porque esos endpoints son de bloques futuros. No cambia la membresía empresarial, no conecta React y no crea ubicaciones ficticias.
-
-**Cardinalidad:** Membresía 1 → 0..* Asignaciones; Ubicación 1 → 0..* Asignaciones. Una asociación no crea roles. Estado ACTIVA no da acceso efectivo si empresa, sede o miembro están inactivos.
-
-**Evidencia:** código final `3cd7bce71d951218e8c77da58d147e78fb0d426e` y [CI E2-2 D 3/3 aprobado](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42497556047), **371 pruebas** en Python 3.12/3.14, `e22d_assignments (head)` sin deriva y Docker correcto. El último resultado local aportado es E2-2 C, **325 passed in 36.91s**. **La migración y las 371 pruebas de E2-2 D aún requieren ejecución local Windows antes de cerrar el bloque y preparar la hoja de auditoría.**
-
-## 23. E2-3 A — Correspondencia de ArtículoCatalogo con PostgreSQL
-
-**Corte E2-3 A (08/11/2026), persistencia parcial de RF-04/CU-05:** clase SQLAlchemy `CatalogItem` y tabla `catalog_items` con `business_id` obligatorio, FK a Empresa (`RESTRICT`) y par UNIQUE `(business_id,id)` para futuras FK comerciales del mismo tenant. Cuatro clases de ficha según la DEMO: `ELABORADO`, `REVENTA`, `INSUMO` (bienes físicos) y `SERVICIO` (conceptualmente un servicio). Un servicio obliga unidad `SERVICIO`; un bien físico la prohíbe. Unidades físicas: `UNIDAD`, `GRAMO`, `KILOGRAMO`, `MILILITRO`, `LITRO`, `PAQUETE`, `CAJA`. Se almacenan nombre, clave normalizada `name_key`, categoría, SKU opcional, descripción, observaciones internas, estado `ACTIVO`/`INACTIVO`, condición `sellable`, `price_cents` y `reference_cost_cents` opcionales. Importes enteros BIGINT entre 0 y 99.999.999.999 centavos, sin Float. Dos restricciones independientes impiden repetir `name_key` y SKU no nulo **dentro de la empresa**, también en fichas inactivas; distintos tenants pueden reutilizarlos. En E2-3 B el servicio deberá calcular `name_key` de forma canónica (NFKC, espacios colapsados, equivalencia de mayúsculas) y normalizar SKU a mayúsculas **antes de insertar/editar**: SQL impone la unicidad de las claves guardadas y el formato de SKU, pero no deriva `name_key` automáticamente. Crear ficha no crea ubicación, stock, compras, ventas ni movimientos.
-
-**Decisión de diseño:** los cuatro valores de `kind` corresponden a las opciones de la DEMO. La distinción conceptual `BIEN`/`SERVICIO` es **derivable de `kind`**, no una segunda columna que pueda contradecir la clasificación. Los nombres en español del dominio se traducen a `name`, `name_key`, `unit`, `price_cents` y `reference_cost_cents` reales; `name_key` y SKU deben normalizarse por servicio antes de cualquier escritura. El UNIQUE `(business_id,id)` se añadió anticipando referencias compuestas seguras desde compras/ventas. El UML 03A todavía refleja catálogo conceptual; su revisión visual y conciliación completa corresponden al cierre de E2-3. 03B/03C no se modifican.
-
-**Evidencia:** corte de código/pruebas `79c2071f4e5192be95d75c78d5b1e9a75492a645`; [GitHub Actions E2-3 A](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42504783843) **3/3**, **407 pruebas aprobadas** en Python 3.12 y Python 3.14 con PostgreSQL 16, Docker liveness aprobado y `e23a_catalog (head)` sin cambios pendientes de Alembic. **Validación local de Windows pendiente para E2-3 A**; los 371 tests anteriores corresponden al cierre de E2-2. **No existen rutas HTTP de Catálogo** en este corte; CRUD, RBAC de catálogo, SKU/name normalization de entrada y protección de historias comerciales se implementarán en E2-3 B/C/D. No hay integración React API ni revisión independiente de E2-3 todavía. No se modificó E2-1 ni E2-2 ni frontend DEMO.
-
-## 24. E2-3 B — Normalización, identidad y permisos de fichas
-
-**E2-3 B — API real de Catálogo (RF-04/CU-05, 08/11/2026):** cuatro rutas bajo `/api/v1/businesses/{business_id}/catalog`: `POST /catalog` (201 alta), `GET /catalog` (200 lista con `offset>=0`, `1<=limit<=500`; por defecto `limit=100`), `GET /catalog/{item_id}` (200 detalle) y `PATCH /catalog/{item_id}` (200 edición parcial). Cada operación requiere Bearer válido, revalidación de sesión, usuario y membresía de la empresa solicitada. Titular/administrador pueden leer y escribir; encargado/trabajador con membresía activa solo leen; empresa SUSPENDIDA solo lectura; empresa o artículo ajenos/inexistentes 404. El servidor normaliza los nombres Unicode NFKC, colapsa espacios y genera `name_key` con `casefold`; normaliza SKU a mayúsculas ASCII y convierte SKU vacío en NULL. PostgreSQL conserva la unicidad por empresa de `name_key`/SKU incluso con fichas INACTIVO, y la API traduce esa colisión a 409. Datos inválidos o campos protegidos (id, tenant, status, clave derivada) reciben 422. Tipo SERVICIO exige unidad SERVICIO; ninguna otra clasificación puede usarla. Son válidos `price_cents` y `reference_cost_cents` NULL o enteros desde 0 hasta 99.999.999.999. El PATCH permite eliminar SKU/precio/costo con NULL, pero no editar estado. La ficha conserva su `status` y timestamps SQL. La creación no crea ubicación, saldo de stock, compras, ventas ni movimientos.
-
-**Modelo real:** `CatalogItem` conserva PK UUID global, FK empresarial y UNIQUE `(business_id,id)` para futuras referencias compuestas. `item_type` es calculado desde `kind`; `name_key` es columna materializada generada **por el servicio**, no columna calculada de PostgreSQL. La unicidad SQL final se aplica a los valores normalizados efectivamente persistidos. El campo `status` permanece fuera del PATCH genérico; su transición requiere endpoint explícito futuro. UML 03A continúa siendo el artefacto conceptual hasta cerrar E2-3; 03B/03C siguen sin cambios.
-
-**Límites explícitos:** E2-3 B no expone todavía `PATCH /status` ni borrado físico (se evaluarán en E2-3 C). No existe integración del frontend React con esta API; no se implementan recepción, ventas, snapshots comerciales ni protección de edición de unidad con historia, pues esos módulos son posteriores. Los tests nuevos comprueban permisos, rollback de duplicados, SKU/nombres normalizados, aislamiento multiempresa, lectura bajo suspensión y fallas 401/403/404/409/422. **Evidencia CI E2-3 B:** [GitHub Actions 42506409757](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42506409757) finalizó **3/3 trabajos exitosos**, **498 pruebas aprobadas** tanto en Python 3.12 (53.96s) como Python 3.14 (50.12s), PostgreSQL 16, `e23a_catalog (head)` y `alembic check` sin operaciones, imagen Docker/liveness aprobado. Código funcional validado: `35ff901855397c024cee50fa590c6c05a7f04cfe`. El CI anterior `42506050141` había detectado dos fallos de mapeo HTTP en PATCH con tipo/unidad incompatible; se corrigieron y ambos casos pasan ahora. **La validación Windows local de E2-3 B sigue pendiente**; el último resultado local confirmado es 407/407 de E2-3 A.
-
-## 24. E2-3 C — Ciclo de vida de CatalogItem
-
-**E2-3 C (08/11/2026):** se implementó `PATCH /api/v1/businesses/{business_id}/catalog/{item_id}/status` con cuerpo exclusivo `{"status":"ACTIVO"}` o `{"status":"INACTIVO"}`, validación estricta y rechazo de atributos extra (422). La ruta revalida sesión y membresía y exige titular/administrador de empresa ACTIVA para escribir (401/403/404/409 según caso). El artículo se bloquea dentro del tenant y se cambia de estado en una sola transacción. El cambio repetido es idempotente, sin alterar `updated_at`. El artículo inactivo continúa visible en GET/listados, con UUID, nombre y SKU reservados incluso ante altas duplicadas; no hay DELETE ni stock ficticio. El PATCH genérico mantiene `status` protegido. Esta funcionalidad tampoco modifica el campo independiente `sellable`.
-
-**Dependencias:** las futuras compras/ventas deben prohibir nuevos movimientos con fichas INACTIVO y conservar snapshots históricos reales. Todavía no hay operaciones comerciales ni frontend integrado; por lo tanto, tampoco existe una restricción real de cambio de unidad por transacciones anteriores. Ninguna migración nueva: se reutiliza CHECK `ACTIVO/INACTIVO` de `e23a_catalog`.
-
-**Pruebas:** [CI E2-3 C](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42507243181) **3/3 trabajos aprobados**, **527 passed** en Python 3.12 y 3.14 con PostgreSQL, `e23a_catalog (head)`, `alembic check` sin operaciones y Docker correcto; código `c2153ab9b65b265eb46b3081079e0f3f15002215`. E2-3 B: **498 passed en Windows (55.79s)**, Docker/API/DB saludables. **E2-3 C: Windows pendiente**. El commit documental posterior no equivale a otra ejecución CI.
-
-## 25. E2-3 D — Invariantes verificadas de CatalogItem
-
-**E2-3 D (08/11/2026):** se reforzó el Catálogo existente, **sin agregar tablas ni migraciones**. Los tests nuevos verifican equivalencias Unicode NFKC + `casefold` en nombres, SKU NFKC y mayúsculas ASCII, rechazo de controles y formas inválidas, desbordamiento de `name_key` por expansión Unicode, importes enteros estrictos (sin booleanos ni decimales), diferenciación entre `PATCH` con campo omitido y con `null` explícito, incompatibilidad SERVICIO/unidad física, campos protegidos de `/status`, colisiones de nombre/SKU incluso en fichas INACTIVO, independencia entre dos empresas del mismo usuario, recuperación de la sesión tras 409, y rollback provocado después de `flush` tanto en alta como en edición. Se añadió un límite máximo a `offset` de catálogo (`9_223_372_036_854_775_807`, BIGINT PostgreSQL): excederlo produce 422 antes de ejecutar SQL, manteniendo `limit` de 1 a 500 y `offset` no negativo. Los cinco endpoints de Catálogo conservan sus contratos y permisos empresariales; no se crea stock.
-
-**Alcance y límites:** las UNIQUE por `(business_id,name_key)` y `(business_id,sku)` y las transacciones/bloqueos existentes protegen ante colisiones; los tests ejercen duplicados y recuperaciones reales en PostgreSQL, **pero no son una prueba simultánea de carga/concurrencia con múltiples conexiones independientes**. Esta última queda registrada como verificación futura antes de producción. No hay aún compras, ventas, movimientos ni snapshots, por lo que no se puede comprobar una regla de cambio de unidad/estado con historial comercial real. `sellable` no sustituye `status`. No conectar frontend DEMO ni E2-1/E2-2 para este corte.
-
-**Evidencia CI del código D:** commit `bf4fd3fa809c9f4e6afdeb064a155acf233b1722`, [GitHub Actions run 42508771222](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42508771222): **3/3 trabajos aprobados**, **580 passed** en Python 3.12 y Python 3.14 con PostgreSQL, Docker build/liveness aprobado, `e23a_catalog (head)` y `alembic check` sin diferencias. **Validación local Windows E2-3 C:** 527 passed in 59.60s, contenedores saludables y `/ready` correcto. **Validación local Windows E2-3 D:** todavía pendiente. No confundir CI remoto con pruebas ejecutadas en la computadora del autor.
-
-## E2-3 E — CatalogItem y 03A: modelo, pruebas y límites reconciliados
-
-**E2-3 E (08/11/2026) — cierre funcional:** E2-3 A/B/C/D implementó `CatalogItem`/`catalog_items`, migración `e23a_catalog`, cinco operaciones REST (GET/POST colección, GET/PATCH detalle, PATCH estado), permisos por tenant y rol, nombre canónico y SKU únicos dentro de la empresa, cuatro clases ELABORADO/REVENTA/INSUMO/SERVICIO, tipo BIEN/SERVICIO derivado sin columna duplicada, importes opcionales en centavos y desactivación reversible sin borrar fichas ni liberar claves. No se crean existencias al registrar un artículo. **La fuente PlantUML 03A v0.7 y su SVG editorial ya se conciliaron** con el Catálogo real; `Proveedor` sigue TO-BE.
-
-**Windows D comprobado por el desarrollador:** 580 passed in 66.45 s, `e23a_catalog (head)`, `No new upgrade operations detected.`, API y PostgreSQL Docker `healthy`, `/ready` → `ready/ok`. **CI D:** [run 42508771222](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42508771222), SHA `bf4fd3fa809c9f4e6afdeb064a155acf233b1722`, 580 tests Python 3.12 y 3.14, 3/3 jobs aprobados. Cambios posteriores solo de UML/documentos no constituyen nueva ejecución CI.
-
-**Pendientes explícitos:** no se ejecutó una prueba de doble alta concurrente con dos conexiones independientes ni carga sostenida. Aún no hay compras, stock, ventas, snapshots comerciales ni uso de permisos SELL/STORE en operaciones reales. Las reglas sobre cambios de tipo/unidad con historial comercial deberán aplicarse cuando existan esos módulos. React continúa DEMO sin integración HTTP. E2-1/E2-2 y diagramas 03B/03C permanecen fuera del alcance. El bloque está preparado para **auditoría independiente** y no se declara auditado ni listo para producción.
+**Criterio de prioridad:** el código verificado al corte base tiene prevalencia sobre afirmaciones del análisis externo; las sugerencias de UX y arquitectura que requieren desarrollo no alteran la descripción AS-IMPLEMENTED.

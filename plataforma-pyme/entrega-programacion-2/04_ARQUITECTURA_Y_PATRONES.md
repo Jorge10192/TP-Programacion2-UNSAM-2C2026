@@ -1,5 +1,145 @@
 # 04 — Arquitectura del sistema y patrones de diseño
 
+**Versión vigente:** 2.1 — E2-7 / T12-D1 (11/11/2026).  
+**Proyecto:** Asistente PyME — plataforma generalista de gestión multiempresa y multirrubro (UNSAM Programación 2).  
+**Corte funcional inmutable:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` — PR #45 (T11).  
+**Rama documental:** `docs/e2-7-t12-cierre-academico`, PR #46, sin merge a `main`.  
+**Estado:** **AS-IMPLEMENTED del núcleo RF-01..RF-07**. RF-08..RF-10 permanecen exclusivamente DEMO o diferidos.  
+**Fuentes de verdad:** [Requerimientos 01](01_ANALISIS_DE_REQUERIMIENTOS.md), [casos de uso 02](02_CASOS_DE_USO.md), [dominio 03 v2.1](03_MODELO_DE_DOMINIO_Y_UML.md) y [API y trazabilidad 05](05_MATRIZ_API_Y_TRAZABILIDAD.md).
+
+> **Regla de precedencia obligatoria.** Las secciones **«Estado vigente T12-D1»** describen el sistema realmente implementado al corte T11; el bloque **«ARCHIVO HISTÓRICO E2-3»**, al final de este archivo, conserva íntegramente el diseño anterior (incluidos ejemplos TO-BE, versiones y cifras antiguas). Sus frases en presente («todavía no existe», «React sigue DEMO», «no hay venta REAL») **no** describen el estado vigente. La lectura de un ejemplo didáctico no prueba la existencia de esa clase/patrón en el código.
+
+## Estado vigente T12-D1 — vista ejecutiva (primero leer esta sección)
+
+**Arquitectura:** monolito modular FastAPI, Python, SQLAlchemy 2.x, Alembic y PostgreSQL 16; SPA React + TypeScript + Vite con dos modos **DEMO local** y **REAL con API**. Docker Compose permite ejecución de la API y base local; GitHub Actions prueba componentes con entornos de QA descartables. Cada empresa es un tenant lógico; WALOS es solo cliente de ejemplo.
+
+**Secuencia funcional integrada:** registro/login → empresa y membresía → ubicaciones/asignaciones → catálogo/proveedores → compra → recepción física → stock → venta POS con pagos declarados. El frontend REAL utiliza la API como autoridad: no reutiliza saldos ni identidades de `demoStore`. La DEMO conserva su propia información ilustrativa. **No** hay acreditación bancaria, cuentas financieras ni QR de cobro productivo en el alcance REAL.
+
+### A. Diagrama de componentes y límite de confianza
+
+```mermaid
+flowchart LR
+  subgraph Browser["Navegador · React/TypeScript/Vite"]
+    Real["Rutas /real/… · UI REAL"]
+    Demo["Rutas /b/{demoId}/… · DEMO local"]
+    HTTP["Cliente HTTP + sesión Bearer en memoria"]
+    Local["demoStore · localStorage / IndexedDB DEMO"]
+    Real --> HTTP
+    Demo --> Local
+  end
+  subgraph API["FastAPI · monolito modular"]
+    Router["/api/v1 · routers RF-01..07"]
+    Service["Service Layer · reglas/RBAC/tenant"]
+    Repo["Repositorios SQLAlchemy"]
+    Router --> Service --> Repo
+  end
+  subgraph Storage["Persistencia REAL"]
+    PG[("PostgreSQL 16 · tablas/migraciones Alembic")]
+  end
+  HTTP -->|"API autenticada"| Router
+  Repo --> PG
+```
+
+**Interpretación:** la flecha HTTP cruza el límite de confianza; la autorización efectiva reside siempre en FastAPI y no en el menú React. No hay flecha que copie automáticamente datos desde `demoStore` a PostgreSQL.
+
+### B. Componentes implementados y responsabilidades
+
+| Capa | Código y tecnología verificable | Responsabilidad / invariante |
+|---|---|---|
+| Presentación REAL | `frontend/src/App.tsx`, pantallas `features/*`, `src/api/httpClient.ts` | Navegación, formularios, manejo de errores y sesión, sin calcular autoridad de stock ni permisos |
+| Presentación DEMO | `frontend/src/data/demo/demoStore.ts` | Prototipo autónomo para UX; valores locales, sin seguridad de backend |
+| Enrutamiento REST | `backend/app/api/v1/router.py`, routers en `app/modules/*` | **46 operaciones** en **13 routers**, segregadas de `/health` y `/ready` |
+| Servicios de aplicación | Servicios en `backend/app/modules/*`, p. ej. `sales/service.py` y `purchases/receipt_service.py` | Orquestación, transacción, validación de rol, tenant, sede, cálculos e idempotencia |
+| Repositorios | P. ej. `catalog/repository.py`, `purchases/repository.py` | Consultas filtradas por empresa; no hacen `commit()` por su cuenta |
+| Persistencia | `backend/app/infrastructure/models/`, `infrastructure/db.py`, `alembic/versions` | FKs, UNIQUE, CHECK, índices, claves compuestas por empresa y operaciones transaccionales |
+| Infraestructura | `plataforma-pyme/compose.yaml`, `backend/Dockerfile`, `.github/workflows/plataforma-pyme-*.yml` | Desarrollo, CI y pruebas en bases descartables; no implica infraestructura bancaria ni producción pública |
+
+### C. Patrones que pueden defenderse con evidencia de código
+
+| Patrón / enfoque | Estado real T11 | Evidencia concreta | Qué **no** afirmar |
+|---|---|---|---|
+| **Repository** (arquitectónico) | **IMPLEMENTADO** | `CatalogRepository` y `PurchaseRepository` separan acceso SQL y reglas; métodos filtran `business_id` | No es automáticamente un patrón GoF ni garantiza abstracción completa en todos los módulos |
+| **Service Layer** | **IMPLEMENTADO** | Servicios de ventas, compras, recepciones y ajustes aplican autorización, cálculos y mutaciones | No debe confundirse con simples handlers REST |
+| **Unidad transaccional con SQLAlchemy** | **IMPLEMENTADA COMO PRÁCTICA** | `infrastructure/db.py` genera sesiones aisladas; servicios críticos confirman o revierten; recepción/venta atómicas | No atribuir una clase formal `UnitOfWork` universal si no existe |
+| **Observer** | **IMPLEMENTADO EN DEMO** | `demoStore.subscribe`, `getSnapshot` y `useSyncExternalStore` | No equivale a eventos distribuidos ni a persistencia multicliente |
+| **DTO / separación de capas** | **IMPLEMENTADO COMO TÉCNICA** | Esquemas FastAPI/Pydantic y modelos ORM distintos | No es automáticamente un GoF específico |
+| **Adapter / Factory / Decorator** | **CONCEPTOS HISTÓRICOS O FUTUROS**, no certificación GoF | Ejemplos en apéndice E2-3, no prueba suficiente de implementación completa T11 | No declararlos requisitos cumplidos por mostrar pseudocódigo |
+| **State / Command / Memento** | **NO ACREDITADOS COMO GOF** | Estados SQL, comandos de entrada y snapshots son conceptos del dominio | No convertir nombres o comportamientos equivalentes en patrones formales |
+
+**Patrón para la defensa académica:** priorizar **Repository** como separación observable y **Observer** como patrón GoF efectivamente rastreable en DEMO. Citar archivo, método y test verificable; no prometer test dedicado de Observer si no se ejecutó. Relevar la consigna oficial de patrones antes de afirmar cumplimiento de una rúbrica concreta.
+
+### D. Entidades, autorizaciones y transacciones
+
+- **Multi-tenancy:** identidad global `User`; `Membership` vincula usuario y empresa. Roles persistidos `TITULAR_ADMINISTRATIVO`, `ADMINISTRADOR`, `ENCARGADO`, `TRABAJADOR`. Verificación por empresa y membresía en servidor, no por UUID conocido en navegador.
+- **Sedes:** `can_sell` y `can_store` independientes. Miembros operativos necesitan asignación activa para actuar en una sede; traslados necesitan STORE en origen/destino. Ventas de bienes exigen capacidades SELL y STORE; servicios no debitan inventario.
+- **Compras:** `Purchase` conserva snapshots, pero dar de alta una compra no mueve stock. `PurchaseReceipt` hace una recepción completa como máximo por compra y solo bienes físicos actualizan saldo.
+- **Inventario:** `StockMovement` guarda hechos firmados; `StockBalance` contiene saldo materializado por tenant/sede/artículo con versión y no-negatividad. Traslado: debit/credit en un commit; ajuste: motivo y control de versión; stock inicial: solo administradores habilitados y sin historial del par.
+- **Ventas:** `Sale`, `SaleLine`, `SalePayment`; monto en centavos, cantidades en milésimas, redondeo HALF_UP por línea. Pagos declarados deben igualar total; `MERCADO_PAGO_DECLARADO` **no** equivale a pago procesado por Mercado Pago.
+- **Idempotencia:** `Idempotency-Key` para comandos requeridos y huella de solicitud; transacciones nuevas persisten `request_id` y `request_sha256` en agregados pertinentes. **No existe una tabla genérica `SolicitudIdempotente`**. Reintento igual recupera el comprobante; cuerpo o actor diferente implica conflicto.
+- **Concurrencia:** comprobar autorizaciones y stock dentro de la transacción; un timeout no justifica generar otra venta automáticamente. La lectura de saldos de una empresa no concede autorización de escritura en todas sus sedes.
+- **Seguridad del navegador:** Bearer REAL en memoria; F5 requiere ingresar nuevamente. Algunas intenciones comerciales pendientes se guardan en IndexedDB **sin cifrado**, sin credenciales. Esto es deuda de producto; no almacenar secretos de pago allí.
+
+### E. Rutas, demostración y pruebas reproducibles
+
+| Modo | Acceso típico | Fuente de datos | Advertencia |
+|---|---|---|---|
+| REAL | `/real/registro`, `/real/login`, `/real/empresas`, `/real/empresas/{businessId}/...` | FastAPI/PostgreSQL | No tratar como despliegue público productivo ni usar datos/ventas reales de clientes |
+| DEMO | `/inicio` y `/b/{demoId}/...` | Almacenamiento local del prototipo | No autenticación ni conciliación bancaria; QR ilustrativo no escaneable |
+
+**Comprobación segura y no destructiva** (desde la raíz del repositorio, PowerShell, si las dependencias ya están instaladas):
+
+```powershell
+cd plataforma-pyme/frontend
+npm.cmd run build
+npm.cmd run lint
+npm.cmd run test:api
+npm.cmd run test:auth
+npm.cmd run test:businesses
+npm.cmd run test:operations-real
+# Volver a la raíz antes de abrir otros proyectos:
+cd ../..
+```
+
+**Pruebas con PostgreSQL:** solo con base **descartable y expresamente identificada** según [guía del backend](../backend/README.md). No ejecutar migraciones, suites de escritura ni limpieza sobre la base personal sin confirmar primero el destino de conexión. Para T11, el [acta técnica](../docs/E2-7_T11_E_AUDITORIA_FINAL_PREMERGE.md) informa **892 Pytest + 38 Playwright REAL + 6 DEMO**, en el commit funcional `6aecd80e...`; **son evidencias históricas**, no un CI nuevo ejecutado al publicar T12.
+
+**Control de CI de la rama documental:** los workflows actuales están filtrados por cambios en frontend/backend/compose; un PR que solo cambia Markdown, PlantUML o SVG puede tener **cero ejecuciones**. El cierre de T12 exige validación estática registrada en su acta; no declarar verde un check inexistente. Crear un nuevo workflow YAML excedería el alcance documental de este PR y queda diferido.
+
+### F. Alcance evaluable, límites y continuación
+
+| Alcance | Estado en corte T11 | Lectura para defensa |
+|---|---|---|
+| RF-01..RF-07 / CU-01..CU-12 | **REAL en FastAPI/PostgreSQL, con pantallas React y evidencia T11** | Núcleo académico construido, sujeto a criterios completos de consigna |
+| RF-08 gastos y caja | **DEMO / DIFERIDO** | No backend real para caja ni conciliación de jornadas |
+| RF-09 cuentas financieras | **DEMO / DIFERIDO** | No entidad bancaria real ni saldos financieros autenticados |
+| RF-10 Mercado Pago QR | **DEMO / DIFERIDO** | No OAuth por empresa, no webhooks de cobro, no acreditación externa |
+| Recepción parcial, reservas, recetas/producción, TP3 adicional | **NO CERTIFICADOS COMO REAL** | Evaluar su correspondencia con la consigna original sin abrir compromisos ficticios |
+
+**Extensión de producto post-T12 (fuera de los compromisos RF-01..RF-07 de este cierre):** (1) aproximar REAL a la experiencia visual y navegación DEMO; (2) generar ERD desde PostgreSQL (DBeaver o equivalente, no requiere migración a Supabase); (3) demo web/móvil desplegable y pruebas de accesibilidad; (4) pagos QR de Mercado Pago por cada empresa con OAuth, webhooks verificados, idempotencia y reconciliación; (5) gastos/caja/cuentas, reservas y producción por fases de alcance controlado. **No interpretar este backlog como funcionalidades ya entregadas.**
+
+**Criterios del TP y TP3:** esta arquitectura no certifica por sí misma los requisitos oficiales de una consigna no contrastada íntegramente. Cualquier exigencia heredada de TP3 debe vincularse a RF/CU y evidencia real, o quedar marcada **pendiente de verificar contra consigna**. Ningún requisito se da por absorbido automáticamente.
+
+### G. Documentación relacionada y defensa
+
+- [Documento 01](01_ANALISIS_DE_REQUERIMIENTOS.md) — RF, alcance REAL y DEMO.
+- [Documento 02](02_CASOS_DE_USO.md) — 12 especificaciones, 13 óvalos UML por división de CU-12.
+- [Documento 03](03_MODELO_DE_DOMINIO_Y_UML.md) — clases, FKs, entidades, ledger, invariantes y evolución.
+- [Diagrama 03A](diagramas/03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg) — identidad, empresas y catálogo.
+- [Diagrama 03B](diagramas/03B_COMERCIO_INVENTARIO_REDISENADO.svg) — modelo comercial, ledger y stock.
+- [Diagrama 03B explicativo](diagramas/03B_FLUJO_COMERCIAL_EXPLICATIVO.svg) — lectura de negocio para exposición.
+- [Diagrama 03C](diagramas/03C_CASOS_DE_USO_REDISENADO.svg) — actores funcionales, permisos y CU.
+- [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) — 46 endpoints y correspondencia UI/test.
+- [Índice ADR vigente T12](../docs/ADR/README.md) — estado aplicado/parcial/diferido de ADR-001..008, con fuentes históricas preservadas.
+- [README de entrega](README.md) y [guía de diagramas](diagramas/README.md).
+- [Acta T12-B](../docs/E2-7_T12_B_CONCILIACION_RF_CU_API_UI_TEST.md) y [Plan T12-A](../docs/E2-7_T12_A_PLAN_Y_MATRIZ_DESFASES.md).
+
+---
+
+## ARCHIVO HISTÓRICO E2-3 — diseño original preservado (08/11/2026)
+
+> **Advertencia permanente:** todo el texto siguiente, incluidos títulos, secciones, propuestas de Factory/Decorator/Adapter y estados de implementación declarados en presente, describe el **corte E2-3**, NO el código implementado de T11. Las decisiones aquí concebidas no deben reinterpretarse como patrones verificados. Este material se preserva para auditoría de evolución.
+
+### Portada histórica original — 04 Arquitectura del sistema y patrones de diseño
+
 **Proyecto:** Asistente PyME — plataforma generalista de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
 **Versión:** 1.9 — E2-3 E, catálogo real y 580 pruebas Windows

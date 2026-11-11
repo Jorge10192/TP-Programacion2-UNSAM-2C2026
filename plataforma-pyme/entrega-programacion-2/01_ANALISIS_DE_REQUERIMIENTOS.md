@@ -1,5 +1,60 @@
 # 01 — Análisis de requerimientos
 
+**Versión de consulta vigente:** T12-B / E2-7, 11/11/2026 · **Corte funcional:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` (PR #45).  
+**Estado:** núcleo académico RF-01–RF-07 implementado en FastAPI/PostgreSQL y conectado a pantallas React REAL; RF-08–RF-10 continúan DEMO/diferidos.  
+**Objeto:** constatar el alcance **real** del MVP sin reescribir los antecedentes incrementales.
+
+> **Cómo leer el documento:** la sección «Estado vigente T12-B» es la referencia actual. Debajo de «Archivo histórico», las afirmaciones como «React sigue solo DEMO», «RF-07 pendiente» y «TO-BE» son **fotografías de cortes E2 previos**, no describen el `main` de noviembre 11 posterior a T11. Este criterio evita borrar el registro académico de decisiones. Para rutas, permisos y evidencia consultá el [Documento 05 vigente](05_MATRIZ_API_Y_TRAZABILIDAD.md).
+
+## Estado vigente T12-B — alcance funcional implementado
+
+Asistente PyME es una **plataforma generalista y multiempresa**. Cada usuario posee identidad propia; puede crear empresas o incorporarse por invitación, y las operaciones REAL validan membresía, tenant, rol y, para operaciones físicas, capacidad/asignación de sede. WALOS es solo un ejemplo de empresa, no una restricción del dominio.
+
+**Dos modos explícitamente aislados:** `/real/...` utiliza React conectado a FastAPI y PostgreSQL; `/inicio` y `/b/{demoId}/...` emplean datos locales DEMO. No se importan automáticamente datos DEMO a la API. La autenticación REAL usa Bearer opaco en memoria; después de F5 solicita ingresar nuevamente. Los pagos REAL son **declarados**: no constituyen acreditación del banco, Mercado Pago ni emisión fiscal.
+
+### RF vigentes, recorte y trazabilidad
+
+| RF | Descripción del requisito | Estado comprobable en el MVP | CU | Límite declarado |
+|---|---|---|---|---|
+| **RF-01** | Identidad, registro, login, perfil autenticado y logout | **REAL** — API y UI, sesiones protegidas, reautenticación tras F5 | CU-01, CU-02 | Sin verificación de correo ni refresh persistente |
+| **RF-02** | Crear/editar empresa, membresías, equipo, invitaciones | **REAL** — creación y perfil; invitación nominativa, aceptación por identidad y gestión del equipo | CU-03, CU-12 | Sin correo automático ni transferencia de titularidad |
+| **RF-03** | Ubicaciones y permisos por sede | **REAL** — alta/consulta/edición/pausa/reactivación/principal; asignaciones, filtro SELL/STORE | CU-04 | Visibilidad general de saldos del mismo tenant permitida; administrar una sede ajena no |
+| **RF-04** | Fichas de catálogo de bienes, insumos y servicios | **REAL** — alta/consulta/edición/estado; precios opcionales, SKU y paginación | CU-05 | Un servicio no genera movimiento de stock físico |
+| **RF-05** | Proveedores, compras, recepción | **REAL** — CRUD de proveedor, compra con bien/servicio/concepto libre y recepción completa idempotente | CU-06, CU-07 | Registrar compra no altera saldo; recepción parcial/multidestino diferida |
+| **RF-06** | Control de inventario y trazabilidad | **REAL** — saldos versionados, ledger, traslados con doble movimiento, stock inicial y ajustes con versión | CU-08, CU-09, CU-11 | Stock no negativo; operaciones STORE sujetas a autorización por sede |
+| **RF-07** | Venta de bienes y servicios con pagos declarados | **REAL** — POS, carrito, precio por rol, descuentos, pagos divididos, comprobantes y recuperación por solicitud | CU-10 | Activación de escritura POS por configuración explícita; sin conciliación de pagos externos |
+| **RF-08** | Gastos y apertura/cierre de caja | **DEMO** — comportamiento local; **sin** backend homólogo en este recorte | Fuera de los 12 CU nucleares | No representarlo como caja de dinero REAL |
+| **RF-09** | Cuentas financieras referenciales | **DEMO** — formulario y estado local | Fuera del núcleo | No hay cuenta bancaria ni movimientos financieros acreditados |
+| **RF-10** | Intenciones de cobro QR | **DEMO** — QR visual ilustrativo, no escaneable ni cobro certificado | Fuera del núcleo | Sin integración OAuth/webhook de Mercado Pago REAL |
+
+**Criterio de cumplimiento académico:** RF-01–RF-07 cuentan con casos de uso, contratos reales y verificaciones; afirmar siete RF no equivale a decir que *todas* las opciones de cada módulo E1 están implementadas en API. E27 se verificó en alcance funcional/smoke, no como certificación de producción ni auditoría WCAG completa.
+
+### Reglas de negocio transversales actualmente comprobadas
+
+1. **Aislamiento multi-tenant:** no se pueden leer ni modificar recursos de una empresa ajena con solo conocer sus UUID; la interfaz descarta respuestas tardías al cambiar de empresa. Un actor puede pertenecer a varias empresas sin mezclar datos.
+2. **Autorización efectiva en servidor:** esconder controles en React no habilita una acción. La venta de bienes exige capacidad SELL, recepción y traslados requieren STORE; los trabajadores solo pueden operar sedes donde conservan asignación activa. La corrección de filtrado en POS y traslados se comprobó manualmente y en Playwright.
+3. **Compra y recepción son eventos distintos:** `POST /purchases` conserva un snapshot comercial sin mover stock; `POST /purchases/{purchase_id}/receive` genera entradas solo para líneas físicas, de forma transaccional y única.
+4. **Integridad:** saldo por (empresa, sede, artículo) + versión y ledger firmado; traslado origen negativo/destino positivo atómicos, ajuste con `expected_version`, prohibición de saldos negativos y rollback ante conflictos.
+5. **Dinero en centavos y cantidades en milésimas:** totales por renglón con redondeo HALF_UP; pagos declarados suman exactamente el importe final. Una venta física descuenta stock, una de servicios no; no se afirma cobro bancario.
+6. **Idempotencia y recuperación:** comandos comerciales identificados por UUID `Idempotency-Key`; respuesta perdida no significa operación fallida; recuperación autenticada y replay manual sin duplicar operación.
+7. **REAL/DEMO aislados:** los flujos QR, jornadas y cuentas de DEMO no deben consultar ni generar escrituras comerciales REAL.
+
+### Evidencia y límites de aceptación
+
+- [T11 — auditoría final y 26 escenarios E27](../docs/E2-7_T11_E_AUDITORIA_FINAL_PREMERGE.md).
+- [T11-D2 — acta de 39 pasos de prueba manual](../docs/E2-7_T11_D2_ACTA_PRUEBA_MANUAL_REAL.md), incluidos dos defectos de permisos por sede corregidos y retesteados.
+- [GitHub Actions full-stack del commit final T11](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43015544889): **892 Pytest, 38 Playwright REAL y 6 DEMO aprobadas**. Frontend/backend independientes: tres CI verdes. Son resultados de ambiente **descartable**, no escrituras de test en datos productivos.
+- **Deuda no bloqueante documentada:** advertencias Pydantic sobre `Field(alias=...)` en pruebas concurrentes, payload comercial pendiente en IndexedDB sin cifrado, mejoras de accesibilidad/diseño, infraestructura bancaria real y funcionalidades RF-08–RF-10.
+
+**Fuentes técnicas principales:** `backend/app/api/v1/router.py`, `backend/app/modules/{auth,businesses,locations,catalog,suppliers,purchases,sales}/*router.py`, `frontend/src/features/auth/RealAuthApp.tsx`, pantallas `Real*Page.tsx` y `frontend/e2e/real/*.spec.ts`. El [Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) enumera métodos y rutas concretos.
+
+---
+
+## Archivo histórico incremental anterior a T12 (conservado)
+
+El contenido siguiente mantiene **íntegro** el análisis y los estados que fueron correctos en sus respectivas fechas (E2-1 a E2-3). Los rótulos antiguos «Estado actual», «pendiente» y «propuesta» **no tienen precedencia** sobre la sección de estado vigente anterior.
+
+
 **Proyecto:** Asistente PyME — Plataforma de gestión multiempresa y multirrubro  
 **Materia:** Programación 2  
 **Versión:** 1.7 — E2-3 E, catálogo real y 580 pruebas Windows

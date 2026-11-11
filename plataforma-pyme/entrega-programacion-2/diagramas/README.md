@@ -1,3 +1,21 @@
+# Diagramas UML — Índice vigente T12 (11/11/2026)
+
+**Estado funcional:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` — T11. **Estado documental:** fuentes PlantUML y SVG 03A, 03B, 03C actualizados para reflejar las operaciones REAL RF-01..RF-07; no representan gastos/caja/cuentas/QR productivos. Proveedor es REAL, al igual que compras, recepciones, saldos, traslados, ajustes y ventas POS.
+
+| Diagrama | Explicación | Gráfico para exposición | Fuente PlantUML |
+|---|---|---|---|
+| **03A — Identidad y catálogo** | [Guía 03A v2.1](03A_EXPLICACION_IDENTIDAD_EMPRESAS_CATALOGO.md) | [SVG 03A](03A_IDENTIDAD_EMPRESAS_CATALOGO_REDISENADO.svg) | [Fuente 03A](03A_CLASES_IDENTIDAD_Y_CATALOGO.puml) |
+| **03B — Comercio e inventario** | [Guía 03B v2.1](03B_EXPLICACION_COMPRAS_INVENTARIO_VENTAS.md) | [UML 03B](03B_COMERCIO_INVENTARIO_REDISENADO.svg) y [**segundo diagrama: flujo comercial explicado**](03B_FLUJO_COMERCIAL_EXPLICATIVO.svg) | [Fuente 03B](03B_CLASES_COMERCIO_E_INVENTARIO.puml) |
+| **03C — Casos de uso** | [Guía 03C v2.1](03C_EXPLICACION_CASOS_DE_USO.md) | [SVG 03C](03C_CASOS_DE_USO_REDISENADO.svg) | [Fuente 03C](03C_CASOS_DE_USO.puml) |
+
+**Convenciones:** el `.puml` representa las entidades/asociaciones o actores/CU conceptuales; el SVG es una **composición editorial para exposición**, no una compilación literal de PlantUML. Las notas, flechas y cajas resumidas en SVG **no sustituyen** atributos, constraints SQL ni validación de roles del servidor. Las guías explican las diferencias deliberadas. El [Documento 03](../03_MODELO_DE_DOMINIO_Y_UML.md) es el modelo rector y el [Documento 05](../05_MATRIZ_API_Y_TRAZABILIDAD.md) vincula las operaciones a rutas y pruebas.
+
+**Revisión técnica:** comprobada la existencia de los 3 PUML, las 4 láminas SVG y las 3 guías. La compilación mediante motor PlantUML es un control pendiente cuando se disponga del ejecutable, y no debe registrarse como PASS sin ejecutarlo. RF-08..RF-10 siguen DEMO/diferidos.
+
+---
+
+## Archivo histórico del índice E2-3 (conservado a efectos de trazabilidad)
+
 # Diagramas 03A, 03B y 03C — Asistente PyME
 
 **Estado E2-3 E (08/11/2026):** identidad, empresas, equipo e invitaciones (E2-1), ubicaciones y asignaciones (E2-2), y Catálogo (E2-3) disponen de backend real. **Proveedor continúa TO-BE**; compras, stock y ventas todavía no consumen el catálogo ni la política operacional de sedes. Las láminas son representaciones del modelo y no sustituyen la autorización de servidor.

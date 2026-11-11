@@ -1,61 +1,68 @@
 @startuml
-' 03C v0.3 - Asistente PyME / primera API, modelo conceptual TO-BE.
-' Esta fuente PlantUML conserva todas las relaciones UML del diseño vectorial.
-' PlantUML calcula su propio layout; para reproducir exactamente el diseño
-' editorial de la entrega, usar el SVG o generar_03c_svg.py incluido.
+' 03C v2.1 | E2-7 T12-C4 | AS-IMPLEMENTED T11
+' Corte: main c6a77137cf82dcb9aad225645e84b1265b1da3ec (PR #45).
+' Fuente UML editable. El SVG editorial adjunto es una visualizacion equivalente,
+' no un render literal de PlantUML ni un diagrama de tablas.
 !theme plain
-skinparam shadowing false
 skinparam backgroundColor #F4F7FB
+skinparam shadowing false
 skinparam packageStyle rectangle
-skinparam nodesep 55
-skinparam ranksep 48
-skinparam ArrowColor #71869A
-skinparam ActorBorderColor #45667F
-skinparam ActorFontColor #18324E
+skinparam linetype ortho
+skinparam nodesep 48
+skinparam ranksep 56
+skinparam defaultFontName "DejaVu Sans"
+skinparam ArrowColor #58758E
+skinparam ActorBorderColor #35526B
+skinparam ActorFontColor #17314D
 skinparam UsecaseBackgroundColor #FFFFFF
-skinparam UsecaseBorderColor #2678C9
+skinparam UsecaseBorderColor #2E729D
 skinparam UsecaseFontColor #18324E
-skinparam PackageBorderColor #BFD1E3
-skinparam PackageFontColor #18324E
+skinparam PackageBorderColor #B9CEE0
+skinparam PackageFontColor #17314D
+skinparam NoteBackgroundColor #EDF4FA
+skinparam NoteBorderColor #BFCFDD
 left to right direction
 
-title Asistente PyME | Casos de uso de la primera API (MVP TO-BE)
+title 03C | Asistente PyME - Casos de uso REAL / AS-IMPLEMENTED T11 (T12-C4)
 
-actor Visitante as V
-actor "Usuario autenticado" as U
-actor "Administrador de empresa" as ADM
-actor "Operador de compras" as COM
-actor "Operador de inventario" as INV
-actor "Operador de ventas" as VEN
-actor "Destinatario de invitación\n(autenticado)" as DEST
+' Actores: funciones externas, no clases ni roles persistidos adicionales.
+actor "Visitante" as V
+actor "Usuario global\nautenticado" as U
+actor "Administracion\nde empresa\n(titular/admin)" as ADM
+actor "Responsable de compras\n(titular/admin)" as COM
+actor "Operador de sede\ncon STORE" as STO
+actor "Miembro activo\n(consulta)" as LEC
+actor "Responsable de ajuste\n(titular/admin/encargado)" as AJU
+actor "Operador de ventas\n(SELL y STORE si es bien)" as VEN
+actor "Destinatario\nautenticado" as DES
 
-rectangle "Asistente PyME / API RESTful" as SYSTEM {
-  package "01 · Acceso" #F0F7FF {
+rectangle "Asistente PyME / API RESTful - nucleo REAL RF-01 a RF-07" as SISTEMA {
+  package "01 - Acceso y cuenta" #EAF3FD {
     usecase "CU-01\nRegistrarse" as UC01
-    usecase "CU-02\nIniciar sesión" as UC02
+    usecase "CU-02\nIniciar sesion" as UC02
   }
-  package "02 · Empresas" #F0F7FF {
+  package "02 - Empresa" #E8F7F3 {
     usecase "CU-03\nCrear empresa" as UC03
   }
-  package "03 · Administración" #F3EFFF {
-    usecase "CU-04\nRegistrar ubicación" as UC04
-    usecase "CU-05\nRegistrar artículo o servicio" as UC05
-    usecase "CU-12a\nInvitar colaborador" as UC12A
+  package "03 - Configuracion y catalogo" #EEF1FD {
+    usecase "CU-04\nRegistrar / gestionar ubicacion" as UC04
+    usecase "CU-05\nRegistrar / gestionar articulo o servicio" as UC05
   }
-  package "04 · Compras y recepción" #FFF5E9 {
+  package "04 - Compras y recepcion" #FFF4E4 {
     usecase "CU-06\nRegistrar compra" as UC06
-    usecase "CU-07\nConfirmar recepción" as UC07
+    usecase "CU-07\nConfirmar recepcion fisica" as UC07
   }
-  package "05 · Inventario" #EAF8F4 {
-    usecase "CU-08\nConsultar existencias" as UC08
+  package "05 - Inventario y trazabilidad" #EAF8F1 {
+    usecase "CU-08\nConsultar existencias y movimientos" as UC08
     usecase "CU-09\nTrasladar existencias" as UC09
-    usecase "CU-11\nRegistrar ajuste" as UC11
+    usecase "CU-11\nRegistrar ajuste o stock inicial" as UC11
   }
-  package "06 · Ventas" #F1EEFF {
-    usecase "CU-10\nRegistrar venta" as UC10
+  package "06 - Ventas / POS" #F3EBFC {
+    usecase "CU-10\nRegistrar venta y pagos declarados" as UC10
   }
-  package "07 · Invitaciones" #EDF5FF {
-    usecase "CU-12b\nAceptar invitación" as UC12B
+  package "07 - Invitaciones y equipo" #F6EAF5 {
+    usecase "CU-12a\nInvitar colaborador" as UC12A
+    usecase "CU-12b\nAceptar invitacion" as UC12B
   }
 }
 
@@ -66,23 +73,52 @@ ADM -- UC04
 ADM -- UC05
 ADM -- UC12A
 COM -- UC06
-COM -- UC07
-INV -- UC08
-INV -- UC09
-INV -- UC11
+STO -- UC07
+STO -- UC09
+LEC -- UC08
+AJU -- UC11
 VEN -- UC10
-DEST -- UC12B
+DES -- UC12B
+
+note bottom of UC06
+  La compra no cambia el stock.
+  La recepcion posterior es un objetivo separado.
+  CU-06: escritura solo titular/administrador.
+end note
+
+note bottom of UC07
+  Una recepcion completa a una sede STORE.
+  Encargado/trabajador requieren asignacion ACTIVA.
+end note
+
+note bottom of UC11
+  AJUSTE: titular, administrador o encargado.
+  STOCK_INICIAL: solo titular/administrador.
+  La sede debe estar ACTIVA y admitir STORE.
+end note
+
+note bottom of UC10
+  Bienes fisicos: sede con SELL + STORE.
+  Servicio sin sede: solo titular/administrador.
+  Encargado/trabajador sin descuento ni cambio de precio.
+  Pagos DECLARADOS, no acreditacion externa.
+end note
 
 note bottom of UC12B
-  Si el destinatario aún no tiene una cuenta,
-  ejecuta CU-01 y CU-02 antes de aceptar.
-  La invitación pendiente no concede permisos.
+  Requiere cuenta autenticada y correo coincidente.
+  Invitacion pendiente no concede membresia.
+  CU-12a y CU-12b son dos objetivos del CU-12.
 end note
 
-note bottom of SYSTEM
-  Los perfiles operativos NO son subtipos globales de Usuario.
-  Cada actor de negocio representa una función autorizada por la
-  Membresía activa en la empresa seleccionada.
-  CU-12a y CU-12b describen dos objetivos del CU-12.
-end note
+legend bottom
+  **Actores contextuales, no nuevos roles SQL:**
+  Membresia.role = TITULAR_ADMINISTRATIVO | ADMINISTRADOR | ENCARGADO | TRABAJADOR.
+  Empresa, membresia y sede deben cumplir sus permisos y estados.
+  Titular y administrador NO requieren asignacion para operar sedes;
+  encargado y trabajador SI requieren asignacion activa y capacidad apropiada.
+  CU-08 lee dentro del tenant, no habilita operar cualquier sede.
+  RF-08 gastos/caja, RF-09 cuentas y RF-10 QR Mercado Pago: DEMO/diferidos.
+  No se dibujan include/extend entre objetivos independientes;
+  las secuencias comerciales se explican fuera del UML.
+endlegend
 @enduml
