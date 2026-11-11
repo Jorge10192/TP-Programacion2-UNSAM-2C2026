@@ -1,3 +1,33 @@
+# Entrega académica — Asistente PyME (estado vigente T12, 11/11/2026)
+
+**Corte REAL del producto:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` (T11, PR #45).  
+**Trabajo documental:** rama `docs/e2-7-t12-cierre-academico`, [PR #46](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/46). **No implica merge a `main`**.  
+**Proyecto:** plataforma generalista multiempresa/multirrubro; WALOS es una empresa de ejemplo, no el producto.  
+**Estado funcional:** RF-01–RF-07 con FastAPI/PostgreSQL y pantallas React REAL; RF-08 (gastos/caja), RF-09 (cuentas financieras) y RF-10 (QR Mercado Pago) continúan DEMO o diferidos. Los pagos en POS REAL son **declarados**, no cobros bancarios verificados.
+
+## Índice actualizado de entrega
+
+| Documento | Qué representa hoy |
+|---|---|
+| [01 — Requerimientos](01_ANALISIS_DE_REQUERIMIENTOS.md) | RF-01 a RF-10; fronteras REAL/DEMO |
+| [02 — Casos de uso](02_CASOS_DE_USO.md) | CU-01 a CU-12, actores y resultados reales |
+| [03 — Modelo de dominio](03_MODELO_DE_DOMINIO_Y_UML.md) | UML y 19 modelos persistentes contrastados |
+| [03A — Identidad/empresas/catálogo](diagramas/03A_EXPLICACION_IDENTIDAD_EMPRESAS_CATALOGO.md) | PUML, SVG y explicación v2.1 |
+| [03B — Compras/inventario/ventas](diagramas/03B_EXPLICACION_COMPRAS_INVENTARIO_VENTAS.md) | PUML, SVG y segundo [flujo comercial para exposición](diagramas/03B_FLUJO_COMERCIAL_EXPLICATIVO.svg) |
+| [03C — Casos de uso](diagramas/03C_EXPLICACION_CASOS_DE_USO.md) | PUML, SVG y guía v2.1 |
+| [04 — Arquitectura y patrones](04_ARQUITECTURA_Y_PATRONES.md) | Sección vigente AS-IMPLEMENTED T11 y archivo histórico diferenciado |
+| [05 — API/trazabilidad](05_MATRIZ_API_Y_TRAZABILIDAD.md) | 46 operaciones FastAPI, 13 routers, RF/CU→UI→test |
+| [Plan T12-A](../docs/E2-7_T12_A_PLAN_Y_MATRIZ_DESFASES.md) / [Conciliación T12-B](../docs/E2-7_T12_B_CONCILIACION_RF_CU_API_UI_TEST.md) | Base y controles incrementales |
+| [Frontend](../frontend/README.md) / [Backend](../backend/README.md) / [Changelog](../CHANGELOG.md) | Ejecución y evolución documentadas |
+
+> **Cómo leer el histórico:** todos los apartados E2-1 a E2-5 preservados **debajo** documentan sus respectivos cortes. No prevalecen sobre este bloque ni sobre las secciones «Estado vigente» de 01, 02, 03, 04 y 05. Las pruebas históricas no equivalen a un CI ejecutado para el último commit documental. El cierre T12 no certifica despliegue de producción ni pagos externos.
+
+> **Requisitos heredados TP3:** no afirmar equivalencia exhaustiva sin cotejo de la consigna oficial. Deben mapearse uno a uno a RF/CU y evidencia o dejarse expresamente «pendientes de verificación». La evolución de producto de Etapa 2 no se convierte en compromiso académico por aparecer en el backlog.
+
+---
+
+## Registro histórico preservado (E2-1 a E2-5)
+
 > **ESTADO E2-5 A–C AL 09/11/2026 (prevalece sobre notas históricas siguientes):** PR [#21](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/21), [#22](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/22) y [#23](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/23) **ya fusionados** en `main` `748e69319d8d04900c009d5184168a264a9deeac`: inventario físico firmado, traslados atómicos, stock inicial y ajustes versionados. CI: 816/826/840 pruebas por corte Python 3.12/3.14 y Docker 3/3; Windows E2-5 C: **840 passed**; Alembic `e25a_inventory_ops` sin deriva. [**Cierre documental v1.2 publicado en main (PR #24)**](../docs/revisiones/E2-5_CIERRE/00_LEEME.md) y [evaluación crítica de observaciones externas](../docs/revisiones/E2-5_CIERRE/13_EVALUACION_OBSERVACIONES_IA.md). La [entrega para auditoría](../docs/revisiones/E2-5_ENTREGA_PARA_REVISION.md) y el [plan de pruebas](../docs/revisiones/E2-5_AUDITORIA/00_LEEME_Y_PRECONDICIONES.md) están **publicados en `main`** con SHA documental original `c66df2f8ddaa8179ca12e342bd3099348bc6b155`, pero **la auditoría independiente no fue ejecutada**. No implica certificación de producción; frontend React sigue DEMO y RF-07 ventas backend está pendiente. Las notas «propuesto»/«pendiente de merge» debajo son históricas.
 
 > **E2-5 C — Ajustes e inventario inicial (09/11/2026):** nuevo corte propuesto, complementa E2-5 B sobre el mismo head Alembic `e25a_inventory_ops`. API de `AJUSTE_ENTRADA`, `AJUSTE_SALIDA`, `STOCK_INICIAL` con motivo/versionado/roles y trazabilidad. [Contrato E2-5 C](../docs/E2-5_C_AJUSTES_Y_STOCK_INICIAL.md); CI/local se documentarán tras ejecutarse.

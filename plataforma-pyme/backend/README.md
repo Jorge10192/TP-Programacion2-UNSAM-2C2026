@@ -1,3 +1,23 @@
+# Asistente PyME — Backend FastAPI/PostgreSQL (estado vigente T11)
+
+**Corte funcional:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` (PR #45, 11/11/2026). API v1 REAL de **RF-01..RF-07**, con **46 operaciones en 13 routers** y PostgreSQL 16, SQLAlchemy, Alembic y Docker. Este bloque de estado vigente tiene precedencia sobre las notas históricas E2-0 a E2-5 conservadas debajo.
+
+## Capacidades y pruebas vigentes
+
+Registro y sesión Bearer opaca; empresas, membresías e invitaciones; ubicaciones, asignaciones y capacidades SELL/STORE; catálogo, proveedores, compras con snapshots y recepción física completa y única; inventario (saldos versionados, ledger firmado, traslados, stock inicial/ajustes); ventas POS mixtas, pagos **declarados**, comprobantes e idempotencia/recuperación. El QR Mercado Pago real, cuentas financieras y caja REAL **no están implementados**.
+
+**Referencia contractual:** [Documento 05 — API y trazabilidad](../entrega-programacion-2/05_MATRIZ_API_Y_TRAZABILIDAD.md). **Modelo:** [Documento 03](../entrega-programacion-2/03_MODELO_DE_DOMINIO_Y_UML.md). **Arquitectura actual:** [Documento 04](../entrega-programacion-2/04_ARQUITECTURA_Y_PATRONES.md).
+
+**Seguridad de las pruebas:** antes de ejecutar migraciones, Pytest con integración de BD o herramientas de Docker, comprobar nombre y host de la base. Los comandos de QA que escriben datos deben usarse exclusivamente contra **una base descartable creada para pruebas**. No ejecutar `docker compose down -v`, `dropdb`, reinicios destructivos ni pruebas de escritura sobre bases de trabajo del usuario. `/health` (liveness) y `/ready` (dependencia de BD) son endpoints técnicos fuera de `/api/v1`.
+
+**Evidencia histórica de T11:** [auditoría técnica E2-7/T11](../docs/E2-7_T11_E_AUDITORIA_FINAL_PREMERGE.md) con 892 pruebas Pytest, 38 escenarios Playwright REAL y 6 DEMO en su corte verificado. Los cambios T12 son documentales: **no se ejecutaron migraciones ni nuevos tests de integración para redactarlos**.
+
+**Límites y Etapa 2:** no declarar producción comercial, pagos reales ni integración bancaria. Evaluar infraestructura, sesiones reforzadas, informes, caja/cuentas y Mercado Pago QR por empresa después del cierre académico.
+
+---
+
+## Archivo histórico E2-0 a E2-5 (preservado)
+
 > **E2-5 C — Ajustes y stock inicial (09/11/2026):** API `POST/GET /api/v1/businesses/{business_id}/inventory/adjustments` con motivo, versión esperada, signos, idempotencia y controles de permisos por ubicación. El primer saldo (`STOCK_INICIAL`) requiere titular/admin y solo admite ubicación+artículo sin historial; ajustes exigen saldo anterior y no permiten negativos. **Sin migración nueva**: `e25a_inventory_ops`. [Contrato/QA](../docs/E2-5_C_AJUSTES_Y_STOCK_INICIAL.md). [CI E2-5 C #42616213215](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42616213215): **840 tests Python 3.12, 840 Python 3.14, 3/3 jobs aprobados, Alembic sin deriva**. Validación local Windows pendiente.
 
 > **E2-5 B — Transferencias (09/11/2026, CI aprobado; Windows pendiente):** nuevo POST/GET `/api/v1/businesses/{business_id}/inventory/transfers`, debit/credit en una transacción, permiso STORE en ambas ubicaciones, ledger firmado y replay idempotente. Sin nuevas migraciones: `e25a_inventory_ops`. [Detalle y QA](../docs/E2-5_B_TRASLADOS_ATOMICOS.md). La base E2-5 A validó 816 pruebas locales y CI; [CI E2-5 B #42602232103](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42602232103): **826 tests Python 3.12, 826 Python 3.14, Docker 3/3, Alembic sin deriva**. Validación Windows todavía pendiente.
