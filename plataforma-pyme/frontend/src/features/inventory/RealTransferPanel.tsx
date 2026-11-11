@@ -13,11 +13,11 @@ import type { PendingTransfer } from './transferPendingJournal.ts'
 
 type Props={
  token:string;actorId:string;business:RealBusiness
- locations:LocationRecord[];catalog:CatalogItem[]
+ locations:LocationRecord[];assignedLocationIds:string[];catalog:CatalogItem[]
  onUnauthorized:()=>void;onClose:()=>void;onConfirmed:()=>void;onReview:()=>void
 }
 function when(value:string):string{return new Intl.DateTimeFormat('es-AR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value))}
-export function RealTransferPanel({token,actorId,business,locations,catalog,onUnauthorized,onClose,onConfirmed,onReview}:Props){
+export function RealTransferPanel({token,actorId,business,locations,assignedLocationIds,catalog,onUnauthorized,onClose,onConfirmed,onReview}:Props){
  const gateway=useMemo(()=>createTransferGateway(token,business.id),[token,business.id])
  const balanceGateway=useMemo(()=>createInventoryGateway(token,business.id),[token,business.id])
  const scope=useMemo(()=>transferPendingScope(actorId,business.id),[actorId,business.id])
@@ -38,7 +38,9 @@ export function RealTransferPanel({token,actorId,business,locations,catalog,onUn
  const [balanceLoading,setBalanceLoading]=useState(false)
  const [balanceError,setBalanceError]=useState('')
  const [balanceRefresh,setBalanceRefresh]=useState(0)
- const eligibleSites=locations.filter(x=>x.status==='ACTIVA'&&x.can_store)
+ const isManager=['TITULAR_ADMINISTRATIVO','ADMINISTRADOR'].includes(business.membership.role)
+ const eligibleSites=locations.filter(x=>x.status==='ACTIVA'&&x.can_store
+  &&(isManager||assignedLocationIds.includes(x.id)))
  const eligibleItems=catalog.filter(x=>x.item_type==='BIEN'&&x.status==='ACTIVO')
  const selectedItem=eligibleItems.find(x=>x.id===article)
  const selectedSource=eligibleSites.find(x=>x.id===source)
@@ -207,7 +209,7 @@ export function RealTransferPanel({token,actorId,business,locations,catalog,onUn
   </div>}
 
   {!loading&&!confirmed&&!pending&&<div className="real-transfer-form">
-   {(!active||eligibleSites.length<2||eligibleItems.length===0)&&<p className="real-auth-note">Para trasladar necesitás una empresa activa, dos sedes activas con almacenamiento y al menos un artículo físico activo en el catálogo cargado.</p>}
+   {(!active||eligibleSites.length<2||eligibleItems.length===0)&&<p className="real-auth-note">Para trasladar necesitás una empresa activa, dos sedes activas con almacenamiento autorizadas para tu rol y al menos un artículo físico activo en el catálogo cargado.</p>}
    <div className="real-transfer-grid">
     <label>Artículo físico activo
      <select value={article} disabled={busy||!active} onChange={e=>changeArticle(e.target.value)}>
