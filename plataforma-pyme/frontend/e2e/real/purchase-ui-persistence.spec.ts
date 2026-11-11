@@ -89,9 +89,21 @@ test('T11-F: compra UI bien + concepto libre, F5, recepción y ledger real', asy
   await expect(page.getByText('Compra E2E física y concepto')).toBeVisible()
   await page.getByRole('button', { name: 'Pendiente · Confirmar recepción en ubicación' }).click()
   await page.getByLabel('Destino con almacenamiento activo').selectOption(site.id)
+  const postReceipt = page.waitForResponse(res =>
+    res.request().method() === 'POST' && new URL(res.url()).pathname ===
+      '/api/v1' + root + '/purchases/' + purchases[0].id + '/receive')
   page.once('dialog', dialog => void dialog.accept())
   await page.getByRole('button', { name: 'Confirmar recepción REAL' }).click()
+  const confirmed = await postReceipt
+  expect(confirmed.status(), await confirmed.text()).toBe(201)
+  const submitted = await confirmed.json()
+  expect(submitted.purchase_id).toBe(purchases[0].id)
+  expect(submitted.movements).toHaveLength(1)
+  expect(submitted.balances_after).toEqual([
+    { catalog_item_id: product.id, quantity_milli: 5000, version: 1 },
+  ])
   await expect(page.getByText('Recepción confirmada', { exact: false })).toBeVisible()
+  expect((await get(root + '/purchases'))[0].status).toBe('RECIBIDA')
 
   const receipt = await get(root + '/purchases/' + purchases[0].id + '/receipt')
   expect(receipt.movements).toHaveLength(1)
