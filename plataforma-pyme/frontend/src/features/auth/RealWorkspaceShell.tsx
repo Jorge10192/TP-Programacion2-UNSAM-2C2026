@@ -88,10 +88,6 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
     : businessId ? 'Empresa sin verificar' : 'Seleccioná una empresa'
   const title = realWorkspaceTitle(path)
   const sections = ['Administración', 'Operaciones'] as const
-  // The business-detail/list screen already has its own «Mis empresas» button.
-  // Avoid duplicate accessible names while the screens are incrementally redesigned.
-  const hasExistingCompaniesLink = path === '/real/empresas' || path === '/real/empresas/nueva'
-    || (businessId !== null && path === realWorkspaceHref(businessId))
 
   return <>
     {drawerOpen && <button type="button" className="rw-overlay" aria-label="Cerrar navegación" onClick={() => setDrawerOpen(false)} />}
@@ -104,9 +100,10 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
       </div>
       <nav className="rw-sidebar-scroll" aria-label="Secciones disponibles en REAL">
         <p className="rw-nav-caption">Mi espacio</p>
-        {!hasExistingCompaniesLink && <button type="button" className={'rw-nav-item' + (path === '/real/empresas' ? ' rw-active' : '')}
+        <button type="button" className={'rw-nav-item' + (path === '/real/empresas' ? ' rw-active' : '')}
+          aria-label="Ir al listado de empresas"
           aria-current={path === '/real/empresas' ? 'page' : undefined} onClick={() => navigate('/real/empresas')}>
-          <Icon name="home" size={18}/>Mis empresas</button>}
+          <Icon name="home" size={18}/>Mis empresas</button>
         <button type="button" className={'rw-nav-item' + (path === '/real/perfil' ? ' rw-active' : '')}
           aria-current={path === '/real/perfil' ? 'page' : undefined} onClick={() => navigate('/real/perfil')}>
           <Icon name="user" size={18}/>Mi perfil</button>
