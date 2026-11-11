@@ -37,6 +37,7 @@
 .rw-sidebar-footer { display: grid; gap: 10px; padding: 15px 17px 21px; border-top: 1px solid #ffffff1e; }
 .rw-mode { font-size: 11px; color: #b9d2ee; font-weight: 750; }
 .rw-demo-link { font-size: 11px; color: #d6e5ff; text-decoration: underline; }
+.rw-demo-topbar { color: #205cbb; font-weight: 750; white-space: nowrap; }
 .rw-topbar { margin-left: var(--pyme-ui-sidebar); min-height: 77px; background: #fff; border-bottom: 1px solid var(--pyme-ui-border); padding: 12px clamp(16px, 3vw, 42px); display: flex; gap: 16px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 60; flex-wrap: wrap; }
 .rw-topbar-left, .rw-topbar-actions { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .rw-title-block { display: grid; gap: 3px; }
