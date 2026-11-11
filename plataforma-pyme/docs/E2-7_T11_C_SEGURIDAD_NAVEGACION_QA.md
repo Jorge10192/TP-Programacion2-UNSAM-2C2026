@@ -31,3 +31,20 @@ Archivo: `frontend/e2e/real/security-navigation.spec.ts`. Commit funcional `19d7
 **Todavía pendiente para cerrar T11-C completo:** escenario UI de trabajador/encargado **miembro** sin asignación SELL/STORE, más respuestas HTTP 401/403/404/409/422 y fallas de red durante navegación/operaciones en pantallas adicionales. Las pruebas backend existentes para esos permisos no sustituyen el recorrido React correspondiente.
 
 **Dictamen:** subbloque **T11-C navegación multiempresa y sesión APROBADO**; T11-C global permanece parcial. PR #45 DRAFT; no habilitar POST REAL en bases persistentes ni fusionar `main` sin aprobación.
+
+## Ampliación T11-C — permisos SELL/STORE y matriz de errores, validada
+
+**Nuevos escenarios:** `frontend/e2e/real/security-errors.spec.ts`.
+
+| Grupo | Evidencia automatizada | Resultado |
+|---|---|---|
+| `401` React | GET con 401 provoca vuelta a login, desaparecen datos privados, sin POST | PASS |
+| `403`, `404`, `503` React | Rechazo/caída temporal de consulta de proveedores se informa sin éxito falso; actualización recupera GET sin escritura | PASS (3 tests) |
+| `409` y `422` | Proveedor duplicado desde formulario produce rechazo sin segundo registro; compra inválida desde API recibe 422 sin crear compra | PASS |
+| TRABAJADOR miembro sin sede asignada | Invitación/aceptación real, intento de venta directo por API: 403; intento recepción en STORE por API: 403; intento venta desde POS React: aviso de permisos y solicitud conservada, sin comprobante ni movimiento | PASS |
+
+**CI funcional final del bloque:** commit `aeab8b9df2497aca515683238a4a91689ce75233`, [run full-stack #42990216776](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/42990216776): **SUCCESS**, `892 passed` Pytest (**4 warnings**), `28 passed` Playwright REAL y `6 passed` Playwright DEMO. La prueba específica de trabajador `T11-C: trabajador miembro sin sede no puede recibir ni registrar venta desde POS` aprobó en 1,5 s. El commit de frontend independiente debe verificarse en sus propias checks; no inferirlo de esta suite.
+
+**Incidente de QA resuelto:** la primera prueba de trabajador en commit `bc0231c` falló por selector Playwright demasiado amplio (`getByRole('alert')` halló tanto la advertencia de solicitud pendiente como la de venta denegada). No fue un fallo de permisos: la API había devuelto 403 y ambos avisos estaban presentes. Commit `aeab8b9` distingue los dos mensajes, elimina una compra de fixture innecesaria y la CI confirmó el escenario.
+
+**Dictamen T11-C:** **APROBADO** para continuar T11-D (responsive, teclado y DEMO/REAL). Los controles reproducibles aquí son los descritos: no se afirma una cobertura exhaustiva de todas las rutas 403/409/422 o todos los módulos. Quedan **4 advertencias no bloqueantes de Pytest** por investigar en T11-E; se preserva el requisito de PR #45 DRAFT, sin merge ni POST en entornos persistentes.
