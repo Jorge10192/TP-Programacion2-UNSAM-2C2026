@@ -1,6 +1,6 @@
 # E2-7 · T12-A — Plan de cierre académico y matriz inicial de desfases
 
-**Estado de seguimiento:** T12-A inventario completado; **T12-B conciliación documental terminada** (ver [acta T12-B](E2-7_T12_B_CONCILIACION_RF_CU_API_UI_TEST.md)). T12-C/D/E pendientes; **no certificación académica final**.  
+**Estado de seguimiento:** T12-A inventario completado; **T12-B conciliación documental terminada** (ver [acta T12-B](E2-7_T12_B_CONCILIACION_RF_CU_API_UI_TEST.md)). **T12-C y T12-D documentados y publicados; T12-E en acta de cierre**. La aprobación de merge, la prueba del motor PlantUML y la comparación completa con TP3 quedan registradas como verificaciones/reservas separadas.  
 **Fecha:** 11/11/2026. **Rama exclusiva:** `docs/e2-7-t12-cierre-academico`.  
 **Base estable:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec`, merge [PR #45](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/pull/45) E2-7/T11.  
 **Alcance permitido:** `plataforma-pyme/`. Sin cambios en datos, migraciones, funcionalidades ni ramas históricas. Se usará un PR documental DRAFT para revisión.
@@ -94,4 +94,4 @@ No declarar REAL una funcionalidad solo porque exista una pantalla DEMO. Separar
 
 ## 7. Próxima acción
 
-**T12-C (siguiente etapa):** confrontar Documento 03 y los diagramas editables 03A/03B/03C contra clases SQLAlchemy, esquema/migraciones Alembic, contratos REAL y CU vigentes en T12-B; conservar fuentes históricas y contrastar las láminas SVG editoriales antes de modificarlas. No cambiar backend ni `main` en el PR documental.
+**Cierre del plan:** T12-C1..C4 y T12-D1/D2 se publicaron sobre la rama documental. Consultar el [acta de auditoría T12-E](E2-7_T12_E_ACTA_CIERRE_Y_BACKLOG_ETAPA_2.md) para el dictamen, manifiesto de fuentes, comprobación de enlaces, límites de QA y backlog postacadémico. Ninguna instrucción de este plan constituye permiso de merge a `main`.

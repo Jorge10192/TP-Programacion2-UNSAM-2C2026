@@ -6,10 +6,10 @@
 **Fecha de corte:** 11 de noviembre de 2026  
 **Referencia funcional:** `main` `c6a77137cf82dcb9aad225645e84b1265b1da3ec` (merge PR #45, T11).  
 **Referencia documental:** PR #46, rama `docs/e2-7-t12-cierre-academico`, **documento actualizado en T12-C1**.  
-**Estado documental:** **T12-C1 aprobado y publicado en rama documental; PR #46 permanece DRAFT**. Redacción AS-IMPLEMENTED contrastada con modelos ORM, reglas de servicio y migraciones del corte técnico; los diagramas 03A/03B/03C, sus SVG y guías permanecen pendientes de conciliación en T12-C2/C3/C4 y revisión transversal T12-E. **No se ejecutaron pruebas nuevas para elaborar este documento.**
+**Estado documental:** **T12-C1 aprobado y publicado en rama documental; PR #46 permanece DRAFT**. Redacción AS-IMPLEMENTED contrastada con modelos ORM, reglas de servicio y migraciones del corte técnico; los diagramas 03A/03B/03C, sus SVG y guías fueron conciliados y publicados durante T12-C2/C3/C4; la revisión transversal se documenta en el acta T12-E. **No se ejecutaron pruebas nuevas para elaborar este documento.**
 **Decisión de publicación:** aprobada expresamente la sustitución del Documento 03 en la rama documental el 11/11/2026. Esta aprobación no autoriza merge a `main` ni modificaciones del código o la base de datos.
 
-> **Convención de lectura.** Este texto describe el núcleo **REAL** ya implementado al corte indicado. Los aspectos **DEMO**, **DIFERIDOS** y **PROPUESTOS POST-T12** se indican expresamente. No confundir un modelo de dominio conceptual con una reproducción exhaustiva de todas las columnas del esquema SQL; la [matriz de trazabilidad del Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) y el código son la fuente de verdad de la API. Los diagramas gráficos publicados previamente siguen pendientes de actualización en T12-C2/C3/C4.
+> **Convención de lectura.** Este texto describe el núcleo **REAL** ya implementado al corte indicado. Los aspectos **DEMO**, **DIFERIDOS** y **PROPUESTOS POST-T12** se indican expresamente. No confundir un modelo de dominio conceptual con una reproducción exhaustiva de todas las columnas del esquema SQL; la [matriz de trazabilidad del Documento 05](05_MATRIZ_API_Y_TRAZABILIDAD.md) y el código son la fuente de verdad de la API. Los diagramas 03A/03B/03C están ahora actualizados y enlazados en el [índice de diagramas](diagramas/README.md); la compilación con el motor PlantUML permanece como control externo pendiente.
 
 ---
 

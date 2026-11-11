@@ -4,7 +4,7 @@
 **Estado:** API v1 REAL + React REAL para RF-01 a RF-07, con **46 endpoints declarados en routers** y 12 CU nucleares. RF-08–RF-10 permanecen exclusivamente DEMO/diferidos.  
 **Alcance de la revisión:** reconciliar rutas concretas de FastAPI, pantalla React y test reproducible. Esta matriz **no autoriza** funcionalidades bancarias ni cambios de permisos.
 
-> **Precedencia documental:** el inventario y las matrices siguientes son la vista **AS-IMPLEMENTED** de T12-B. El material original completo figura después como **histórico E2-1 a E2-5**, incluso cuando usa expresiones «vigente», «RF-07 diferido», «React sigue DEMO» o tablas TO-BE: esas afirmaciones fueron correctas *a su fecha de corte*, pero ya no representan el estado de `main` post-T11. El mapa de clases SQL se revisará específicamente en T12-C; no convertir todavía esta matriz en certificación UML.
+> **Precedencia documental:** el inventario y las matrices siguientes son la vista **AS-IMPLEMENTED** de T12-B. El material original completo figura después como **histórico E2-1 a E2-5**, incluso cuando usa expresiones «vigente», «RF-07 diferido», «React sigue DEMO» o tablas TO-BE: esas afirmaciones fueron correctas *a su fecha de corte*, pero ya no representan el estado de `main` post-T11. El mapa conceptual ↔ ORM ↔ SQL fue conciliado en el [Documento 03 v2.1](03_MODELO_DE_DOMINIO_Y_UML.md) y en 03A/03B/03C (T12-C). El alcance de esta matriz sigue siendo RF/CU→API→UI→test; no equivale a ejecución adicional de pruebas.
 
 ## 1. Tabla maestra vigente — RF → CU → API → UI → prueba
 
