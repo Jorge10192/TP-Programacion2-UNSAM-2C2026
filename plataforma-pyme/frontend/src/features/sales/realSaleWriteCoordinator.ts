@@ -86,18 +86,12 @@ export function createSaleWriteCoordinator(
       const saved = await journal.reserve(pending)
       if (saved.key !== key || saved.actorId !== actorId ||
         saved.businessId !== businessId) throw new SalePendingConflict()
-      let raw: unknown
-      try {
-        raw = await api.request<unknown>(
-          '/businesses/' + businessId + '/sales',
-          { method: 'POST', body: saved.body, idempotencyKey: saved.key, signal },
-        )
-      } catch (error) {
-        // If HTTP status is known (401/403/404/409/422), preserve it verbatim.
-        // On network/timeout/abort, outcomeUnknown=true from shared API client.
-        // In either case NEVER erase the pending command or generate a new key.
-        throw error
-      }
+      // HTTP errors and uncertain transport outcomes propagate unchanged.
+      // The reserved attempt is never erased or assigned a new key here.
+      const raw: unknown = await api.request<unknown>(
+        '/businesses/' + businessId + '/sales',
+        { method: 'POST', body: saved.body, idempotencyKey: saved.key, signal },
+      )
       let receipt: SaleReceipt
       try {
         receipt = parseSaleReceipt(raw, businessId)
