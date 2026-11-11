@@ -75,3 +75,15 @@ def test_register_rejects_same_normalized_email(
     duplicate = client.post("/api/v1/auth/register", json=_payload(email.upper()))
     assert duplicate.status_code == 409
     assert duplicate.json() == {"detail": "No se pudo completar el registro"}
+
+def test_register_rejects_nul_in_display_name_without_writing(isolated_client) -> None:
+    client, conn = isolated_client
+    email = f"nul-{uuid4().hex}@example.com"
+    response = client.post(
+        "/api/v1/auth/register",
+        json={**_payload(email), "display_name": "Nombre\x00invalido"},
+    )
+    assert response.status_code == 422, response.text
+    assert conn.execute(
+        select(User.id).where(User.email_normalizado == email)
+    ).first() is None
