@@ -98,6 +98,15 @@ for (const viewport of [
       .toBeDisabled()
     expect(writes).toBe(0)
 
+    if (viewport.width === 390) {
+      // A working button alone doesn't establish responsive layout.
+      // Detect page-level horizontal overflow without forbidding intentional
+      // scroll inside individual data tables.
+      const documentWidth = await page.evaluate(() =>
+        Math.max(document.documentElement.scrollWidth, document.body.scrollWidth))
+      expect(documentWidth, 'El documento REAL no debe desbordar el viewport móvil').toBeLessThanOrEqual(viewport.width + 1)
+    }
+
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Iniciar sesión real' })).toBeVisible()
     await loginByKeyboard(page, f)
