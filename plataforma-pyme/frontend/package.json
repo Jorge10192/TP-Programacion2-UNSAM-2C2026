@@ -33,7 +33,8 @@
     "test:sales-real-command": "node --test tests/sales-real-command.test.mjs",
     "test:sales-real-pending": "node --test tests/sales-real-pending.test.mjs",
     "test:sales-real-write": "node --test tests/sales-real-write-coordinator.test.mjs",
-    "test:sales-real-pos": "node --test tests/sales-real-pos-draft.test.mjs"
+    "test:sales-real-pos": "node --test tests/sales-real-pos-draft.test.mjs",
+    "test:sales-real-checkout": "node --test tests/sales-real-checkout.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
