@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ttl dsc" width="1672" height="950" viewBox="0 0 1672 950">
+<title id="ttl">03B — Compras, recepción, inventario y ventas · Vista explicativa complementaria</title>
+<desc id="dsc">Diagrama comercial simplificado complementario al UML 03B. La compra no agrega stock; la recepción suma stock, la venta de bienes lo descuenta y las operaciones manuales registran movimientos que actualizan saldo.</desc>
+<defs>
+ <linearGradient id="pBlue" x2="1" y2="1"><stop stop-color="#E3F2FD"/><stop offset="1" stop-color="#D0E9FC"/></linearGradient>
+ <linearGradient id="pCyan" x2="1" y2="1"><stop stop-color="#E5F4FF"/><stop offset="1" stop-color="#D5ECF9"/></linearGradient>
+ <linearGradient id="pGreen" x2="1" y2="1"><stop stop-color="#EBFAEF"/><stop offset="1" stop-color="#D7F4E1"/></linearGradient>
+ <linearGradient id="pPurple" x2="1" y2="1"><stop stop-color="#F1E7FF"/><stop offset="1" stop-color="#E9D9FC"/></linearGradient>
+ <linearGradient id="headBlue" x2="1" y2="0"><stop stop-color="#0773BA"/><stop offset="1" stop-color="#0C5790"/></linearGradient>
+ <linearGradient id="headGreen" x2="1" y2="0"><stop stop-color="#10996A"/><stop offset="1" stop-color="#006B41"/></linearGradient>
+ <linearGradient id="headPurple" x2="1" y2="0"><stop stop-color="#8859C4"/><stop offset="1" stop-color="#5A2BA0"/></linearGradient>
+ <marker id="a07538B" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L9 5 L1 9Z" fill="#07538B"/></marker>
+ <marker id="a07804B" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L9 5 L1 9Z" fill="#07804B"/></marker>
+ <marker id="a5A2493" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L9 5 L1 9Z" fill="#5A2493"/></marker>
+ </defs>
+<rect x="0" y="0" width="1672" height="950" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1" />
+<text x="40" y="45" fill="#102543" font-family="DejaVu Sans,Arial,sans-serif" font-size="37" font-weight="700" text-anchor="start" >03B — Compras, recepción, inventario y ventas</text>
+<text x="42" y="78" fill="#49657B" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="400" text-anchor="start" >Asistente PyME · Modelo de negocio AS-IMPLEMENTED · lectura simplificada para exposición</text>
+<rect x="8" y="111" width="390" height="641" rx="18" fill="url(#pBlue)" stroke="none" stroke-width="1" />
+<rect x="410" y="111" width="226" height="641" rx="18" fill="url(#pCyan)" stroke="none" stroke-width="1" />
+<rect x="646" y="111" width="644" height="641" rx="18" fill="url(#pGreen)" stroke="none" stroke-width="1" />
+<rect x="1302" y="111" width="363" height="641" rx="18" fill="url(#pPurple)" stroke="none" stroke-width="1" />
+<text x="28" y="153" fill="#084C8A" font-family="DejaVu Sans,Arial,sans-serif" font-size="26" font-weight="700" text-anchor="start" >▣  Compras</text>
+<text x="203" y="153" fill="#1D334A" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" text-anchor="start" >(abastecimiento)</text>
+<text x="427" y="153" fill="#084C8A" font-family="DejaVu Sans,Arial,sans-serif" font-size="26" font-weight="700" text-anchor="start" >⬡  Recepción</text>
+<text x="667" y="153" fill="#075F39" font-family="DejaVu Sans,Arial,sans-serif" font-size="26" font-weight="700" text-anchor="start" >▤  Inventario</text>
+<rect x="930" y="128" width="330" height="43" rx="12" fill="#EFFCF4" stroke="#99D9B2" stroke-width="2" />
+<text x="1095" y="155" fill="#184B32" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" >Historial + saldo actual</text>
+<text x="1320" y="153" fill="#492080" font-family="DejaVu Sans,Arial,sans-serif" font-size="26" font-weight="700" text-anchor="start" >◇  Ventas</text>
+<text x="1473" y="153" fill="#33224C" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" >(comercialización)</text>
+<rect x="20" y="214" width="152" height="132" rx="14" fill="white" stroke="url(#headBlue)" stroke-width="2.2" />
+<rect x="20" y="214" width="152" height="38" rx="12" fill="url(#headBlue)" stroke="none" stroke-width="1" />
+<rect x="20" y="240" width="152" height="12" rx="0" fill="url(#headBlue)" stroke="none" stroke-width="1" />
+<text x="34" y="240" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" text-anchor="start" >Proveedor</text>
+<text x="36" y="277" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >nombre</text>
+<text x="36" y="299" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >estado</text>
+<text x="36" y="321" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >contacto</text>
+<rect x="204" y="196" width="184" height="328" rx="14" fill="white" stroke="url(#headBlue)" stroke-width="2.2" />
+<rect x="204" y="196" width="184" height="38" rx="12" fill="url(#headBlue)" stroke="none" stroke-width="1" />
+<rect x="204" y="222" width="184" height="12" rx="0" fill="url(#headBlue)" stroke="none" stroke-width="1" />
+<text x="218" y="222" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" text-anchor="start" >Compra</text>
+<text x="220" y="259" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >estado</text>
+<text x="220" y="281" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >fechaCompra</text>
+<text x="220" y="303" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >totalCentavos</text>
+<text x="220" y="325" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >requestId</text>
+<rect x="215" y="353" width="162" height="154" rx="10" fill="#F9FCFF" stroke="#3F7FAF" stroke-width="1.6" />
+<rect x="215" y="353" width="162" height="34" rx="10" fill="url(#headBlue)" stroke="none" stroke-width="1" />
+<text x="230" y="376" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" text-anchor="start" >DetalleCompra</text>
+<text x="226" y="408" fill="#152A40" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >numeroLinea</text>
+<text x="226" y="430" fill="#152A40" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >tipoSnapshot</text>
+<text x="226" y="452" fill="#152A40" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >cantidadMilli</text>
+<text x="226" y="474" fill="#152A40" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >costoUnitario</text>
+<text x="226" y="496" fill="#152A40" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >totalCentavos</text>
+<rect x="452" y="216" width="170" height="165" rx="14" fill="white" stroke="url(#headBlue)" stroke-width="2.2" />
+<rect x="452" y="216" width="170" height="38" rx="12" fill="url(#headBlue)" stroke="none" stroke-width="1" />
+<rect x="452" y="242" width="170" height="12" rx="0" fill="url(#headBlue)" stroke="none" stroke-width="1" />
+<text x="466" y="242" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" text-anchor="start" >Recepción</text>
+<text x="468" y="279" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >ubicacionId</text>
+<text x="468" y="301" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >requestId</text>
+<text x="468" y="323" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >balancesAfter</text>
+<rect x="428" y="418" width="200" height="114" rx="16" fill="#F1F8FE" stroke="#FFFFFF" stroke-width="2" />
+<text x="443" y="447" fill="#14466C" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" text-anchor="start" >ⓘ Recepción física</text>
+<text x="444" y="477" fill="#23405E" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" text-anchor="start" >completa: crea</text>
+<text x="444" y="497" fill="#23405E" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" text-anchor="start" >movimientos y</text>
+<text x="444" y="517" fill="#23405E" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" text-anchor="start" >aumenta saldos.</text>
+<rect x="28" y="667" width="350" height="66" rx="14" fill="#F2F8FF" stroke="#FFFFFF" stroke-width="2" />
+<text x="44" y="696" fill="#203C60" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" >ⓘ Registrar compra = compromiso comercial;</text>
+<text x="44" y="717" fill="#203C60" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" >todavía no suma stock.</text>
+<rect x="744" y="279" width="247" height="256" rx="14" fill="white" stroke="url(#headGreen)" stroke-width="2.2" />
+<rect x="744" y="279" width="247" height="38" rx="12" fill="url(#headGreen)" stroke="none" stroke-width="1" />
+<rect x="744" y="305" width="247" height="12" rx="0" fill="url(#headGreen)" stroke="none" stroke-width="1" />
+<text x="758" y="305" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" text-anchor="start" >MovimientoInventario</text>
+<text x="760" y="342" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >tipoEvento</text>
+<text x="760" y="364" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >deltaMilli (con signo)</text>
+<text x="760" y="386" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >recepcionId?</text>
+<text x="760" y="408" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >detalleCompraId?</text>
+<text x="760" y="430" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >operacionInventarioId?</text>
+<text x="760" y="452" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >ventaId?</text>
+<text x="760" y="474" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >detalleVentaId?</text>
+<rect x="752" y="321" width="231" height="32" rx="8" fill="#D8F4E2" stroke="none" stroke-width="1" />
+<text x="868" y="343" fill="#114631" font-family="DejaVu Sans,Arial,sans-serif" font-size="14.5" font-weight="700" text-anchor="middle" >Ledger / historial</text>
+<rect x="1086" y="284" width="229" height="240" rx="14" fill="white" stroke="url(#headGreen)" stroke-width="2.2" />
+<rect x="1086" y="284" width="229" height="38" rx="12" fill="url(#headGreen)" stroke="none" stroke-width="1" />
+<rect x="1086" y="310" width="229" height="12" rx="0" fill="url(#headGreen)" stroke="none" stroke-width="1" />
+<text x="1100" y="310" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" text-anchor="start" >SaldoInventario</text>
+<text x="1102" y="347" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >empresaId</text>
+<text x="1102" y="369" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >ubicacionId</text>
+<text x="1102" y="391" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >articuloId</text>
+<text x="1102" y="413" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >cantidadMilli</text>
+<text x="1102" y="435" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >versión</text>
+<rect x="1096" y="324" width="209" height="49" rx="8" fill="#D8F4E2" stroke="none" stroke-width="1" />
+<text x="1200" y="342" fill="#184C33" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" >Stock actual por sede,</text>
+<text x="1200" y="361" fill="#184C33" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" >empresa y artículo</text>
+<rect x="480" y="555" width="279" height="184" rx="14" fill="white" stroke="url(#headGreen)" stroke-width="2.2" />
+<rect x="480" y="555" width="279" height="38" rx="12" fill="url(#headGreen)" stroke="none" stroke-width="1" />
+<rect x="480" y="581" width="279" height="12" rx="0" fill="url(#headGreen)" stroke="none" stroke-width="1" />
+<text x="494" y="581" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" text-anchor="start" >OperacionInventario</text>
+<text x="496" y="618" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >tipo de operación</text>
+<text x="496" y="640" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >articuloId / cantidadMilli</text>
+<text x="496" y="662" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >ubicacionOrigenId?</text>
+<text x="496" y="684" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >ubicacionDestinoId?</text>
+<text x="496" y="706" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >motivo</text>
+<rect x="974" y="592" width="275" height="96" rx="15" fill="#E6FAE8" stroke="#19884F" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="991" y="626" fill="#173F2B" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" >✓ Ausencia de fila = saldo 0.</text>
+<text x="991" y="655" fill="#173F2B" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" >✓ Cantidad nunca negativa.</text>
+<rect x="1360" y="189" width="290" height="462" rx="14" fill="white" stroke="url(#headPurple)" stroke-width="2.2" />
+<rect x="1360" y="189" width="290" height="38" rx="12" fill="url(#headPurple)" stroke="none" stroke-width="1" />
+<rect x="1360" y="215" width="290" height="12" rx="0" fill="url(#headPurple)" stroke="none" stroke-width="1" />
+<text x="1374" y="215" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" text-anchor="start" >Venta</text>
+<text x="1376" y="252" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >estado: CONFIRMADA</text>
+<text x="1376" y="274" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >ubicacionId</text>
+<text x="1376" y="296" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >subtotalCentavos</text>
+<text x="1376" y="318" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >descuentoCentavos</text>
+<text x="1376" y="340" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >totalCentavos</text>
+<text x="1376" y="362" fill="#172A43" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" text-anchor="start" >requestId</text>
+<rect x="1373" y="359" width="264" height="141" rx="12" fill="#FDFBFF" stroke="#7A49AD" stroke-width="2" />
+<rect x="1373" y="359" width="264" height="34" rx="9" fill="url(#headPurple)" stroke="none" stroke-width="1" />
+<text x="1389" y="383" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" text-anchor="start" >DetalleVenta</text>
+<text x="1389" y="414" fill="#24193C" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >numeroLinea / tipoSnapshot</text>
+<text x="1389" y="436" fill="#24193C" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >cantidadMilli</text>
+<text x="1389" y="458" fill="#24193C" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >precioUnitarioCentavos</text>
+<text x="1389" y="480" fill="#24193C" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >totalCentavos</text>
+<rect x="1373" y="512" width="264" height="126" rx="12" fill="#FDFBFF" stroke="#7A49AD" stroke-width="2" />
+<rect x="1373" y="512" width="264" height="34" rx="9" fill="url(#headPurple)" stroke="none" stroke-width="1" />
+<text x="1389" y="536" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" text-anchor="start" >AplicacionPago</text>
+<text x="1389" y="565" fill="#24193C" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >numeroSecuencia / medio</text>
+<text x="1389" y="586" fill="#24193C" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >importeCentavos</text>
+<text x="1389" y="607" fill="#24193C" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >referencia</text>
+<rect x="1323" y="669" width="324" height="67" rx="14" fill="#FAF4FF" stroke="#FFFFFF" stroke-width="2" />
+<text x="1340" y="697" fill="#3B2966" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" >ⓘ Bienes: descuentan stock.</text>
+<text x="1340" y="719" fill="#3B2966" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" >Servicios: sin salida física.</text>
+<path d="M172 281 H204" fill="none" stroke="#07538B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a07538B)"/>
+<path d="M388 315 H452" fill="none" stroke="#07538B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a07538B)"/>
+<rect x="394" y="274" width="56" height="31" rx="8" fill="#07538B" stroke="none" stroke-width="1" />
+<text x="422" y="295" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" text-anchor="middle" >0..1</text>
+<path d="M622 315 H744" fill="none" stroke="#07804B" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a07804B)"/>
+<rect x="632" y="267" width="124" height="35" rx="8" fill="#07804B" stroke="none" stroke-width="1" />
+<text x="694" y="290" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" >+ ingresa stock</text>
+<path d="M1360 207 H874 Q867 207 867 219 V279" fill="none" stroke="#5A2493" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a5A2493)"/>
+<rect x="982" y="184" width="175" height="60" rx="13" fill="#F9F3FF" stroke="#5A2493" stroke-width="2" />
+<text x="1069" y="209" fill="#461875" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" >- descuenta stock</text>
+<text x="1069" y="230" fill="#461875" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" text-anchor="start" >(solo bienes físicos)</text>
+<path d="M991 412 H1086" fill="none" stroke="#07804B" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a07804B)"/>
+<rect x="999" y="366" width="83" height="47" rx="7" fill="#07804B" stroke="none" stroke-width="1" />
+<text x="1040" y="385" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" >actualiza</text>
+<text x="1040" y="402" fill="white" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" >saldo</text>
+<path d="M759 671 H871 Q871 671 871 650 V535" fill="none" stroke="#07804B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a07804B)"/>
+<rect x="802" y="568" width="148" height="68" rx="12" fill="#F9FFFB" stroke="#07804B" stroke-width="2" />
+<text x="876" y="589" fill="#0A6537" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="start" >traslado / ajuste</text>
+<text x="876" y="611" fill="#0A6537" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="700" text-anchor="start" >/ stock inicial</text>
+<rect x="15" y="779" width="463" height="146" rx="13" fill="#E9F8F2" stroke="#B3DFC9" stroke-width="2" />
+<rect x="493" y="779" width="631" height="146" rx="13" fill="#EAF5FD" stroke="#BEDAEC" stroke-width="2" />
+<rect x="1139" y="779" width="512" height="146" rx="13" fill="#F7F2FE" stroke="#D5C2EB" stroke-width="2" />
+<text x="36" y="813" fill="#0A6F4C" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" text-anchor="start" >⚙ Tipos de operación</text>
+<text x="36" y="837" fill="#225F4C" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >(inventory_operations.kind)</text>
+<rect x="34" y="856" width="140" height="33" rx="12" fill="#CDECE0" stroke="#175E4F" stroke-width="1" />
+<text x="104" y="878" fill="#175E4F" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >TRASLADO</text>
+<rect x="188" y="856" width="187" height="33" rx="12" fill="#CDECE0" stroke="#175E4F" stroke-width="1" />
+<text x="281.5" y="878" fill="#175E4F" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >AJUSTE_ENTRADA</text>
+<rect x="34" y="895" width="174" height="33" rx="12" fill="#CDECE0" stroke="#175E4F" stroke-width="1" />
+<text x="121" y="917" fill="#175E4F" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >AJUSTE_SALIDA</text>
+<rect x="220" y="895" width="173" height="33" rx="12" fill="#CDECE0" stroke="#175E4F" stroke-width="1" />
+<text x="306.5" y="917" fill="#175E4F" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >STOCK_INICIAL</text>
+<text x="510" y="813" fill="#0A548F" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" text-anchor="start" >▤ Tipos de evento stock</text>
+<text x="510" y="837" fill="#255B87" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >(stock_movements.event_type)</text>
+<rect x="510" y="849" width="202" height="33" rx="12" fill="#D4E9FC" stroke="#145B9B" stroke-width="1" />
+<text x="611" y="871" fill="#145B9B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >COMPRA_RECEPCION</text>
+<rect x="720" y="849" width="177" height="33" rx="12" fill="#D4E9FC" stroke="#145B9B" stroke-width="1" />
+<text x="808.5" y="871" fill="#145B9B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >TRASLADO_SALIDA</text>
+<rect x="904" y="849" width="190" height="33" rx="12" fill="#D4E9FC" stroke="#145B9B" stroke-width="1" />
+<text x="999" y="871" fill="#145B9B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >TRASLADO_ENTRADA</text>
+<rect x="510" y="890" width="177" height="33" rx="12" fill="#D4E9FC" stroke="#145B9B" stroke-width="1" />
+<text x="598.5" y="912" fill="#145B9B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >AJUSTE_ENTRADA</text>
+<rect x="696" y="890" width="161" height="33" rx="12" fill="#D4E9FC" stroke="#145B9B" stroke-width="1" />
+<text x="776.5" y="912" fill="#145B9B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >AJUSTE_SALIDA</text>
+<rect x="864" y="890" width="132" height="33" rx="12" fill="#D4E9FC" stroke="#145B9B" stroke-width="1" />
+<text x="930" y="912" fill="#145B9B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >STOCK_INICIAL</text>
+<rect x="1002" y="890" width="110" height="33" rx="12" fill="#D4E9FC" stroke="#145B9B" stroke-width="1" />
+<text x="1057" y="912" fill="#145B9B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >VENTA_SALIDA</text>
+<text x="1154" y="813" fill="#532B89" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="700" text-anchor="start" >▣ Medios de pago declarados</text>
+<text x="1154" y="837" fill="#654C88" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" text-anchor="start" >(sale_payments.method)</text>
+<rect x="1152" y="849" width="120" height="33" rx="12" fill="#EADFFA" stroke="#5B368B" stroke-width="1" />
+<text x="1212" y="871" fill="#5B368B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >EFECTIVO</text>
+<rect x="1283" y="849" width="170" height="33" rx="12" fill="#EADFFA" stroke="#5B368B" stroke-width="1" />
+<text x="1368" y="871" fill="#5B368B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >TRANSFERENCIA</text>
+<rect x="1464" y="849" width="161" height="33" rx="12" fill="#EADFFA" stroke="#5B368B" stroke-width="1" />
+<text x="1544.5" y="871" fill="#5B368B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >CUENTA_DNI</text>
+<rect x="1152" y="890" width="116" height="33" rx="12" fill="#EADFFA" stroke="#5B368B" stroke-width="1" />
+<text x="1210" y="912" fill="#5B368B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >TARJETA</text>
+<rect x="1280" y="890" width="337" height="33" rx="12" fill="#EADFFA" stroke="#5B368B" stroke-width="1" />
+<text x="1448.5" y="912" fill="#5B368B" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.7" font-weight="700" text-anchor="middle" >MERCADO_PAGO_DECLARADO</text>
+<text x="16" y="943" fill="#596E83" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" text-anchor="start" >03B · Vista complementaria de exposición; ver 03B_CLASES_COMERCIO_E_INVENTARIO.puml para atributos y asociaciones completas.</text>
+</svg>
