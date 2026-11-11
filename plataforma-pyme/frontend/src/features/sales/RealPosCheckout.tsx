@@ -91,10 +91,11 @@ export function RealPosCheckout({
     }
   }, [role, businessActive, location, items, cart, discountText])
 
-  useEffect(() => {
-    if (!paymentModified && stage === 'editing')
-      setPayments([initialPayment(draft.totals?.total_cents ?? null)])
-  }, [paymentModified, draft.totals?.total_cents, stage])
+  // Antes de una edición manual, el pago único sigue el total del carrito
+  // directamente en el render. Evita sincronizar estado derivado con useEffect.
+  const shownPayments = !paymentModified && stage === 'editing'
+    ? [initialPayment(draft.totals?.total_cents ?? null)]
+    : payments
 
   useEffect(() => {
     let mounted = true
@@ -115,7 +116,7 @@ export function RealPosCheckout({
 
   const changePayment = (i: number, changes: Partial<PosPaymentDraft>) => {
     setPaymentModified(true)
-    setPayments(current => current.map((row, index) => index === i ? { ...row, ...changes } : row))
+    setPayments(shownPayments.map((row, index) => index === i ? { ...row, ...changes } : row))
   }
 
   const reviewSale = () => {
@@ -123,7 +124,7 @@ export function RealPosCheckout({
     try {
       if (!draft.totals) throw new RangeError(draft.problem || 'Carrito inválido.')
       const command = composePosCheckout(
-        location?.id ?? null, cart, draft.totals.discount_cents, notes, payments,
+        location?.id ?? null, cart, draft.totals.discount_cents, notes, shownPayments,
       )
       if (command.totals.total_cents !== draft.totals.total_cents)
         throw new RangeError('El total cambió durante la revisión.')
@@ -235,7 +236,7 @@ export function RealPosCheckout({
     } finally { busy.current = false }
   }
 
-  const totalPayments = payments.reduce((acc, payment) => {
+  const totalPayments = shownPayments.reduce((acc, payment) => {
     try {
       const amount = pesosToCents(payment.amountText)
       return amount === null ? acc : acc + BigInt(amount)
@@ -255,7 +256,7 @@ export function RealPosCheckout({
 
     {stage === 'editing' && <>
       <p>Revisá los importes y declaralos en uno o varios medios. Los importes deben sumar exactamente el total de la venta.</p>
-      {payments.map((row, i) => <div className="real-pos-payment" key={i}>
+      {shownPayments.map((row, i) => <div className="real-pos-payment" key={i}>
         <label>Medio de pago {i + 1}
           <select aria-label={'Medio de pago ' + (i + 1)} value={row.method} onChange={event =>
             changePayment(i, { method: event.target.value as PosPaymentDraft['method'] })}>
@@ -271,15 +272,15 @@ export function RealPosCheckout({
           <input aria-label={'Referencia de pago ' + (i + 1)} maxLength={120}
             value={row.reference} onChange={event => changePayment(i, { reference: event.target.value })}/>
         </label>
-        {payments.length > 1 && <button className="real-auth-link" type="button" onClick={() => {
+        {shownPayments.length > 1 && <button className="real-auth-link" type="button" onClick={() => {
           setPaymentModified(true)
-          setPayments(current => current.filter((_, index) => index !== i))
+          setPayments(shownPayments.filter((_, index) => index !== i))
         }}>Quitar medio {i + 1}</button>}
       </div>)}
-      <button type="button" className="real-auth-secondary" disabled={payments.length >= 6}
+      <button type="button" className="real-auth-secondary" disabled={shownPayments.length >= 6}
         onClick={() => {
           setPaymentModified(true)
-          setPayments(current => [...current, { method: 'TRANSFERENCIA', amountText: '', reference: '' }])
+          setPayments([...shownPayments, { method: 'TRANSFERENCIA', amountText: '', reference: '' }])
         }}>Agregar otro medio de pago</button>
       <p className="real-pos-payment-summary">Pagos ingresados: <strong>{pesos(Number(totalPayments))}</strong>
         {' · '} Total a declarar: <strong>{currentTotal === null ? '—' : pesos(currentTotal)}</strong>
