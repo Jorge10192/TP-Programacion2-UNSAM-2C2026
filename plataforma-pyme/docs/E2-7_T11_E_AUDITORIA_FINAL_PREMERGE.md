@@ -26,7 +26,7 @@ El dictamen anterior de 17 directos/8 parciales/1 faltante era correcto **para s
 | Frontend independiente | [Frontend #43014577698](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43014577698) | **SUCCESS**, build, lint y pruebas unitarias/browser del workflow |
 | Navegador REAL full-stack | [Full-stack #43014577888](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43014577888) | **38 Playwright PASS**, FastAPI/Vite/PostgreSQL QA |
 | Navegador DEMO | Mismo full-stack | **6 Playwright PASS**, estado local independiente |
-| Manual REAL | [Acta T11-D2 de 39 pasos](E2-7_T11_D2_ACTA_PRUEBA_MANUAL_REAL.md) + [retetst SELL/STORE](E2-7_T11_E_FIX_SEDES_ASIGNADAS_QA.md) | Aprobado en casos recorridos; dos defectos corregidos y verificados |
+| Manual REAL | [Acta T11-D2 de 39 pasos](E2-7_T11_D2_ACTA_PRUEBA_MANUAL_REAL.md) + [retest SELL/STORE](E2-7_T11_E_FIX_SEDES_ASIGNADAS_QA.md) | Aprobado en casos recorridos; dos defectos corregidos y verificados |
 | Verificación de integración | Comparación de PR #45 `main`→rama | 63 ahead / 0 behind, mergeable=true, sin reviews registradas |
 
 **Guardas críticas:** tests de navegador que hacen POST usan `PYME_DISPOSABLE_QA=1`, API CI `127.0.0.1:18001`, usuarios y empresas QA únicos. No se habilitaron las ventas locales sobre TEST Empresa A. Se conservó el PR como borrador.
@@ -102,7 +102,7 @@ No se detectaron fallos de tests, duplicaciones de operaciones o filtración cro
 - [x] Integridad de compra/recepción/stock/venta bajo PostgreSQL descartable.
 - [x] Pruebas de registro, sesión, multi-tenant, permisos, HTTP 401/403/404/409/422/503, idempotencia.
 - [x] 26 escenarios de la matriz E27 cubiertos en su alcance funcional.
-- [x] Dos defectos de interfaz detectados manualmente corregidos y reprobados en CI + navegador local.
+- [x] Dos defectos de interfaz detectados manualmente corregidos y reverificados en CI + navegador local.
 - [x] 892 Pytest + 38 Playwright REAL + 6 DEMO PASS en mismo commit funcional; frontend/backend independientes SUCCESS.
 - [x] Sin divergencia ni conflicto GitHub con `main` al corte; cambios limitados a `plataforma-pyme/`.
 - [x] Los riesgos residuales están explicitados, sin disfrazar DEMO de integración bancaria REAL.
