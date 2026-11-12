@@ -40,3 +40,15 @@
 .e3-pos-qr-action button { min-height:43px; }
 @media(max-width:850px){ .e3-qr-layout { grid-template-columns:1fr; } .e3-qr-visual-panel{ max-width:100%; } }
 @media(max-width:450px){ .e3-qr-line { grid-template-columns:48px minmax(0,1fr); } .e3-qr-photo{ width:48px;height:48px; } .e3-qr-line>strong { grid-column:2; } .e3-qr-heading button{ width:100%; } }
+
+/* B3: laboratorio de eventos, visualmente separado del detalle de compra. */
+.e3-qr-lab { display:grid; gap:12px; border:1px solid #b5d2f8; border-radius:13px;
+  padding:16px; background:#f0f6ff; }
+.e3-qr-lab h2,.e3-qr-history h2 { font-size:17px; margin:0; }
+.e3-qr-lab p,.e3-qr-history p { font-size:12px; line-height:1.55; color:#48617d; margin:0; }
+.e3-qr-lab-actions { display:flex; flex-wrap:wrap; gap:9px; }
+.e3-qr-lab-actions button { border-radius:9px; min-height:39px; }
+.e3-qr-history { display:grid; gap:10px; border:1px solid #e1e9f2; padding:16px; border-radius:13px; }
+.e3-qr-history ol { padding-left:22px; margin:0; display:grid; gap:10px; }
+.e3-qr-history li { line-height:1.55; overflow-wrap:anywhere; }
+.e3-qr-history li small { display:block; color:#67788e; font-size:11px; }
