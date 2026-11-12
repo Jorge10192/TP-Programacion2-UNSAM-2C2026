@@ -17,6 +17,10 @@ Cerrar la primera experiencia de configuración con orientación **contextual y 
 - **Catálogo:** una lista realmente vacía distingue quién puede crear fichas y quién solo puede consultarlas. En el formulario, al elegir tipo `SERVICIO` aparece una aclaración de que no se deben crear movimientos de stock para servicios.
 - **Inventario:** la orientación prioriza sedes faltantes, catálogo vacío, catálogo completo con solo servicios y ausencia de saldos en la consulta general. No sugiere saldos cero cuando hay filtros, errores, consultas incompletas o páginas desconocidas.
 
+## Ajuste menor de experiencia: carga de invitación
+
+La acción del perfil que abre la pantalla se denomina **«Ingresar código de invitación»**, igual que el título de la pantalla de ingreso. El botón dentro del formulario conserva **«Aceptar invitación»**, ya que únicamente este último envía el código de 43 caracteres al backend. El secreto sigue en estado React en memoria, no se copia a URLs ni a almacenamiento local. Se añadió una comprobación E2E de navegación sin aceptación accidental en `auth-registration-ui.spec.ts`. No se modifican permisos, token ni contratos de API.
+
 ## Salvaguardas
 
 1. No se cambian `FastAPI`, SQL, Alembic, RBAC, autenticación ni endpoints.
