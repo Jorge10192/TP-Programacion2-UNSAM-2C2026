@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, m
 
 from app.modules.catalog.schemas import clean_text
 from app.modules.purchases.schemas import line_total_cents
-from app.modules.sales.schemas import MAX_CENTS, SaleLineInput
+from app.modules.sales.schemas import MAX_CENTS, SaleLineInput, SaleView
 
 Cents = Annotated[StrictInt, Field(ge=0, le=MAX_CENTS)]
 QrState = Literal[
@@ -95,3 +95,10 @@ class QrPaymentEventView(BaseModel):
     to_status: QrState
     actor_id: UUID
     created_at: datetime
+
+
+class QrFinalizedView(BaseModel):
+    """Una venta QA registrada, pero nunca un cobro acreditado en Mercado Pago."""
+    intent: QrIntentView
+    sale: SaleView
+    replayed: bool
