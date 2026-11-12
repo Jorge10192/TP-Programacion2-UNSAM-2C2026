@@ -42,8 +42,8 @@ test('B3 simular solo hace POST al laboratorio, con key UUID4 y token Bearer', a
   })
   assert.equal((await api.simulate(intentId, 'APROBAR', key)).status, 'APROBADA_DEMO')
   assert.equal(count,1)
-  await assert.rejects(api.simulate(intentId, 'APROBAR', 'no-uuid'), TypeError)
-  await assert.rejects(api.simulate(intentId, 'PAGAR', key), TypeError)
+  assert.throws(() => api.simulate(intentId, 'APROBAR', 'no-uuid'), TypeError)
+  assert.throws(() => api.simulate(intentId, 'PAGAR', key), TypeError)
   assert.equal(count,1)
 })
 
