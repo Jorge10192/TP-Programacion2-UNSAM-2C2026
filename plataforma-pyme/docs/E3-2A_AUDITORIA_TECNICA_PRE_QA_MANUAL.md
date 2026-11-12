@@ -2,7 +2,9 @@
 
 **Alcance:** PR #65 de fotos privadas en REAL sobre `main` E3-1; validación estática de arquitectura, contratos, DB, autorización, almacenamiento, frontend y tests.
 **Resultado del análisis del código:** implementación funcional completa, con controles de seguridad reforzados; QA manual visual **todavía pendiente**.
-**Evidencia de CI del HEAD final:** completar una vez terminen las verificaciones automáticas de la rama tras este documento.
+**Evidencia CI del último HEAD de código auditado:** `67ef91950f61ed47509608db70e5db4a281dfaa5`, 12/11/2026, 3/3 workflows aprobados: [Backend FastAPI](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43269241285), [Frontend](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43269241429), [full-stack PostgreSQL + Chromium](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43269241401). En full-stack: **908/908 pruebas backend**, **54/54 recorridos REAL**, **6/6 DEMO**; `e32a_photo_assets (head)`, `alembic check` sin diferencias. Backend Python 3.12 y 3.14, compilación/lint/frontend y Docker aprobados.
+
+**Dictamen técnico definitivo:** apto para iniciar **QA manual de uso y diseño** en una base aislada. No hubo errores de pruebas pendientes ni hallazgos bloqueantes en la revisión de código. **No equivale a aprobación visual**, despliegue productivo ni autorización de merge; los riesgos evolutivos de la sección 6 siguen abiertos.
 
 ## 1. Requisitos y trazabilidad
 
