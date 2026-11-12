@@ -8,7 +8,10 @@ from app.api.dependencies import get_db
 from app.modules.auth.dependencies import current_auth, unauthorized
 from app.modules.auth.session_service import AuthContext
 from app.modules.purchases.service import PurchaseSessionInvalid, PurchaseBusinessUnavailable, PurchasePermissionDenied
-from app.modules.payments.qr_schemas import CreateQrIntentRequest, QrIntentView
+from app.modules.payments.qr_schemas import (
+    CreateQrIntentRequest, QrIntentView, QrPaymentEventView, QrSimulateRequest,
+)
+from app.modules.payments.qr_event_service import QrEventService, QrLabDisabled
 from app.modules.payments.qr_service import (
     QrIntentService, QrIntentNotFound, QrIntentConflict, QrIntentInvalid,
     QrIntentForbidden, QrIntentNoConnection, QrIntentNoStock,
@@ -18,6 +21,8 @@ router = APIRouter(prefix="/businesses/{business_id}/qr-payment-intents", tags=[
 
 
 def _handle(error: Exception):
+    if isinstance(error, QrLabDisabled):
+        raise HTTPException(403, detail="Laboratorio QR DEMO deshabilitado en este entorno") from None
     if isinstance(error, PurchaseSessionInvalid):
         raise unauthorized() from None
     if isinstance(error, (PurchaseBusinessUnavailable, QrIntentNotFound)):
@@ -92,3 +97,41 @@ def cancel_qr_intent(
             context.user.id, context.auth_session.id, business_id, intent_id)
     except Exception as error:
         _handle(error)
+
+
+@router.get("/{intent_id}/events", response_model=list[QrPaymentEventView],
+    responses={401: {"description": "Sesión inválida"},
+               404: {"description": "Intención no visible"}},
+    summary="Historial auditable de transiciones QR, sin secretos de pago")
+def list_qr_events(
+    business_id: UUID, intent_id: UUID,
+    context: AuthContext = Depends(current_auth), db: Session = Depends(get_db),
+) -> list[QrPaymentEventView]:
+    try:
+        return QrEventService(db).list_events(
+            context.user.id, context.auth_session.id, business_id, intent_id)
+    except Exception as error:
+        _handle(error)
+
+
+@router.post("/{intent_id}/simulate", response_model=QrIntentView, status_code=201,
+    responses={200: {"description": "Evento idempotente: no duplica la transición"},
+               401: {"description": "Sesión inválida"},
+               403: {"description": "Rol no administrador o laboratorio deshabilitado"},
+               404: {"description": "Intención ajena o inexistente"},
+               409: {"description": "Evento incompatible o intento ya resuelto"},
+               422: {"description": "Acción inválida"}},
+    summary="Simular SOLO en QA un resultado de cobro ficticio; NO crear venta")
+def simulate_qr_event(
+    business_id: UUID, intent_id: UUID, command: QrSimulateRequest, response: Response,
+    idempotency_key: UUID4 = Header(alias="Idempotency-Key"),
+    context: AuthContext = Depends(current_auth), db: Session = Depends(get_db),
+) -> QrIntentView:
+    try:
+        result = QrEventService(db).simulate(
+            context.user.id, context.auth_session.id, business_id, intent_id,
+            idempotency_key, command.action)
+    except Exception as error:
+        _handle(error)
+    response.status_code = 200 if result.replayed else 201
+    return result.intent
