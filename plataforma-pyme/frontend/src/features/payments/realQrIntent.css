@@ -52,3 +52,11 @@
 .e3-qr-history ol { padding-left:22px; margin:0; display:grid; gap:10px; }
 .e3-qr-history li { line-height:1.55; overflow-wrap:anywhere; }
 .e3-qr-history li small { display:block; color:#67788e; font-size:11px; }
+
+/* E3-2B B4 — confirmación REAL solo en base QA descartable. */
+.e3-qr-finalize{display:grid;gap:11px;padding:17px;background:#ecf8f2;
+  border:1px solid #b4dec9;border-radius:12px;color:#194b35}
+.e3-qr-finalize h2{font-size:18px;margin:0}
+.e3-qr-finalize p{font-size:13px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.e3-qr-finalize button{justify-self:start;min-height:42px}
+.e3-qr-finalize code{font-size:11px;overflow-wrap:anywhere}
