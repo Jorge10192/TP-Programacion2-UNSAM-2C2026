@@ -1,9 +1,15 @@
 # E3-2B — Plan rector incremental: vinculación de Mercado Pago DEMO, QR con detalle y confirmación de venta
 
-**Estado:** B0 — planificación y decisiones base. No implica integración de cobro implementada.  
+**Estado:** B1 incorporado con CI aprobado. B2 implementado y sometido a controles automáticos. B3–B6 pendientes. Auditoría y pruebas manuales después de completar B1–B6.  
 **Rama exclusiva:** `feature/e3-2b-mercadopago-qr-demo`, nacida de `main` en `5b21daec04df6c551d3221a06ce03d577ec36544`.  
 **Proyecto:** plataforma PyME multitenant y multirrubro. Los HTML de WALOS son referencias de UX, no código definitivo, ni modelo exclusivo de un negocio.  
 **Límite:** `plataforma-pyme/` y, cuando sea necesario, CI exclusivo de PyME. No modificar `main` hasta aprobación expresa.
+
+## Nueva política de cierre para la rama de pagos
+
+Por decisión expresa del usuario, **B1–B6 se integran exclusivamente en esta misma rama**. No se pide test manual, autorización ni merge entre bloques. Cada avance sí debe pasar controles automáticos (compilación, Alembic, Pytest, frontend y CI) para no arrastrar errores. Una vez integrado B6, se realiza una única auditoría técnica integral y recorrido de uso, antes de autorizar merge a `main`.
+
+**B6 forma parte de esta entrega**: OAuth de terceros, QR dinámico con Orders API, sucursal/caja, notificaciones y conciliación oficial, usando credenciales de prueba aprobadas. Si falta elegibilidad o credenciales, se documentará el bloqueo y no se afirmará una verificación externa inexistente. Nunca activar cobros con dinero real ni subir secretos al repositorio.
 
 ## 0. Objetivo de experiencia de usuario
 
@@ -31,7 +37,7 @@ Una persona con permiso de gestión vincula una **cuenta ficticia de Mercado Pag
 - Durante QR pendiente, resolver explícitamente **reservas de stock** o control de stock en cierre. Si el stock desaparece tras un pago aprobado, nunca registrar venta de stock negativo, nunca duplicar el cobro; dejar intento en `REQUIERE_REVISION` para resolución y/o eventual reembolso. La etapa B4 deberá escoger e implementar la política de reserva con la misma atomicidad del ledger.
 - Mantener `main` estable y no encender globalmente ventas REAL; pruebas exclusivamente contra PostgreSQL QA aislado y flags de autorización explícitos, sin claves reales ni dinero real.
 
-## 3. Secuencia de desarrollo con puertas de aprobación
+## 3. Secuencia de desarrollo con pruebas automáticas y una sola aceptación final
 
 | Bloque | Entregable vertical | Backend / persistencia | Frontend / UX | Puerta de salida |
 |---|---|---|---|---|
@@ -84,7 +90,7 @@ Otros destinos: `RECHAZADA`, `EXPIRADA`, `CANCELADA`, `INDETERMINADA` y `REQUIER
 - Para pagos de prueba, `payment_origin=SIMULADO_QA` y aviso «No se recibió dinero real». Solo los futuros orders verificables podrán tener `payment_origin=MERCADO_PAGO_VERIFICADO`.
 
 ### Entrega B5 (auditoría final de etapa)
-Revisión incremental del PR por bloque, no un solo merge masivo. Pruebas de compatibilidad de ventas declaradas, permisos, invitaciones, existencias, compras, caja DEMO, usuarios y empresas múltiples. Validación humana de una sola ruta de uso después de que B1–B4 estén verdes. Documentar qué funcionalidades son REAL, cuáles DEMO, cuáles diferidas.
+Revisión de código incremental en una sola rama, sin merge hasta el cierre integral B6. Pruebas de compatibilidad de ventas declaradas, permisos, invitaciones, existencias, compras, caja DEMO, usuarios y empresas múltiples. Validación humana integral después de B6. Documentar qué funcionalidades son REAL, cuáles DEMO, cuáles diferidas.
 
 ## 4. Diseño de datos y compatibilidad
 
