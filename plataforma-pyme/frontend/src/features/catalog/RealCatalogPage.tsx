@@ -178,7 +178,8 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
       // El artículo ya está guardado; un GET posterior no autoriza repetir el POST.
       setForm(false);setEditing(null);setCreatePhotos([]);setDetailId(null)
       setItems(old=>[saved,...old.filter(item=>item.id!==saved.id)])
-      setNotice(editing?'Ficha actualizada en PostgreSQL.':'Artículo creado en PostgreSQL.')
+      // No presentar éxito completo y error simultáneamente si falló una foto.
+      setNotice(photoIssue?'':editing?'Ficha actualizada en PostgreSQL.':'Artículo creado en PostgreSQL.')
       if(photoIssue)setError(photoIssue)
       try{
         const first=await gateway.page(0)
@@ -186,7 +187,11 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
         setItems(first.some(item=>item.id===saved.id)?first:[saved,...first])
         setHasMore(first.length===CATALOG_PAGE_SIZE);setLoaded(true)
       }catch{
-        if(mounted.current.active)setError(photoIssue||'Artículo guardado, pero el listado no se pudo actualizar. Consultá la ficha; no repitas el alta.')
+        if(mounted.current.active){
+          setNotice('')
+          setError((photoIssue?photoIssue+' ':'')+
+            'El artículo está guardado, pero el listado no se pudo actualizar. Consultá la ficha; no repitas el alta.')
+        }
       }
     }catch(err){handle(err,true)}
     finally{if(mounted.current.active)setBusy(false)}
@@ -355,7 +360,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
             onChange={e=>updateField('observations',e.target.value)}/></label>
         </div>
         {!editing&&<RealPhotoDraftPicker title="Fotografías del nuevo artículo o servicio" files={createPhotos}
-          onChange={setCreatePhotos} maximum={8}/>}
+          onChange={setCreatePhotos} maximum={8} disabled={busy}/>}
         <div className="real-auth-actions e3-commerce-form-actions">
           <button type="submit" className="real-auth-primary" disabled={busy||uncertain}>{busy?'Guardando…':'Guardar artículo'}</button>
           <button type="button" className="real-auth-secondary" disabled={busy} onClick={closeSubview}>Cancelar</button>

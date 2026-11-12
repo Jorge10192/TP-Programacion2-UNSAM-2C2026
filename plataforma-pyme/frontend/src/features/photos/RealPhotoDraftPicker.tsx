@@ -7,12 +7,15 @@ type Props = {
   onChange: (files: File[]) => void
   maximum: number
   title: string
+  disabled?: boolean
 }
-export function RealPhotoDraftPicker({ files, onChange, maximum, title }: Props) {
+export function RealPhotoDraftPicker({ files, onChange, maximum, title, disabled=false }: Props) {
   const [issue, setIssue] = useState('')
   function select(selected: FileList | null) {
-    const next = Array.from(selected ?? [])
-    if (!next.length) return
+    const selection = Array.from(selected ?? [])
+    if (!selection.length || disabled) return
+    // Galería: sumar selecciones sucesivas; una foto única: reemplazar la anterior.
+    const next = maximum===1 ? selection : [...files,...selection]
     if (next.length > maximum) {
       setIssue('El máximo permitido es '+maximum+' '+(maximum===1?'foto.':'fotos.'))
       return
@@ -33,12 +36,12 @@ export function RealPhotoDraftPicker({ files, onChange, maximum, title }: Props)
     <p>Podés elegir {maximum===1?'una imagen':'hasta '+maximum+' imágenes'} ahora. Primero se guarda la ficha; después se cargan las fotos usando su ID REAL. También podés agregarlas más tarde desde la ficha.</p>
     <label>Seleccionar {maximum===1?'fotografía':'fotografías'}
       <input type="file" accept="image/jpeg,image/png,image/webp" multiple={maximum>1}
-        onChange={event=>{select(event.target.files);event.target.value=''}}/>
+        disabled={disabled} onChange={event=>{select(event.target.files);event.target.value=''}}/>
     </label>
     <p className="e3-photo-draft-count">{files.length}/{maximum} fotos preparadas</p>
     {files.length>0&&<ul>{files.map((file,index)=><li key={index}>
       <span>{file.name}</span>
-      <button type="button" className="real-auth-secondary"
+      <button type="button" className="real-auth-secondary" disabled={disabled}
         onClick={()=>{onChange(files.filter((_,i)=>i!==index));setIssue('')}}
         aria-label={'Quitar selección '+file.name}>Quitar</button>
     </li>)}</ul>}
