@@ -16,7 +16,7 @@ from app.modules.payments.qr_event_log import append_qr_event
 from app.modules.payments.qr_service import (
     QrIntentService, QrIntentNotFound, QrIntentConflict, QrIntentForbidden,
 )
-from app.modules.payments.qr_schemas import QrIntentView
+from app.modules.payments.qr_schemas import QrIntentView, QrPaymentEventView
 
 _ACTION_TARGET = {
     "APROBAR": "APROBADA_DEMO",
@@ -58,15 +58,16 @@ class QrEventService:
         return intent
 
     def list_events(self, actor: UUID, session_id: UUID, business_id: UUID,
-                    intent_id: UUID) -> list[QrPaymentEvent]:
+                    intent_id: UUID) -> list[QrPaymentEventView]:
         try:
             self._read_authorized(actor, session_id, business_id, intent_id)
             rows = list(self.db.scalars(select(QrPaymentEvent).where(
                 QrPaymentEvent.business_id == business_id,
                 QrPaymentEvent.intent_id == intent_id,
             ).order_by(QrPaymentEvent.sequence.asc())).all())
+            result = [QrPaymentEventView.model_validate(record) for record in rows]
             self.db.rollback()
-            return rows
+            return result
         except Exception:
             self.db.rollback()
             raise
