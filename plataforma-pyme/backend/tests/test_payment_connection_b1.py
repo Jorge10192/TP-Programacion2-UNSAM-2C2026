@@ -1,7 +1,7 @@
 """E3-2B B1: permisos, aislamiento y persistencia de conexión ficticia."""
 import os
 from collections.abc import Iterator
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -83,9 +83,9 @@ def test_connect_replay_disconnect_reconnect_scoped_by_company(isolated) -> None
     repeated = client.post(path_a + "/demo", headers=owner)
     assert repeated.status_code == 200 and repeated.json()["mock_merchant_ref"] == linked.json()["mock_merchant_ref"]
     assert client.get(path_b, headers=owner).json()["status"] == "NO_VINCULADA"
-    assert connection.execute(select(MerchantPaymentConnection).where(
-        MerchantPaymentConnection.business_id == a,
-    )).scalars().all().__len__() == 1
+    assert len(connection.execute(select(MerchantPaymentConnection).where(
+        MerchantPaymentConnection.business_id == UUID(a),
+    )).scalars().all()) == 1
     unlinked = client.delete(path_a + "/demo", headers=owner)
     assert unlinked.status_code == 200 and unlinked.json()["status"] == "INACTIVA"
     assert client.get(path_a, headers=owner).json()["status"] == "INACTIVA"
@@ -106,13 +106,13 @@ def test_foreign_tenant_and_worker_permissions_and_suspension(isolated) -> None:
     assert client.post(url + "/demo", headers=stranger).status_code == 404
     worker, worker_id = account(client)
     connection.execute(insert(Membership).values(
-        id=uuid4(), business_id=business_id, user_id=worker_id,
+        id=uuid4(), business_id=UUID(business_id), user_id=UUID(worker_id),
         role="TRABAJADOR", status="ACTIVA",
     ))
     assert client.get(url, headers=worker).status_code == 200
     assert client.post(url + "/demo", headers=worker).status_code == 403
     assert client.delete(url + "/demo", headers=worker).status_code == 403
-    connection.execute(update(Business).where(Business.id == business_id).values(status="SUSPENDIDA"))
+    connection.execute(update(Business).where(Business.id == UUID(business_id)).values(status="SUSPENDIDA"))
     assert client.get(url, headers=owner).status_code == 200
     assert client.post(url + "/demo", headers=owner).status_code == 409
     assert client.delete(url + "/demo", headers=owner).status_code == 409
