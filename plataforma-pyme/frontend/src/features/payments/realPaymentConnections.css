@@ -1,0 +1,25 @@
+.mp-connection-page{max-width:1120px;margin:auto;display:grid;gap:22px;color:#172943}
+.mp-connection-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.mp-eyebrow{font-size:12px;font-weight:800;color:#2563eb;letter-spacing:.035em}
+.mp-connection-head h1{font-size:clamp(24px,3vw,34px);margin:7px 0}
+.mp-connection-head p,.mp-connection-title p{color:#61738d;margin:0;line-height:1.55}
+.mp-mode-pill{background:#eff5ff;border:1px solid #cbdfff;color:#245aa0;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:800;white-space:nowrap}
+.mp-connection-card{background:white;border:1px solid #dae5f1;border-radius:18px;padding:clamp(18px,3vw,32px);box-shadow:0 5px 22px #1729430d;display:grid;gap:26px}
+.mp-connection-title{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.mp-symbol{background:#e4f5ff;border-radius:15px;color:#1268a1;font-size:20px;font-weight:900;padding:18px}
+.mp-connection-title h2{margin:0 0 7px;font-size:21px}
+.mp-connection-title h2 small{font-size:11px;vertical-align:middle;background:#e8f1ff;color:#245aa0;padding:5px 8px;border-radius:6px}
+.mp-state{margin-left:auto;border-radius:999px;padding:8px 12px;font-weight:750;font-size:12px;background:#f1f5f9;color:#5c697b}
+.mp-state.mp-active{background:#e5f7ed;color:#156f45}
+.mp-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0}
+.mp-fields>div{border:1px solid #e5edf6;border-radius:12px;padding:15px;min-width:0}
+.mp-fields dt{font-size:12px;color:#66778e;margin-bottom:8px}
+.mp-fields dd{font-size:14px;font-weight:650;margin:0;overflow-wrap:anywhere}
+.mp-actions{display:flex;gap:12px;flex-wrap:wrap}
+.mp-actions button{border:1px solid #2463bf;border-radius:10px;min-height:42px;padding:10px 15px;background:#2463bf;color:white;font-weight:750;cursor:pointer}
+.mp-actions button.mp-outline{background:white;color:#245aa0}
+.mp-actions button:disabled{opacity:.5;cursor:wait}
+.mp-footnote{font-size:12px;color:#66778e;line-height:1.6;margin:0}
+.mp-message{padding:12px 14px;border-radius:9px;background:#e9f6ef;color:#155e40}
+.mp-message.mp-error{background:#fff0f0;color:#a12737}
+@media(max-width:650px){.mp-fields{grid-template-columns:1fr}.mp-connection-head{flex-wrap:wrap}.mp-state{margin-left:0}}
