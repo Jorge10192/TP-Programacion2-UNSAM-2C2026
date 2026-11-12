@@ -1,0 +1,52 @@
+/* E3-1C2: presentación de la empresa REAL. No afecta DEMO. */
+.real-workspace-mode .real-auth-main > .e3-business-detail { max-width: 1230px; }
+.e3-detail-header { display:flex; flex-wrap:wrap; align-items:center; gap:17px; margin:16px 0 25px; }
+.e3-detail-mark { display:grid; place-items:center; width:64px; height:64px; flex:0 0 64px; border-radius:19px; color:#245eba; background:#e8f1ff; font-size:29px; }
+.e3-detail-heading { flex:1; min-width:210px; }
+.e3-detail-heading h1 { margin:0 0 7px; }
+.e3-detail-heading p { margin:0; color:#64748b; font-size:14px; line-height:1.55; }
+.e3-detail-edit-trigger { margin-left:auto; white-space:nowrap; }
+.e3-detail-overview { padding:clamp(18px,2.6vw,29px); margin:20px 0 28px; border:1px solid #dce5ef; border-radius:18px; background:#fff; }
+.e3-detail-overview-head { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:15px; border-bottom:1px solid #e5edf6; padding-bottom:20px; }
+.e3-detail-kicker { margin:0 0 5px; text-transform:uppercase; letter-spacing:1.5px; font-size:11px; font-weight:850; color:#4773b6; }
+.e3-detail-business-name { margin:0 0 6px; font-size:clamp(22px,2.6vw,30px); color:#172943; line-height:1.2; overflow-wrap:anywhere; }
+.e3-detail-category { margin:0; color:#64748b; font-size:14px; }
+.e3-detail-status { padding:7px 12px; border-radius:999px; background:#fce8e6; color:#a23633; font-size:12px; font-weight:800; }
+.e3-detail-status-active { background:#e2f6ed; color:#126949; }
+.e3-detail-facts { margin:22px 0 0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.e3-detail-facts > div { min-width:0; padding:17px 19px; border-radius:13px; background:#f6f9fd; border:1px solid #e7edf6; }
+.e3-detail-facts dt,.e3-detail-technical dt { font-size:12px; font-weight:650; color:#64748b; }
+.e3-detail-facts dd,.e3-detail-technical dd { margin:7px 0 0; font-size:15px; font-weight:750; color:#172943; overflow-wrap:anywhere; }
+.e3-detail-technical { margin-top:18px; border:1px solid #e1e8f2; padding:12px 15px; border-radius:11px; color:#31547d; }
+.e3-detail-technical summary { cursor:pointer; font-weight:750; font-size:12px; }
+.e3-detail-technical dl { margin:15px 0 0; display:grid; gap:11px; }
+.e3-detail-technical dd { font-size:12px; }
+.e3-detail-technical code { overflow-wrap:anywhere; }
+.e3-detail-edit-panel { margin:24px 0; border:1px solid #b9d1f4; background:#f7faff; border-radius:16px; padding:clamp(16px,2.6vw,27px); }
+.e3-detail-edit-panel h2 { margin:0 0 7px; color:#174d96; font-size:21px; }
+.e3-detail-edit-panel > p { margin:0; font-size:13px; line-height:1.6; color:#5c6f89; }
+.e3-detail-edit-form { margin-bottom:0; max-width:760px; }
+.e3-detail-edit-form .real-auth-actions { margin-top:0; }
+.e3-detail-readonly { margin:18px 0; padding:12px 14px; background:#f1f5fa; color:#53657e; border-left:3px solid #8da8ca; border-radius:8px; font-size:13px; line-height:1.5; }
+.e3-detail-section { margin:27px 0; }
+.e3-detail-section-head { margin-bottom:15px; }
+.e3-detail-section-head h2 { font-size:20px; margin:0 0 6px; color:#172943; }
+.e3-detail-section-head p { margin:0; font-size:13px; line-height:1.6; color:#64748b; }
+.e3-detail-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.e3-detail-action { display:flex; align-items:center; gap:14px; width:100%; min-width:0; min-height:83px; padding:16px; text-align:left; border:1px solid #dce5ef; border-radius:13px; background:#fff; color:#172943; cursor:pointer; }
+.e3-detail-action:hover,.e3-detail-action:focus-visible { border-color:#7ca9eb; background:#f7fbff; box-shadow:0 6px 16px #1f477812; }
+.e3-detail-action:focus-visible,.e3-detail-edit-trigger:focus-visible { outline:3px solid #4381e0; outline-offset:3px; }
+.e3-detail-action-icon { display:grid; place-items:center; flex:0 0 43px; width:43px; height:43px; border-radius:11px; background:#eaf2ff; color:#2465c2; font-size:18px; font-weight:850; }
+.e3-detail-action-body { flex:1; min-width:0; display:grid; gap:5px; }
+.e3-detail-action-body strong { font-size:14px; overflow-wrap:anywhere; }
+.e3-detail-action-body small { color:#637691; font-size:11px; line-height:1.4; }
+.e3-detail-action-arrow { color:#4378c1; font-size:24px; line-height:1; }
+.e3-detail-footnote { margin:5px 0 0; color:#64748b; font-size:12px; line-height:1.55; }
+@media(max-width:700px) {
+  .e3-detail-mark { width:52px; height:52px; flex-basis:52px; border-radius:14px; font-size:24px; }
+  .e3-detail-header { gap:12px; }
+  .e3-detail-edit-trigger { margin:0; width:100%; }
+  .e3-detail-facts,.e3-detail-actions { grid-template-columns:minmax(0,1fr); }
+  .e3-detail-overview { padding:15px; }
+  .e3-detail-action { min-height:78px; }
+}

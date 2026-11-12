@@ -28,7 +28,7 @@ test('E27-RESP-01: rutas REAL principales en móvil sin overflow ni escrituras',
     if (req.url().includes('/api/v1/businesses/') && req.method() !== 'GET') writes++
   })
   const sections: Array<{ suffix: string; heading: string }> = [
-    { suffix: '', heading: 'Empresa real' },
+    { suffix: '', heading: 'Datos de la empresa' },
     { suffix: '/ubicaciones', heading: 'Ubicaciones' },
     { suffix: '/catalogo', heading: 'Catálogo de artículos' },
     { suffix: '/proveedores', heading: 'Proveedores' },
