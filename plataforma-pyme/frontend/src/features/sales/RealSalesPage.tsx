@@ -326,7 +326,7 @@ export function RealSalesPage({ token, userId, userDisplayName, businessId, onNa
     {detailError && <p role="alert" className="real-auth-message real-auth-error">{detailError}</p>}
     {receipt && <div className="e3-sales-detail-view">
       <header className="e3-sales-heading e3-sales-detail-heading">
-        <span className="e3-sales-heading-icon"><Icon name="file-check" size={27}/></span>
+        <span className="e3-sales-heading-icon"><Icon name="receipt" size={27}/></span>
         <div className="e3-sales-heading-copy">
           <span className="e3-sales-eyebrow">{company?.name??'Empresa'} · Comprobante interno</span>
           <h1>Comprobante de venta</h1>

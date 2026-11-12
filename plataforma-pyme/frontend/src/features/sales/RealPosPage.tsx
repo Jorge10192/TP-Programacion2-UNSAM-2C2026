@@ -198,7 +198,7 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId + '/catalogo')}>Catálogo</button>
     </nav>}
     <header className="e3-sales-heading">
-      <span className="e3-sales-heading-icon"><Icon name="shopping-cart" size={27}/></span>
+      <span className="e3-sales-heading-icon"><Icon name="shopping" size={27}/></span>
       <div className="e3-sales-heading-copy">
         <span className="e3-sales-eyebrow">{company?.name??'Empresa'} · Ventas REAL</span>
         <h1>{checkoutStage==='review'?'Revisión y confirmación'
