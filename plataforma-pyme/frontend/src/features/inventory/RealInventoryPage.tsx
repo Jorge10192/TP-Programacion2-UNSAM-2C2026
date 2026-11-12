@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ApiHttpError } from '../../api/httpClient.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
-import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
-import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
+import { createOperationsGateway, canReadTeam } from '../businesses/realOperationsGateway.ts'
+import type { LocationRecord, TeamMember } from '../businesses/realOperationsGateway.ts'
 import { createCatalogGateway, CATALOG_PAGE_SIZE } from '../catalog/realCatalogGateway.ts'
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
 import {
@@ -12,7 +12,7 @@ import {
 import type { StockBalance, InventoryMovement, InventoryQuery } from './realInventoryGateway.ts'
 import {
   filterLoadedHistory, loadedInventoryCountLabel, loadedMovementCounts, movementTraceFields,
-  loadedHistorySummary, loadedMatchCountLabel,
+  loadedHistorySummary, loadedMatchCountLabel, movementActorName,
 } from './inventoryHistoryView.ts'
 import type { LoadedHistoryFilter } from './inventoryHistoryView.ts'
 import { RealTransferPanel } from './RealTransferPanel.tsx'
@@ -21,7 +21,7 @@ import { Icon } from '../../app/Icon.tsx'
 import './realInventoryVisual.css'
 
 type Props = {
-  token:string;userId:string;businessId:string
+  token:string;userId:string;userDisplayName:string;businessId:string
   onNavigate:(path:string)=>void;onUnauthorized:()=>void
 }
 type Tab = 'balances'|'movements'
@@ -31,11 +31,15 @@ function formatDate(v:string):string {
 function shortId(v:string):string { return v.slice(0,8)+'…' }
 
 /** E2-7/T08-1: read only, no journal, no stock calculations from frontend purchases. */
-export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthorized}:Props) {
+export function RealInventoryPage({token,userId,userDisplayName,businessId,onNavigate,onUnauthorized}:Props) {
   const companyApi=useMemo(()=>createOperationsGateway(token,userId),[token,userId])
   const catalogApi=useMemo(()=>createCatalogGateway(token,businessId),[token,businessId])
   const inventoryApi=useMemo(()=>createInventoryGateway(token,businessId),[token,businessId])
   const [company,setCompany]=useState<RealBusiness|null>(null)
+  const [actorDirectory,setActorDirectory]=useState<{
+    businessId:string
+    actors:Array<Pick<TeamMember,'user_id'|'display_name'>>
+  }|null>(null)
   const [locations,setLocations]=useState<LocationRecord[]>([])
   const [assignedLocationIds,setAssignedLocationIds]=useState<string[]>([])
   const [catalog,setCatalog]=useState<CatalogItem[]>([])
@@ -92,6 +96,26 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
     })
     return ()=>{controller.abort()}
   },[businessId,companyApi,catalogApi,onUnauthorized,refreshVersion])
+
+  // El directorio empresarial es privado: jamás consultarlo ni utilizar un
+  // resultado anterior sin autorización para la empresa seleccionada.
+  useEffect(()=>{
+    const controller=new AbortController()
+    if(!company||company.id!==businessId||!canReadTeam(company))
+      return ()=>controller.abort()
+    void companyApi.team(businessId,controller.signal).then(rows=>{
+      if(!controller.signal.aborted)
+        setActorDirectory({
+          businessId,
+          actors:rows.map(({user_id,display_name})=>({user_id,display_name})),
+        })
+    }).catch(err=>{
+      if(controller.signal.aborted)return
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      // Sin permisos o sin respuesta, no se inventa un nombre.
+    })
+    return ()=>controller.abort()
+  },[company,companyApi,businessId,onUnauthorized])
 
   const query=useMemo<InventoryQuery>(()=>({
     ...(locationId?{locationId}:{}),...(catalogItemId?{catalogItemId}:{}),
@@ -236,6 +260,8 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
     siteName:id=>locationLabels.get(id)?.name??'Ubicación '+shortId(id),
   }),[movements,historyKind,historySearch,itemLabels,locationLabels])
   const filteringHistory=historyKind!=='TODOS'||historySearch.trim()!==''
+  const permittedActors=company&&canReadTeam(company)
+    &&actorDirectory?.businessId===businessId?actorDirectory.actors:[]
   const view:'list'|'transfer'|'adjustment'=transferOpen?'transfer':adjustmentOpen?'adjustment':'list'
   const zeroLoaded=balances.filter(b=>b.quantity_milli===0).length
   useEffect(()=>{
@@ -351,6 +377,9 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
             <div className="real-inventory-movement-info"><h3>{itemName(x.catalog_item_id)}</h3>
               <p>{INVENTORY_EVENTS[x.event_type]} · {siteName(x.location_id)}</p>
               <small>{formatDate(x.occurred_at)} · {unitName(x.catalog_item_id)} · Movimiento {shortId(x.id)}</small>
+              <p className="e3-inventory-actor">Realizó el movimiento:
+                <strong>{movementActorName(x.actor_id,{id:userId,displayName:userDisplayName},permittedActors)}</strong>
+              </p>
               <details className="real-inventory-trace">
                 <summary>Ver trazabilidad</summary>
                 <dl>{movementTraceFields(x).map(field=><div key={field.label}>

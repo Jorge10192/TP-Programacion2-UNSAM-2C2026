@@ -71,3 +71,16 @@
 @media(prefers-reduced-motion:reduce){
  .e3-inventory-launch button,.e3-inventory-tabs button,.e3-inventory-balance-grid .real-inventory-balance{transition:none}
 }
+
+
+/* E3-1F1 QA: responsable visible del movimiento; IDs solo en trazabilidad. */
+.e3-inventory-movement-list .e3-inventory-actor {
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:5px;
+  margin:12px 0 2px;padding:9px 11px;
+  border:1px solid #e3ebf7;border-radius:10px;background:#f6f9ff;
+  font-size:11px;line-height:1.55;color:#607894;
+  overflow-wrap:anywhere;
+}
+.e3-inventory-movement-list .e3-inventory-actor strong {
+  color:#1f4e89;font-weight:800;font-size:12px;overflow-wrap:anywhere;
+}

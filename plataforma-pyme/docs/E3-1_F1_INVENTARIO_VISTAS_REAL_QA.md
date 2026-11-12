@@ -35,3 +35,17 @@ Homogeneizar Inventario REAL con la navegación aprobada para Empresa, Ubicacion
 Abrir Inventario REAL en una empresa de prueba, comprobar saldos e historial. Presionar «Transferir entre ubicaciones» y «Stock inicial y ajustes» para verificar que se abren como pantallas exclusivas y vuelven al listado, sin ejecutar ningún POST. Comprobar que Conteo físico sigue visible dentro de Ajustes, que filtros y trazabilidad se mantienen y que el listado es usable en 390px.
 
 **No fusionar** sin aprobación. Los siguientes incrementos de E3-1F podrán pulir el historial y la representación de movimientos/ajustes si se necesita, sin mezclar rediseño con cambios de dominio.
+
+## Aprobación funcional y ajuste de auditoría (12/11/2026)
+
+El usuario aprobó el diseño y el funcionamiento de E3-1F1 y pidió una única corrección final: mostrar en el detalle del movimiento **el nombre de la persona que realizó la operación**, sin sacrificar el identificador técnico.
+
+- El contrato de inventario ya contiene `actor_id`, correspondiente al actor que efectuó el movimiento; la corrección no altera DTO ni escrituras.
+- En **Historial de movimientos**, se muestra «Realizó el movimiento: nombre», resolviendo la identidad del usuario conectado por su ID de sesión y la de otros integrantes exclusivamente a través de la lista REAL de miembros de la empresa, cuando `canReadTeam` autoriza la consulta.
+- La respuesta del equipo se conserva asociada a su `businessId` y solo se utiliza si coinciden la empresa activa y los permisos actuales. No se hace lookup de cuentas ajenas.
+- Si no hay nombre consultable, se presenta «Nombre no disponible», sin atribuir un movimiento histórico al usuario actual. El UUID sigue en «Ver trazabilidad» como «Responsable (ID)».
+- El nombre mostrado es el nombre actual del perfil del integrante; no pretende ser un snapshot histórico inmutable.
+- Se mantienen la interfaz móvil, los métodos GET, paginación, filtros, operaciones atómicas, las claves de idempotencia y el control de versiones.
+- Se añadieron pruebas de visualización de nombre propio, autor distinto, caso sin acceso al directorio y conservación del UUID; además, el E2E de base descartable verifica el nombre y el detalle técnico sin generar POST de inventario.
+
+**Cierre:** aprobación funcional expresada por el usuario; PR preparado para revisión GitHub tras CI. No constituye autorización para fusionar la cadena a `main`.

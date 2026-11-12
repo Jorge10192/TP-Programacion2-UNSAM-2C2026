@@ -76,6 +76,23 @@ export function loadedMatchCountLabel(count:number):string {
   return `Se ${count===1?'muestra':'muestran'} ${count} ${count===1?'coincidencia':'coincidencias'} del filtro local.`
 }
 
+export type MovementActor = { user_id:string; display_name:string }
+export type MovementViewer = { id:string; displayName:string }
+
+/**
+ * No resolver nombres de otra empresa ni suponer que el actor histórico
+ * es quien está conectado. La lista de integrantes se debe proporcionar
+ * únicamente después de comprobar permisos de equipo para el tenant activo.
+ */
+export function movementActorName(
+  actorId:string,
+  viewer:MovementViewer,
+  actors:ReadonlyArray<MovementActor> = [],
+):string {
+  if(actorId===viewer.id)return viewer.displayName.trim()||'Tu cuenta'
+  return actors.find(x=>x.user_id===actorId)?.display_name.trim()||'Nombre no disponible'
+}
+
 /** Traceable identifiers from the REAL ledger (not invoices or arbitrary client links). */
 export function movementTraceFields(record: InventoryMovement): {label: string; value: string}[] {
   const fields = [

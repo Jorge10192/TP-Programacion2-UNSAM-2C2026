@@ -79,6 +79,12 @@ test('E3-1F1: inventario y operaciones aisladas, volver sin escrituras y diseño
   await page.getByRole('button',{name:'Historial de movimientos'}).click()
   const history=page.locator('article.real-inventory-movement')
   await expect(history).toHaveCount(1)
+  await expect(history.first().locator('.e3-inventory-actor')).toContainText('Realizó el movimiento:')
+  await expect(history.first().locator('.e3-inventory-actor')).toContainText('Inventario E3 QA')
+  await history.first().getByText('Ver trazabilidad').click()
+  await expect(history.first().locator('.real-inventory-trace')).toContainText('Responsable (ID)')
+  const ledgerRow=(await movements.json())[0]
+  await expect(history.first().locator('.real-inventory-trace')).toContainText(ledgerRow.actor_id)
   await page.getByLabel('Ubicación',{exact:true}).selectOption(origin.id)
   await expect(history).toHaveCount(1)
   expect(postBefore,'Cambiar vistas no genera ajustes ni traslados').toHaveLength(0)
