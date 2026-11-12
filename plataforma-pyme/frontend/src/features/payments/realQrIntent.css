@@ -83,3 +83,15 @@
  .e3-qr-lab-actions button{width:100%}
  .e3-qr-finalize button{justify-self:stretch}
 }
+
+/* B5: comprobante completo disponible tras FINALIZADA, legible sin scroll horizontal. */
+.e3-qr-receipt {border-top:1px solid #afd7c1;padding-top:11px;max-width:100%;min-width:0}
+.e3-qr-receipt summary {cursor:pointer;font-size:14px;font-weight:750;padding:8px 0}
+.e3-qr-receipt summary:focus-visible {outline:3px solid #2b68d3;outline-offset:3px}
+.e3-qr-receipt-body{display:grid;gap:9px;padding-top:8px;min-width:0}
+.e3-qr-receipt-body p{margin:0;overflow-wrap:anywhere}
+.e3-qr-receipt-lines{display:grid;gap:8px;border-block:1px solid #afd7c1;padding:12px 0}
+.e3-qr-receipt-line{display:flex;justify-content:space-between;align-items:start;gap:14px;font-size:12px}
+.e3-qr-receipt-line span{min-width:0;overflow-wrap:anywhere}
+.e3-qr-receipt-line strong{white-space:nowrap}
+.e3-qr-receipt-grand{border-top:1px solid #afd7c1;padding-top:8px}
