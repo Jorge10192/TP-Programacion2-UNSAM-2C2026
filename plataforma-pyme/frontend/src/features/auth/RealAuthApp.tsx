@@ -13,6 +13,7 @@ import { RealInventoryPage } from '../inventory/RealInventoryPage'
 import { RealSalesPage } from '../sales/RealSalesPage'
 import { RealPosPage } from '../sales/RealPosPage'
 import { RealPaymentConnectionsPage } from '../payments/RealPaymentConnectionsPage'
+import { RealQrIntentPage } from '../payments/RealQrIntentPage.tsx'
 import { RealPhotoManager, RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import { RealTeamPage } from '../team/RealTeamPage'
 import { RealAcceptInvitationPage } from '../team/RealAcceptInvitationPage'
@@ -33,6 +34,8 @@ function routeFromPath(path: string): Route {
   if (path === '/real/registro') return '/real/registro'
   if (path === '/real/empresas' || path === '/real/empresas/nueva'
     || path === '/real/invitaciones/aceptar') return path
+  const qrMatch = /^\/real\/empresas\/([^/]+)\/qr-cobros\/([^/]+)$/.exec(path)
+  if (qrMatch && UUID_PATTERN.test(qrMatch[1]) && UUID_PATTERN.test(qrMatch[2])) return path as Route
   const detailMatch = /^\/real\/empresas\/([^/]+)(?:\/(inicio|ubicaciones|equipo|catalogo|proveedores|compras|inventario|ventas|pos|medios-de-cobro))?$/.exec(path)
   if (detailMatch && UUID_PATTERN.test(detailMatch[1])) return path as Route
   return '/real/login'
@@ -214,8 +217,11 @@ export function RealAuthApp() {
   const operationsMatch = /^\/real\/empresas\/([^/]+)\/(inicio|ubicaciones|equipo|catalogo|proveedores|compras|inventario|ventas|pos|medios-de-cobro)$/.exec(path)
   const operationBusinessId = operationsMatch && UUID_PATTERN.test(operationsMatch[1]) ? operationsMatch[1] : null
   const operationsKind = operationBusinessId ? operationsMatch?.[2] : null
+  const qrMatch = /^\/real\/empresas\/([^/]+)\/qr-cobros\/([^/]+)$/.exec(path)
+  const qrBusinessId = qrMatch && UUID_PATTERN.test(qrMatch[1]) && UUID_PATTERN.test(qrMatch[2]) ? qrMatch[1] : null
+  const qrIntentId = qrBusinessId ? qrMatch?.[2] : null
   const showInvitation = session !== null && path === '/real/invitaciones/aceptar'
-  const showOperations = session !== null && (operationBusinessId !== null || showInvitation)
+  const showOperations = session !== null && (operationBusinessId !== null || qrBusinessId !== null || showInvitation)
   const showBusinesses = session !== null && businessRoute !== null && !showOperations
 
   // A valid session never reveals the login form, even if browser Back changes the URL.
@@ -250,6 +256,10 @@ export function RealAuthApp() {
         ? showInvitation
           ? <RealAcceptInvitationPage key={session.user.id + ':invite'} token={session.token}
               userId={session.user.id} onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
+          : qrBusinessId && qrIntentId
+            ? <RealQrIntentPage key={session.user.id + ':' + path} token={session.token}
+                userId={session.user.id} businessId={qrBusinessId} intentId={qrIntentId}
+                onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
           : operationBusinessId && operationsKind === 'medios-de-cobro'
             ? <RealPaymentConnectionsPage key={session.user.id + ':' + path} token={session.token} userId={session.user.id}
                 businessId={operationBusinessId} onUnauthorized={onBusinessAuthLost}/>
