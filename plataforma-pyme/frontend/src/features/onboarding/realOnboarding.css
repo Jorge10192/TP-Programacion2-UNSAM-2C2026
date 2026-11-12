@@ -1,0 +1,138 @@
+/* E3-1H1 — Inicio REAL. Componente aislado, sin estilos de DEMO. */
+.e3-onboarding{
+  --ob-primary:#2563eb;--ob-ink:#172b48;--ob-muted:#64748b;
+  --ob-line:#dce5ef;--ob-surface:#f5f8fd;
+  max-width:none;
+}
+.e3-onboarding .real-business-nav{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.e3-onboarding .real-business-nav .real-auth-link{
+  display:inline-flex;align-items:center;gap:7px;min-height:42px;
+}
+.e3-onboard-hero{
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  margin:13px 0 25px;padding-bottom:23px;border-bottom:1px solid var(--ob-line);
+}
+.e3-onboard-hero-icon{
+  width:66px;height:66px;display:grid;place-items:center;
+  border-radius:19px;background:#e8f1ff;color:#215cb7;flex:none;
+}
+.e3-onboard-hero-copy{flex:1 1 240px;min-width:0}
+.e3-onboard-hero-copy h1{font-size:clamp(27px,3vw,36px);line-height:1.18;color:var(--ob-ink);margin:8px 0}
+.e3-onboard-hero-copy p{margin:0;color:var(--ob-muted);line-height:1.6}
+.e3-onboard-hero>button{min-height:45px}
+.e3-onboard-loading,.e3-onboard-error{
+  padding:20px;border:1px solid #d6e5f4;border-radius:14px;
+  color:#466486;background:var(--ob-surface);line-height:1.6;
+}
+.e3-onboard-error{border-color:#e4b3b3;background:#fff7f5}
+.e3-onboard-error button{margin-top:12px}
+.e3-onboard-business-strip{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;border-radius:17px;background:#f3f7fd;
+  border:1px solid #d7e5f5;padding:20px 22px;margin:0 0 24px;
+}
+.e3-onboard-business-strip>div{display:grid;gap:7px;min-width:0}
+.e3-onboard-business-strip strong{font-size:19px;color:#173a6b;overflow-wrap:anywhere}
+.e3-onboard-business-strip div span{font-size:12px;color:#5b789e}
+.e3-onboard-business-status{
+  background:#fff2e5;color:#956419;padding:10px 13px;border-radius:999px;
+  font-size:12px;font-weight:800;
+}
+.e3-onboard-active{background:#e2f5ec;color:#19764e}
+.e3-onboard-warning{border-left:3px solid #d28e37;padding:12px 17px;
+  background:#fff8ec;color:#875b1d;border-radius:8px}
+.e3-onboard-progress{
+  border-radius:17px;border:1px solid var(--ob-line);background:#fff;
+  padding:clamp(17px,2vw,24px);margin-bottom:22px;
+}
+.e3-onboard-progress-head{
+  display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;
+}
+.e3-onboard-progress-head h2,.e3-onboard-next h2{
+  margin:0 0 7px;color:#194b8c;font-size:21px;
+}
+.e3-onboard-progress-head p,.e3-onboard-next-heading p{
+  margin:0;color:#627f9f;line-height:1.55;font-size:13px;
+}
+.e3-onboard-progress-head>strong{
+  display:block;font-size:16px;font-weight:850;color:#1755a1;white-space:nowrap;
+}
+.e3-onboard-progress-track{
+  height:12px;margin:20px 0 12px;background:#e8eef7;
+  border-radius:999px;overflow:hidden;
+}
+.e3-onboard-progress-track span{
+  display:block;height:100%;border-radius:999px;
+  background:#3478df;transition:width .18s ease;
+}
+.e3-onboard-partial,.e3-onboard-complete{
+  display:flex;align-items:center;gap:9px;line-height:1.6;
+  font-size:12px;color:#876017;margin:10px 0 0;
+}
+.e3-onboard-complete{color:#247754}
+.e3-onboard-checklist{display:grid;gap:13px}
+.e3-onboard-step{
+  display:grid;grid-template-columns:46px minmax(0,1fr) auto;
+  gap:16px;align-items:center;border:1px solid #d9e6f5;
+  border-radius:17px;padding:19px;background:#fff;
+}
+.e3-onboard-step-number{
+  width:42px;height:42px;border-radius:13px;background:#edf3fc;
+  color:#38699d;font-size:16px;font-weight:850;
+  display:grid;place-items:center;
+}
+.e3-onboard-step-done .e3-onboard-step-number{
+  background:#e5f6ed;color:#148252;
+}
+.e3-onboard-step-copy{min-width:0}
+.e3-onboard-step-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.e3-onboard-step-top h3{font-size:16px;color:#183e70;margin:0}
+.e3-onboard-step-status{
+  background:#fff0dc;color:#996313;font-size:11px;border-radius:999px;
+  font-weight:850;padding:6px 9px;
+}
+.e3-onboard-step-done .e3-onboard-step-status{background:#e3f6eb;color:#12724a}
+.e3-onboard-step-unknown .e3-onboard-step-status{background:#eaf0f7;color:#526b85}
+.e3-onboard-step-not-required .e3-onboard-step-status{background:#ecf4ff;color:#2562a0}
+.e3-onboard-step-copy p{font-size:13px;color:#667e99;margin:9px 0}
+.e3-onboard-step-copy small{display:block;font-size:12px;line-height:1.55;color:#4b6684}
+.e3-onboard-step button{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px}
+.e3-onboard-next{margin-top:29px}
+.e3-onboard-next-grid{
+  margin-top:17px;display:grid;gap:14px;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));
+}
+.e3-onboard-next-card{
+  position:relative;display:flex;flex-direction:column;align-items:flex-start;
+  text-align:left;gap:12px;min-height:180px;border:1px solid #dae6f5;
+  border-radius:17px;padding:20px 19px;background:#fff;
+  cursor:pointer;font:inherit;color:#183e70;
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+.e3-onboard-next-card:hover{border-color:#92bafa;box-shadow:0 5px 18px #1c519112}
+.e3-onboard-next-card:focus-visible{outline:3px solid #7eafff;outline-offset:2px}
+.e3-onboard-next-icon{
+  width:44px;height:44px;display:grid;place-items:center;border-radius:12px;
+  background:#e9f2ff;color:#2364b8;
+}
+.e3-onboard-next-card>strong{font-size:15px}
+.e3-onboard-next-card>small{color:#647d9b;line-height:1.55;font-size:12px}
+.e3-onboard-next-arrow{position:absolute;right:17px;top:19px;color:#5c85bd}
+.e3-onboard-footnote{
+  border-top:1px solid var(--ob-line);padding-top:20px;margin-top:30px;
+  color:#627f9c;font-size:12px;line-height:1.7;
+}
+@media(max-width:760px){
+  .e3-onboard-step{grid-template-columns:40px minmax(0,1fr);gap:12px;padding:15px}
+  .e3-onboard-step button{grid-column:2;justify-self:start}
+}
+@media(max-width:480px){
+  .e3-onboard-hero{align-items:flex-start}
+  .e3-onboard-hero>button{width:100%}
+  .e3-onboard-business-strip{padding:15px}
+  .e3-onboard-step-number{width:38px;height:38px}
+  .e3-onboard-next-grid{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+  .e3-onboard-next-card,.e3-onboard-progress-track span{transition:none}
+}

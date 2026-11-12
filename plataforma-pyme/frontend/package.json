@@ -20,7 +20,7 @@
     "test:accounts": "node --test tests/financial-account-policy.test.mjs",
     "test:qr": "node --test tests/qr-demo-policy.test.mjs",
     "test:api": "node --test tests/http-client.test.mjs",
-    "test:auth": "node --test tests/auth-api.test.mjs tests/real-workspace-navigation.test.mjs",
+    "test:auth": "node --test tests/auth-api.test.mjs tests/real-workspace-navigation.test.mjs tests/real-onboarding.test.mjs",
     "test:businesses": "node --test tests/business-api.test.mjs",
     "test:operations-real": "node --test tests/operations-real-api.test.mjs",
     "test:catalog-real": "node --test tests/catalog-real-api.test.mjs",

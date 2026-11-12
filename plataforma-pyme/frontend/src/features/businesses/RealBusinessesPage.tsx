@@ -300,9 +300,15 @@ export function RealBusinessesPage({
           <h1>Datos de la empresa</h1>
           <p>Consultá los datos registrados y las herramientas de tu negocio.</p>
         </div>
-        {!loading && selected && canEditBusiness(selected) && !editing && <button
-          type="button" className="real-auth-primary e3-detail-edit-trigger"
-          onClick={() => setEditing(true)}>Editar datos</button>}
+        {!loading && selected && <div className="real-auth-actions">
+          <button type="button" className="real-auth-primary"
+            onClick={() => onNavigate('/real/empresas/'+selected.id+'/inicio')}>
+            Inicio y primeros pasos
+          </button>
+          {canEditBusiness(selected) && !editing && <button
+            type="button" className="real-auth-secondary e3-detail-edit-trigger"
+            onClick={() => setEditing(true)}>Editar datos</button>}
+        </div>}
       </div>
       {loading && <p role="status">Comprobando pertenencia a la empresa…</p>}
       {!loading && selected && <>
