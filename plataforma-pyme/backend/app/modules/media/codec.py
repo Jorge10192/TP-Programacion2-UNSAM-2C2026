@@ -33,7 +33,9 @@ async def clean_photo(upload: UploadFile) -> tuple[bytes, int, int]:
         with Image.open(BytesIO(raw)) as original:
             normalized = ImageOps.exif_transpose(original)
             normalized.thumbnail((MAX_EDGE, MAX_EDGE), Image.Resampling.LANCZOS)
-            normalized = normalized.convert("RGB")
+            # Logos PNG con fondo transparente deben conservar el canal alfa.
+            has_alpha = "A" in normalized.getbands() or "transparency" in normalized.info
+            normalized = normalized.convert("RGBA" if has_alpha else "RGB")
             width, height = normalized.size
             output = BytesIO()
             normalized.save(output, format="WEBP", quality=80, method=4)
