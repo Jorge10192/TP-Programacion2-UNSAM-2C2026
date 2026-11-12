@@ -102,10 +102,13 @@ class SaleService:
 
     def create(self, actor_id: UUID, session_id: UUID, business_id: UUID,
                key: UUID, command: CreateSaleRequest, *,
-               commit: bool = True, trusted_qr_demo: bool = False) -> SaleCreated:
+               commit: bool = True, trusted_qr_demo: bool = False,
+               trusted_mp_test: bool = False) -> SaleCreated:
         # B4: el QR DEMO de QA gobierna el commit junto al enlace y los eventos.
         # El endpoint público /sales no expone estos parámetros.
-        if trusted_qr_demo and (
+        if trusted_qr_demo and trusted_mp_test:
+            raise ValueError('Dos modos QR incompatibles')
+        if (trusted_qr_demo or trusted_mp_test) and (
             commit or len(command.payments) != 1
             or command.payments[0].method != "MERCADO_PAGO_DECLARADO"
         ):
@@ -226,7 +229,8 @@ class SaleService:
                 SalePayment(
                     id=uuid4(), business_id=business_id, sale_id=row.id,
                     payment_number=number,
-                    method="MERCADO_PAGO_DEMO_QA" if trusted_qr_demo else payment.method,
+                    method=("MERCADO_PAGO_DEMO_QA" if trusted_qr_demo else
+                            "MERCADO_PAGO_QR_TEST" if trusted_mp_test else payment.method),
                     amount_cents=payment.amount_cents, reference=payment.reference,
                 )
                 for number, payment in enumerate(command.payments, 1)
