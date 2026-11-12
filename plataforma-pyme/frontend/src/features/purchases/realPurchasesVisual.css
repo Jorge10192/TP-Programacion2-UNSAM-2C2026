@@ -165,3 +165,9 @@
 @media(prefers-reduced-motion:reduce){
   .e3-purchases-receive-actions button{transition:none}
 }
+
+.e3-purchases-register-explainer{
+  font-size:12px;line-height:1.65;color:#385e86;
+  margin:17px 0 12px;padding:12px 14px;border-radius:10px;
+  border-left:3px solid #91baf2;background:#f1f6fd;
+}

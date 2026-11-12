@@ -132,10 +132,13 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
  const registeredCount=purchases.filter(p=>p.status==='REGISTRADA').length
  useEffect(()=>{
    if(lastView.current===view)return
+   // Durante la recuperación del journal el botón está deshabilitado.
+   // Esperar a que finalice para dirigir el foco de teclado a la nueva vista.
+   if(view!=='list'&&busy)return
    if(view==='list')listTitleRef.current?.focus()
    else backRef.current?.focus()
    lastView.current=view
- },[view])
+ },[view,busy])
  function closePurchaseForm(){
    if(busy||pending)return
    setForm(false);setDraft(emptyDraft());setConsent(false);setError('')
@@ -539,8 +542,9 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
      </fieldset>
      {pending&&<p className="real-ops-warning">El cuerpo original quedó bloqueado. Primero comprobá el historial y luego reintentá con la misma clave. F5 no envía nada automáticamente.</p>}
      {!pending&&<label className="real-ops-check"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> Acepto guardar temporalmente los datos de esta compra en este navegador.</label>}
+     <p className="e3-purchases-register-explainer">Al registrar la compra, quedará pendiente de recepción. Para incorporar mercadería al inventario, después confirmá la recepción en una sede habilitada. Este paso no modifica el stock.</p>
      <div className="real-auth-actions">
-       <button type="submit" className="real-auth-primary" disabled={busy||!journalReady||draft.lines.some(x=>x.totalDraft!==null)||(!pending&&!consent)}>{busy?'Procesando…':pending?'Reintentar MISMA compra':'Registrar compra sin stock'}</button>
+       <button type="submit" className="real-auth-primary" disabled={busy||!journalReady||draft.lines.some(x=>x.totalDraft!==null)||(!pending&&!consent)}>{busy?'Procesando…':pending?'Reintentar MISMA compra':'Registrar compra'}</button>
        {pending&&<button type="button" className="real-auth-secondary" disabled={busy} onClick={()=>void discardPurchase()}>Descartar tras verificar</button>}
        <button type="button" className="real-auth-secondary" disabled={busy||!!pending} onClick={closePurchaseForm}>Cancelar</button>
      </div>

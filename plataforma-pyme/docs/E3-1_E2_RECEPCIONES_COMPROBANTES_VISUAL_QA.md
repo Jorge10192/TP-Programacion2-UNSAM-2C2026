@@ -45,3 +45,9 @@ Completar la navegación visual de Compras REAL usando el mismo patrón aprobado
 ## Pendiente de otras etapas
 
 La exportación de un comprobante formal PDF, subida de facturas del proveedor, recepción parcial y rediseños de caja/QR **no están incluidos**. El ajuste global de tipografías/imágenes y optimización del bundle se pospone a una revisión visual transversal.
+
+## Ajuste UX posterior a revisión manual
+
+El usuario validó visual y funcionalmente E3-1E2 (recepción, comprobante y movimientos) y solicitó aclarar el botón al registrar una compra. **Texto final: «Registrar compra»**, acompañado por explicación contigua: al registrarla queda pendiente de recepción; para ingresar mercadería al inventario hay que confirmar la recepción en una sede. Sin cambios de API ni de estado, stock o idempotencia.
+
+En el primer workflow integral del PR se detectó **una única falla de accesibilidad**: después de seleccionar recepción, el botón Volver no recibía el foco cuando la lectura inicial de IndexedDB todavía estaba ocupada. Se ajustó el efecto de foco para esperar la finalización de `busy` antes de enfocar la vista. Los 45 recorridos integrales restantes pasaron; este cambio requiere **nuevo workflow completo en verde** y revisión de los recorridos de compras/recepciones antes del cierre.
