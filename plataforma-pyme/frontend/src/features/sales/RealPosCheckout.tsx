@@ -14,7 +14,10 @@ import { createSaleWriteCoordinator } from './realSaleWriteCoordinator.ts'
 import type { ConfirmedSale } from './realSaleWriteCoordinator.ts'
 import { createPaymentConnectionGateway } from '../payments/paymentConnectionGateway.ts'
 import { createQrIntentGateway, makeQrIntentCommand, qrIntentError } from '../payments/qrIntentGateway.ts'
-import type { QrIntentCommand } from '../payments/qrIntentGateway.ts'
+import {
+  qrPendingJournal, qrPendingScope, newQrPending,
+} from '../payments/qrPendingJournal.ts'
+import type { QrPending } from '../payments/qrPendingJournal.ts'
 import { salePendingOld } from './salePendingJournal.ts'
 import type { SalePending } from './salePendingJournal.ts'
 
@@ -79,7 +82,9 @@ export function RealPosCheckout({
   const [qrConnection, setQrConnection] = useState<'loading' | 'active' | 'inactive' | 'error'>('loading')
   const [qrUnknown, setQrUnknown] = useState(false)
   const [qrBusy, setQrBusy] = useState(false)
-  const qrAttempt = useRef<{ key: string; command: QrIntentCommand; fingerprint: string } | null>(null)
+  const qrAttempt = useRef<QrPending | null>(null)
+  const qrScope = useMemo(() => qrPendingScope(userId, businessId), [userId,businessId])
+  const [qrRecoveryChecked, setQrRecoveryChecked] = useState(false)
   const [stage, setStage] = useState<Stage>('checking')
   const [payments, setPayments] = useState<PosPaymentDraft[]>([initialPayment(null)])
   const [paymentModified, setPaymentModified] = useState(false)
@@ -126,11 +131,13 @@ export function RealPosCheckout({
   useEffect(() => {
     let mounted = true
     onDraftLock(true) // fail closed until IndexedDB verifies absence of pending command
-    void coordinator.pending().then(row => {
+    void Promise.all([coordinator.pending(), qrPendingJournal.load(qrScope)]).then(([row, qrRow]) => {
       if (!mounted) return
       setPending(row)
+      qrAttempt.current = qrRow
+      setQrUnknown(Boolean(qrRow))
       setStage(row ? 'pending' : 'editing')
-      onDraftLock(Boolean(row))
+      onDraftLock(Boolean(row || qrRow))
     }).catch(error => {
       if (!mounted) return
       setStage('blocked')
@@ -138,7 +145,7 @@ export function RealPosCheckout({
       onDraftLock(true)
     })
     return () => { mounted = false }
-  }, [coordinator, onDraftLock])
+  }, [coordinator, onDraftLock, qrScope])
 
   const changePayment = (i: number, changes: Partial<PosPaymentDraft>) => {
     setPaymentModified(true)
@@ -165,40 +172,40 @@ export function RealPosCheckout({
   async function beginQrIntent(replayOnly = false) {
     if (busy.current || stage !== 'editing' || qrConnection !== 'active') return
     if (qrUnknown && !replayOnly) return
+    if (replayOnly && !qrRecoveryChecked) return
     setNotice('')
-    let attempt = qrAttempt.current
-    if (!replayOnly) {
-      try {
-        if (!draft.totals) throw new RangeError(draft.problem || 'El carrito no tiene total válido.')
-        const command = makeQrIntentCommand(location?.id ?? null, cart, draft.totals.discount_cents, notes)
-        const fingerprint = JSON.stringify(command)
-        if (!attempt || attempt.fingerprint !== fingerprint)
-          attempt = { key: crypto.randomUUID(), command, fingerprint }
-        qrAttempt.current = attempt
-      } catch (error) {
-        setNotice(qrIntentError(error))
-        return
-      }
-    }
-    if (!attempt) return
     busy.current = true
     setQrBusy(true)
     setStage('sending')
     onDraftLock(true)
     try {
-      const result = await qrApi.create(attempt.command, attempt.key)
+      let saved: QrPending
+      if (replayOnly) {
+        const original = await qrPendingJournal.load(qrScope)
+        if (!original || original.key !== qrAttempt.current?.key)
+          throw new Error('El intento QR guardado cambió. Volvé a recuperar por GET.')
+        saved = await qrPendingJournal.reserve(original)
+      } else {
+        if (!draft.totals) throw new RangeError(draft.problem || 'El carrito no tiene total válido.')
+        const command = makeQrIntentCommand(location?.id ?? null, cart, draft.totals.discount_cents, notes)
+        saved = await qrPendingJournal.reserve(newQrPending(userId, businessId, command))
+      }
+      qrAttempt.current = saved
+      setQrUnknown(true)
+      setQrRecoveryChecked(false)
+      // El cuerpo y la clave se persistieron y releyeron de IndexedDB ANTES de POST.
+      const result = await qrApi.create(saved.body, saved.key)
+      await qrPendingJournal.close(saved, result)
       qrAttempt.current = null
       setQrUnknown(false)
       onNavigate('/real/empresas/' + businessId + '/qr-cobros/' + result.id)
     } catch (error) {
-      const unknown = error instanceof ApiTransportError ||
-        (error instanceof ApiHttpError && error.status >= 500)
-      setQrUnknown(unknown)
-      setNotice(qrIntentError(error))
+      setQrUnknown(true)
+      setQrRecoveryChecked(false)
+      setNotice(qrIntentError(error) + ' Recuperá el intento original por GET antes de reintentar.')
       setStage('editing')
-      onDraftLock(unknown)
+      onDraftLock(true)
       if (error instanceof ApiHttpError && error.status === 401) onUnauthorized()
-      if (!unknown) qrAttempt.current = null
     } finally {
       busy.current = false
       setQrBusy(false)
@@ -206,22 +213,30 @@ export function RealPosCheckout({
   }
 
   async function recoverQrAttempt() {
-    if (busy.current || !qrAttempt.current) return
+    if (busy.current) return
     busy.current = true
     setQrBusy(true)
     setNotice('')
+    setQrRecoveryChecked(false)
     try {
-      const found = await qrApi.byRequest(qrAttempt.current.key)
+      const original = await qrPendingJournal.load(qrScope)
+      if (!original) throw new Error('No existe un intento QR guardado para esta cuenta y empresa.')
+      qrAttempt.current = original
+      const found = await qrApi.byRequest(original.key)
+      await qrPendingJournal.close(original, found)
       qrAttempt.current = null
       setQrUnknown(false)
       onNavigate('/real/empresas/' + businessId + '/qr-cobros/' + found.id)
     } catch (error) {
-      if (error instanceof ApiHttpError && error.status === 404)
-        setNotice('No se encontró el intento por ahora. Podés reintentar explícitamente la misma clave y el mismo cuerpo, sin duplicar el intento.')
-      else {
+      setQrUnknown(true)
+      if (error instanceof ApiHttpError && error.status === 404) {
+        setQrRecoveryChecked(true)
+        setNotice('GET devolvió 404. El POST anterior podría no haber llegado. Podés reintentar explícitamente la misma clave y el mismo cuerpo guardado.')
+      } else {
         setNotice(qrIntentError(error))
         if (error instanceof ApiHttpError && error.status === 401) onUnauthorized()
       }
+      onDraftLock(true)
     } finally {
       busy.current = false
       setQrBusy(false)
@@ -319,10 +334,12 @@ export function RealPosCheckout({
     busy.current = true
     setNotice('')
     try {
-      const row = await coordinator.pending()
+      const [row, qrRow] = await Promise.all([coordinator.pending(), qrPendingJournal.load(qrScope)])
       setPending(row)
+      qrAttempt.current = qrRow
+      setQrUnknown(Boolean(qrRow))
       setStage(row ? 'pending' : 'editing')
-      onDraftLock(Boolean(row))
+      onDraftLock(Boolean(row || qrRow))
     } catch (error) {
       setNotice(readableError(error)); setStage('blocked')
       onDraftLock(true)
@@ -379,7 +396,7 @@ export function RealPosCheckout({
         {qrConnection === 'error' && <p role="alert">No se pudo verificar la vinculación. Abrí Medios de cobro y volvé a intentar.</p>}
         {qrConnection === 'inactive' && <p role="status">Antes de generar un QR, vinculá la cuenta de Mercado Pago DEMO de esta empresa.</p>}
         {qrUnknown && <p role="alert" className="real-auth-message real-ops-warning">
-          El resultado del intento es incierto. No modifiques el carrito ni crees otra clave.
+          Existe un intento QR guardado en IndexedDB. No modifiques el carrito ni crees otra clave: consultá su estado original.
         </p>}
         <div className="e3-pos-qr-buttons">
           {qrConnection === 'active' && <button type="button" className="real-auth-primary"
@@ -392,7 +409,7 @@ export function RealPosCheckout({
             Consultar intento por solicitud
           </button>}
           {qrUnknown && <button type="button" className="real-auth-secondary"
-            disabled={qrBusy} onClick={() => void beginQrIntent(true)}>
+            disabled={qrBusy || !qrRecoveryChecked} onClick={() => void beginQrIntent(true)}>
             Reintentar mismo QR y clave
           </button>}
           {qrConnection !== 'active' && <button type="button" className="real-auth-secondary"
