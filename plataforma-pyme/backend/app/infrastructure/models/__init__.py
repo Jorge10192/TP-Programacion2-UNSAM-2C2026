@@ -3,6 +3,7 @@ from app.infrastructure.models.photo_asset import PhotoAsset
 from app.infrastructure.models.payment_connection import MerchantPaymentConnection
 from app.infrastructure.models.qr_payment_intent import QrPaymentIntent, QrPaymentIntentLine
 from app.infrastructure.models.qr_payment_event import QrPaymentEvent
+from app.infrastructure.models.qr_payment_settlement import QrPaymentSettlement
 from app.infrastructure.models.user import User
 from app.infrastructure.models.auth_session import AuthSession
 from app.infrastructure.models.business import Business
@@ -23,4 +24,4 @@ from app.infrastructure.models.sale import Sale
 from app.infrastructure.models.sale_line import SaleLine
 from app.infrastructure.models.sale_payment import SalePayment
 
-__all__ = ["QrPaymentEvent", "QrPaymentIntent", "QrPaymentIntentLine", "MerchantPaymentConnection", "PhotoAsset", "User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem", "Supplier", "Purchase", "PurchaseLine", "PurchaseReceipt", "StockBalance", "StockMovement", "InventoryOperation", "Sale", "SaleLine", "SalePayment"]
+__all__ = ["QrPaymentSettlement", "QrPaymentEvent", "QrPaymentIntent", "QrPaymentIntentLine", "MerchantPaymentConnection", "PhotoAsset", "User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem", "Supplier", "Purchase", "PurchaseLine", "PurchaseReceipt", "StockBalance", "StockMovement", "InventoryOperation", "Sale", "SaleLine", "SalePayment"]
