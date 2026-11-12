@@ -60,3 +60,26 @@
 .e3-qr-finalize p{font-size:13px;line-height:1.5;margin:0;overflow-wrap:anywhere}
 .e3-qr-finalize button{justify-self:start;min-height:42px}
 .e3-qr-finalize code{font-size:11px;overflow-wrap:anywhere}
+
+/* B5: orientación de usuario, botones de navegación y lectores de pantalla. */
+.e3-qr-heading-actions {display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.e3-qr-heading-actions button {min-height:42px}
+.e3-qr-explainer {display:grid;gap:6px;padding:13px 16px;border:1px solid #ccdaeb;border-radius:12px;font-size:13px;line-height:1.55}
+.e3-qr-explainer strong{font-size:14px}
+.e3-qr-explainer p{margin:0}
+.e3-qr-explainer small{font-size:12px;line-height:1.55}
+.e3-qr-tone-pending{background:#eef6ff;color:#1e538d;border-color:#bed8f1}
+.e3-qr-tone-success{background:#e8f5ee;color:#155b38;border-color:#b8e3cc}
+.e3-qr-tone-warning{background:#fff4d9;color:#775116;border-color:#edd59a}
+.e3-qr-tone-neutral{background:#f4f6f8;color:#44556b;border-color:#dde5ef}
+.e3-qr-lab-actions button,.e3-qr-buttons button,.e3-qr-finalize button{min-height:44px}
+.e3-qr-page button:focus-visible{outline:3px solid #2b68d3;outline-offset:3px}
+@media(max-width:520px){
+ .e3-qr-heading-actions{display:grid;grid-template-columns:1fr;width:100%}
+ .e3-qr-heading-actions button{width:100%}
+ .e3-qr-buttons{width:100%}
+ .e3-qr-buttons button{flex:1 1 100%}
+ .e3-qr-lab-actions{display:grid;grid-template-columns:1fr}
+ .e3-qr-lab-actions button{width:100%}
+ .e3-qr-finalize button{justify-self:stretch}
+}
