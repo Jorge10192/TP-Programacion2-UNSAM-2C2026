@@ -61,6 +61,41 @@ export type QrIntent = {
 
 export type QrFinalized = { intent: QrIntent; sale: SaleReceipt; replayed: boolean }
 
+export type QrIntentSummary = {
+  id: string
+  business_id: string
+  location_id: string | null
+  created_by_id: string
+  status: QrIntent['status']
+  provider: 'MOCK_QA'
+  currency: 'ARS'
+  reference: string
+  total_cents: number
+  created_at: string
+  expires_at: string
+  sale_id: string | null
+}
+export const QR_HISTORY_PAGE_SIZE = 20
+
+export function parseQrSummary(raw: unknown, businessId: string): QrIntentSummary {
+  if (!isObject(raw) || raw.business_id !== businessId ||
+      !UUID_PATTERN.test(String(raw.id)) ||
+      !(raw.location_id === null || UUID_PATTERN.test(String(raw.location_id))) ||
+      !UUID_PATTERN.test(String(raw.created_by_id)) ||
+      !['ESPERANDO_PAGO','CANCELADA','EXPIRADA','APROBADA_DEMO','RECHAZADA',
+        'INDETERMINADA','REQUIERE_REVISION','FINALIZADA'].includes(String(raw.status)) ||
+      raw.provider !== 'MOCK_QA' || raw.currency !== 'ARS' ||
+      typeof raw.reference !== 'string' || !/^PYME-DEMO-[A-F0-9]{32}$/.test(raw.reference) ||
+      !isCents(raw.total_cents) || (raw.total_cents as number) <= 0 ||
+      typeof raw.created_at !== 'string' || !Number.isFinite(Date.parse(raw.created_at)) ||
+      typeof raw.expires_at !== 'string' || !Number.isFinite(Date.parse(raw.expires_at)) ||
+      !(raw.sale_id === null || UUID_PATTERN.test(String(raw.sale_id))) ||
+      (raw.status === 'FINALIZADA') !== (raw.sale_id !== null))
+    throw new ApiTransportError('invalid-response', false)
+  return raw as QrIntentSummary
+}
+
+
 const isObject = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value)
 const isCents = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 &&
@@ -123,6 +158,20 @@ export function createQrIntentGateway(token: string, businessId: string, transpo
   const api = createApiClient({ getAccessToken: () => token, fetchImpl: transport })
   const path = '/businesses/' + businessId + '/qr-payment-intents'
   return {
+    list(offset=0, limit=QR_HISTORY_PAGE_SIZE, signal?: AbortSignal): Promise<QrIntentSummary[]> {
+      if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10_000_000 ||
+          !Number.isSafeInteger(limit) || limit < 1 || limit > 50)
+        throw new RangeError('Paginación QR inválida')
+      return api.request<unknown>(path + '?offset=' + offset + '&limit=' + limit, { signal })
+        .then(raw => {
+          if (!Array.isArray(raw) || raw.length > limit)
+            throw new ApiTransportError('invalid-response', false)
+          const rows = raw.map(row => parseQrSummary(row, businessId))
+          if (new Set(rows.map(row => row.id)).size !== rows.length)
+            throw new ApiTransportError('invalid-response', false)
+          return rows
+        })
+    },
     create(body: QrIntentCommand, requestId: string): Promise<QrIntent> {
       if (!UUID_V4_PATTERN.test(requestId)) throw new TypeError('Solicitud UUID4 inválida')
       return api.request<unknown>(path, {
