@@ -5,6 +5,7 @@ Un pedido de prueba conserva snapshot, idempotencia y tenant en su propia tabla.
 """
 import hashlib
 import re
+from sqlalchemy.exc import IntegrityError
 import secrets
 from datetime import timedelta
 from uuid import UUID, uuid4
@@ -14,13 +15,19 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.models import (
     MercadoPagoOAuthPending, MercadoPagoTestAccount, MercadoPagoTestOrder,
-    QrPaymentIntent, QrPaymentIntentLine,
+    QrPaymentIntent, QrPaymentIntentLine, QrPaymentSettlement, Sale, SaleLine,
 )
 from app.modules.auth.tokens import now_utc
 from app.modules.payments.mp_official_client import (
     MercadoPagoTransport, MpIntegrityError, MpNotReady, MpProviderFailure,
     POS_PATTERN, authorization_url, config, hash_state, new_pkce, money,
     validate_order, render_official_test_qr,
+)
+from app.modules.payments.qr_settlement_service import QrSettlementService
+from app.modules.sales.schemas import CreateSaleRequest
+from app.modules.sales.service import (
+    SaleService, SaleInsufficientStock, SaleInvalidReference, SaleLocationNotEnabled,
+    SaleMissingCatalogPrice, SalePermissionDenied,
 )
 from app.modules.payments.qr_service import (
     QrIntentService, QrIntentForbidden, QrIntentConflict, QrIntentNotFound,
@@ -218,7 +225,8 @@ class MpOfficialService:
             "created_at": row.created_at,
             "qr_png_data_uri": render_official_test_qr(row.qr_data) if row.qr_data else None,
             "test_only": True,
-            "sale_registered": False,
+            "sale_registered": row.sale_id is not None,
+            "sale_id": row.sale_id,
         }
 
     def get_order(self,actor:UUID,session:UUID,business:UUID,order_id:UUID) -> dict:
@@ -254,7 +262,10 @@ class MpOfficialService:
             if existing:
                 if existing.request_id != request_id or existing.created_by_id != actor:
                     raise MpConflict()
-                if existing.status not in ("INDETERMINADA",):
+                if existing.status not in ("INDETERMINADA",) and not (
+                    existing.status == "PREPARANDO" and
+                    existing.created_at + timedelta(minutes=1) < now_utc()
+                ):
                     result=self.order_view(existing)
                     self.db.rollback()
                     return result
@@ -346,6 +357,9 @@ class MpOfficialService:
             "canceled":"CANCELADA","expired":"EXPIRADA","refunded":"REEMBOLSADA"}[status]
         if row.status in ("REEMBOLSADA","CANCELADA","EXPIRADA") and current in ("CREADA","PROCESADA"):
             raise MpIntegrityError()
+        # Una falla de stock necesita revisión humana aunque MP siga procesada.
+        if row.status == "REQUIERE_REVISION" and current == "PROCESADA":
+            current = "REQUIERE_REVISION"
         row.status=current
         row.payment_id=payment_id or row.payment_id
         row.provider_status_detail=detail
@@ -362,6 +376,133 @@ class MpOfficialService:
                 MercadoPagoTestOrder.id==order_id,
             ).with_for_update().execution_options(populate_existing=True))
             return self._sync(row)
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def by_source(self,actor:UUID,session:UUID,business:UUID,source:UUID)->dict | None:
+        try:
+            self.authorize(actor,session,business,manager=False)
+            qr=self.qr._lookup_by_id(business,source)
+            member=self.authorize(actor,session,business,manager=False)
+            if qr is None or (member.role not in MANAGERS and qr.created_by_id != actor):
+                raise MpMissing()
+            row=self.db.scalar(select(MercadoPagoTestOrder).where(
+                MercadoPagoTestOrder.business_id==business,
+                MercadoPagoTestOrder.source_intent_id==source,
+            ))
+            result=self.order_view(row) if row else None
+            self.db.rollback()
+            return result
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def settle_qa(self,actor:UUID,session:UUID,business:UUID,order_id:UUID)->dict:
+        """Solo MP TEST procesada y verificada vía GET del proveedor.
+
+        Venta, stock y vínculo order→sale comparten el mismo COMMIT.
+        """
+        if not config_if_available():
+            raise MpNotReady()
+        try:
+            self._authorized_order(actor,session,business,order_id,manager=True)
+            # Revalidar status remoto justo antes de permitir vender.
+            order=self.db.scalar(select(MercadoPagoTestOrder).where(
+                MercadoPagoTestOrder.business_id==business,
+                MercadoPagoTestOrder.id==order_id,
+            ).with_for_update().execution_options(populate_existing=True))
+            if order.sale_id:
+                result={"order":self.order_view(order),"sale_id":order.sale_id,"replayed":True}
+                self.db.rollback()
+                return result
+            if order.status=="REQUIERE_REVISION":
+                raise MpConflict()
+            if order.status not in ("CREADA","PROCESADA"):
+                raise MpConflict()
+            self._sync(order)
+            # _sync hace COMMIT tras validar la respuesta oficial. Bloquear de nuevo
+            # antes de vender: múltiples solicitudes de cierre se serializan aquí.
+            order=self.db.scalar(select(MercadoPagoTestOrder).where(
+                MercadoPagoTestOrder.business_id==business,
+                MercadoPagoTestOrder.id==order_id,
+            ).with_for_update().execution_options(populate_existing=True))
+            if order.sale_id:
+                result={"order":self.order_view(order),"sale_id":order.sale_id,"replayed":True}
+                self.db.rollback()
+                return result
+            if order.status!="PROCESADA" or order.provider_status_detail!="accredited":
+                raise MpConflict()
+            source=self.qr._lookup_by_id(business,order.source_intent_id)
+            if source is None or source.total_cents!=order.total_cents:
+                raise MpIntegrityError()
+            if self.db.scalar(select(QrPaymentSettlement.id).where(
+                QrPaymentSettlement.business_id==business,
+                QrPaymentSettlement.intent_id==source.id,
+            )) is not None:
+                raise MpConflict()
+            base_command,original=QrSettlementService(self.db)._snapshot_command(business,source)
+            payload=base_command.model_dump(mode="json")
+            payload["payments"]=[{
+                "method":"MERCADO_PAGO_DECLARADO",
+                "amount_cents":order.total_cents,
+                "reference":order.external_reference,
+            }]
+            command=CreateSaleRequest.model_validate(payload)
+            digest=hashlib.sha256(f"pyme/b6/mp-sale/{business}/{order.id}".encode()).digest()
+            request_id=UUID(bytes=digest[:16],version=4)
+            created=SaleService(self.db).create(
+                actor,session,business,request_id,command,
+                commit=False,trusted_mp_test=True,
+            )
+            if created.replayed:
+                raise MpConflict()
+            sale=self.db.scalar(select(Sale).where(
+                Sale.business_id==business,Sale.id==created.body.id,
+            ))
+            if sale is None:
+                raise MpIntegrityError()
+            sold=list(self.db.scalars(select(SaleLine).where(
+                SaleLine.business_id==business,SaleLine.sale_id==sale.id,
+            ).order_by(SaleLine.line_number)).all())
+            if len(sold)!=len(original):
+                raise MpIntegrityError()
+            for item,old in zip(sold,original):
+                if item.catalog_item_id!=old.catalog_item_id or (
+                    item.line_total_cents!=old.line_total_cents or
+                    item.quantity_milli!=old.quantity_milli
+                ):
+                    raise MpIntegrityError()
+                item.description_snapshot=old.description_snapshot
+                item.sku_snapshot=old.sku_snapshot
+            order.sale_id=sale.id
+            order.updated_at=now_utc()
+            self.db.flush()
+            result={"order":self.order_view(order),"sale_id":sale.id,"replayed":False}
+            self.db.commit()
+            return result
+        except (SaleInsufficientStock,SaleInvalidReference,SaleLocationNotEnabled,
+                SaleMissingCatalogPrice,SalePermissionDenied) as error:
+            self.db.rollback()
+            # La order está cobrada en TEST pero no hay venta; nunca alterar stock
+            # parcialmente ni fingir acreditación contable. Persistir revisión.
+            self._mark_review(business,order_id)
+            raise MpConflict() from error
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def _mark_review(self,business:UUID,order_id:UUID):
+        try:
+            order=self.db.scalar(select(MercadoPagoTestOrder).where(
+                MercadoPagoTestOrder.business_id==business,MercadoPagoTestOrder.id==order_id,
+            ).with_for_update().execution_options(populate_existing=True))
+            if order and not order.sale_id and order.status=="PROCESADA":
+                order.status="REQUIERE_REVISION"
+                order.updated_at=now_utc()
+                self.db.commit()
+            else:
+                self.db.rollback()
         except Exception:
             self.db.rollback()
             raise
