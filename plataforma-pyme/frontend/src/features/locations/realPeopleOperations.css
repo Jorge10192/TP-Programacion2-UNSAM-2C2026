@@ -81,6 +81,24 @@
 .e3-ops-restricted p { margin:0; font-size:13px; line-height:1.55; }
 .e3-ops-role-guidance { margin:12px 0 15px; padding:11px 14px; border-radius:10px; background:#edf4ff; border-left:3px solid #7aa9e9; color:#3d567a; font-size:12px; line-height:1.65; }
 .e3-ops-role-guidance strong { color:#204e8d; }
+/* H3: convite progressive disclosure; collapsed by default, keyboard/ARIA operable. */
+.e3-ops-invite-heading { margin-bottom:0; }
+.e3-ops-invite-toggle {
+  display:flex; align-items:center; gap:9px; width:100%; min-width:0;
+  border:0; border-radius:9px; padding:5px 0;
+  background:transparent; color:inherit; font:inherit; font-weight:inherit;
+  text-align:left; cursor:pointer;
+}
+.e3-ops-invite-toggle span { flex:1; }
+.e3-ops-invite-toggle:hover:not(:disabled) { color:#185bab; }
+.e3-ops-invite-toggle:disabled { opacity:.68; cursor:wait; }
+.e3-ops-invite-chevron { margin-left:auto; flex:none; transition:transform .16s ease; }
+.e3-ops-invite-chevron-open { transform:rotate(90deg); }
+.e3-ops-invite-content { padding-top:19px; }
+.e3-ops-invite-content[hidden] { display:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  .e3-ops-invite-chevron { transition:none; }
+}
 .e3-ops-invite .real-ops-secret { background:#fff; margin:18px 0 0; }
 .e3-ops-page button:focus-visible,.e3-ops-page select:focus-visible,.e3-ops-page input:focus-visible,.e3-ops-page a:focus-visible { outline:3px solid #397ce0; outline-offset:2px; }
 @media(max-width:920px) {
