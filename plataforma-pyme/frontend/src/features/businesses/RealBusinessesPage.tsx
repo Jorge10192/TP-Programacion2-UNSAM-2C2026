@@ -159,7 +159,8 @@ export function RealBusinessesPage({
       if (mutationId !== mutationGeneration.current) return
       setPendingCreation(null)
       setDraft(emptyNewBusiness)
-      onNavigate('/real/empresas/' + business.id)
+      // H2: the first destination is the verified onboarding, not a second setup form.
+      onNavigate('/real/empresas/' + business.id + '/inicio')
     } catch (err) {
       if (mutationId !== mutationGeneration.current) return
       if (err instanceof ApiHttpError && err.status === 401) { onUnauthorized(); return }
@@ -256,7 +257,7 @@ export function RealBusinessesPage({
       {loading && <p role="status">Consultando empresas en FastAPI…</p>}
       {!loading && items?.length === 0 && <div className="real-business-empty e3-company-empty">
         <strong>Tu primer negocio comienza acá</strong>
-        <p>Creá una empresa para configurar su equipo, sus ubicaciones y sus operaciones.</p>
+        <p>Creá una empresa y después seguí los primeros pasos desde Inicio. Podés completarlos de a poco; los servicios no necesitan stock físico.</p>
       </div>}
       {!loading && items && items.length > 0 && <div className="real-business-grid">
         {items.map((item) => <button key={item.id} className="real-business-tile e3-company-tile" type="button" onClick={() => onNavigate('/real/empresas/' + item.id)}>
@@ -274,6 +275,7 @@ export function RealBusinessesPage({
     </> : route.kind === 'create' ? <>
       <h1>Nueva empresa real</h1>
       <p>Se creará una empresa y tu membresía de titular administrativo mediante una única operación en PostgreSQL.</p>
+      <p className="real-auth-note">Al confirmar, vas a llegar a Inicio. Desde ahí podés preparar ubicaciones, artículos o servicios y, si vendés bienes físicos, su inventario. No hace falta completar todo ahora.</p>
       <p className="real-auth-note">El registro de recuperación guarda únicamente nombre, rubro, actividad, clave UUID y fecha en IndexedDB de este navegador. No cifra esos datos ni guarda credenciales: evitá utilizar dispositivos compartidos.</p>
       {journalState === 'loading' && <p role="status">Verificando intentos guardados…</p>}
       {journalNote && <p role={journalState === 'error' ? 'alert' : 'status'} className={journalState === 'error' ? 'real-auth-message real-auth-error' : 'real-auth-note'}>{journalNote}</p>}
