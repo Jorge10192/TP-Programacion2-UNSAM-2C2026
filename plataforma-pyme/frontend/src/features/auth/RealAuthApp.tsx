@@ -12,6 +12,7 @@ import { RealPurchasesPage } from '../purchases/RealPurchasesPage'
 import { RealInventoryPage } from '../inventory/RealInventoryPage'
 import { RealSalesPage } from '../sales/RealSalesPage'
 import { RealPosPage } from '../sales/RealPosPage'
+import { RealPhotoManager, RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import { RealTeamPage } from '../team/RealTeamPage'
 import { RealAcceptInvitationPage } from '../team/RealAcceptInvitationPage'
 import { RealWorkspaceShell } from './RealWorkspaceShell.tsx'
@@ -299,7 +300,7 @@ export function RealAuthApp() {
         <span className="real-auth-eyebrow">{isProfile ? 'Cuenta personal' : 'Acceso seguro'}</span>
         {isProfile ? <>
           <div className="e3-profile-heading">
-            <span className="e3-profile-avatar" aria-hidden="true">{session.user.display_name.slice(0, 1).toUpperCase() || 'U'}</span>
+            <span className="e3-profile-avatar"><RealPhotoPreview token={session.token} owner={{kind:'PROFILE'}} alt="Foto de perfil"/></span>
             <div>
               <h1>Mi perfil</h1>
               <p>Consultá los datos de tu cuenta y administrá el acceso a tus empresas.</p>
@@ -311,6 +312,7 @@ export function RealAuthApp() {
             <div><dt>Teléfono</dt><dd>{session.user.contact_phone || 'No informado'}</dd></div>
             <div><dt>Estado de tu cuenta</dt><dd><span className="e3-status-pill">{session.user.status}</span></dd></div>
           </dl>
+          <RealPhotoManager token={session.token} owner={{kind:'PROFILE'}} title="Foto de perfil" canManage onUnauthorized={onBusinessAuthLost}/>
           <details className="e3-technical-details">
             <summary>Información técnica de la cuenta</summary>
             <p>Identificador de usuario: <code>{session.user.id}</code></p>

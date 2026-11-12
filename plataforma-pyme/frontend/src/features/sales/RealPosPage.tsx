@@ -9,6 +9,7 @@ import type { PosCartLine } from './realPosDraft.ts'
 import { RealPosCheckout } from './RealPosCheckout.tsx'
 import type { PosCheckoutStage } from './RealPosCheckout.tsx'
 import { Icon } from '../../app/Icon.tsx'
+import { RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import { createInventoryGateway, formatMilli, inventoryErrorMessage } from '../inventory/realInventoryGateway.ts'
 import './realSalesVisual.css'
 import { addOnePosCartUnit, canOverrideSalesPrice, parsePosQuantity, posLineTotalCents, posQuantityText, previewPosCart } from './realPosDraft.ts'
@@ -114,8 +115,6 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
     const known=scopedSiteStock.balances[item.id]
     return known!==undefined?known:scopedSiteStock.complete?0:null
   }
-  // Una foto sólo se mostrará cuando Catálogo REAL incorpore almacenamiento
-  // autorizado para imágenes; nunca importar fotos DEMO ni URLs temporales.
   const siteStockPending=Boolean(siteId&&location?.can_store&&!scopedSiteStock)
   const stockForSelected=selected?.item_type==='BIEN' && stockRead?.siteId===siteId
     && stockRead.itemId===selected.id?stockRead:null
@@ -417,9 +416,8 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
             return <article key={item.id}
               className={'real-pos-product e3-pos-product-card'+
                 (existing?' e3-pos-card-in-cart':'')} aria-label={'Artículo '+item.name}>
-              <span className="e3-pos-card-image" aria-hidden="true">
-                <Icon name={item.item_type==='SERVICIO'?'briefcase':'package'} size={25}/>
-              </span>
+              <RealPhotoPreview token={token} owner={{kind:'CATALOG',businessId,resourceId:item.id}}
+                alt={"Foto de "+item.name} className="e3-pos-card-image"/>
               <span className="e3-pos-card-category">{item.category||item.kind}</span>
               <strong>{item.name}</strong>
               <small>SKU: {item.sku||'Sin SKU'} · {item.unit}</small>

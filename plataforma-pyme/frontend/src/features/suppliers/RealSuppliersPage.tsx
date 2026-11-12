@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon.tsx'
+import { RealPhotoManager, RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import '../catalog/realCatalogVisual.css'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
@@ -239,6 +240,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
            <div className="e3-commerce-card-top"><span className="e3-commerce-card-icon"><Icon name="briefcase" size={22}/></span>
              <span className={'real-catalog-status '+(supplier.status==='ACTIVO'?'real-catalog-active':'')}>{supplier.status}</span>
            </div>
+           <RealPhotoPreview token={token} owner={{kind:'SUPPLIER',businessId,resourceId:supplier.id}} alt={"Foto de "+supplier.name} className="e3-supplier-photo"/>
            <strong>{supplier.name}</strong>
            <p className="e3-supplier-offerings">{supplier.offerings||'Sin productos o servicios informados'}</p>
            <div className="e3-supplier-compact-fields">
@@ -278,6 +280,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
        <div><h3>Qué ofrece</h3><p>{detail.offerings||'Sin información registrada.'}</p></div>
        <div><h3>Notas</h3><p>{detail.notes||'Sin observaciones registradas.'}</p></div>
      </div>
+     <RealPhotoManager token={token} owner={{kind:'SUPPLIER',businessId,resourceId:detail.id}} title={"Foto de "+detail.name} canManage={canWrite} onUnauthorized={onUnauthorized}/>
      <section className="e3-supplier-payments" aria-label="Condiciones comerciales del proveedor">
        <h3>Medios de pago aceptados (informativos)</h3>
        {detail.payment_methods.length>0

@@ -6,6 +6,7 @@ import {
   businessErrorMessage, canEditBusiness, createBusinessGateway,
 } from './businessGateway.ts'
 import type { ActivityKind, BusinessChanges, NewBusiness, RealBusiness } from './businessGateway.ts'
+import { RealPhotoManager, RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import './realBusinessDetails.css'
 import '../auth/realPeopleBusiness.css'
 
@@ -261,7 +262,7 @@ export function RealBusinessesPage({
       </div>}
       {!loading && items && items.length > 0 && <div className="real-business-grid">
         {items.map((item) => <button key={item.id} className="real-business-tile e3-company-tile" type="button" onClick={() => onNavigate('/real/empresas/' + item.id)}>
-          <span className="e3-company-icon" aria-hidden="true">▦</span>
+          <RealPhotoPreview token={token} owner={{kind:'BUSINESS',businessId:item.id}} alt={"Logo de "+item.name} className="e3-company-photo"/>
           <strong>{item.name}</strong>
           <span>{item.category} · {item.activity_kind === 'MIXTO' ? 'Productos y servicios' : item.activity_kind === 'PRODUCTOS' ? 'Productos' : 'Servicios'}</span>
           <span className="e3-company-meta">
@@ -297,7 +298,7 @@ export function RealBusinessesPage({
       </div>}
     </> : <>
       <div className="e3-detail-header">
-        <div className="e3-detail-mark" aria-hidden="true">▦</div>
+        <div className="e3-detail-mark"><RealPhotoPreview token={token} owner={{kind:'BUSINESS',businessId:route.businessId}} alt="Foto de la empresa"/></div>
         <div className="e3-detail-heading">
           <h1>Datos de la empresa</h1>
           <p>Consultá los datos registrados y las herramientas de tu negocio.</p>
@@ -340,6 +341,7 @@ export function RealBusinessesPage({
             </dl>
           </details>
         </section>
+        <RealPhotoManager token={token} owner={{kind:'BUSINESS',businessId:selected.id}} title="Foto o logo de la empresa" canManage={canEditBusiness(selected)} onUnauthorized={onUnauthorized}/>
         {canEditBusiness(selected) && editing && <section className="e3-detail-edit-panel" aria-labelledby="e3-edit-heading">
           <h2 id="e3-edit-heading">Editar datos de la empresa</h2>
           <p>Revisá nombre, rubro y actividad. Los cambios se guardan solo cuando confirmás.</p>

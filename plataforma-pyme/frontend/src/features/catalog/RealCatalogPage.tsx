@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon.tsx'
+import { RealPhotoManager, RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import './realCatalogVisual.css'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
@@ -265,6 +266,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
               <span className="e3-commerce-card-icon"><Icon name={item.kind==='SERVICIO'?'briefcase':item.kind==='INSUMO'?'boxes':'package'} size={22}/></span>
               <span className={'real-catalog-status '+(item.status==='ACTIVO'?'real-catalog-active':'')}>{item.status}</span>
             </div>
+            <RealPhotoPreview token={token} owner={{kind:'CATALOG',businessId,resourceId:item.id}} alt={"Foto de "+item.name} className="e3-catalog-photo"/>
             <div className="e3-commerce-card-name"><strong>{item.name}</strong><span>{label(item.kind)} · {item.category}</span></div>
             <div className="e3-commerce-chips"><span>{item.unit}</span><span>{item.sellable?'Vendible':'No vendible'}</span></div>
             <small className="e3-commerce-sku">SKU: {item.sku??'Sin SKU'}</small>
@@ -302,6 +304,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
         <div><h3>Descripción</h3><p>{selected.description||'Sin descripción registrada.'}</p></div>
         <div><h3>Observaciones</h3><p>{selected.observations||'Sin observaciones.'}</p></div>
       </div>
+      <RealPhotoManager token={token} owner={{kind:'CATALOG',businessId,resourceId:selected.id}} title={"Fotografías de "+selected.name} canManage={canWrite} onUnauthorized={onUnauthorized}/>
       <p className="e3-commerce-disclaimer">La ficha describe el artículo. El stock y sus movimientos se consultan exclusivamente en Inventario REAL.</p>
       {canWrite&&<div className="real-auth-actions">
         <button className="real-auth-primary" type="button" disabled={busy||uncertain} onClick={()=>startEdit(selected)}>Editar artículo</button>
