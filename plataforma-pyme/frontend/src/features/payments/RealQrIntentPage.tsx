@@ -86,6 +86,9 @@ export function RealQrIntentPage({
     try {
       const [current, history] = await Promise.all([api.get(intentId), api.events(intentId)])
       setIntent(current); setEvents(history)
+      if (actionRef.current && history.some(event => event.event_key === actionRef.current?.key)) {
+        setUncertain(false); actionRef.current = null
+      }
     } catch (err) {
       if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
       else setError(qrIntentError(err))
@@ -108,7 +111,8 @@ export function RealQrIntentPage({
 
   async function simulate(action: QrSimAction, replay = false) {
     if (!LAB_UI_ENABLED || !isManager || busy || !intent ||
-        !['ESPERANDO_PAGO','INDETERMINADA'].includes(displayStatus ?? '')) return
+        !['ESPERANDO_PAGO','INDETERMINADA'].includes(intent.status) ||
+        (secondsRemaining === 0 && action !== 'EXPIRAR')) return
     if (uncertain && !replay) return
     if (!replay) actionRef.current = { action, key: crypto.randomUUID() }
     const original = actionRef.current
@@ -172,12 +176,14 @@ export function RealQrIntentPage({
         {LAB_UI_ENABLED && isManager && <div className="e3-qr-lab" aria-label="Laboratorio de cobros ficticios">
           <h2>Laboratorio QR · Solo pruebas</h2>
           <p><strong>Este laboratorio NO valida un cobro Mercado Pago.</strong> Solo cambia el estado DEMO del intento y registra un evento auditado. No crea ventas ni modifica stock.</p>
-          {displayStatus === 'ESPERANDO_PAGO' || displayStatus === 'INDETERMINADA'
+          {intent.status === 'ESPERANDO_PAGO' || intent.status === 'INDETERMINADA'
             ? <div className="e3-qr-lab-actions">
-              {!uncertain && ACTIONS.filter(row=>row.action!=='INDETERMINAR' ||
-                displayStatus==='ESPERANDO_PAGO').map(({action,label})=>
+              {!uncertain && ACTIONS.filter(row =>
+                (secondsRemaining > 0 || row.action === 'EXPIRAR') &&
+                (row.action !== 'INDETERMINAR' || intent.status === 'ESPERANDO_PAGO')
+              ).map(({action,label})=>
                 <button key={action} type="button" className="real-auth-secondary"
-                  disabled={busy || (secondsRemaining===0 && action!=='EXPIRAR')}
+                  disabled={busy}
                   onClick={()=>void simulate(action)}>{label}</button>)}
               {uncertain && <>
                 <p role="alert">Resultado incierto: consultá el estado antes de intentar otra acción.</p>
