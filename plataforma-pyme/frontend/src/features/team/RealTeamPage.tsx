@@ -28,6 +28,8 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
   const [notice, setNotice] = useState('')
   const [invite, setInvite] = useState<InvitationInput>({ email: '', role: 'TRABAJADOR' })
   const [issued, setIssued] = useState<InvitationIssued | null>(null)
+  // H3: visual disclosure only; issuing still requires submitting the explicit form.
+  const [inviteOpen, setInviteOpen] = useState(false)
   const [uncertain, setUncertain] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'TODOS' | 'ACTIVA' | 'INACTIVA'>('TODOS')
@@ -192,9 +194,17 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
         </div>
       </>}
       {canInvite && <section className="real-ops-subpanel e3-ops-invite" aria-label="Invitar a un colaborador">
-        <div className="e3-ops-section-heading"><h2><Icon name="plus" size={19}/> Invitar a un colaborador</h2>
+        <div className="e3-ops-section-heading e3-ops-invite-heading">
+          <h2><button type="button" className="e3-ops-invite-toggle"
+            aria-expanded={inviteOpen} aria-controls="real-team-invite-content"
+            disabled={busy} onClick={() => setInviteOpen(open => !open)}>
+            <Icon name="plus" size={19}/>
+            <span>Invitar a un colaborador</span>
+            <Icon name="chevron" size={20} className={'e3-ops-invite-chevron' + (inviteOpen ? ' e3-ops-invite-chevron-open' : '')}/>
+          </button></h2>
           <p>Generá un código de un solo uso. La plataforma no envía correos automáticamente: compartilo por un canal seguro.</p>
         </div>
+        <div id="real-team-invite-content" className="e3-ops-invite-content" hidden={!inviteOpen}>
         <form className="real-auth-form real-ops-form e3-ops-form" onSubmit={(e) => void issue(e)}>
           <div className="e3-ops-form-grid">
             <label>Correo del destinatario<input type="email" autoComplete="off" required value={invite.email} onChange={(e) => setInvite((old) => ({ ...old, email: e.target.value }))}/></label>
@@ -218,9 +228,10 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
             }}>Copiar código</button>
             <button className="real-auth-secondary" type="button" onClick={() => setIssued(null)}>Ocultar código</button>
           </div>
-          <p>El destinatario debe entrar con su propia cuenta y pegar el código en «Aceptar invitación».</p>
+          <p>El destinatario debe entrar con su propia cuenta y pegar el código desde «Ingresar código de invitación».</p>
         </div>}
-      </section>}
+        </div>
+      </section>
     </>}
     {uncertain && <p className="real-auth-message real-ops-warning" role="alert">La respuesta de la escritura se perdió o no pudo validarse. No repitas la operación automáticamente: consultá el estado actualizado. En una invitación podría haberse consumido el único código emitido. <button className="real-auth-link" type="button" onClick={() => void reload()}>Reconsultar equipo</button></p>}
     {notice && <p className="real-auth-message" role="status">{notice}</p>}
