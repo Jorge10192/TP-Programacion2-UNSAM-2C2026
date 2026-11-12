@@ -18,7 +18,7 @@
     "test:sales": "node --test tests/sale-policy.test.mjs",
     "test:cash": "node --test tests/cash-policy.test.mjs",
     "test:accounts": "node --test tests/financial-account-policy.test.mjs",
-    "test:qr": "node --test tests/qr-demo-policy.test.mjs tests/qr-real-b2.test.mjs",
+    "test:qr": "node --test tests/qr-demo-policy.test.mjs tests/qr-real-b2.test.mjs tests/qr-real-b3.test.mjs tests/qr-real-b3-pending.test.mjs",
     "test:api": "node --test tests/http-client.test.mjs",
     "test:auth": "node --test tests/photos-real-api.test.mjs tests/auth-api.test.mjs tests/real-workspace-navigation.test.mjs tests/real-onboarding.test.mjs tests/real-setup-guidance.test.mjs",
     "test:businesses": "node --test tests/business-api.test.mjs",
