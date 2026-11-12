@@ -40,6 +40,8 @@ function routeFromPath(path: string): Route {
 export function RealAuthApp() {
   const [path, setPath] = useState<Route>(() => routeFromPath(window.location.pathname))
   const [session, setSession] = useState<Session | null>(null)
+  // Preferencia visual sólo en memoria; nunca en localStorage ni datos de negocio.
+  const [sidebarCollapsed,setSidebarCollapsed]=useState(false)
   const [pendingCreation, setPendingCreation] = useState<PendingBusinessCreation | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -113,6 +115,7 @@ export function RealAuthApp() {
         return
       }
       setPendingCreation(null)
+      setSidebarCollapsed(false)
       setSession({ token: result.access_token, expiresAt: result.expires_at, user })
       setLoginInput((old) => ({ ...old, password: '' }))
       // Preserve only a safe destination after F5. Never restore a pending create
@@ -177,6 +180,7 @@ export function RealAuthApp() {
     const token = session.token
     const current = ++generation.current
     setSession(null)
+    setSidebarCollapsed(false)
     setPendingCreation(null)
     setBusy(false)
     setMessage('')
@@ -191,6 +195,7 @@ export function RealAuthApp() {
 
   const onBusinessAuthLost = useCallback(() => {
     generation.current++
+    setSidebarCollapsed(false)
     setSession(null)
     setPendingCreation(null)
     go('/real/login', true)
@@ -218,7 +223,8 @@ export function RealAuthApp() {
   // No demoStore or shared cross-tenant cache is involved.
   const workspaceBusinessId = session ? realWorkspaceBusinessId(path) : null
 
-  return <div className={'real-auth-layout' + (session ? ' real-workspace-mode' : '')}>
+  return <div className={'real-auth-layout' + (session ? ' real-workspace-mode' : '') +
+    (session&&sidebarCollapsed?' rw-collapsed-workspace':'')}>
     {session
       ? <RealWorkspaceShell
           key={session.user.id + ':' + (workspaceBusinessId ?? 'personal')}
@@ -227,6 +233,8 @@ export function RealAuthApp() {
           userName={session.user.display_name}
           businessId={workspaceBusinessId}
           path={path}
+          sidebarCollapsed={sidebarCollapsed}
+          onSidebarCollapsedChange={setSidebarCollapsed}
           onNavigate={(next) => go(next as Route)}
           onUnauthorized={onBusinessAuthLost}
           onLogout={onLogout}

@@ -97,6 +97,8 @@ export function RealOnboardingPage({token,userId,businessId,onNavigate,onUnautho
   const business=snapshot?.business
   const canConfigure=business?.status==='ACTIVA'&&
     ['TITULAR_ADMINISTRATIVO','ADMINISTRADOR'].includes(business.membership.role)
+  const pendingStep=assessment?.steps.find(step=>step.status==='todo')??null
+  const allPrepared=Boolean(assessment?.verified&&assessment.completed===assessment.required)
   const base='/real/empresas/'+businessId
   function navigate(section:string){onNavigate(section?base+'/'+section:base)}
   function refresh(){
@@ -138,6 +140,29 @@ export function RealOnboardingPage({token,userId,businessId,onNavigate,onUnautho
       <button type="button" className="real-auth-secondary" onClick={refresh}>Reintentar lectura</button>
     </div>}
     {state==='ready'&&business&&assessment&&<>
+      <section className="e3-h2-next-step" aria-label="Siguiente paso recomendado">
+        <div className="e3-h2-next-copy">
+          <span className="e3-h2-eyebrow">GUÍA DE CONFIGURACIÓN REAL</span>
+          <h2>{pendingStep?'Siguiente paso: '+pendingStep.title:
+            allPrepared?'Tu configuración inicial está preparada':
+            'Revisá los datos de configuración'}</h2>
+          <p>{pendingStep?pendingStep.subtitle:
+            allPrepared?'Ya podés explorar las herramientas de tu empresa. El sistema validará los permisos y las existencias al operar.':
+            'Algunos datos no pudieron comprobarse. Actualizá desde la API antes de continuar.'}</p>
+        </div>
+        {pendingStep?
+          <button type="button" className="real-auth-primary"
+            onClick={()=>navigate(pendingStep.route)}>
+            {canConfigure?'Configurar siguiente paso':'Consultar sección'} <Icon name="arrow" size={17}/>
+          </button>
+          :allPrepared?
+            <button type="button" className="real-auth-secondary" onClick={()=>navigate('pos')}>
+              Ir al punto de venta <Icon name="arrow" size={17}/>
+            </button>
+          :<button type="button" className="real-auth-secondary" onClick={refresh}>
+              Actualizar estado <Icon name="arrow" size={17}/>
+            </button>}
+      </section>
       <div className="e3-onboard-business-strip">
         <div><strong>{business.name}</strong>
           <span>{business.category} · {business.membership.role.replaceAll('_',' ')}</span>

@@ -73,3 +73,34 @@
   .real-workspace-mode .real-auth-main > .real-auth-card { padding: 18px 15px; }
 }
 @media(prefers-reduced-motion: reduce) { .rw-sidebar { transition: none; } }
+
+
+/* E3-1H2: menú contraíble en escritorio; opción visual en memoria de sesión. */
+.rw-desktop-toggle {
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+  min-width:40px;min-height:40px;border:1px solid #dce5ef;
+  border-radius:9px;background:#f3f6fb;color:#244a7b;cursor:pointer;
+}
+.rw-desktop-toggle:hover,.rw-desktop-toggle:focus-visible{
+  background:#e8f1ff;border-color:#8fb8e8;
+}
+.rw-nav-text { min-width:0; overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.rw-nav-item>svg { flex:none; }
+@media (min-width:901px) {
+  .real-workspace-mode.rw-collapsed-workspace{ --pyme-ui-sidebar:76px; }
+  .rw-sidebar-compact .rw-brand{justify-content:center;padding:15px 8px;}
+  .rw-sidebar-compact .rw-brand-copy,
+  .rw-sidebar-compact .rw-nav-text,
+  .rw-sidebar-compact .rw-nav-caption,
+  .rw-sidebar-compact .rw-nav-helper,
+  .rw-sidebar-compact .rw-sidebar-footer{display:none;}
+  .rw-sidebar-compact .rw-sidebar-scroll{padding:14px 9px}
+  .rw-sidebar-compact .rw-nav-section{margin-top:12px;padding-top:12px}
+  .rw-sidebar-compact .rw-nav-item{justify-content:center;gap:0;padding:12px 10px;}
+  .rw-sidebar-compact .rw-nav-item>svg{width:20px;height:20px}
+}
+@media(max-width:900px){
+  .rw-desktop-toggle{display:none}
+  /* El menú móvil siempre abre completo, aunque en escritorio esté contraído. */
+  .rw-sidebar-compact .rw-nav-text,.rw-sidebar-compact .rw-brand-copy{display:block}
+}

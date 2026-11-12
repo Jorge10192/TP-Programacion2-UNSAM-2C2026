@@ -159,7 +159,9 @@ export function RealBusinessesPage({
       if (mutationId !== mutationGeneration.current) return
       setPendingCreation(null)
       setDraft(emptyNewBusiness)
-      onNavigate('/real/empresas/' + business.id)
+      // Empresa recién creada: comenzar por la guía REAL, sin POST adicional.
+      // El GET de Inicio vuelve a verificar titularidad y registros.
+      onNavigate('/real/empresas/' + business.id + '/inicio')
     } catch (err) {
       if (mutationId !== mutationGeneration.current) return
       if (err instanceof ApiHttpError && err.status === 401) { onUnauthorized(); return }
