@@ -7,7 +7,7 @@ import base64
 from dataclasses import dataclass
 from datetime import timedelta
 from io import BytesIO
-from uuid import UUID, uuid4
+from uuid import UUID, uuid4, uuid5, NAMESPACE_URL
 
 import qrcode
 from sqlalchemy import select
@@ -22,6 +22,7 @@ from app.modules.locations.permissions import can_operate_at_location
 from app.modules.purchases.schemas import line_total_cents
 from app.modules.sales.service import SaleService
 from app.modules.payments.qr_schemas import CreateQrIntentRequest, QrIntentLineView, QrIntentView
+from app.modules.payments.qr_event_log import append_qr_event
 
 
 class QrIntentNotFound(Exception):
@@ -215,6 +216,8 @@ class QrIntentService:
                 ) for n, line in enumerate(command.lines, 1)
             ])
             self.db.flush()
+            append_qr_event(self.db, intent, actor_id=actor_id, event_key=request_id,
+                            action='CREAR', from_status='SIN_ESTADO', to_status='ESPERANDO_PAGO')
             result = self._view(intent)
             self.db.commit()
             return QrCreated(result, replayed=False)
@@ -271,6 +274,9 @@ class QrIntentService:
             # B2: no hay orden remota, pago ni venta que compensar.
             row.status = "CANCELADA"
             self.db.flush()
+            append_qr_event(self.db, row, actor_id=actor_id,
+                            event_key=uuid5(NAMESPACE_URL, 'qr-cancel:' + str(row.id)),
+                            action='CANCELAR', from_status='ESPERANDO_PAGO', to_status='CANCELADA')
             result = self._view(row)
             self.db.commit()
             return result
