@@ -7,12 +7,12 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
 from app.infrastructure.db import get_engine
-from app.infrastructure.models import Membership
+from app.infrastructure.models import Business, Membership
 from app.main import create_app
 
 
@@ -199,3 +199,31 @@ def test_real_photos_all_owners_and_tenant_isolation(isolated):
     assert client.get(f"/api/v1/photos/{company_photo_id}/content", headers=outsider).status_code == 200
     assert client.delete(f"/api/v1/photos/{company_photo_id}", headers=outsider).status_code == 403
     assert client.get(f"/api/v1/photos/businesses/{other_bid}", headers=owner).status_code == 404
+
+    # Un Administrador tiene capacidad para sustituir fotos, sin rol global.
+    administrator, administrator_id = actor(client)
+    connection.execute(insert(Membership).values(
+        id=uuid4(), business_id=bid, user_id=administrator_id,
+        role="ADMINISTRADOR", status="ACTIVA",
+    ))
+    assert upload(client, company_url, administrator).status_code == 201
+    assert len(client.get(company_url, headers=administrator).json()) == 1
+
+    # Al suspender la empresa se mantiene la lectura, nunca la escritura.
+    connection.execute(
+        update(Business).where(Business.id == bid).values(status="SUSPENDIDA")
+    )
+    assert upload(client, company_url, owner).status_code == 409
+    assert upload(client, company_url, administrator).status_code == 409
+    assert client.get(company_url, headers=owner).status_code == 200
+    assert client.get(company_url, headers=outsider).status_code == 200
+
+    # Un miembro INACTIVO pierde toda visibilidad sobre fotos privadas.
+    connection.execute(
+        update(Membership).where(
+            Membership.business_id == bid, Membership.user_id == outsider_id,
+        ).values(status="INACTIVA")
+    )
+    assert client.get(company_url, headers=outsider).status_code == 404
+    admin_photo_id = client.get(company_url, headers=administrator).json()[0]["id"]
+    assert client.get(f"/api/v1/photos/{admin_photo_id}/content", headers=outsider).status_code == 404
