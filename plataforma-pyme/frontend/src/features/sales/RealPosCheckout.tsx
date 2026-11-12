@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { centsToPesos, pesosToCents } from '../catalog/realCatalogGateway.ts'
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
@@ -349,6 +350,8 @@ export function RealPosCheckout({
           {review.body.lines.map((line,i)=>{
             const item=items.find(entry=>entry.id===line.catalog_item_id)
             return <div key={line.catalog_item_id} className="e3-pos-review-line">
+              {item&&<RealPhotoPreview token={token} owner={{kind:'CATALOG',businessId,resourceId:item.id}}
+                alt={'Portada actual de '+item.name} className="e3-pos-review-photo"/>}
               <div><strong>{item?.name??'Artículo'}</strong>
                 <small>{posQuantityText(line.quantity_milli)} {item?.unit??''} × {pesos(line.unit_price_cents)} por unidad</small>
               </div>
@@ -356,6 +359,7 @@ export function RealPosCheckout({
             </div>
           })}
         </div>
+        <p className="e3-photo-reference-note">Las imágenes son referencias visuales del catálogo actual; no forman parte del comprobante ni modifican importes.</p>
         <div className="e3-pos-review-totals" aria-label="Total con descuento">
           <p>Subtotal de artículos <strong>{pesos(review.totals.subtotal_cents)}</strong></p>
           <p>Descuento aplicado <strong>−{pesos(review.totals.discount_cents)}</strong></p>

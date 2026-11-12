@@ -49,3 +49,17 @@
 .e3-photo-draft li span{overflow-wrap:anywhere;min-width:0}
 .e3-photo-draft li button{flex:none;font-size:11px;padding:6px 8px;min-height:32px}
 .e3-photo-draft :is(button,input):focus-visible{outline:3px solid #397ce0;outline-offset:2px}
+
+/* E3-2A QA: portadas ilustrativas en consulta de compras, existencias y preconfirmación de venta.
+   Se muestran imágenes ACTUALES del catálogo, sin modificar snapshots comerciales. */
+.e3-purchase-line-with-photo{display:flex;align-items:center;gap:9px;list-style:none;margin-left:-18px;min-width:0}
+.e3-purchase-line-with-photo>span:last-child{min-width:0;overflow-wrap:anywhere}
+.e3-purchase-line-photo.e3-photo-preview{width:46px;height:46px;flex:0 0 46px;border-radius:8px}
+.e3-inventory-balance-photo.e3-photo-preview{width:58px;height:58px;flex:0 0 58px;border-radius:10px}
+.e3-inventory-balance-grid .real-inventory-balance>div{flex:1 1 auto}
+.e3-pos-review-photo.e3-photo-preview{width:56px;height:56px;flex:0 0 56px;border-radius:9px}
+.e3-photo-reference-note{display:block;color:#647d98;font-size:11px;line-height:1.5;margin:8px 0 12px}
+@media(max-width:520px){
+ .e3-inventory-balance-photo.e3-photo-preview{width:48px;height:48px;flex-basis:48px}
+ .e3-pos-review-photo.e3-photo-preview{width:42px;height:42px;flex-basis:42px}
+}

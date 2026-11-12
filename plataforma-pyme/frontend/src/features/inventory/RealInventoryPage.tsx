@@ -21,6 +21,7 @@ import { Icon } from '../../app/Icon.tsx'
 import { RealSetupGuide } from '../onboarding/RealSetupGuide.tsx'
 import { inventorySetupSuggestion } from '../onboarding/realSetupGuidance.ts'
 import './realInventoryVisual.css'
+import { RealPhotoPreview } from '../photos/RealPhotos.tsx'
 
 type Props = {
   token:string;userId:string;userDisplayName:string;businessId:string
@@ -379,6 +380,8 @@ export function RealInventoryPage({token,userId,userDisplayName,businessId,onNav
         {tab==='balances'?
           balances.length===0?<p className="real-inventory-empty">No hay saldos registrados para los filtros seleccionados. Esto no significa que todo el catálogo tenga saldo cero.</p>
           :<div className="real-inventory-balances e3-inventory-balance-grid">{balances.map(x=><article className="real-inventory-balance" key={x.location_id+':'+x.catalog_item_id}>
+            <RealPhotoPreview token={token} owner={{kind:'CATALOG',businessId,resourceId:x.catalog_item_id}}
+              alt={'Foto actual de '+itemName(x.catalog_item_id)} className="e3-inventory-balance-photo"/>
             <div><h3>{itemName(x.catalog_item_id)}</h3>
               <p>{siteName(x.location_id)} · {unitName(x.catalog_item_id)}{!itemLabels.has(x.catalog_item_id)?' (ficha no cargada)':''}</p>
               <small>Versión de saldo: {x.version} · Actualizado: {formatDate(x.updated_at)}</small>

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { ApiHttpError } from '../../api/httpClient.ts'
 import { Icon } from '../../app/Icon.tsx'
 import './realPurchasesVisual.css'
+import { RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import { createOperationsGateway, canReadTeam } from '../businesses/realOperationsGateway.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
 import type { LocationRecord, TeamMember } from '../businesses/realOperationsGateway.ts'
@@ -400,7 +401,13 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
        <div className="real-catalog-tile-header"><strong>{p.reference||'Compra '+p.id.slice(0,8)}</strong><span className={"real-catalog-status "+(visualState.tone==="pending"?"real-supply-pending-status":visualState.tone==="confirmed"?"real-catalog-active":"real-supply-neutral-status")}>{visualState.label}</span></div>
        <small>{p.purchased_on} · Proveedor: {p.supplier_name_snapshot||'Sin proveedor'} · {p.lines.length} {p.lines.length === 1 ? 'renglón' : 'renglones'}</small>
        <strong className="real-supply-total">{money(p.total_cents)}</strong>
-       <ul>{p.lines.map(l=><li key={l.id}>{l.description_snapshot} — {milliToDecimal(l.quantity_milli)} {l.unit_snapshot} × {money(l.unit_cost_cents)} = {money(l.line_total_cents)}</li>)}</ul>
+       <ul>{p.lines.map(l=><li key={l.id} className="e3-purchase-line-with-photo">
+         {l.catalog_item_id&&<RealPhotoPreview token={token}
+           owner={{kind:'CATALOG',businessId,resourceId:l.catalog_item_id}}
+           alt={'Portada actual de '+l.description_snapshot} className="e3-purchase-line-photo"/>}
+         <span>{l.description_snapshot} — {milliToDecimal(l.quantity_milli)} {l.unit_snapshot} × {money(l.unit_cost_cents)} = {money(l.line_total_cents)}</span>
+       </li>)}</ul>
+       <small className="e3-photo-reference-note">Imágenes actuales del catálogo; los importes y descripciones de la compra son históricos.</small>
        {p.status==='REGISTRADA'&&canReceive&&<button className="real-auth-secondary real-supply-pending-action" type="button" disabled={busy||loading} onClick={()=>void beginReceipt(p.id)}>Pendiente · Confirmar recepción en ubicación</button>}
        {p.status==='RECIBIDA'&&<button className="real-auth-secondary" type="button" disabled={busy||loading} onClick={()=>void checkReceipt(p.id)}>Consultar comprobante</button>}
 
