@@ -39,6 +39,8 @@ function routeFromPath(path: string): Route {
 /** Independent from E1's demoStore, fixtures and commercial navigation. */
 export function RealAuthApp() {
   const [path, setPath] = useState<Route>(() => routeFromPath(window.location.pathname))
+  // UI-only preference for the current browser session; never stored or shared between users.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
   const [pendingCreation, setPendingCreation] = useState<PendingBusinessCreation | null>(null)
   const [busy, setBusy] = useState(false)
@@ -113,6 +115,7 @@ export function RealAuthApp() {
         return
       }
       setPendingCreation(null)
+      setSidebarCollapsed(false)
       setSession({ token: result.access_token, expiresAt: result.expires_at, user })
       setLoginInput((old) => ({ ...old, password: '' }))
       // Preserve only a safe destination after F5. Never restore a pending create
@@ -178,6 +181,7 @@ export function RealAuthApp() {
     const current = ++generation.current
     setSession(null)
     setPendingCreation(null)
+    setSidebarCollapsed(false)
     setBusy(false)
     setMessage('')
     go('/real/login', true)
@@ -193,6 +197,7 @@ export function RealAuthApp() {
     generation.current++
     setSession(null)
     setPendingCreation(null)
+    setSidebarCollapsed(false)
     go('/real/login', true)
     setMessage('La sesión ya no es válida. Iniciá sesión nuevamente.')
     setWarning(true)
@@ -218,7 +223,7 @@ export function RealAuthApp() {
   // No demoStore or shared cross-tenant cache is involved.
   const workspaceBusinessId = session ? realWorkspaceBusinessId(path) : null
 
-  return <div className={'real-auth-layout' + (session ? ' real-workspace-mode' : '')}>
+  return <div className={'real-auth-layout' + (session ? ' real-workspace-mode' + (sidebarCollapsed ? ' rw-collapsed' : '') : '')}>
     {session
       ? <RealWorkspaceShell
           key={session.user.id + ':' + (workspaceBusinessId ?? 'personal')}
@@ -227,6 +232,8 @@ export function RealAuthApp() {
           userName={session.user.display_name}
           businessId={workspaceBusinessId}
           path={path}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(value => !value)}
           onNavigate={(next) => go(next as Route)}
           onUnauthorized={onBusinessAuthLost}
           onLogout={onLogout}
