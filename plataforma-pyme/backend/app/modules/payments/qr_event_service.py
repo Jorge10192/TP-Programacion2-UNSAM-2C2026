@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.models import QrPaymentEvent, QrPaymentIntent
+from app.infrastructure.models import QrPaymentEvent, QrPaymentIntent, MercadoPagoTestOrder
 from app.modules.auth.tokens import now_utc
 from app.modules.payments.qr_event_log import append_qr_event
 from app.modules.payments.qr_service import (
@@ -84,6 +84,11 @@ class QrEventService:
             intent = self.intents._lookup_by_id(business_id, intent_id, lock=True)
             if intent is None or intent.provider != "MOCK_QA":
                 raise QrIntentNotFound()
+            if self.db.scalar(select(MercadoPagoTestOrder.id).where(
+                MercadoPagoTestOrder.business_id == business_id,
+                MercadoPagoTestOrder.source_intent_id == intent_id,
+            ).limit(1)) is not None:
+                raise QrIntentConflict()
             previous = self.db.scalar(select(QrPaymentEvent).where(
                 QrPaymentEvent.business_id == business_id,
                 QrPaymentEvent.intent_id == intent_id,
