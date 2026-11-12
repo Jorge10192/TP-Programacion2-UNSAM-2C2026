@@ -30,7 +30,7 @@ class SalePayment(Base):
         ),
         CheckConstraint(
             "method IN ('EFECTIVO','TRANSFERENCIA','CUENTA_DNI',"
-            "'TARJETA','MERCADO_PAGO_DECLARADO')",
+            "'TARJETA','MERCADO_PAGO_DECLARADO','MERCADO_PAGO_DEMO_QA')",
             name="ck_sale_payments_declared_method",
         ),
         CheckConstraint(
