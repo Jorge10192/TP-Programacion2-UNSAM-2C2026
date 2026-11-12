@@ -31,7 +31,7 @@ test('E3-1H2: crear empresa abre Inicio, menú contraíble en escritorio y drawe
   await page.getByLabel('Nombre comercial').fill('Empresa E3 H2 ' + randomUUID().slice(0, 6))
   await page.getByLabel('Rubro').fill('Comercio QA')
   await page.getByRole('checkbox').check()
-  await page.getByRole('button', { name: 'Crear empresa', exact: true }).click()
+  await page.locator('form.real-auth-form').getByRole('button', { name: 'Crear empresa', exact: true }).click()
 
   await expect(page).toHaveURL(/\/real\/empresas\/[0-9a-f-]{36}\/inicio$/)
   await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible()
