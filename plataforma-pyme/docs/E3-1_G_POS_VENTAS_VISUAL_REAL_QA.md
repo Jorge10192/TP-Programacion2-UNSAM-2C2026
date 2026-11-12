@@ -52,3 +52,37 @@ Cadena E3 todavía sin merge: #55 → #57 → #58 → PR de E3-1G. No fusionar h
 ## Pendiente de posteriores incrementos
 
 Optimización de bundle, refinamiento transversal final de estética, fotos con almacenamiento REAL y dinero/caja/QR reales no se implementan por este cambio visual.
+
+## Ajustes posteriores a la revisión manual del usuario — E3-1G
+
+Tras probar el POS y el historial en VS Code, el usuario propuso tres mejoras de operabilidad tomadas como referencia de la DEMO:
+
+### A. Descuento visible en el cálculo de cobro
+
+- El descuento sigue siendo **global a la venta**, no una modificación de precio unitario, categoría o inventario. Los descuentos de monto fijo están disponibles solo para los roles ya autorizados.
+- Se visualiza explícitamente dentro de **Pagos declarados** la cuenta **subtotal de artículos − descuento = total a cobrar**, con formato ARS.
+- La cifra inicial de pago sigue el total calculado mientras no se edite manualmente. Si se modifican montos a mano, se indica faltante/exceso y el control de completar permite ajustar el último medio.
+- No se modifica el algoritmo exacto HALF_UP, ni contratos o persistencia de pagos.
+
+### B. Límite orientativo de stock disponible
+
+- Solo para **bienes físicos**, al elegir artículo y sede habilitada para almacenamiento, se consulta exclusivamente por **GET** inventory/balances filtrando ubicación y artículo, leyendo un saldo autorizado por empresa.
+- Se muestra cantidad en unidad real (milésimas exactas), sede y fecha del saldo si existe. Sin fila de saldo se informa cero; servicios no requieren stock físico.
+- Se bloquea agregar o actualizar la línea si la cantidad supera el último saldo consultado o si la lectura sigue pendiente/falló; existe **Actualizar disponibilidad** explícito.
+- El borrador **no reserva stock**. FastAPI conserva rechazo 409 si la disponibilidad cambia antes de confirmar. E2E de carrera: stock existente al agregar, agotado por otra operación antes de registrar.
+- Sin endpoints nuevos, cambios de stock automáticos ni lecturas de sedes ajenas.
+
+### C. Completar último medio de pago
+
+- Se agrega **Completar saldo restante en este medio** en el último medio declarado, respetando anteriores.
+- La función pura completa el importe exacto como **total a cobrar − suma de medios anteriores**, en centavos BigInt, actualizando únicamente el último.
+- Si los anteriores ya cubren el total, tienen importe inválido o no queda un importe positivo, se muestra error sin modificar pagos.
+- No se acredita dinero bancario, tarjetas, Cuenta DNI ni Mercado Pago.
+
+### Regresiones y cierre
+
+Se amplían tests de centavos exactos, cambios de descuento, pagos mixtos y errores, además de E2E con stock cero, refresco por GET y límites. Las pruebas existentes de F5, precio excepcional, 409 concurrente, pago mixto e idempotencia se conservan.
+
+Se actualiza la prueba histórica que esperaba el encabezado Punto de venta en el estado **Recuperación de venta** tras F5, reflejando la pantalla independiente de E3-1G sin cambiar el código transaccional.
+
+**No fusionar a main sin CI verde y aprobación del usuario.**

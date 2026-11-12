@@ -7,7 +7,7 @@ import type { PosCartLine } from './realPosDraft.ts'
 import { previewPosCart, posQuantityText } from './realPosDraft.ts'
 import type { SaleCommand, SaleTotals } from './realSaleCommand.ts'
 import { SALE_PAYMENT_METHODS } from './realSaleCommand.ts'
-import { composePosCheckout, POS_PAYMENT_LABELS } from './realPosCheckoutDraft.ts'
+import { completeLastPosPayment, composePosCheckout, POS_PAYMENT_LABELS } from './realPosCheckoutDraft.ts'
 import type { PosPaymentDraft } from './realPosCheckoutDraft.ts'
 import { createSaleWriteCoordinator } from './realSaleWriteCoordinator.ts'
 import type { ConfirmedSale } from './realSaleWriteCoordinator.ts'
@@ -246,6 +246,17 @@ export function RealPosCheckout({
     } catch { return acc }
   }, 0n)
   const currentTotal = draft.totals?.total_cents ?? null
+  const outstandingCents=currentTotal===null?null:BigInt(currentTotal)-totalPayments
+  function fillLastPayment(){
+    setNotice('')
+    try{
+      if(currentTotal===null)throw new RangeError('Primero armá un carrito con total válido.')
+      setPayments(completeLastPosPayment(currentTotal,shownPayments))
+      setPaymentModified(true)
+    }catch(err){
+      setNotice(readableError(err))
+    }
+  }
 
   return <section className={'real-ops-subpanel real-pos-checkout e3-pos-checkout e3-pos-checkout-'+stage}
       aria-label="Pagos y confirmación REAL" data-stage={stage}>
@@ -265,6 +276,12 @@ export function RealPosCheckout({
 
     {stage === 'editing' && <>
       <p>Revisá los importes y declaralos en uno o varios medios. Los importes deben sumar exactamente el total de la venta.</p>
+      {draft.totals && <div className="e3-pos-payment-breakdown" aria-label="Cálculo del total a cobrar" role="status">
+        <span>Subtotal de artículos <strong>{pesos(draft.totals.subtotal_cents)}</strong></span>
+        <span>Descuento aplicado a la venta <strong>−{pesos(draft.totals.discount_cents)}</strong></span>
+        <span>Total a cobrar <strong>{pesos(draft.totals.total_cents)}</strong></span>
+        <small>El descuento cambia el total a pagar; no altera los precios unitarios de catálogo.</small>
+      </div>}
       {shownPayments.map((row, i) => <div className="real-pos-payment" key={i}>
         <label>Medio de pago {i + 1}
           <select aria-label={'Medio de pago ' + (i + 1)} value={row.method} onChange={event =>
@@ -281,6 +298,9 @@ export function RealPosCheckout({
           <input aria-label={'Referencia de pago ' + (i + 1)} maxLength={120}
             value={row.reference} onChange={event => changePayment(i, { reference: event.target.value })}/>
         </label>
+        {i === shownPayments.length-1 && <button type="button" className="real-auth-secondary e3-pos-fill-payment"
+          aria-label="Completar saldo con último medio de pago" onClick={fillLastPayment}
+          disabled={currentTotal===null}>Completar saldo restante en este medio</button>}
         {shownPayments.length > 1 && <button className="real-auth-link" type="button" onClick={() => {
           setPaymentModified(true)
           setPayments(shownPayments.filter((_, index) => index !== i))
@@ -291,8 +311,14 @@ export function RealPosCheckout({
           setPaymentModified(true)
           setPayments([...shownPayments, { method: 'TRANSFERENCIA', amountText: '', reference: '' }])
         }}>Agregar otro medio de pago</button>
-      <p className="real-pos-payment-summary">Pagos ingresados: <strong>{pesos(Number(totalPayments))}</strong>
+      <p className="real-pos-payment-summary" role="status">Pagos ingresados: <strong>{pesos(Number(totalPayments))}</strong>
         {' · '} Total a declarar: <strong>{currentTotal === null ? '—' : pesos(currentTotal)}</strong>
+        {outstandingCents!==null&&<span className={'e3-pos-outstanding'+
+          (outstandingCents===0n?' e3-pos-paid':outstandingCents<0n?' e3-pos-excess':'')}>
+          {outstandingCents===0n?' · Importe cubierto'
+            :outstandingCents>0n?' · Falta declarar: '+pesos(Number(outstandingCents))
+            :' · Excedente: '+pesos(Number(-outstandingCents))}
+        </span>}
       </p>
       <label>Notas de la venta (opcional)
         <textarea aria-label="Notas de la venta" rows={2} maxLength={500}

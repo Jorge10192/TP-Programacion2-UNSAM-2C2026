@@ -9,6 +9,7 @@ import type { PosCartLine } from './realPosDraft.ts'
 import { RealPosCheckout } from './RealPosCheckout.tsx'
 import type { PosCheckoutStage } from './RealPosCheckout.tsx'
 import { Icon } from '../../app/Icon.tsx'
+import { createInventoryGateway, formatMilli, inventoryErrorMessage } from '../inventory/realInventoryGateway.ts'
 import './realSalesVisual.css'
 import { canOverrideSalesPrice, parsePosQuantity, posLineTotalCents, posQuantityText, previewPosCart } from './realPosDraft.ts'
 
@@ -31,6 +32,7 @@ const money = (c: number) => ars.format(c / 100)
 export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthorized }: Props) {
   const companyApi = useMemo(() => createOperationsGateway(token, userId), [token, userId])
   const catalogApi = useMemo(() => createCatalogGateway(token, businessId), [token, businessId])
+  const inventoryApi = useMemo(() => createInventoryGateway(token,businessId),[token,businessId])
   const [company, setCompany] = useState<RealBusiness | null>(null)
   const [locations, setLocations] = useState<LocationRecord[]>([])
   const [assignedLocationIds, setAssignedLocationIds] = useState<string[]>([])
@@ -50,6 +52,12 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const [discountText, setDiscountText] = useState('0')
   const [cart, setCart] = useState<PosCartLine[]>([])
   const [draftError, setDraftError] = useState('')
+  const [stockRead,setStockRead]=useState<{
+    siteId:string;itemId:string;quantityMilli:number;updatedAt:string|null
+  }|null>(null)
+  const [stockLoading,setStockLoading]=useState(false)
+  const [stockError,setStockError]=useState('')
+  const [stockRefresh,setStockRefresh]=useState(0)
   const [checkoutLocked, setCheckoutLocked] = useState(true)
   const [checkoutStage,setCheckoutStage]=useState<PosCheckoutStage>('checking')
   const onCheckoutStageChange=useCallback((stage:PosCheckoutStage)=>setCheckoutStage(stage),[])
@@ -96,6 +104,43 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const saleSites = authorizedSites.filter(site => site.status === 'ACTIVA' && site.can_sell)
   const selected = items.find(row => row.id === selectedId) ?? null
   const selectedInCart = selected ? cart.some(row => row.catalog_item_id === selected.id) : false
+  const stockForSelected=selected?.item_type==='BIEN' && stockRead?.siteId===siteId
+    && stockRead.itemId===selected.id?stockRead:null
+  const requestedMilli=useMemo(()=>{
+    if(!selected||selected.item_type!=='BIEN')return null
+    try{return parsePosQuantity(quantityText,selected.unit)}
+    catch{return null}
+  },[selected,quantityText])
+  const overAvailable=stockForSelected!==null&&requestedMilli!==null
+    &&requestedMilli>stockForSelected.quantityMilli
+
+  // Saldo real por artículo/sede. No se inventa el stock para productos sin
+  // historial, y no se permite confirmar desde una lectura fallida/desactualizada.
+  useEffect(()=>{
+    if(!selected||selected.item_type!=='BIEN'||!location||!location.can_store)
+      return
+    const itemId=selected.id
+    const currentSiteId=location.id
+    const controller=new AbortController()
+    void inventoryApi.balances(0,1,{locationId:currentSiteId,catalogItemId:itemId},controller.signal)
+      .then(rows=>{
+        if(controller.signal.aborted)return
+        setStockRead({
+          siteId:currentSiteId,itemId,
+          quantityMilli:rows[0]?.quantity_milli??0,
+          updatedAt:rows[0]?.updated_at??null,
+        })
+        setStockError('')
+      }).catch(err=>{
+        if(controller.signal.aborted)return
+        if(err instanceof ApiHttpError&&err.status===401){onUnauthorized();return}
+        setStockRead(null)
+        setStockError(inventoryErrorMessage(err))
+      }).finally(()=>{
+        if(!controller.signal.aborted)setStockLoading(false)
+      })
+    return ()=>controller.abort()
+  },[inventoryApi,selected?.id,selected?.item_type,location?.id,location?.can_store,stockRefresh,onUnauthorized])
   const linePreview = useMemo(() => {
     if (!selected) return { subtotal: null as number | null, message: '' }
     try {
@@ -155,6 +200,8 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
     const hasCustomPrice = manager && existing !== undefined &&
       existing.unit_price_cents !== item.price_cents
     setSelectedId(item.id)
+    setStockRead(null);setStockError('')
+    setStockLoading(item.item_type==='BIEN'&&Boolean(siteId))
     setQuantityText(existing ? posQuantityText(existing.quantity_milli) : '1')
     setPriceOverride(hasCustomPrice)
     setPriceText(centsToPesos(hasCustomPrice && existing ? existing.unit_price_cents : item.price_cents))
@@ -170,6 +217,13 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
       if (!alreadyInCart && cart.length >= 30)
         throw new RangeError('Máximo 30 artículos distintos por venta.')
       const quantity_milli = parsePosQuantity(quantityText, selected.unit)
+      if(selected.item_type==='BIEN'){
+        if(stockLoading||!stockForSelected||stockError)
+          throw new RangeError('No se pudo verificar el saldo de esta sede. Actualizá la disponibilidad antes de agregar.')
+        if(quantity_milli>stockForSelected.quantityMilli)
+          throw new RangeError('La cantidad supera el saldo disponible ('+
+            formatMilli(stockForSelected.quantityMilli)+' '+selected.unit+').')
+      }
       const unit_price_cents = manager && priceOverride ? pesosToCents(priceText) : selected.price_cents
       if (unit_price_cents === null)
         throw new RangeError('El artículo no tiene precio. Un administrador debe definirlo.')
@@ -225,7 +279,11 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
       <section className="real-ops-subpanel" aria-label="Ubicación para la venta">
         <h2>1. Ubicación de venta</h2>
         <label>Elegí la sede
-          <select value={siteId} onChange={e => { setSiteId(e.target.value); setDraftError('') }}
+          <select value={siteId} onChange={e => {
+            setSiteId(e.target.value);setDraftError('')
+            setStockRead(null);setStockError('')
+            setStockLoading(selected?.item_type==='BIEN'&&Boolean(e.target.value))
+          }}
             aria-label="Sede del punto de venta" disabled={!canWork}>
             <option value="">{manager ? 'Sin sede (solo servicios)' : 'Seleccionar sede asignada'}</option>
             {saleSites.map(site => <option key={site.id} value={site.id}>{site.name} {site.can_store ? '· ventas y stock' : '· solo servicios'}</option>)}
@@ -282,12 +340,32 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
               {priceOverride ? 'Restablecer precio de catálogo' : 'Modificar precio excepcionalmente'}
             </button>
             : <p className="real-auth-note">Tu rol debe respetar el precio del catálogo y no puede aplicar descuentos.</p>}
+          {selected.item_type==='BIEN'&&<div className="e3-pos-stock-hint" aria-label="Disponibilidad de stock REAL">
+            {!location?.can_store?<p>Elegí una sede habilitada para almacenar y vender este producto.</p>
+              :stockLoading?<p role="status">Consultando saldo real en {location.name}…</p>
+              :stockError?<p role="alert">{stockError}</p>
+              :stockForSelected?<p><strong>Disponible en {location.name}:
+                {' '}{formatMilli(stockForSelected.quantityMilli)} {selected.unit}</strong>
+                {stockForSelected.updatedAt&&<small>Saldo registrado: {new Date(stockForSelected.updatedAt).toLocaleString('es-AR')}</small>}
+              </p>:<p>Seleccioná una sede para consultar el saldo real.</p>}
+            {overAvailable&&<p role="alert" className="e3-pos-stock-warning">
+              La cantidad supera el stock disponible de esta sede. Ingresá una cantidad igual o menor.</p>}
+            <button type="button" className="real-auth-link"
+              disabled={!location?.can_store||stockLoading}
+              onClick={()=>{
+                setStockRead(null);setStockError('');setStockLoading(true)
+                setStockRefresh(value=>value+1)
+              }}>Actualizar disponibilidad</button>
+            <small>Consulta orientativa: no reserva mercadería. FastAPI vuelve a comprobar el stock al confirmar.</small>
+          </div>}
           <div className="real-pos-line-preview" role="status">
             {linePreview.subtotal === null ? <span>{linePreview.message}</span>
               : <><span>Subtotal del producto ({quantityText} × precio unitario)</span>
                   <strong>{money(linePreview.subtotal)}</strong></>}
           </div>
-          <button type="button" className="real-auth-primary" onClick={addToCart}>
+          <button type="button" className="real-auth-primary" onClick={addToCart}
+            disabled={selected.item_type==='BIEN'&&
+              (stockLoading||!stockForSelected||Boolean(stockError)||overAvailable)}>
             {selectedInCart ? 'Actualizar en carrito' : 'Agregar al carrito'}
           </button>
         </div>}

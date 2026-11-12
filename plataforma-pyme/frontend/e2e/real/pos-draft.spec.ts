@@ -322,7 +322,7 @@ test('T10-E: venta física desde POS debita stock y registra un solo movimiento'
   expect(debits[0].sale_id).toBe(sales[0].id)
 })
 
-test('T10-E: 409 stock insuficiente conserva pendiente y no reenvía automáticamente', async ({ page, request }) => {
+test('T10-E: 409 por stock cambiado después de agregar conserva pendiente y no reenvía', async ({ page, request }) => {
   const fixture = await seed(request)
   const login = await request.post(base + '/auth/login', {
     data: { email: fixture.email, password: fixture.password },
@@ -338,6 +338,14 @@ test('T10-E: 409 stock insuficiente conserva pendiente y no reenvía automática
     },
   })
   expect(product.status(), await product.text()).toBe(201)
+  const productId=(await product.json()).id
+  // Primero había stock: el POS permite agregar exactamente la disponibilidad.
+  const initial=await request.post(base+root+'/inventory/adjustments',{
+    headers:{...headers,'Idempotency-Key':randomUUID()},
+    data:{kind:'STOCK_INICIAL',catalog_item_id:productId,location_id:fixture.locationId,
+      quantity_milli:1000,expected_version:0,reason:'QA carrera con venta concurrente'},
+  })
+  expect(initial.status(),await initial.text()).toBe(201)
   let posts = 0
   page.on('request', req => {
     if (req.method() === 'POST' && req.url().endsWith(root + '/sales')) posts++
@@ -345,7 +353,16 @@ test('T10-E: 409 stock insuficiente conserva pendiente y no reenvía automática
   await open(page, fixture)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
   await page.getByRole('button', { name: /Producto sin stock T10-E/ }).click()
+  await expect(page.getByLabel('Disponibilidad de stock REAL')).toContainText('1 UNIDAD')
   await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  // Otra operación agota el stock antes de confirmar: FastAPI debe rechazar
+  // la venta con 409 incluso cuando el borrador tenía saldo al cargarlo.
+  const exhaust=await request.post(base+root+'/inventory/adjustments',{
+    headers:{...headers,'Idempotency-Key':randomUUID()},
+    data:{kind:'AJUSTE_SALIDA',catalog_item_id:productId,location_id:fixture.locationId,
+      quantity_milli:1000,expected_version:1,reason:'Agotado concurrentemente en QA'},
+  })
+  expect(exhaust.status(),await exhaust.text()).toBe(201)
   await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
   await page.getByLabel('Acepto registrar esta venta REAL').check()
   const response = page.waitForResponse(resp =>
@@ -449,11 +466,82 @@ test('T10-D: pérdida de respuesta después del 201, F5 y recuperación GET sin 
   await page.getByLabel('Correo electrónico', { exact: true }).fill(fixture.email)
   await page.getByLabel('Contraseña', { exact: true }).fill(fixture.password)
   await page.getByRole('button', { name: 'Ingresar', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Recuperación de venta' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Recuperar comprobante por solicitud (GET)' })).toBeVisible()
   expect(postCalls).toBe(1)
   await page.getByRole('button', { name: 'Recuperar comprobante por solicitud (GET)' }).click()
   await expect(page.getByText('Venta confirmada en PostgreSQL.', { exact: false })).toBeVisible()
   expect(postCalls).toBe(1)
   await expect(page.getByRole('button', { name: 'Preparar otra venta' })).toBeVisible()
+})
+
+test('E3-1G: stock REAL por sede indica límite, bloquea exceso y se actualiza por GET', async ({page,request})=>{
+  const f=await seed(request)
+  const login=await request.post(base+'/auth/login',{data:{email:f.email,password:f.password}})
+  expect(login.status(),await login.text()).toBe(200)
+  const headers={Authorization:'Bearer '+(await login.json()).access_token}
+  const root='/businesses/'+f.businessId
+  const product=await request.post(base+root+'/catalog',{
+    headers,
+    data:{name:'Producto stock E3 disponible',kind:'REVENTA',
+      unit:'UNIDAD',sellable:true,price_cents:200000},
+  })
+  expect(product.status(),await product.text()).toBe(201)
+  const itemId=(await product.json()).id
+  let postSales=0
+  page.on('request',req=>{
+    if(req.method()==='POST'&&req.url().endsWith(root+'/sales'))postSales++
+  })
+  await open(page,f)
+  await page.getByLabel('Sede del punto de venta').selectOption(f.locationId)
+  await page.getByRole('button',{name:/Producto stock E3 disponible/}).click()
+  await expect(page.getByLabel('Disponibilidad de stock REAL')).toContainText('0 UNIDAD')
+  await expect(page.getByRole('button',{name:'Agregar al carrito'})).toBeDisabled()
+  const stock=await request.post(base+root+'/inventory/adjustments',{
+    headers:{...headers,'Idempotency-Key':randomUUID()},
+    data:{kind:'STOCK_INICIAL',catalog_item_id:itemId,location_id:f.locationId,
+      quantity_milli:2000,expected_version:0,reason:'QA saldo disponible E3'},
+  })
+  expect(stock.status(),await stock.text()).toBe(201)
+  await page.getByRole('button',{name:'Actualizar disponibilidad'}).click()
+  await expect(page.getByLabel('Disponibilidad de stock REAL')).toContainText('2 UNIDAD')
+  await page.getByLabel('Cantidad del artículo').fill('3')
+  await expect(page.getByText('La cantidad supera el stock disponible', {exact:false})).toBeVisible()
+  await expect(page.getByRole('button',{name:'Agregar al carrito'})).toBeDisabled()
+  await page.getByLabel('Cantidad del artículo').fill('2')
+  await expect(page.getByRole('button',{name:'Agregar al carrito'})).toBeEnabled()
+  await page.getByRole('button',{name:'Agregar al carrito'}).click()
+  await expect(page.getByRole('region',{name:'Carrito de venta'})).toContainText('Cantidad: 2 UNIDAD')
+  expect(postSales).toBe(0)
+})
+
+test('E3-1G: descuento recotiza el pago final y botón completa saldo mixto exacto',async({page,request})=>{
+  const f=await seed(request)
+  let postSales=0
+  page.on('request',req=>{
+    if(req.method()==='POST'&&req.url().endsWith('/businesses/'+f.businessId+'/sales'))postSales++
+  })
+  await open(page,f)
+  await page.getByLabel('Sede del punto de venta').selectOption(f.locationId)
+  await page.getByRole('button',{name:/Servicio POS prueba/}).click()
+  await page.getByRole('button',{name:'Agregar al carrito'}).click()
+  await page.getByLabel('Descuento de la venta').fill('100')
+  await expect(page.getByLabel('Cálculo del total a cobrar')).toContainText('1.400,00')
+  await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1400,00')
+  await page.getByLabel('Importe declarado 1').fill('300,01')
+  await page.getByRole('button',{name:'Agregar otro medio de pago'}).click()
+  await page.getByLabel('Medio de pago 2').selectOption('TRANSFERENCIA')
+  await page.getByRole('button',{name:'Completar saldo con último medio de pago'}).click()
+  await expect(page.getByLabel('Importe declarado 2')).toHaveValue('1099,99')
+  await expect(page.locator('.real-pos-payment-summary')).toContainText('Importe cubierto')
+  await page.getByLabel('Descuento de la venta').fill('200')
+  await expect(page.getByLabel('Cálculo del total a cobrar')).toContainText('1.300,00')
+  await expect(page.locator('.real-pos-payment-summary')).toContainText('Excedente')
+  await page.getByRole('button',{name:'Completar saldo con último medio de pago'}).click()
+  await expect(page.getByLabel('Importe declarado 1')).toHaveValue('300,01')
+  await expect(page.getByLabel('Importe declarado 2')).toHaveValue('999,99')
+  await page.getByRole('button',{name:'Revisar venta y pagos'}).click()
+  await expect(page.getByLabel('Revisión final de la venta')).toContainText('1.300,00')
+  await expect(page.getByRole('button',{name:'Confirmar y registrar venta REAL'})).toBeDisabled()
+  expect(postSales).toBe(0)
 })
