@@ -41,6 +41,7 @@ class OrderView(BaseModel):
     qr_png_data_uri: str | None
     test_only: bool
     sale_registered: bool
+    sale_id: UUID | None
 
 def _errors(exc: Exception):
     if isinstance(exc,PurchaseSessionInvalid):
@@ -106,6 +107,26 @@ def create_order(business_id:UUID,source_intent_id:UUID,
     try:
         return MpOfficialService(db).create_order(context.user.id,
             context.auth_session.id,business_id,source_intent_id,idempotency_key)
+    except Exception as e:
+        _errors(e)
+
+@router.get("/orders/for-qr/{source_intent_id}",response_model=OrderView | None,
+    summary="Recuperar order TEST por QR original tras F5 o respuesta incierta")
+def find_by_source(business_id:UUID,source_intent_id:UUID,
+                   context:AuthContext=Depends(current_auth),db:Session=Depends(get_db)):
+    try:
+        return MpOfficialService(db).by_source(
+            context.user.id,context.auth_session.id,business_id,source_intent_id)
+    except Exception as e:
+        _errors(e)
+
+@router.post("/orders/{order_id}/settle-qa",
+    summary="Asentar UNA venta QA solo tras verificar accredited en Orders API")
+def settle_official_test(business_id:UUID,order_id:UUID,
+                        context:AuthContext=Depends(current_auth),db:Session=Depends(get_db)):
+    try:
+        return MpOfficialService(db).settle_qa(
+            context.user.id,context.auth_session.id,business_id,order_id)
     except Exception as e:
         _errors(e)
 
