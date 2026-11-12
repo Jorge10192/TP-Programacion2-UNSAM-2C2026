@@ -8,6 +8,11 @@ import type { InvitationIssued, InvitationInput, TeamMember, MemberChanges } fro
 import type { RealBusiness } from '../businesses/businessGateway.ts'
 
 const roles = ['ADMINISTRADOR', 'ENCARGADO', 'TRABAJADOR'] as const
+const roleLabels: Record<(typeof roles)[number], string> = {
+  ADMINISTRADOR: 'Administrador',
+  ENCARGADO: 'Encargado',
+  TRABAJADOR: 'Trabajador',
+}
 type Props = { token: string; userId: string; businessId: string; onNavigate: (route: string) => void; onUnauthorized: () => void }
 
 export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthorized }: Props) {
@@ -87,7 +92,7 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
 
   async function changeMember(member: TeamMember, changes: MemberChanges) {
     if (!company || !canManageTeam(company) || member.user_id === userId || busy || uncertain) return
-    const action = changes.status === 'INACTIVA' ? 'Desactivar la membresía de este usuario' : changes.role ? 'Cambiar el rol de este usuario' : 'Reactivar la membresía'
+    const action = changes.status === 'INACTIVA' ? 'Desactivar la membresía de este usuario' : changes.role ? 'Cambiar el rol de ' + member.display_name + ' a ' + roleLabels[changes.role] : 'Reactivar la membresía'
     if (!window.confirm(action + ' en ' + company.name + '?')) return
     setError(''); setNotice(''); setBusy(true)
     try {
@@ -148,6 +153,7 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
         </div>}
         {members.length === 0 && <div className="real-business-empty e3-ops-empty"><Icon name="users" size={30}/><strong>No hay integrantes para mostrar</strong><p>El servidor todavía no devolvió membresías de esta empresa.</p></div>}
         {members.length > 0 && visibleMembers.length === 0 && <div className="real-business-empty e3-ops-empty"><strong>No encontramos integrantes con esos filtros.</strong><p>Probá otra búsqueda o seleccioná «Todos».</p></div>}
+        {canManage && <p className="e3-ops-role-guidance"><strong>Cambios internos:</strong> como titular administrativo podés modificar el rol de un integrante existente, incluso ascenderlo a Administrador. La operación solicita confirmación.</p>}
         <div className="real-ops-list e3-ops-directory">
           {visibleMembers.map((member) => <article className="real-ops-person e3-ops-member" key={member.id}>
             <div className="e3-ops-person-identity">
@@ -167,7 +173,7 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
             {canManage && member.user_id !== userId && member.role !== 'TITULAR_ADMINISTRATIVO' && <div className="real-ops-member-actions e3-ops-member-actions">
               <label>Rol
                 <select disabled={busy || uncertain || member.status !== 'ACTIVA'} value={member.role} onChange={(e) => void changeMember(member, { role: e.target.value as MemberChanges['role'] })}>
-                  {roles.map((role) => <option key={role} value={role}>{role.replaceAll('_', ' ')}</option>)}
+                  {roles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
                 </select>
               </label>
               <button className="real-auth-secondary" type="button" disabled={busy || uncertain} onClick={() => void changeMember(member, { status: member.status === 'ACTIVA' ? 'INACTIVA' : 'ACTIVA' })}>{member.status === 'ACTIVA' ? 'Desactivar' : 'Reactivar'}</button>
@@ -186,6 +192,7 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
               <option value="TRABAJADOR">Trabajador</option><option value="ENCARGADO">Encargado</option>
             </select></label>
           </div>
+          <p className="e3-ops-role-guidance"><strong>Roles para nuevos colaboradores:</strong> Trabajador o Encargado. Si más adelante necesitás designarlo Administrador, el titular administrativo puede cambiar su rol una vez que haya aceptado la invitación.</p>
           <div className="real-auth-actions e3-ops-form-actions"><button className="real-auth-primary" type="submit" disabled={busy || uncertain}>{busy ? 'Emitiendo…' : 'Emitir invitación REAL'}</button></div>
         </form>
         {issued && <div className="real-ops-secret" role="status">
