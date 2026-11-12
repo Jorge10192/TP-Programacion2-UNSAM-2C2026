@@ -2,14 +2,14 @@
 import { UUID_PATTERN } from '../businesses/businessGateway.ts'
 
 export type RealBusinessSection = '' | 'inicio' | 'ubicaciones' | 'equipo' | 'catalogo'
-  | 'proveedores' | 'compras' | 'inventario' | 'pos' | 'ventas'
+  | 'proveedores' | 'compras' | 'inventario' | 'pos' | 'ventas' | 'medios-de-cobro'
 
 export type RealWorkspaceItem = {
   section: RealBusinessSection
   label: string
   group: 'Administración' | 'Operaciones'
   icon: 'home' | 'building' | 'pin' | 'users' | 'package' | 'briefcase'
-    | 'shopping' | 'boxes' | 'receipt' | 'clock'
+    | 'shopping' | 'boxes' | 'receipt' | 'clock' | 'wallet'
 }
 
 export const REAL_WORKSPACE_ITEMS: readonly RealWorkspaceItem[] = [
@@ -17,6 +17,7 @@ export const REAL_WORKSPACE_ITEMS: readonly RealWorkspaceItem[] = [
   { section: '', label: 'Mi empresa', group: 'Administración', icon: 'building' },
   { section: 'ubicaciones', label: 'Ubicaciones', group: 'Administración', icon: 'pin' },
   { section: 'equipo', label: 'Equipo', group: 'Administración', icon: 'users' },
+  { section: 'medios-de-cobro', label: 'Medios de cobro', group: 'Administración', icon: 'wallet' },
   { section: 'catalogo', label: 'Catálogo', group: 'Operaciones', icon: 'package' },
   { section: 'proveedores', label: 'Proveedores', group: 'Operaciones', icon: 'briefcase' },
   { section: 'compras', label: 'Compras y recepciones', group: 'Operaciones', icon: 'shopping' },
