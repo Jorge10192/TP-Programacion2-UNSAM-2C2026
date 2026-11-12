@@ -17,6 +17,8 @@ import {
 import type { LoadedHistoryFilter } from './inventoryHistoryView.ts'
 import { RealTransferPanel } from './RealTransferPanel.tsx'
 import { RealAdjustmentPanel } from './RealAdjustmentPanel.tsx'
+import { Icon } from '../../app/Icon.tsx'
+import './realInventoryVisual.css'
 
 type Props = {
   token:string;userId:string;businessId:string
@@ -63,6 +65,8 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
   const metadataEpoch=useRef(0)
   const dataEpoch=useRef(0)
   const moreControllers=useRef<AbortController[]>([])
+  const mainHeadingRef=useRef<HTMLHeadingElement>(null)
+  const previousView=useRef<'list'|'transfer'|'adjustment'>('list')
 
   useEffect(()=>{
     const controller=new AbortController()
@@ -232,21 +236,43 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
     siteName:id=>locationLabels.get(id)?.name??'Ubicación '+shortId(id),
   }),[movements,historyKind,historySearch,itemLabels,locationLabels])
   const filteringHistory=historyKind!=='TODOS'||historySearch.trim()!==''
+  const view:'list'|'transfer'|'adjustment'=transferOpen?'transfer':adjustmentOpen?'adjustment':'list'
+  const zeroLoaded=balances.filter(b=>b.quantity_milli===0).length
+  useEffect(()=>{
+    if(view===previousView.current)return
+    mainHeadingRef.current?.focus()
+    previousView.current=view
+  },[view])
 
-  return <section className="real-auth-card real-business-panel real-inventory" aria-label="Inventario real">
-    <nav className="real-business-nav" aria-label="Navegación del inventario REAL">
+  return <section className="real-auth-card real-business-panel real-inventory e3-inventory-page" aria-label="Inventario real">
+    {view==='list'&&<nav className="real-business-nav" aria-label="Navegación del inventario REAL">
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId)}>Empresa</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/catalogo')}>Catálogo</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/compras')}>Compras y recepciones</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas')}>Mis empresas</button>
-    </nav>
-    <span className="real-auth-eyebrow">E2-7 · T08-4 · INVENTARIO REAL</span>
-    <h1>Inventario</h1>
-    <p>Saldos y movimientos confirmados en FastAPI y PostgreSQL, por empresa y ubicación. Las consultas no utilizan existencias DEMO; los traslados, stock inicial y ajustes se registran exclusivamente en el backend REAL.</p>
+    </nav>}
+    <header className="e3-inventory-heading">
+      <span className="e3-inventory-heading-icon"><Icon name={view==='list'?'boxes':view==='transfer'?'truck':'package'} size={29}/></span>
+      <div className="e3-inventory-heading-copy">
+        <span className="e3-inventory-eyebrow">{company?.name??'Empresa'} · Inventario REAL</span>
+        <h1 ref={mainHeadingRef} tabIndex={-1}>{view==='list'?'Inventario':view==='transfer'?'Transferir entre ubicaciones':'Stock inicial y ajustes'}</h1>
+        <p>{view==='list'
+          ?'Consultá existencias y movimientos confirmados por sede y artículo.'
+          :view==='transfer'
+          ?'Mové existencias entre dos sedes autorizadas, con control de saldo y auditoría.'
+          :'Registrá conteos físicos, stock inicial y ajustes versionados con trazabilidad.'}</p>
+      </div>
+    </header>
     {metadataLoading&&<p role="status">Comprobando empresa, ubicaciones y catálogo REAL…</p>}
     {metadataError&&<p className="real-auth-error" role="alert">{metadataError}</p>}
     {!metadataLoading&&company&&<>
-      <h2 className="real-inventory-business">{company.name}</h2>
+      {view==='list'&&<>
+      {dataLoaded&&!dataLoading&&<div className="e3-inventory-stats" aria-label="Resumen de inventario cargado">
+        <div><span>Existencias cargadas</span><strong>{balances.length}</strong></div>
+        <div><span>Saldos en cero cargados</span><strong>{zeroLoaded}</strong></div>
+        <div><span>Movimientos cargados</span><strong>{movements.length}</strong></div>
+      </div>}
+      <p className="e3-inventory-limits-note">Los indicadores muestran únicamente los registros cargados. No representan totales históricos si quedan páginas pendientes.</p>
       <div className="real-inventory-controls">
         <label>Ubicación
           <select aria-label="Ubicación" value={locationId} disabled={dataLoading||balancesMoreLoading||movementsMoreLoading} onChange={e=>{resetRead();setLocationId(e.target.value)}}>
@@ -264,26 +290,20 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
           Actualizar desde API
         </button>
       </div>
-      <div className="real-transfer-launch">
+      <div className="real-transfer-launch e3-inventory-launch">
         <button type="button" className="real-auth-primary" disabled={transferOpen||adjustmentOpen||metadataLoading||dataLoading}
-          onClick={()=>setTransferOpen(true)}>Transferir entre ubicaciones</button>
+          onClick={()=>setTransferOpen(true)}><Icon name="truck" size={18}/>Transferir entre ubicaciones</button>
         <button type="button" className="real-auth-secondary" disabled={transferOpen||adjustmentOpen||metadataLoading||dataLoading}
-          onClick={()=>setAdjustmentOpen(true)}>Stock inicial y ajustes</button>
-        <span>Operaciones REALES: permisos STORE, auditoría, versiones y saldos desde FastAPI.</span>
+          onClick={()=>setAdjustmentOpen(true)}><Icon name="plus" size={18}/>Stock inicial y ajustes</button>
+        <span>Operaciones REAL: permisos STORE, auditoría y versiones verificadas en FastAPI.</span>
       </div>
-      {transferOpen&&<RealTransferPanel token={token} actorId={userId} business={company} locations={locations} assignedLocationIds={assignedLocationIds} catalog={catalog}
-        onUnauthorized={onUnauthorized} onClose={()=>setTransferOpen(false)} onConfirmed={refreshAfterTransfer}
-        onReview={reviewAfterTransfer}/>}
-      {adjustmentOpen&&<RealAdjustmentPanel token={token} actorId={userId} business={company} locations={locations} catalog={catalog}
-        onUnauthorized={onUnauthorized} onClose={()=>setAdjustmentOpen(false)} onConfirmed={refreshAfterTransfer}
-        onReview={reviewAfterAdjustment}/>}
       {catalogHasMore&&<div className="real-inventory-catalog-hint">
         El selector contiene {catalog.length} fichas cargadas. Puede haber más artículos.
         <button type="button" className="real-auth-link" disabled={catalogLoading} onClick={()=>void loadMoreCatalog()}>
           {catalogLoading?'Consultando…':'Cargar más fichas'}
         </button>
       </div>}
-      <div className="real-inventory-tabs" role="group" aria-label="Vista de inventario">
+      <div className="real-inventory-tabs e3-inventory-tabs" role="group" aria-label="Vista de inventario">
         <button type="button" className={tab==='balances'?'real-auth-primary':'real-auth-secondary'}
           aria-pressed={tab==='balances'} onClick={()=>{setTab('balances');setPageError('')}}>Existencias</button>
         <button type="button" className={tab==='movements'?'real-auth-primary':'real-auth-secondary'}
@@ -317,7 +337,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
         </p>}
         {tab==='balances'?
           balances.length===0?<p className="real-inventory-empty">No hay saldos registrados para los filtros seleccionados. Esto no significa que todo el catálogo tenga saldo cero.</p>
-          :<div className="real-inventory-balances">{balances.map(x=><article className="real-inventory-balance" key={x.location_id+':'+x.catalog_item_id}>
+          :<div className="real-inventory-balances e3-inventory-balance-grid">{balances.map(x=><article className="real-inventory-balance" key={x.location_id+':'+x.catalog_item_id}>
             <div><h3>{itemName(x.catalog_item_id)}</h3>
               <p>{siteName(x.location_id)} · {unitName(x.catalog_item_id)}{!itemLabels.has(x.catalog_item_id)?' (ficha no cargada)':''}</p>
               <small>Versión de saldo: {x.version} · Actualizado: {formatDate(x.updated_at)}</small>
@@ -327,7 +347,7 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
           : movements.length===0?<p className="real-inventory-empty">No hay movimientos registrados para la empresa, sede y artículo seleccionados.</p>
           : filteredMovements.length===0?<p className="real-inventory-empty">No hay coincidencias entre los {movements.length} movimientos cargados.
             {hasMore?' Puede haber coincidencias en otras páginas todavía no consultadas.':' Podés cambiar o quitar el filtro local.'}</p>
-          :<div className="real-inventory-movements">{filteredMovements.map(x=><article className="real-inventory-movement" key={x.id}>
+          :<div className="real-inventory-movements e3-inventory-movement-list">{filteredMovements.map(x=><article className="real-inventory-movement" key={x.id}>
             <div className="real-inventory-movement-info"><h3>{itemName(x.catalog_item_id)}</h3>
               <p>{INVENTORY_EVENTS[x.event_type]} · {siteName(x.location_id)}</p>
               <small>{formatDate(x.occurred_at)} · {unitName(x.catalog_item_id)} · Movimiento {shortId(x.id)}</small>
@@ -348,6 +368,19 @@ export function RealInventoryPage({token,userId,businessId,onNavigate,onUnauthor
         </button>}
       </>}
       <p className="real-inventory-disclaimer">Los nombres y unidades se muestran según el catálogo actual cargado para esta empresa. Los movimientos conservan su cantidad firmada y fecha histórica del ledger; no se calcula stock sumando compras. Las transferencias se registran en T08-3; stock inicial y ajustes versionados en T08-4. Ninguna de estas operaciones reescribe movimientos anteriores.</p>
+      </>}
+      {view==='transfer'&&<div className="e3-inventory-operation-view" aria-label="Pantalla de traslado de inventario">
+        <RealTransferPanel token={token} actorId={userId} business={company} locations={locations}
+          assignedLocationIds={assignedLocationIds} catalog={catalog} onUnauthorized={onUnauthorized}
+          onClose={()=>setTransferOpen(false)} onConfirmed={refreshAfterTransfer}
+          onReview={reviewAfterTransfer}/>
+      </div>}
+      {view==='adjustment'&&<div className="e3-inventory-operation-view" aria-label="Pantalla de stock inicial y ajustes">
+        <RealAdjustmentPanel token={token} actorId={userId} business={company} locations={locations}
+          catalog={catalog} onUnauthorized={onUnauthorized}
+          onClose={()=>setAdjustmentOpen(false)} onConfirmed={refreshAfterTransfer}
+          onReview={reviewAfterAdjustment}/>
+      </div>}
     </>}
   </section>
 }

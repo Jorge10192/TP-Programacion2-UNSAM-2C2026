@@ -164,7 +164,7 @@ export function RealTransferPanel({token,actorId,business,locations,assignedLoca
     <h2>Trasladar stock entre ubicaciones</h2>
     <p>Una transferencia REAL genera una salida y una entrada atómicas en PostgreSQL. No crea compras, ventas ni movimientos de dinero.</p>
    </div>
-   <button type="button" className="real-auth-secondary" onClick={onClose} disabled={busy}>Cerrar</button>
+   <button type="button" className="real-auth-secondary" onClick={onClose} disabled={busy}>Volver a inventario</button>
   </div>
   <p className="real-auth-note">El servidor exige permiso <strong>STORE en ambas ubicaciones</strong>. Si sos Encargado o Trabajador, necesitás asignación activa a origen y destino. La interfaz no sustituye esa autorización.</p>
   <p className="real-auth-note">La identidad de la solicitud (UUID4, artículo, sedes, cantidad, motivo y fecha) se conserva sin cifrar en IndexedDB hasta confirmar o resolverla. No se guardan tokens ni contraseñas. Evitá dispositivos compartidos.</p>
