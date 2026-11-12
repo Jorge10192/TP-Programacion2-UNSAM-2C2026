@@ -1,18 +1,19 @@
 /** E3-1B. Navigation for API-backed screens ONLY; never import demoStore. */
 import { UUID_PATTERN } from '../businesses/businessGateway.ts'
 
-export type RealBusinessSection = '' | 'ubicaciones' | 'equipo' | 'catalogo'
+export type RealBusinessSection = '' | 'inicio' | 'ubicaciones' | 'equipo' | 'catalogo'
   | 'proveedores' | 'compras' | 'inventario' | 'pos' | 'ventas'
 
 export type RealWorkspaceItem = {
   section: RealBusinessSection
   label: string
   group: 'Administración' | 'Operaciones'
-  icon: 'building' | 'pin' | 'users' | 'package' | 'briefcase'
+  icon: 'home' | 'building' | 'pin' | 'users' | 'package' | 'briefcase'
     | 'shopping' | 'boxes' | 'receipt' | 'clock'
 }
 
 export const REAL_WORKSPACE_ITEMS: readonly RealWorkspaceItem[] = [
+  { section: 'inicio', label: 'Inicio', group: 'Administración', icon: 'home' },
   { section: '', label: 'Mi empresa', group: 'Administración', icon: 'building' },
   { section: 'ubicaciones', label: 'Ubicaciones', group: 'Administración', icon: 'pin' },
   { section: 'equipo', label: 'Equipo', group: 'Administración', icon: 'users' },
