@@ -32,6 +32,14 @@ test('E27-AUTH-01: registro por UI, login explícito y GET /me de PostgreSQL', a
   await expect(page.getByText(name, { exact: true })).toBeVisible()
   await expect(page.getByText(email, { exact: true })).toBeVisible()
 
+  // E3-1H3: abrir el formulario no acepta ninguna invitación ni emite escrituras.
+  await page.getByRole('button', { name: 'Ingresar código de invitación' }).click()
+  await expect(page.getByRole('heading', { name: 'Ingresar código de invitación' })).toBeVisible()
+  await expect(page.getByLabel('Código de 43 caracteres')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Aceptar invitación' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Mi perfil real' }).click()
+  await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible()
+
   const login = await request.post(api + '/auth/login', { data: { email, password } })
   expect(login.status(), await login.text()).toBe(200)
   const token = (await login.json()).access_token
