@@ -1,7 +1,7 @@
 """API autenticada de QR DEMO. No acredita pagos."""
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
@@ -10,6 +10,7 @@ from app.modules.auth.session_service import AuthContext
 from app.modules.purchases.service import PurchaseSessionInvalid, PurchaseBusinessUnavailable, PurchasePermissionDenied
 from app.modules.payments.qr_schemas import (
     CreateQrIntentRequest, QrIntentView, QrPaymentEventView, QrSimulateRequest, QrFinalizedView,
+    QrIntentSummaryView,
 )
 from app.modules.payments.qr_event_service import QrEventService, QrLabDisabled
 from app.modules.payments.qr_settlement_service import (
@@ -66,6 +67,25 @@ def create_qr_intent(
         _handle(error)
     response.status_code = 200 if result.replayed else 201
     return result.body
+
+
+@router.get("", response_model=list[QrIntentSummaryView],
+    responses={401: {"description": "Sesión inválida"},
+               404: {"description": "Empresa no accesible"}},
+    summary="Listar cobros QR DEMO de la empresa, con alcance por rol")
+def list_qr_intents(
+    business_id: UUID, offset: int = Query(0, ge=0, le=10_000_000),
+    limit: int = Query(20, ge=1, le=50),
+    context: AuthContext = Depends(current_auth),
+    db: Session = Depends(get_db),
+) -> list[QrIntentSummaryView]:
+    try:
+        return QrIntentService(db).list(
+            context.user.id, context.auth_session.id, business_id,
+            offset=offset, limit=limit,
+        )
+    except Exception as error:
+        _handle(error)
 
 
 @router.get("/by-request/{request_id}", response_model=QrIntentView,
