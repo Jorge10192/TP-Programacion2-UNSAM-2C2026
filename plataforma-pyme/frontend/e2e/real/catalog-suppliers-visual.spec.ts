@@ -66,7 +66,7 @@ test('E3-1D catálogo/proveedores: fichas, alta aislada, cancelación y móvil',
   expect(catalog.status(),await catalog.text()).toBe(200)
   expect(await catalog.json()).toHaveLength(1)
 
-  await page.getByRole('navigation',{name:'Navegación de empresa'}).getByRole('button',{name:'Empresa'}).click()
+  await page.getByRole('navigation',{name:'Navegación de empresa'}).getByRole('button',{name:'Empresa',exact:true}).click()
   await page.getByRole('button',{name:'Abrir Proveedores'}).click()
   await expect(page.getByRole('heading',{name:'Proveedores',exact:true})).toBeVisible()
   await expect(page.locator('article.e3-supplier-tile')).toHaveCount(0)
