@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.models import (
     CatalogItem, Location, LocationAssignment, MerchantPaymentConnection,
-    QrPaymentIntent, QrPaymentIntentLine, QrPaymentSettlement, StockBalance,
+    QrPaymentIntent, QrPaymentIntentLine, QrPaymentSettlement, MercadoPagoTestOrder, StockBalance,
 )
 from app.modules.auth.tokens import now_utc
 from app.modules.locations.permissions import can_operate_at_location
@@ -318,6 +318,11 @@ class QrIntentService:
                 self.db.rollback()
                 return result
             if row.status != "ESPERANDO_PAGO" or row.expires_at <= now_utc():
+                raise QrIntentConflict()
+            if self.db.scalar(select(MercadoPagoTestOrder.id).where(
+                MercadoPagoTestOrder.business_id == business_id,
+                MercadoPagoTestOrder.source_intent_id == intent_id,
+            ).limit(1)) is not None:
                 raise QrIntentConflict()
             # B2: no hay orden remota, pago ni venta que compensar.
             row.status = "CANCELADA"
