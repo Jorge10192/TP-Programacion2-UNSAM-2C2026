@@ -22,8 +22,10 @@ def list_profile(ctx: AuthContext = Depends(current_auth), db: Session = Depends
 @router.post("/me", response_model=PhotoView, status_code=201)
 async def upload_profile(file: UploadFile = File(...), ctx: AuthContext = Depends(current_auth),
                          db: Session = Depends(get_db)):
+    service = PhotoService(db)
+    service.assert_upload_allowed(ctx, "PROFILE", ctx.user.id, None)
     content, width, height = await clean_photo(file)
-    return PhotoService(db).upload(ctx, "PROFILE", ctx.user.id, None, content, width, height)
+    return service.upload(ctx, "PROFILE", ctx.user.id, None, content, width, height)
 
 
 @router.get("/businesses/{business_id}", response_model=list[PhotoView])
@@ -35,8 +37,10 @@ def list_business(business_id: UUID, ctx: AuthContext = Depends(current_auth),
 @router.post("/businesses/{business_id}", response_model=PhotoView, status_code=201)
 async def upload_business(business_id: UUID, file: UploadFile = File(...),
                           ctx: AuthContext = Depends(current_auth), db: Session = Depends(get_db)):
+    service = PhotoService(db)
+    service.assert_upload_allowed(ctx, "BUSINESS", business_id, business_id)
     content, width, height = await clean_photo(file)
-    return PhotoService(db).upload(ctx, "BUSINESS", business_id, business_id, content, width, height)
+    return service.upload(ctx, "BUSINESS", business_id, business_id, content, width, height)
 
 
 @router.get("/businesses/{business_id}/catalog/{item_id}", response_model=list[PhotoView])
@@ -48,8 +52,10 @@ def list_catalog_photos(business_id: UUID, item_id: UUID,
 @router.post("/businesses/{business_id}/catalog/{item_id}", response_model=PhotoView, status_code=201)
 async def upload_catalog_photo(business_id: UUID, item_id: UUID, file: UploadFile = File(...),
                                ctx: AuthContext = Depends(current_auth), db: Session = Depends(get_db)):
+    service = PhotoService(db)
+    service.assert_upload_allowed(ctx, "CATALOG", item_id, business_id)
     content, width, height = await clean_photo(file)
-    return PhotoService(db).upload(ctx, "CATALOG", item_id, business_id, content, width, height)
+    return service.upload(ctx, "CATALOG", item_id, business_id, content, width, height)
 
 
 @router.get("/businesses/{business_id}/suppliers/{supplier_id}", response_model=list[PhotoView])
@@ -61,8 +67,10 @@ def list_supplier_photos(business_id: UUID, supplier_id: UUID,
 @router.post("/businesses/{business_id}/suppliers/{supplier_id}", response_model=PhotoView, status_code=201)
 async def upload_supplier_photo(business_id: UUID, supplier_id: UUID, file: UploadFile = File(...),
                                 ctx: AuthContext = Depends(current_auth), db: Session = Depends(get_db)):
+    service = PhotoService(db)
+    service.assert_upload_allowed(ctx, "SUPPLIER", supplier_id, business_id)
     content, width, height = await clean_photo(file)
-    return PhotoService(db).upload(ctx, "SUPPLIER", supplier_id, business_id, content, width, height)
+    return service.upload(ctx, "SUPPLIER", supplier_id, business_id, content, width, height)
 
 
 @router.get("/{photo_id}/content")
