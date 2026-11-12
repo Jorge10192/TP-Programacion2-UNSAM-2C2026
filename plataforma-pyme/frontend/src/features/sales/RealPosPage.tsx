@@ -458,7 +458,7 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
           <h2>3. Detalle de venta · borrador</h2>
           <span className="e3-pos-cart-count">{cart.length} artículos distintos</span>
         </div>
-        {cartNotice&&<p role="status" className="e3-pos-cart-notice">{cartNotice}</p>
+        {cartNotice&&<p role="status" className="e3-pos-cart-notice">{cartNotice}</p>}
         {cart.length === 0 && <p className="real-business-empty">Aún no agregaste artículos. No se realizó ninguna venta.</p>}
         <div className="e3-pos-ticket-lines" aria-label="Productos y cantidades de esta venta">
         {cart.map((row,index) => {
