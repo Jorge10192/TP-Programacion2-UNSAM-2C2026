@@ -22,7 +22,7 @@ class QrPaymentEvent(Base):
         UniqueConstraint("business_id", "intent_id", "event_key", name="uq_qr_events_idempotency"),
         CheckConstraint("sequence >= 1", name="ck_qr_events_sequence"),
         CheckConstraint(
-            "action IN ('CREAR','CANCELAR','APROBAR','RECHAZAR','EXPIRAR','INDETERMINAR')",
+            "action IN ('CREAR','CANCELAR','APROBAR','RECHAZAR','EXPIRAR','INDETERMINAR','FINALIZAR','REVISION')",
             name="ck_qr_events_action",
         ),
         CheckConstraint(
