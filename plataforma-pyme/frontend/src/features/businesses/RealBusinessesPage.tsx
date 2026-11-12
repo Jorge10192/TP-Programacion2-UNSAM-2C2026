@@ -196,6 +196,8 @@ export function RealBusinessesPage({
       const current = await gateway.update(selected.id, patch)
       if (mutationId !== mutationGeneration.current) return
       setSelected((old) => old?.id === current.id ? current : old)
+      // Preserve confirmed values when the user opens the editor again.
+      setChanges({ name: current.name, category: current.category, activity_kind: current.activity_kind })
       setEditing(false)
       setNotice('Datos de la empresa actualizados en PostgreSQL.')
     } catch (err) {
