@@ -25,7 +25,7 @@
     "test:operations-real": "node --test tests/operations-real-api.test.mjs",
     "test:catalog-real": "node --test tests/catalog-real-api.test.mjs",
     "test:pending-commands": "node --test tests/pending-commands.test.mjs",
-    "test:supply-real": "node --test tests/supply-real-api.test.mjs tests/supplier-contact-real.test.mjs",
+    "test:supply-real": "node --test tests/supply-real-api.test.mjs tests/supplier-contact-real.test.mjs tests/supplier-promotions-real.test.mjs",
     "test:inventory-real": "node --test tests/inventory-real-api.test.mjs",
     "test:transfer-real": "node --test tests/transfer-real-api.test.mjs",
     "test:adjustment-real": "node --test tests/adjustment-real-api.test.mjs",

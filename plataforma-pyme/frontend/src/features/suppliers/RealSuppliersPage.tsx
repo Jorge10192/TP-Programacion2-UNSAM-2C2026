@@ -5,8 +5,8 @@ import '../catalog/realCatalogVisual.css'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
-import { createSupplyGateway, SUPPLY_PAGE_SIZE, supplyErrorMessage, emptySupplierContact, validateSupplierContact } from '../purchases/realSupplyGateway.ts'
-import type { Supplier, SupplierContactDraft } from '../purchases/realSupplyGateway.ts'
+import { createSupplyGateway, SUPPLY_PAGE_SIZE, supplyErrorMessage, newSupplierCommercialDraft, validateSupplierCommercialDraft, SUPPLIER_PAYMENT_METHODS, SUPPLIER_PAYMENT_LABELS, SUPPLIER_WEEKDAYS } from '../purchases/realSupplyGateway.ts'
+import type { Supplier, SupplierCommercialDraft, SupplierPromotionRule, SupplierPaymentMethod } from '../purchases/realSupplyGateway.ts'
 type Props={token:string;userId:string;businessId:string;onNavigate:(route:string)=>void;onUnauthorized:()=>void}
 export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthorized}:Props){
  const gateway=useMemo(()=>createSupplyGateway(token,businessId),[token,businessId])
@@ -22,7 +22,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
  const [busy,setBusy]=useState(false)
  const [error,setError]=useState('')
  const [notice,setNotice]=useState('')
- const [draft,setDraft]=useState<SupplierContactDraft>(emptySupplierContact)
+ const [draft,setDraft]=useState<SupplierCommercialDraft>(newSupplierCommercialDraft)
  const [editingId,setEditingId]=useState<string|null>(null)
  const [sameWhatsapp,setSameWhatsapp]=useState(false)
  const [unknown,setUnknown]=useState(false)
@@ -73,22 +73,22 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
    e.preventDefault()
    if(!canWrite||busy||unknown)return
    setError('');setNotice('')
-   let payload:SupplierContactDraft
-   try {payload=validateSupplierContact(draft)}
+   let payload:SupplierCommercialDraft
+   try {payload=validateSupplierCommercialDraft(draft)}
    catch(err){setError(err instanceof Error?err.message:'Revisá los datos del proveedor.');return}
    setBusy(true)
    let saved:Supplier
    try {
      saved=editingId
-       ?await gateway.updateSupplierDetails(editingId,payload)
-       :await gateway.createSupplierDetailed(payload)
+       ?await gateway.updateSupplierCommercial(editingId,payload)
+       :await gateway.createSupplierCommercial(payload)
    }catch(err){
      fail(err,true)
      if(alive.current)setBusy(false)
      return
    }
    if(!alive.current)return
-   setCreating(false);setEditingId(null);setSameWhatsapp(false);setDraft(emptySupplierContact)
+   setCreating(false);setEditingId(null);setSameWhatsapp(false);setDraft(newSupplierCommercialDraft())
    setItems(old=>editingId
      ?old.map(x=>x.id===saved.id?saved:x)
      :[saved,...old])
@@ -123,7 +123,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
  const activeCount=items.filter(x=>x.status==='ACTIVO').length
  function startCreate(){
    if(!canWrite||busy||unknown)return
-   setDraft({...emptySupplierContact});setSameWhatsapp(false);setEditingId(null)
+   setDraft(newSupplierCommercialDraft());setSameWhatsapp(false);setEditingId(null)
    setCreating(true);setDetailId(null);setError('');setNotice('')
  }
  function startEdit(supplier:Supplier){
@@ -133,6 +133,8 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
      phone:supplier.phone,whatsapp:supplier.whatsapp,email:supplier.email,
      address:supplier.address,maps_url:supplier.maps_url,website:supplier.website,
      instagram:supplier.instagram,notes:supplier.notes,
+     payment_methods:[...supplier.payment_methods] as SupplierPaymentMethod[],
+     promotions:supplier.promotions.map(rule=>({...rule,days:[...rule.days]})),
    })
    setSameWhatsapp(false);setEditingId(supplier.id);setDetailId(null)
    setCreating(true);setError('');setNotice('')
@@ -143,10 +145,34 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
  function closeSubview(){
    if(busy)return
    setCreating(false);setEditingId(null);setDetailId(null)
-   setSameWhatsapp(false);setDraft({...emptySupplierContact});setError('')
+   setSameWhatsapp(false);setDraft(newSupplierCommercialDraft());setError('')
  }
- const setField=<K extends keyof SupplierContactDraft>(key:K,value:SupplierContactDraft[K])=>
+ const setField=<K extends keyof SupplierCommercialDraft>(key:K,value:SupplierCommercialDraft[K])=>
    setDraft(old=>({...old,[key]:value}))
+ function togglePayment(payment:SupplierPaymentMethod,checked:boolean){
+   setDraft(old=>({
+     ...old,payment_methods:checked
+       ?[...old.payment_methods.filter(p=>p!==payment),payment]
+       :old.payment_methods.filter(p=>p!==payment),
+   }))
+ }
+ function addPromotion(){
+   if(draft.promotions.length>=8)return
+   setDraft(old=>({...old,promotions:[...old.promotions,{
+     id:crypto.randomUUID(),days:[],payment_method:null,benefit:'',
+   }]}))
+ }
+ function updatePromotion(id:string,update:Partial<SupplierPromotionRule>){
+   setDraft(old=>({...old,promotions:old.promotions.map(rule=>
+     rule.id===id?{...rule,...update}:rule)}))
+ }
+ function removePromotion(id:string){
+   setDraft(old=>({...old,promotions:old.promotions.filter(rule=>rule.id!==id)}))
+ }
+ function toggleWeekday(rule:SupplierPromotionRule,day:number,checked:boolean){
+   const days=checked?[...rule.days,day]:rule.days.filter(d=>d!==day)
+   updatePromotion(rule.id,{days:days.sort((a,b)=>a-b)})
+ }
  const addressSearchUrl=draft.address.trim()
    ?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(draft.address.trim()):null
  useEffect(()=>{
@@ -252,14 +278,24 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
        <div><h3>Qué ofrece</h3><p>{detail.offerings||'Sin información registrada.'}</p></div>
        <div><h3>Notas</h3><p>{detail.notes||'Sin observaciones registradas.'}</p></div>
      </div>
-     {detail.payment_methods.length>0&&<section className="e3-supplier-payments" aria-label="Medios de pago informados">
-       <h3>Medios de pago registrados</h3><div className="e3-commerce-chips">{detail.payment_methods.map((method,i)=><span key={method+i}>{method}</span>)}</div>
-     </section>}
+     <section className="e3-supplier-payments" aria-label="Condiciones comerciales del proveedor">
+       <h3>Medios de pago aceptados (informativos)</h3>
+       {detail.payment_methods.length>0
+         ?<div className="e3-commerce-chips">{detail.payment_methods.map((method,i)=><span key={method+i}>{SUPPLIER_PAYMENT_LABELS[method as SupplierPaymentMethod]??method}</span>)}</div>
+         :<p className="e3-supplier-empty-note">No se informaron medios de pago.</p>}
+       <h3 className="e3-supplier-promotions-title">Promociones informadas</h3>
+       {detail.promotions.length===0&&<p className="e3-supplier-empty-note">Sin promociones informadas.</p>}
+       {detail.promotions.map((rule,i)=><article className="e3-supplier-promotion-summary" key={rule.id}>
+         <strong>Promoción {i+1}: {rule.benefit}</strong>
+         <span>Días: {rule.days.length?rule.days.map(day=>SUPPLIER_WEEKDAYS[day]).join(' · '):'Sin días específicos (cualquier día)'}</span>
+         <span>Medio requerido: {rule.payment_method?SUPPLIER_PAYMENT_LABELS[rule.payment_method]:'Ninguno específico'}</span>
+       </article>)}
+     </section>
      {canWrite&&<div className="real-auth-actions e3-supplier-detail-actions">
        <button className="real-auth-primary" type="button" disabled={busy||unknown} onClick={()=>startEdit(detail)}>
          <Icon name="user" size={17}/>Editar proveedor</button>
      </div>}
-     <p className="e3-commerce-disclaimer">Los datos de contacto son editables por usuarios autorizados. Los medios de pago y las promociones se incorporarán a la edición en E3-1D2B.</p>
+     <p className="e3-commerce-disclaimer">Los medios de pago y promociones son datos informativos del proveedor; no se aplican automáticamente en Compras ni constituyen cobros reales.</p>
    </section>}
    {view==='form'&&canWrite&&<section className="e3-commerce-subsurface e3-commerce-form-screen e3-supplier-contact-editor" aria-label="Formulario de proveedor">
      <div className="e3-commerce-section-head">
@@ -314,8 +350,62 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
              value={draft.instagram} onChange={e=>setField('instagram',e.target.value)} placeholder="@empresa"/></label>
          </div>
        </fieldset>
+       <fieldset className="e3-supplier-form-section e3-supplier-payment-section">
+         <legend>3. Medios de pago aceptados (informativos)</legend>
+         <p className="e3-supplier-section-help">Registrá los medios que el proveedor declara aceptar. No conectan cuentas de cobro ni crean pagos.</p>
+         <div className="e3-supplier-payment-options" aria-label="Medios de pago aceptados">
+           {SUPPLIER_PAYMENT_METHODS.map(method=><label className="e3-supplier-option" key={method}>
+             <input type="checkbox" checked={draft.payment_methods.includes(method)}
+               onChange={e=>togglePayment(method,e.target.checked)}/>
+             {SUPPLIER_PAYMENT_LABELS[method]}
+           </label>)}
+         </div>
+       </fieldset>
+       <fieldset className="e3-supplier-form-section e3-supplier-promotions-section">
+         <legend>4. Promociones y días disponibles</legend>
+         <p className="e3-supplier-section-help">Cada promoción puede limitarse a días de la semana y a un medio de pago. Son condiciones informadas, sin descuento automático en Compras.</p>
+         <button type="button" className="real-auth-secondary e3-supplier-add-promo"
+           onClick={addPromotion} disabled={draft.promotions.length>=8||busy}>
+           <Icon name="plus" size={16}/>Agregar promoción
+         </button>
+         {draft.promotions.length===0&&<p className="e3-supplier-empty-note">Este proveedor todavía no tiene promociones informadas.</p>}
+         {draft.promotions.map((rule,i)=><div className="e3-supplier-promo-editor" key={rule.id}>
+           <div className="e3-supplier-promo-top">
+             <strong>Promoción {i+1}</strong>
+             <button type="button" className="e3-supplier-remove-promo" onClick={()=>removePromotion(rule.id)} disabled={busy}>Quitar promoción {i+1}</button>
+           </div>
+           <fieldset className="e3-supplier-days-fieldset">
+             <legend>Días de la semana disponibles</legend>
+             <div className="e3-supplier-day-options">
+               {SUPPLIER_WEEKDAYS.map((day,dayIndex)=><label className="e3-supplier-day" key={day}>
+                 <input type="checkbox" aria-label={day+' en promoción '+(i+1)}
+                   checked={rule.days.includes(dayIndex)}
+                   onChange={e=>toggleWeekday(rule,dayIndex,e.target.checked)}/>
+                 {day.slice(0,2)}
+               </label>)}
+             </div>
+             <p className="e3-supplier-day-note">{rule.days.length
+               ?'Solo los días seleccionados quedan registrados para esta promoción.'
+               :'Sin días específicos: el beneficio se informa sin limitarlo a días.'}</p>
+           </fieldset>
+           <div className="e3-commerce-form-grid">
+             <label>Medio requerido de promoción {i+1} (opcional)
+               <select value={rule.payment_method??''}
+                 onChange={e=>updatePromotion(rule.id,{payment_method:e.target.value?e.target.value as SupplierPaymentMethod:null})}>
+                 <option value="">Sin medio específico</option>
+                 {SUPPLIER_PAYMENT_METHODS.map(method=><option key={method} value={method}>{SUPPLIER_PAYMENT_LABELS[method]}</option>)}
+               </select>
+             </label>
+             <label>Beneficio informado de promoción {i+1} *
+               <input required minLength={3} maxLength={160} value={rule.benefit}
+                 placeholder="Ej.: 10% de reintegro, tope $25.000"
+                 onChange={e=>updatePromotion(rule.id,{benefit:e.target.value})}/>
+             </label>
+           </div>
+         </div>)}
+       </fieldset>
        <fieldset className="e3-supplier-form-section">
-         <legend>3. Observaciones comerciales</legend>
+         <legend>5. Observaciones comerciales</legend>
          <label>Notas (opcional)<textarea rows={4} maxLength={650} value={draft.notes}
            onChange={e=>setField('notes',e.target.value)} placeholder="Ej.: Horarios de entrega, condiciones de pedido y retiro…"/></label>
        </fieldset>
@@ -324,7 +414,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
          <button className="real-auth-secondary" type="button" disabled={busy} onClick={closeSubview}>Cancelar</button>
        </div>
      </form>
-     <p className="e3-commerce-disclaimer">Los medios de pago y las promociones son informativos y se editarán en E3-1D2B. Este formulario no modifica esos datos ni registra compras o movimientos de inventario.</p>
+     <p className="e3-commerce-disclaimer">Los días de cada promoción, el medio requerido y el beneficio se guardan como información comercial. No se aplican descuentos, no se procesan pagos ni se generan movimientos de inventario.</p>
    </section>}
  </section>
 }
