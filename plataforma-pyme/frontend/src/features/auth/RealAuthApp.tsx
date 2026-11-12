@@ -267,7 +267,8 @@ export function RealAuthApp() {
                 onUnauthorized={onBusinessAuthLost}/>
           : operationBusinessId && operationsKind === 'medios-de-cobro'
             ? <RealPaymentConnectionsPage key={session.user.id + ':' + path} token={session.token} userId={session.user.id}
-                businessId={operationBusinessId} onUnauthorized={onBusinessAuthLost}/>
+                businessId={operationBusinessId} onNavigate={(next) => go(next as Route)}
+                onUnauthorized={onBusinessAuthLost}/>
           : operationBusinessId && operationsKind === 'inicio'
             ? <RealOnboardingPage key={session.user.id + ':' + path} token={session.token}
                 userId={session.user.id} businessId={operationBusinessId}
