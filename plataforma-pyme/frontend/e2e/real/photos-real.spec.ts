@@ -88,6 +88,8 @@ test('E3-2A: foto perfil, empresa, galería servicios y proveedor con POS, sin c
     .getByRole('button',{name:'Punto de venta',exact:true}).click()
   await expect(page.getByRole('heading',{name:'Punto de venta'})).toBeVisible()
   const posCard=page.locator('.e3-pos-product-card').filter({hasText:'Servicio fotos E3'})
+  // La portada se solicita de forma perezosa cuando la tarjeta entra al viewport.
+  await posCard.scrollIntoViewIfNeeded()
   await expect(posCard.locator('img')).toHaveCount(1)
   const width=await page.evaluate(()=>Math.max(document.body.scrollWidth,document.documentElement.scrollWidth))
   expect(width).toBeLessThanOrEqual(1366)
