@@ -2,7 +2,7 @@
 import { UUID_PATTERN } from '../businesses/businessGateway.ts'
 
 export type RealBusinessSection = '' | 'inicio' | 'ubicaciones' | 'equipo' | 'catalogo'
-  | 'proveedores' | 'compras' | 'inventario' | 'pos' | 'ventas' | 'medios-de-cobro'
+  | 'proveedores' | 'compras' | 'inventario' | 'pos' | 'ventas' | 'medios-de-cobro' | 'cobros-qr'
 
 export type RealWorkspaceItem = {
   section: RealBusinessSection
@@ -23,6 +23,7 @@ export const REAL_WORKSPACE_ITEMS: readonly RealWorkspaceItem[] = [
   { section: 'compras', label: 'Compras y recepciones', group: 'Operaciones', icon: 'shopping' },
   { section: 'inventario', label: 'Inventario y movimientos', group: 'Operaciones', icon: 'boxes' },
   { section: 'pos', label: 'Punto de venta', group: 'Operaciones', icon: 'receipt' },
+  { section: 'cobros-qr', label: 'Cobros QR', group: 'Operaciones', icon: 'wallet' },
   { section: 'ventas', label: 'Historial de ventas', group: 'Operaciones', icon: 'clock' },
 ] as const
 
