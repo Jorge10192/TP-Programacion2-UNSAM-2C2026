@@ -46,6 +46,7 @@ export function RealBusinessesPage({
 }: Props) {
   const [items, setItems] = useState<RealBusiness[] | null>(null)
   const [selected, setSelected] = useState<RealBusiness | null>(null)
+  const [businessPhotoRevision, setBusinessPhotoRevision] = useState(0)
   const [loading, setLoading] = useState(route.kind !== 'create')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -298,7 +299,7 @@ export function RealBusinessesPage({
       </div>}
     </> : <>
       <div className="e3-detail-header">
-        <div className="e3-detail-mark"><RealPhotoPreview token={token} owner={{kind:'BUSINESS',businessId:route.businessId}} alt="Foto de la empresa"/></div>
+        <div className="e3-detail-mark"><RealPhotoPreview token={token} owner={{kind:'BUSINESS',businessId:route.businessId}} alt="Foto de la empresa" revision={businessPhotoRevision}/></div>
         <div className="e3-detail-heading">
           <h1>Datos de la empresa</h1>
           <p>Consultá los datos registrados y las herramientas de tu negocio.</p>
@@ -341,7 +342,7 @@ export function RealBusinessesPage({
             </dl>
           </details>
         </section>
-        <RealPhotoManager token={token} owner={{kind:'BUSINESS',businessId:selected.id}} title="Foto o logo de la empresa" canManage={canEditBusiness(selected)} onUnauthorized={onUnauthorized}/>
+        <RealPhotoManager token={token} owner={{kind:'BUSINESS',businessId:selected.id}} title="Foto o logo de la empresa" canManage={canEditBusiness(selected)} onUnauthorized={onUnauthorized} onChanged={()=>setBusinessPhotoRevision(n=>n+1)}/>
         {canEditBusiness(selected) && editing && <section className="e3-detail-edit-panel" aria-labelledby="e3-edit-heading">
           <h2 id="e3-edit-heading">Editar datos de la empresa</h2>
           <p>Revisá nombre, rubro y actividad. Los cambios se guardan solo cuando confirmás.</p>
