@@ -6,7 +6,7 @@ export type Supplier = {
   id:string; business_id:string; name:string; offerings:string; contact_person:string
   phone:string; whatsapp:string; email:string; address:string; maps_url:string
   website:string; instagram:string; notes:string; payment_methods:string[]
-  promotions:unknown[]; status:'ACTIVO'|'INACTIVO'; created_at:string; updated_at:string
+  promotions:SupplierPromotionRule[]; status:'ACTIVO'|'INACTIVO'; created_at:string; updated_at:string
 }
 /**
  * E3-1D2A: subconjunto editable del proveedor.
@@ -62,6 +62,59 @@ export function validateSupplierContact(input:SupplierContactDraft):SupplierCont
   }
   // Desestructuración explícita evita incluir state, tenant y arreglos de promociones.
   return values
+}
+
+/** Reglas informativas: no afectan importes ni descuentos de Compras. */
+export const SUPPLIER_PAYMENT_METHODS=[
+  'EFECTIVO','TRANSFERENCIA','MERCADO_PAGO','CUENTA_DNI',
+  'TARJETA','CHEQUE','CUENTA_CORRIENTE',
+] as const
+export type SupplierPaymentMethod=typeof SUPPLIER_PAYMENT_METHODS[number]
+export const SUPPLIER_PAYMENT_LABELS:Record<SupplierPaymentMethod,string>={
+  EFECTIVO:'Efectivo',TRANSFERENCIA:'Transferencia',MERCADO_PAGO:'Mercado Pago',
+  CUENTA_DNI:'Cuenta DNI',TARJETA:'Tarjeta',CHEQUE:'Cheque',
+  CUENTA_CORRIENTE:'Cuenta corriente',
+}
+export const SUPPLIER_WEEKDAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'] as const
+export type SupplierPromotionRule={
+  id:string
+  days:number[] // 0=Lunes ... 6=Domingo; []=sin días específicos
+  payment_method:SupplierPaymentMethod|null
+  benefit:string
+}
+export type SupplierCommercialDraft=SupplierContactDraft&{
+  payment_methods:SupplierPaymentMethod[]
+  promotions:SupplierPromotionRule[]
+}
+export function newSupplierCommercialDraft():SupplierCommercialDraft{
+  return {...emptySupplierContact,payment_methods:[],promotions:[]}
+}
+/** Whitelist explícita: no se envían estado, business_id ni identificadores de proveedor. */
+export function validateSupplierCommercialDraft(input:SupplierCommercialDraft):SupplierCommercialDraft{
+  const contact=validateSupplierContact(input)
+  if(!Array.isArray(input.payment_methods)||input.payment_methods.length>SUPPLIER_PAYMENT_METHODS.length
+    ||input.payment_methods.some(p=>!SUPPLIER_PAYMENT_METHODS.includes(p))
+    ||new Set(input.payment_methods).size!==input.payment_methods.length)
+    throw new RangeError('Seleccioná medios de pago válidos, sin duplicados.')
+  if(!Array.isArray(input.promotions)||input.promotions.length>8)
+    throw new RangeError('Podés registrar hasta ocho promociones informativas.')
+  const ids=new Set<string>()
+  const promotions:SupplierPromotionRule[]=input.promotions.map((rule,index)=>{
+    if(!rule||typeof rule!=='object'||!uuid(rule.id)||ids.has(rule.id))
+      throw new RangeError('Regla '+(index+1)+': identificador inválido o duplicado.')
+    ids.add(rule.id)
+    if(!Array.isArray(rule.days)||rule.days.length>7||
+       rule.days.some(day=>!Number.isInteger(day)||day<0||day>6)||
+       new Set(rule.days).size!==rule.days.length)
+      throw new RangeError('Regla '+(index+1)+': días de la semana inválidos o repetidos.')
+    if(rule.payment_method!==null&&!SUPPLIER_PAYMENT_METHODS.includes(rule.payment_method))
+      throw new RangeError('Regla '+(index+1)+': medio de pago inválido.')
+    if(typeof rule.benefit!=='string'||rule.benefit.trim().length<3||rule.benefit.trim().length>160)
+      throw new RangeError('Regla '+(index+1)+': beneficio de 3 a 160 caracteres.')
+    return {id:rule.id,days:[...rule.days].sort((a,b)=>a-b),
+      payment_method:rule.payment_method,benefit:rule.benefit.trim()}
+  })
+  return {...contact,payment_methods:[...input.payment_methods],promotions}
 }
 
 export type PurchaseLineInput = {
@@ -217,6 +270,14 @@ export function createSupplyGateway(token:string,businessId:string,fetchImpl?:ty
     updateSupplierDetails:async(supplierId:string,input:SupplierContactDraft)=>parseSupplier(
       await api.request<unknown>(suppliers+'/'+id(supplierId),{
         method:'PATCH',body:validateSupplierContact(input),
+      }),businessId),
+    createSupplierCommercial:async(input:SupplierCommercialDraft)=>parseSupplier(
+      await api.request<unknown>(suppliers,{
+        method:'POST',body:validateSupplierCommercialDraft(input),
+      }),businessId),
+    updateSupplierCommercial:async(supplierId:string,input:SupplierCommercialDraft)=>parseSupplier(
+      await api.request<unknown>(suppliers+'/'+id(supplierId),{
+        method:'PATCH',body:validateSupplierCommercialDraft(input),
       }),businessId),
     changeSupplier:async(supplierId:string,status:'ACTIVO'|'INACTIVO')=>parseSupplier(
       await api.request<unknown>(suppliers+'/'+id(supplierId)+'/status',{
