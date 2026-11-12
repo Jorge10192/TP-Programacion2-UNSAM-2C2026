@@ -91,7 +91,7 @@ test('T10-C POS REAL: carrito, sede, precio admin, descuento, sin POST de venta'
   await expect(page.locator('.real-pos-summary')).toContainText('5.301,50')
   // El importe automático debe seguir el NUEVO total, no el importe previo.
   await expect(page.getByLabel('Importe declarado 1')).toHaveValue('5301,50')
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await expect(page.getByLabel('Revisión final de la venta')).toContainText('5.301,50')
   await expect(page.getByRole('button', { name: 'Confirmar y registrar venta REAL' })).toBeDisabled()
   expect(salePosts).toBe(0)
@@ -143,7 +143,7 @@ test('T10-C POS REAL: 501 fichas paginadas, filtro local explícito y sin ventas
   // deben conservar exactamente su orden y no duplicar artículos en la UI.
   expect(observed.filter(offset => offset === 0).length).toBeGreaterThanOrEqual(1)
   expect(observed.filter(offset => offset !== 0)).toEqual([100, 200, 300, 400, 500])
-  await expect(page.getByRole('button', { name: 'Revisar venta y pagos' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Finalizar venta' })).toBeDisabled()
 })
 
 test('T10-D: POS genera UNA venta de servicio tras revisión y consentimiento, sin POST automático', async ({ page, request }) => {
@@ -158,10 +158,10 @@ test('T10-D: POS genera UNA venta de servicio tras revisión y consentimiento, s
   await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
   await page.getByRole('button', { name: 'Agregar al carrito' }).click()
   await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1500,00')
-  await expect(page.getByRole('button', { name: 'Revisar venta y pagos' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Finalizar venta' })).toBeEnabled()
   expect(posts).toBe(0)
 
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await expect(page.getByRole('button', { name: 'Confirmar y registrar venta REAL' })).toBeDisabled()
   expect(posts).toBe(0)
   await page.getByLabel('Acepto registrar esta venta REAL').check()
@@ -183,7 +183,7 @@ test('T10-D: POS genera UNA venta de servicio tras revisión y consentimiento, s
   await page.getByLabel('Contraseña', { exact: true }).fill(fixture.password)
   await page.getByRole('button', { name: 'Ingresar', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Revisar venta y pagos' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Finalizar venta' })).toBeDisabled()
   expect(posts).toBe(1)
 })
 
@@ -207,7 +207,7 @@ test('T10-E: pagos mixtos, precio excepcional y descuento quedan en comprobante 
   await page.getByLabel('Medio de pago 2').selectOption('TRANSFERENCIA')
   await page.getByLabel('Importe declarado 2').fill('500')
   await page.getByLabel('Referencia de pago 2').fill('Referencia T10 E QA')
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   const review = page.getByLabel('Revisión final de la venta')
   await expect(review).toContainText('1.800,00')
   await expect(review).toContainText('300,00')
@@ -282,7 +282,7 @@ test('T10-E: venta física desde POS debita stock y registra un solo movimiento'
   await page.getByLabel('Cantidad del artículo').fill('2')
   await expect(page.locator('.real-pos-line-preview')).toContainText('4.000,00')
   await page.getByRole('button', { name: 'Agregar al carrito' }).click()
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await expect(page.getByLabel('Revisión final de la venta')).toContainText('4.000,00')
   expect(posts).toBe(0)
   await page.getByLabel('Acepto registrar esta venta REAL').check()
@@ -363,7 +363,7 @@ test('T10-E: 409 por stock cambiado después de agregar conserva pendiente y no 
       quantity_milli:1000,expected_version:1,reason:'Agotado concurrentemente en QA'},
   })
   expect(exhaust.status(),await exhaust.text()).toBe(201)
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await page.getByLabel('Acepto registrar esta venta REAL').check()
   const response = page.waitForResponse(resp =>
     resp.request().method() === 'POST' && resp.url().endsWith(root + '/sales'))
@@ -403,7 +403,7 @@ test('T10-E: POST perdido antes de llegar a API, GET 404 y replay manual conserv
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
   await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
   await page.getByRole('button', { name: 'Agregar al carrito' }).click()
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await page.getByLabel('Acepto registrar esta venta REAL').check()
   await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
   await expect(page.getByText('Hay una solicitud de venta guardada que requiere recuperación.', {
@@ -453,7 +453,7 @@ test('T10-D: pérdida de respuesta después del 201, F5 y recuperación GET sin 
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
   await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
   await page.getByRole('button', { name: 'Agregar al carrito' }).click()
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await page.getByLabel('Acepto registrar esta venta REAL').check()
   await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
   await expect(page.getByText('Hay una solicitud de venta guardada que requiere recuperación.', {
@@ -540,7 +540,7 @@ test('E3-1G: descuento recotiza el pago final y botón completa saldo mixto exac
   await page.getByRole('button',{name:'Completar saldo con último medio de pago'}).click()
   await expect(page.getByLabel('Importe declarado 1')).toHaveValue('300,01')
   await expect(page.getByLabel('Importe declarado 2')).toHaveValue('999,99')
-  await page.getByRole('button',{name:'Revisar venta y pagos'}).click()
+  await page.getByRole('button',{name:'Finalizar venta'}).click()
   await expect(page.getByLabel('Revisión final de la venta')).toContainText('1.300,00')
   await expect(page.getByRole('button',{name:'Confirmar y registrar venta REAL'})).toBeDisabled()
   expect(postSales).toBe(0)

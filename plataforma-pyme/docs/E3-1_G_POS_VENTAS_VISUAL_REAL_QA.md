@@ -86,3 +86,17 @@ Se amplían tests de centavos exactos, cambios de descuento, pagos mixtos y erro
 Se actualiza la prueba histórica que esperaba el encabezado Punto de venta en el estado **Recuperación de venta** tras F5, reflejando la pantalla independiente de E3-1G sin cambiar el código transaccional.
 
 **No fusionar a main sin CI verde y aprobación del usuario.**
+
+
+## Refinamiento de interacción POS posterior a la revisión del usuario (12/11/2026)
+
+Las capturas REAL y DEMO orientaron un cierre visual adicional. Se mantiene la distinción entre selección y confirmación, que protege la trazabilidad.
+
+1. **Tarjetas del catálogo y unidades:** fichas con icono neutro, categoría, SKU, precio, existencia de la sede seleccionada y acción visible «Agregar unidades». Elegir un artículo abre su editor de cantidad y precio autorizado; no hace una venta. El carrito incluye botones +/− para cambiar una unidad sin alterar el precio, más «Editar cantidad» para unidades fraccionables. No se duplica un renglón para el mismo catálogo.
+2. **Stock en la sede:** los saldos se leen desde \`GET /inventory/balances\` filtrado por ubicación y paginado (hasta 20 páginas de 500), con indicador de resultado incompleto. Cada tarjeta muestra únicamente un saldo **conocido**, por su propia unidad. Un artículo ausente de un resultado incompleto se muestra como «Saldo no verificado», nunca como cero. No se suma stock de diferentes artículos o sedes. El editor conserva su consulta por artículo/sede y bloquea agregar más que el saldo consultado; el botón + del carrito también respeta disponibilidad conocida. FastAPI vuelve a validar el stock al confirmar, y ninguna vista reserva inventario.
+3. **Descuento y total:** dentro del resumen del carrito, subtotal de renglones, campo de descuento, descuento aplicado y total a cobrar quedan en ese orden, usando los cálculos exactos ya existentes. Carrito vacío o inválido no inventa un total final.
+4. **Completar pago:** se conserva \`completeLastPosPayment\` (BigInt/centavos exactos) y se agrega indicación contextual. Este botón requiere un carrito con total positivo; sin carrito no hay saldo que completar y queda deshabilitado. Rellena exclusivamente el último medio después de deducir importes anteriores, sin POST.
+5. **Dos pasos inequívocos:** «Finalizar venta» abre la **pantalla exclusiva de detalle completo pendiente de confirmación**: empresa, sede, renglones, cantidades, precio, subtotales, descuento, total, medios declarados y notas. Recién allí aparece «Confirmar y registrar venta REAL», condicionado a aceptación explícita y a la bandera de habilitación de mutaciones. El botón «Volver a editar» recupera carrito y pagos sin nuevo intento.
+6. **Imágenes:** se usan iconos de reserva mientras no exista almacenamiento REAL de fotografías de artículos. Las futuras miniaturas deben obtenerse del **Catálogo REAL**, con vínculo al artículo, validación y persistencia backend por empresa. No cargar imágenes desde DEMO/localStorage como datos reales ni incorporar fotos hardcodeadas.
+
+QA: suites existentes POS/recovery, test E2E E3-1G extendido para saldo visible de un producto físico, límite de cantidad, incremento/decremento de carrito, descuento y completar pago; integración en DB descartable. No fusionar hasta CI y aprobación del usuario.

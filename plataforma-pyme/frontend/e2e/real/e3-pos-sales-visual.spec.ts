@@ -29,11 +29,19 @@ test('E3-1G: historial→comprobante independiente→POS→revisión y regreso, 
   })
   const root='/businesses/'+company.id
   const location=await create(root+'/locations',{
-    name:'Sede de prueba G',kind:'LOCAL',can_sell:true,can_store:false,address:'',map_url:'',
+    name:'Sede de prueba G',kind:'LOCAL',can_sell:true,can_store:true,address:'',map_url:'',
   })
   const item=await create(root+'/catalog',{
     name:'Servicio G consulta',kind:'SERVICIO',unit:'SERVICIO',sellable:true,
     price_cents:150000,
+  })
+  const physical=await create(root+'/catalog',{
+    name:'Producto físico G',kind:'REVENTA',unit:'UNIDAD',sellable:true,
+    price_cents:200000,
+  })
+  await create(root+'/inventory/adjustments',{
+    kind:'STOCK_INICIAL',catalog_item_id:physical.id,location_id:location.id,
+    quantity_milli:2000,expected_version:0,reason:'Disponibilidad E3-1G',
   })
   const recorded=await create(root+'/sales',{
     location_id:location.id,
@@ -73,13 +81,30 @@ test('E3-1G: historial→comprobante independiente→POS→revisión y regreso, 
   await page.getByRole('button',{name:'Ir al punto de venta'}).click()
   await expect(page.getByRole('heading',{name:'Punto de venta',exact:true})).toBeVisible()
   await page.getByLabel('Sede del punto de venta').selectOption(location.id)
+  await expect(page.locator('.e3-pos-card-catalog')).toContainText('Disponible en Sede de prueba G: 2 UNIDAD')
+  await page.getByRole('button',{name:/Producto físico G/}).click()
+  await expect(page.getByLabel('Disponibilidad de stock REAL')).toContainText('2 UNIDAD')
+  await page.getByLabel('Cantidad del artículo').fill('3')
+  await expect(page.getByRole('button',{name:'Agregar al carrito'})).toBeDisabled()
+  await page.getByLabel('Cantidad del artículo').fill('2')
+  await expect(page.getByRole('button',{name:'Agregar al carrito'})).toBeEnabled()
   await page.getByRole('button',{name:/Servicio G consulta/}).click()
   await page.getByRole('button',{name:'Agregar al carrito'}).click()
   await expect(page.getByLabel('Carrito de venta')).toContainText('Servicio G consulta')
   await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1500,00')
-  await page.getByRole('button',{name:'Revisar venta y pagos'}).click()
+  await page.getByRole('button',{name:'Agregar una unidad de Servicio G consulta'}).click()
+  await expect(page.getByLabel('Desglose del total de compra')).toContainText('3.000,00')
+  await page.getByRole('button',{name:'Quitar una unidad de Servicio G consulta'}).click()
+  await page.getByLabel('Descuento de la venta').fill('100')
+  await expect(page.getByLabel('Desglose del total de compra')).toContainText('1.400,00')
+  await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1400,00')
+  await page.getByLabel('Importe declarado 1').fill('500')
+  await page.getByRole('button',{name:'Agregar otro medio de pago'}).click()
+  await page.getByRole('button',{name:'Completar saldo con último medio de pago'}).click()
+  await expect(page.getByLabel('Importe declarado 2')).toHaveValue('900,00')
+  await page.getByRole('button',{name:'Finalizar venta'}).click()
   await expect(page.getByRole('heading',{name:'Revisión y confirmación',exact:true})).toBeVisible()
-  await expect(page.getByLabel('Revisión final de la venta')).toContainText('1.500,00')
+  await expect(page.getByLabel('Revisión final de la venta')).toContainText('1.400,00')
   await expect(page.getByLabel('Carrito de venta')).toBeHidden()
   await expect(page.getByRole('button',{name:'Confirmar y registrar venta REAL'})).toBeDisabled()
   await page.getByRole('button',{name:'Volver a editar'}).click()

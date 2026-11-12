@@ -120,3 +120,84 @@
 .e3-pos-page .e3-pos-outstanding.e3-pos-paid{color:#097449}
 .e3-pos-page .e3-pos-outstanding.e3-pos-excess{color:#a32924}
 @media(max-width:620px){.e3-pos-payment-breakdown{padding:14px}.e3-pos-payment-breakdown>span:nth-child(3) strong{font-size:21px}}
+
+
+/* E3-1G: tarjetas POS con acción de cantidad, disponibilidad REAL y resumen tipo ticket. */
+.e3-pos-page .e3-pos-card-catalog{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,225px),1fr));gap:13px;
+}
+.e3-pos-page .e3-pos-product-card{
+  display:flex;flex-direction:column;align-items:stretch;gap:10px;
+  min-height:265px;position:relative;background:#fff;
+  padding:17px;border-radius:17px;line-height:1.4;
+  box-shadow:0 3px 13px #1c4f8008;
+}
+.e3-pos-product-card .e3-pos-card-image{
+  display:grid;place-items:center;width:49px;height:49px;
+  background:#edf4ff;border-radius:13px;color:#2a6fc4;
+}
+.e3-pos-product-card .e3-pos-card-category{
+  position:absolute;right:14px;top:17px;border-radius:99px;background:#edf3fc;
+  font-weight:750;font-size:11px;color:#4c6c92;padding:7px 11px;
+}
+.e3-pos-product-card>strong{font-size:16px;color:#19385e;min-height:22px}
+.e3-pos-product-card>small{font-size:11px;color:#6b84a2;overflow-wrap:anywhere}
+.e3-pos-product-card .e3-pos-card-availability{
+  display:block;margin:0;color:#27784d;line-height:1.55;
+  min-height:33px;font-size:12px;font-weight:750;overflow-wrap:anywhere;
+}
+.e3-pos-product-card .e3-pos-card-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;flex-wrap:wrap;border-top:1px dashed #d7e5f3;
+  margin-top:auto;padding-top:14px;
+}
+.e3-pos-product-card .e3-pos-card-footer>b{color:#173f77;font-size:16px;font-weight:850}
+.e3-pos-product-card .e3-pos-card-add{
+  display:inline-block;background:#3471d1;color:white;border-radius:10px;
+  padding:10px 12px;font-size:12px;font-weight:850;text-align:center;
+}
+.e3-pos-product-card:disabled .e3-pos-card-add{background:#9baecb}
+.e3-pos-product-card .real-pos-in-cart{
+  display:block;background:#eaf7f1;border:1px solid #c4e6d7;color:#177449;
+  border-radius:9px;padding:8px 10px;margin:0;
+}
+.e3-pos-page .e3-pos-cart-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.e3-pos-page .e3-pos-cart-quantity{display:inline-flex;align-items:center;gap:10px}
+.e3-pos-page .e3-pos-cart-quantity>button{
+  width:37px;height:37px;border:1px solid #cbdaf0;border-radius:9px;
+  background:#f4f8ff;color:#205b9b;cursor:pointer;font:inherit;font-size:20px;
+  font-weight:800;transition:background .12s;
+}
+.e3-pos-page .e3-pos-cart-quantity>button:hover:not(:disabled){background:#e1eeff}
+.e3-pos-page .e3-pos-cart-quantity>button:disabled{opacity:.45;cursor:not-allowed}
+.e3-pos-page .e3-pos-cart-quantity>strong{font-variant-numeric:tabular-nums;min-width:25px;text-align:center}
+.e3-pos-page .e3-pos-cart-totals{display:grid;gap:11px;line-height:1.5}
+.e3-pos-page .e3-pos-cart-totals span{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.e3-pos-page .e3-pos-cart-discount{display:grid;gap:8px;margin:3px 0}
+.e3-pos-page .e3-pos-cart-discount input{
+  min-height:45px;width:100%;max-width:100%;background:#fff;
+  border:1px solid #bdd3ee;border-radius:9px;padding:10px 12px;
+}
+.e3-pos-page .e3-pos-cart-totals .e3-pos-cart-total{
+  border-top:1px solid #cadcf2;padding-top:13px;font-size:17px;
+  color:#1452a4;font-weight:850;
+}
+.e3-pos-page .e3-pos-cart-total strong{font-size:22px}
+.e3-pos-page .e3-pos-cart-totals small{color:#69829e}
+.e3-pos-page .e3-pos-fill-payment-block{display:grid;gap:6px}
+.e3-pos-page .e3-pos-fill-payment-block small{color:#617b9b;font-size:11px;line-height:1.5}
+.e3-pos-page .e3-pos-finalize-bar{
+  border-top:1px solid #d3e1f1;padding-top:18px;display:flex;
+  align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;
+}
+.e3-pos-page .e3-pos-finalize-bar p{flex:1 1 240px;font-size:12px;line-height:1.55;color:#607e9d;margin:0}
+.e3-pos-page .e3-pos-finalize-bar button{min-height:47px;padding:12px 20px}
+.e3-pos-page .e3-pos-confirm-actions{border-top:1px solid #e0ebf7;margin-top:23px;padding-top:19px}
+@media(max-width:650px){
+ .e3-pos-page .e3-pos-finalize-bar button{width:100%}
+ .e3-pos-page .e3-pos-product-card{min-height:235px}
+ .e3-pos-page .e3-pos-card-catalog{grid-template-columns:repeat(auto-fill,minmax(min(100%,170px),1fr))}
+ .e3-pos-page .e3-pos-product-card{padding:13px}
+ .e3-pos-product-card .e3-pos-card-footer>b{font-size:14px}
+ .e3-pos-product-card .e3-pos-card-add{font-size:11px;padding:8px}
+}

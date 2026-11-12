@@ -128,7 +128,7 @@ test('T11-B: compra → recepción → inventario → POS mixto → comprobante 
   await page.getByLabel('Medio de pago 2').selectOption('TRANSFERENCIA')
   await page.getByLabel('Importe declarado 2').fill('3500')
   await page.getByLabel('Referencia de pago 2').fill('Transferencia QA T11-B')
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   const review = page.getByLabel('Revisión final de la venta')
   await expect(review).toContainText('Producto T11-B')
   await expect(review).toContainText('Servicio T11-B')

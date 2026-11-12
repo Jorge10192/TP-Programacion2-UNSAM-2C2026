@@ -58,6 +58,9 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const [stockLoading,setStockLoading]=useState(false)
   const [stockError,setStockError]=useState('')
   const [stockRefresh,setStockRefresh]=useState(0)
+  const [siteStock,setSiteStock]=useState<{
+    siteId:string;balances:Record<string,number>;complete:boolean;error:string
+  }|null>(null)
   const [checkoutLocked, setCheckoutLocked] = useState(true)
   const [checkoutStage,setCheckoutStage]=useState<PosCheckoutStage>('checking')
   const onCheckoutStageChange=useCallback((stage:PosCheckoutStage)=>setCheckoutStage(stage),[])
@@ -104,6 +107,15 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const saleSites = authorizedSites.filter(site => site.status === 'ACTIVA' && site.can_sell)
   const selected = items.find(row => row.id === selectedId) ?? null
   const selectedInCart = selected ? cart.some(row => row.catalog_item_id === selected.id) : false
+  const scopedSiteStock=siteId&&siteStock?.siteId===siteId?siteStock:null
+  function cardStock(item:CatalogItem):number|null {
+    if(item.item_type!=='BIEN'||!scopedSiteStock)return null
+    const known=scopedSiteStock.balances[item.id]
+    return known!==undefined?known:scopedSiteStock.complete?0:null
+  }
+  // Una foto sólo se mostrará cuando Catálogo REAL incorpore almacenamiento
+  // autorizado para imágenes; nunca importar fotos DEMO ni URLs temporales.
+  const siteStockPending=Boolean(siteId&&location?.can_store&&!scopedSiteStock)
   const stockForSelected=selected?.item_type==='BIEN' && stockRead?.siteId===siteId
     && stockRead.itemId===selected.id?stockRead:null
   const requestedMilli=useMemo(()=>{
@@ -141,6 +153,35 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
       })
     return ()=>controller.abort()
   },[inventoryApi,selected?.id,selected?.item_type,location?.id,location?.can_store,stockRefresh,onUnauthorized])
+  // Consulta el inventario de la sede, paginado y acotado. No sumamos
+  // unidades heterogéneas ni tomamos una página incompleta como stock cero.
+  useEffect(()=>{
+    if(!location?.can_store)return
+    const controller=new AbortController()
+    const activeId=location.id
+    async function loadSiteStocks(){
+      const balances:Record<string,number>={}
+      let complete=false
+      try{
+        for(let page=0;page<20;page++){
+          const result=await inventoryApi.balances(page*500,500,
+            {locationId:activeId},controller.signal)
+          for(const row of result)balances[row.catalog_item_id]=row.quantity_milli
+          if(result.length<500){complete=true;break}
+        }
+        if(!controller.signal.aborted)
+          setSiteStock({siteId:activeId,balances,complete,error:''})
+      }catch(error){
+        if(controller.signal.aborted)return
+        if(error instanceof ApiHttpError&&error.status===401){onUnauthorized();return}
+        setSiteStock({siteId:activeId,balances:{},complete:false,
+          error:inventoryErrorMessage(error)})
+      }
+    }
+    void loadSiteStocks()
+    return ()=>controller.abort()
+  },[inventoryApi,location?.id,location?.can_store,stockRefresh,onUnauthorized])
+
   const linePreview = useMemo(() => {
     if (!selected) return { subtotal: null as number | null, message: '' }
     try {
@@ -245,6 +286,33 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
     }
   }
 
+  function changeCartByUnit(line:PosCartLine,direction:1|-1){
+    const item=items.find(product=>product.id===line.catalog_item_id)
+    if(!item)return
+    const next=line.quantity_milli+direction*1000
+    if(next<1000||next>999_999_999){
+      setDraftError('La cantidad debe permanecer dentro del rango de unidades permitidas.')
+      return
+    }
+    // No hacer cambios rápidos cuando el saldo de esa sede no fue consultado.
+    if(item.item_type==='BIEN'){
+      const available=cardStock(item)
+      if(available===null){
+        setDraftError('Primero consultá el stock en esta sede antes de añadir unidades.')
+        choose(item)
+        return
+      }
+      if(next>available){
+        setDraftError('No se pueden agregar más unidades que el saldo consultado en esta sede ('+
+          formatMilli(available)+' '+item.unit+').')
+        return
+      }
+    }
+    setDraftError('')
+    setCart(previous=>previous.map(row=>row.catalog_item_id===line.catalog_item_id
+      ? {...row,quantity_milli:next}:row))
+  }
+
   return <section className="real-auth-card real-business-panel real-pos-panel e3-pos-page" aria-label="Preparación de ventas REAL">
     {!isDedicatedCheckout&&<nav className="real-business-nav" aria-label="Navegación de empresa">
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId)}>Empresa</button>
@@ -301,16 +369,35 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
           <input value={search} onChange={event => setSearch(event.target.value)}
             placeholder="Nombre o SKU" aria-label="Buscar artículos cargados"/>
         </label>
-        <div className="real-pos-catalog">
-          {displayed.map(item => <button type="button" key={item.id}
-            className={'real-pos-product' + (selectedId === item.id ? ' real-pos-product-selected' : '')}
-            disabled={!canWork} onClick={() => choose(item)}>
-            <strong>{item.name}</strong>
-            <small>{item.kind} · {item.unit} · {item.sku || 'Sin SKU'}</small>
-            <span>{item.price_cents === null ? 'Sin precio definido' : money(item.price_cents)}</span>
-            {cart.some(line => line.catalog_item_id === item.id) &&
-              <small className="real-pos-in-cart">En carrito: {posQuantityText(cart.find(line => line.catalog_item_id === item.id)!.quantity_milli)} {item.unit}</small>}
-          </button>)}
+        <div className="real-pos-catalog e3-pos-card-catalog">
+          {displayed.map(item => {
+            const existing=cart.find(line=>line.catalog_item_id===item.id)
+            const available=cardStock(item)
+            return <button type="button" key={item.id}
+              className={'real-pos-product e3-pos-product-card' + (selectedId === item.id ? ' real-pos-product-selected' : '')}
+              disabled={!canWork} onClick={() => choose(item)}>
+              <span className="e3-pos-card-image" aria-hidden="true">
+                <Icon name={item.item_type==='SERVICIO'?'briefcase':'package'} size={25}/>
+              </span>
+              <span className="e3-pos-card-category">{item.category||item.kind}</span>
+              <strong>{item.name}</strong>
+              <small>SKU: {item.sku||'Sin SKU'} · {item.unit}</small>
+              <span className="e3-pos-card-availability">
+                {item.item_type==='SERVICIO'?'Servicio · no consume stock'
+                :!location?.can_store?'Elegí una sede con depósito'
+                :siteStockPending?'Consultando disponibilidad…'
+                :scopedSiteStock?.error?'No se pudo consultar stock'
+                :available===null?'Saldo no verificado · consultar artículo'
+                :available===0?'Sin stock en '+location.name
+                :'Disponible en '+location.name+': '+formatMilli(available)+' '+item.unit}
+              </span>
+              <span className="e3-pos-card-footer">
+                <b>{item.price_cents===null?'Precio a definir':money(item.price_cents)}</b>
+                <span className="e3-pos-card-add">+ {existing?'Modificar unidades':'Agregar unidades'}</span>
+              </span>
+              {existing&&<small className="real-pos-in-cart">En el carrito: {posQuantityText(existing.quantity_milli)} {item.unit}</small>}
+            </button>
+          })}
         </div>
         {displayed.length === 0 && <p className="real-business-empty">No hay artículos vendibles entre las fichas cargadas que coincidan con este filtro.</p>}
         {hasMore && <button className="real-auth-secondary" type="button" disabled={moreLoading}
@@ -381,23 +468,33 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
               <small>Cantidad: {posQuantityText(row.quantity_milli)} {item?.unit || ''} × Precio unitario: {money(row.unit_price_cents)}</small>
               <strong className="real-pos-line-total">Subtotal del producto: {money(posLineTotalCents(row.quantity_milli, row.unit_price_cents))}</strong>
             </div>
-            <div className="real-pos-cart-actions">
-              {item && <button className="real-auth-link" type="button" onClick={() => choose(item)}>Editar</button>}
+            <div className="real-pos-cart-actions e3-pos-cart-actions">
+              {item&&<div className="e3-pos-cart-quantity" role="group" aria-label={'Unidades de '+item.name}>
+                <button type="button" aria-label={'Quitar una unidad de '+item.name}
+                  disabled={row.quantity_milli<=1000}
+                  onClick={()=>changeCartByUnit(row,-1)}>−</button>
+                <strong>{posQuantityText(row.quantity_milli)}</strong>
+                <button type="button" aria-label={'Agregar una unidad de '+item.name}
+                  onClick={()=>changeCartByUnit(row,1)}>+</button>
+              </div>}
+              {item && <button className="real-auth-link" type="button" onClick={() => choose(item)}>Editar cantidad</button>}
               <button className="real-auth-link" type="button" onClick={() =>
                 setCart(previous => previous.filter(line => line.catalog_item_id !== row.catalog_item_id))}>Quitar</button>
             </div>
           </article>
         })}
-        {manager && <label>Descuento de la venta (ARS)
-          <input inputMode="decimal" aria-label="Descuento de la venta" value={discountText}
-            onChange={e => setDiscountText(e.target.value)}/>
-        </label>}
-        {preview.problem && <p role="alert" className="real-auth-message real-ops-warning">{preview.problem}</p>}
-        {preview.total && <div className="real-pos-summary">
-          <span>Subtotal <strong>{money(preview.total.subtotal_cents)}</strong></span>
-          <span>Descuento <strong>−{money(preview.total.discount_cents)}</strong></span>
-          <span>Total estimado <strong>{money(preview.total.total_cents)}</strong></span>
-        </div>}
+        <div className="real-pos-summary e3-pos-cart-totals" aria-label="Desglose del total de compra">
+          <span>Subtotal de artículos <strong>{preview.total?money(preview.total.subtotal_cents):cart.length===0?money(0):'—'}</strong></span>
+          {manager&&<label className="e3-pos-cart-discount">Descuento de la venta (ARS)
+            <input inputMode="decimal" aria-label="Descuento de la venta" value={discountText}
+              onChange={e => setDiscountText(e.target.value)}/>
+          </label>}
+          <span>Descuento aplicado <strong>{preview.total?'−'+money(preview.total.discount_cents):'—'}</strong></span>
+          <span className="e3-pos-cart-total">Total a cobrar <strong>{preview.total?money(preview.total.total_cents):'—'}</strong></span>
+          {cart.length===0&&<small>Agregá artículos para calcular el descuento y el total.</small>}
+          {cart.length>0&&!preview.total&&<small>Corregí el carrito o el descuento para obtener un total válido.</small>}
+        </div>
+        {preview.problem&&cart.length>0&&<p role="alert" className="real-auth-message real-ops-warning">{preview.problem}</p>}
         <p className="real-auth-note">El carrito todavía no es una venta. La revisión de pagos y la confirmación quedan separadas en el paso siguiente. Si existe un intento pendiente, se bloquea la edición para evitar duplicados.</p>
       </section>
       </div>

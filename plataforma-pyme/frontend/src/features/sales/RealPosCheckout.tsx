@@ -260,7 +260,7 @@ export function RealPosCheckout({
 
   return <section className={'real-ops-subpanel real-pos-checkout e3-pos-checkout e3-pos-checkout-'+stage}
       aria-label="Pagos y confirmación REAL" data-stage={stage}>
-    <h2>{stage==='review'?'Revisión final de la venta'
+    <h2>{stage==='review'?'Detalle final para confirmar la venta'
       :stage==='pending'?'Recuperar venta pendiente'
       :stage==='confirmed'?'Venta confirmada'
       :stage==='sending'?'Procesando venta'
@@ -298,9 +298,17 @@ export function RealPosCheckout({
           <input aria-label={'Referencia de pago ' + (i + 1)} maxLength={120}
             value={row.reference} onChange={event => changePayment(i, { reference: event.target.value })}/>
         </label>
-        {i === shownPayments.length-1 && <button type="button" className="real-auth-secondary e3-pos-fill-payment"
-          aria-label="Completar saldo con último medio de pago" onClick={fillLastPayment}
-          disabled={currentTotal===null}>Completar saldo restante en este medio</button>}
+        {i===shownPayments.length-1&&<div className="e3-pos-fill-payment-block">
+          <button type="button" className="real-auth-secondary e3-pos-fill-payment"
+            aria-label="Completar saldo con último medio de pago" onClick={fillLastPayment}
+            disabled={currentTotal===null}>Completar saldo pendiente</button>
+          {currentTotal===null&&<small role="status">
+            Primero agregá artículos al carrito y obtené un total válido para completar el saldo.
+          </small>}
+          {currentTotal!==null&&<small>
+            Calcula el importe restante después del descuento y los medios anteriores. No registra la venta.
+          </small>}
+        </div>}
         {shownPayments.length > 1 && <button className="real-auth-link" type="button" onClick={() => {
           setPaymentModified(true)
           setPayments(shownPayments.filter((_, index) => index !== i))
@@ -325,13 +333,16 @@ export function RealPosCheckout({
           value={notes} onChange={event => setNotes(event.target.value)}/>
       </label>
       {notice && <p role="alert" className="real-auth-message real-auth-error">{notice}</p>}
-      <button type="button" className="real-auth-primary" disabled={!currentTotal}
-        onClick={reviewSale}>Revisar venta y pagos</button>
+      <div className="e3-pos-finalize-bar">
+        <p>El siguiente paso muestra el detalle completo y pide confirmación. Todavía no registra la venta ni mueve stock.</p>
+        <button type="button" className="real-auth-primary" disabled={!currentTotal}
+          onClick={reviewSale}>Finalizar venta</button>
+      </div>
     </>}
 
     {stage === 'review' && review && <>
       <div className="real-pos-final-review" aria-label="Revisión final de la venta">
-        <h3>Revisión final, antes del registro</h3>
+        <h3>Detalle completo de la venta · pendiente de confirmación</h3>
         <p><strong>Empresa:</strong> {businessName}</p>
         <p><strong>Sede:</strong> {location?.name ?? 'Sin sede · servicios'}</p>
         {review.body.lines.map((line, i) => <p key={i}>
@@ -354,7 +365,7 @@ export function RealPosCheckout({
         Confirmo empresa, sede, precios, cantidades y medios declarados. Entiendo que una venta confirmada registra comprobante y afecta stock físico.
       </label>
       {!MUTATIONS_ENABLED && <p className="real-auth-note">El registro de ventas REAL está deshabilitado en este entorno. Solo se habilita mediante configuración explícita en un entorno autorizado; podés revisar los datos sin registrar operaciones.</p>}
-      <div className="real-pos-confirm-actions">
+      <div className="real-pos-confirm-actions e3-pos-confirm-actions">
         <button type="button" className="real-auth-secondary" onClick={() => {
           setStage('editing'); setReview(null); setAck(false); onDraftLock(false)
         }}>Volver a editar</button>
