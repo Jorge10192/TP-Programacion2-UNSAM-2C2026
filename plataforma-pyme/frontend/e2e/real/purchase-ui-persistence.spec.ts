@@ -67,7 +67,7 @@ test('T11-F: compra UI bien + concepto libre, F5, recepción y ledger real', asy
   await lines.nth(1).getByLabel('Costo unitario ($)').fill('500')
   await expect(form.locator('.real-supply-grand-total')).toContainText('4000,00')
   await form.getByLabel('Acepto guardar temporalmente los datos de esta compra en este navegador.').check()
-  await form.getByRole('button', { name: 'Registrar compra sin stock' }).click()
+  await form.getByRole('button', { name: 'Registrar compra', exact: true }).click()
   await expect(page.getByText('La compra NO agregó stock', { exact: false })).toBeVisible()
 
   const purchases = await get(root + '/purchases')

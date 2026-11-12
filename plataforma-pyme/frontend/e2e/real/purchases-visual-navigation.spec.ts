@@ -50,6 +50,8 @@ test('E3-1E1: listado y alta de compra separados, cancelación sin escritura y m
   })
   await page.getByRole('button',{name:'Registrar compra REAL'}).click()
   await expect(page.getByRole('heading',{name:'Nueva compra'})).toBeVisible()
+  await expect(page.getByRole('button',{name:'Registrar compra',exact:true})).toBeVisible()
+  await expect(page.getByText('Al registrar la compra, quedará pendiente de recepción.',{exact:false})).toBeVisible()
   await expect(page.getByRole('button',{name:'Volver a compras'})).toBeFocused()
   await expect(cards).toHaveCount(0)
   await page.getByLabel('Referencia').fill('Borrador no registrado')
