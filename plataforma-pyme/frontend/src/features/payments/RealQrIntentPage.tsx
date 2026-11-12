@@ -280,6 +280,26 @@ export function RealQrIntentPage({
               <p>Comprobante: <code>{receipt.id}</code></p>
               <p>Total: <strong>{pesos(receipt.total_cents)}</strong> · Medio: Mercado Pago DEMO QA</p>
               <p>Renglones: {receipt.lines.length} · Movimientos de inventario: {receipt.balances_after.length} saldos actualizados</p>
+              <details className="e3-qr-receipt">
+                <summary>Ver comprobante QA completo</summary>
+                <div className="e3-qr-receipt-body" aria-label="Detalle del comprobante QA">
+                  <p><strong>Fecha:</strong> {new Date(receipt.created_at).toLocaleString('es-AR')}</p>
+                  <p><strong>ID de venta:</strong> <code>{receipt.id}</code></p>
+                  <p><strong>Referencia ficticia:</strong> <code>{receipt.payments[0]?.reference}</code></p>
+                  <div className="e3-qr-receipt-lines">
+                    {receipt.lines.map(line=><div className="e3-qr-receipt-line" key={line.id}>
+                      <span>{line.description_snapshot} · {qty(line.quantity_milli)} {line.unit_snapshot} × {pesos(line.unit_price_cents)}</span>
+                      <strong>{pesos(line.line_total_cents)}</strong>
+                    </div>)}
+                  </div>
+                  <p>Subtotal <strong>{pesos(receipt.subtotal_cents)}</strong></p>
+                  <p>Descuento <strong>−{pesos(receipt.discount_cents)}</strong></p>
+                  <p className="e3-qr-receipt-grand">Total de la venta QA <strong>{pesos(receipt.total_cents)}</strong></p>
+                  <p><strong>Medio:</strong> Mercado Pago DEMO QA (sin acreditación real)</p>
+                  <button type="button" className="real-auth-secondary" onClick={()=>
+                    onNavigate('/real/empresas/'+businessId+'/ventas')}>Ver historial de ventas</button>
+                </div>
+              </details>
             </div> : <button type="button" className="real-auth-secondary" disabled={busy}
                 onClick={()=>void refresh()}>Consultar comprobante</button>}
         </section>}
