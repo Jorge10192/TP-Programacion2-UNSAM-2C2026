@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Icon } from '../../app/Icon.tsx'
+import '../locations/realPeopleOperations.css'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { createOperationsGateway, operationsError, canReadTeam, canManageTeam, canManageLocations } from '../businesses/realOperationsGateway.ts'
 import type { InvitationIssued, InvitationInput, TeamMember, MemberChanges } from '../businesses/realOperationsGateway.ts'
@@ -20,6 +22,8 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
   const [invite, setInvite] = useState<InvitationInput>({ email: '', role: 'TRABAJADOR' })
   const [issued, setIssued] = useState<InvitationIssued | null>(null)
   const [uncertain, setUncertain] = useState(false)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'TODOS' | 'ACTIVA' | 'INACTIVA'>('TODOS')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -98,33 +102,69 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
   const canInvite = !!company && canManageLocations(company)
   const canManage = !!company && canManageTeam(company)
 
-  return <section className="real-auth-card real-business-panel">
+  const visibleMembers = members.filter((member) =>
+    (statusFilter === 'TODOS' || member.status === statusFilter)
+    && [member.display_name, member.email, member.role, member.job_title ?? '']
+      .some((value) => value.toLocaleLowerCase('es-AR').includes(search.trim().toLocaleLowerCase('es-AR'))))
+  const activeMembers = members.filter((member) => member.status === 'ACTIVA').length
+
+  return <section className="real-auth-card real-business-panel e3-ops-page e3-team-page">
     <nav className="real-business-nav" aria-label="Navegación de empresa">
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId)}>Empresa</button>
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId + '/ubicaciones')}>Ubicaciones</button>
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>
-    <span className="real-auth-eyebrow">E2-7 · T04 · Equipo REAL</span>
-    <h1>Equipo e invitaciones</h1>
-    <p>La identidad, roles y membresías provienen exclusivamente de la empresa REAL seleccionada.</p>
+    <header className="e3-ops-heading">
+      <div className="e3-ops-heading-icon"><Icon name="users" size={29}/></div>
+      <div className="e3-ops-heading-copy">
+        <span className="e3-ops-kicker">Organización · Personas</span>
+        <h1>Equipo e invitaciones</h1>
+        <p>Consultá integrantes, roles y accesos de esta empresa.</p>
+      </div>
+      {company && <button className="real-auth-secondary e3-ops-heading-cta" type="button" disabled={busy} onClick={() => void reload()}>Actualizar equipo</button>}
+    </header>
     {loading && <p role="status">Comprobando permisos del equipo…</p>}
     {!loading && company && <>
-      <div className="real-ops-toolbar">
-        <strong>{company.name}</strong>
-        <button className="real-auth-secondary" type="button" disabled={busy} onClick={() => void reload()}>Actualizar equipo</button>
+      <div className="e3-ops-context"><span>Empresa: <strong>{company.name}</strong></span>
+        <span className="e3-ops-context-note">Los permisos se verifican en FastAPI</span>
       </div>
-      {!canReadTeam(company) ? <p className="real-auth-note">Tu rol permite consultar la empresa, pero no acceder al listado privado de su equipo. Los permisos se verifican en FastAPI.</p>
-      : <>
-        {members.length === 0 && <div className="real-business-empty">El servidor no devolvió integrantes del equipo.</div>}
-        <div className="real-ops-list">
-          {members.map((member) => <article className="real-ops-person" key={member.id}>
-            <div className="real-ops-person-info">
-              <strong>{member.display_name}</strong>
-              <span>{member.email}</span>
-              <small>{member.role.replaceAll('_', ' ')} · {member.status} {member.user_id === userId ? '(tu cuenta)' : ''}</small>
-              {member.job_title && <small>Función: {member.job_title}</small>}
+      {!canReadTeam(company) ? <div className="e3-ops-restricted" role="status">
+        <Icon name="shield" size={25}/><div><strong>El directorio de equipo es privado</strong>
+        <p>Tu rol permite consultar la empresa, pero no acceder al listado de integrantes. Solicitá acceso a un administrador.</p></div>
+      </div> : <>
+        <div className="e3-ops-summary" aria-label="Resumen de equipo">
+          <div className="e3-ops-stat"><span>Integrantes</span><strong>{members.length}</strong></div>
+          <div className="e3-ops-stat"><span>Activos</span><strong>{activeMembers}</strong></div>
+          <div className="e3-ops-stat"><span>Inactivos</span><strong>{members.length - activeMembers}</strong></div>
+        </div>
+        {members.length > 0 && <div className="e3-ops-filterbar">
+          <label className="e3-ops-search"><Icon name="search" size={18}/><span className="e3-ops-visually-hidden">Buscar integrantes</span>
+            <input type="search" aria-label="Buscar integrantes" placeholder="Buscar por nombre, correo o rol" value={search} onChange={(e) => setSearch(e.target.value)}/></label>
+          <label className="e3-ops-filter-label">Estado
+            <select aria-label="Filtrar integrantes por estado" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
+              <option value="TODOS">Todos</option><option value="ACTIVA">Activos</option><option value="INACTIVA">Inactivos</option>
+            </select>
+          </label>
+        </div>}
+        {members.length === 0 && <div className="real-business-empty e3-ops-empty"><Icon name="users" size={30}/><strong>No hay integrantes para mostrar</strong><p>El servidor todavía no devolvió membresías de esta empresa.</p></div>}
+        {members.length > 0 && visibleMembers.length === 0 && <div className="real-business-empty e3-ops-empty"><strong>No encontramos integrantes con esos filtros.</strong><p>Probá otra búsqueda o seleccioná «Todos».</p></div>}
+        <div className="real-ops-list e3-ops-directory">
+          {visibleMembers.map((member) => <article className="real-ops-person e3-ops-member" key={member.id}>
+            <div className="e3-ops-person-identity">
+              <span className="e3-ops-avatar" aria-hidden="true">{member.display_name.slice(0, 1).toLocaleUpperCase('es-AR')}</span>
+              <div className="real-ops-person-info">
+                <div className="e3-ops-person-name"><strong>{member.display_name}</strong>
+                  {member.user_id === userId && <span className="e3-ops-self">Tu cuenta</span>}
+                </div>
+                <span>{member.email}</span>
+                {member.job_title && <small>Función: {member.job_title}</small>}
+                <div className="e3-ops-person-flags">
+                  <span className="e3-ops-pill e3-ops-pill-role">{member.role.replaceAll('_', ' ')}</span>
+                  <span className={'e3-ops-pill ' + (member.status === 'ACTIVA' ? 'e3-ops-pill-active' : 'e3-ops-pill-paused')}>{member.status}</span>
+                </div>
+              </div>
             </div>
-            {canManage && member.user_id !== userId && member.role !== 'TITULAR_ADMINISTRATIVO' && <div className="real-ops-member-actions">
+            {canManage && member.user_id !== userId && member.role !== 'TITULAR_ADMINISTRATIVO' && <div className="real-ops-member-actions e3-ops-member-actions">
               <label>Rol
                 <select disabled={busy || uncertain || member.status !== 'ACTIVA'} value={member.role} onChange={(e) => void changeMember(member, { role: e.target.value as MemberChanges['role'] })}>
                   {roles.map((role) => <option key={role} value={role}>{role.replaceAll('_', ' ')}</option>)}
@@ -135,15 +175,18 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
           </article>)}
         </div>
       </>}
-      {canInvite && <section className="real-ops-subpanel">
-        <h2>Invitar a un colaborador</h2>
-        <p>La API emite un código de uso único para el correo indicado. No envía automáticamente un email: compartilo de manera segura con el destinatario.</p>
-        <form className="real-auth-form real-ops-form" onSubmit={(e) => void issue(e)}>
-          <label>Correo del destinatario<input type="email" autoComplete="off" required value={invite.email} onChange={(e) => setInvite((old) => ({ ...old, email: e.target.value }))}/></label>
-          <label>Rol propuesto<select value={invite.role} onChange={(e) => setInvite((old) => ({ ...old, role: e.target.value as InvitationInput['role'] }))}>
-            <option value="TRABAJADOR">Trabajador</option><option value="ENCARGADO">Encargado</option>
-          </select></label>
-          <button className="real-auth-primary" type="submit" disabled={busy || uncertain}>{busy ? 'Emitiendo…' : 'Emitir invitación REAL'}</button>
+      {canInvite && <section className="real-ops-subpanel e3-ops-invite" aria-label="Invitar a un colaborador">
+        <div className="e3-ops-section-heading"><h2><Icon name="plus" size={19}/> Invitar a un colaborador</h2>
+          <p>Generá un código de un solo uso. La plataforma no envía correos automáticamente: compartilo por un canal seguro.</p>
+        </div>
+        <form className="real-auth-form real-ops-form e3-ops-form" onSubmit={(e) => void issue(e)}>
+          <div className="e3-ops-form-grid">
+            <label>Correo del destinatario<input type="email" autoComplete="off" required value={invite.email} onChange={(e) => setInvite((old) => ({ ...old, email: e.target.value }))}/></label>
+            <label>Rol propuesto<select value={invite.role} onChange={(e) => setInvite((old) => ({ ...old, role: e.target.value as InvitationInput['role'] }))}>
+              <option value="TRABAJADOR">Trabajador</option><option value="ENCARGADO">Encargado</option>
+            </select></label>
+          </div>
+          <div className="real-auth-actions e3-ops-form-actions"><button className="real-auth-primary" type="submit" disabled={busy || uncertain}>{busy ? 'Emitiendo…' : 'Emitir invitación REAL'}</button></div>
         </form>
         {issued && <div className="real-ops-secret" role="status">
           <strong>Invitación emitida para {issued.email}</strong>
