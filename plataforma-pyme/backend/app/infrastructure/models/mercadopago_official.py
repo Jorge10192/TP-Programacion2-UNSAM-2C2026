@@ -65,6 +65,9 @@ class MercadoPagoTestOrder(Base):
         UniqueConstraint("business_id", "request_id", name="uq_mp_order_request"),
         UniqueConstraint("provider_order_id", name="uq_mp_order_provider_id"),
         UniqueConstraint("external_reference", name="uq_mp_order_external_ref"),
+        UniqueConstraint("business_id", "sale_id", name="uq_mp_order_sale"),
+        ForeignKeyConstraint(["business_id", "sale_id"], ["sales.business_id", "sales.id"],
+            name="fk_mp_order_sale_tenant", ondelete="RESTRICT"),
         CheckConstraint("total_cents BETWEEN 1 AND 99999999999", name="ck_mp_order_total"),
         CheckConstraint("status IN ('PREPARANDO','INDETERMINADA','CREADA','PROCESADA',"
             "'CANCELADA','EXPIRADA','REEMBOLSADA','REQUIERE_REVISION')",
@@ -81,6 +84,7 @@ class MercadoPagoTestOrder(Base):
     external_pos_id: Mapped[str] = mapped_column(String(64), nullable=False)
     provider_order_id: Mapped[str | None] = mapped_column(String(90))
     payment_id: Mapped[str | None] = mapped_column(String(90))
+    sale_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     qr_data: Mapped[str | None] = mapped_column(Text)
     total_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     status: Mapped[str] = mapped_column(String(24), nullable=False)
