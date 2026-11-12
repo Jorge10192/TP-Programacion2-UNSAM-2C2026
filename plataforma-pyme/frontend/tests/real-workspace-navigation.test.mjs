@@ -10,13 +10,13 @@ const b = '713fa8a7-5c21-4c3b-9b39-ade992cf8df2'
 test('navegación REAL sólo expone endpoints existentes y ningún módulo DEMO/diferido', () => {
   assert.deepEqual(REAL_WORKSPACE_ITEMS.map(x => x.section), [
     'inicio', '', 'ubicaciones', 'equipo', 'medios-de-cobro', 'catalogo', 'proveedores',
-    'compras', 'inventario', 'pos', 'ventas',
+    'compras', 'inventario', 'pos', 'cobros-qr', 'ventas',
   ])
   for (const item of REAL_WORKSPACE_ITEMS) {
     assert.match(realWorkspaceHref(a, item.section), /^\/real\/empresas\//)
     assert.equal(realWorkspaceBusinessId(realWorkspaceHref(a, item.section)), a)
   }
-  assert.equal(REAL_WORKSPACE_ITEMS.some(x => /caja|cuentas|qr|gu[ií]as|gastos|reportes/i.test(x.label)), false)
+  assert.equal(REAL_WORKSPACE_ITEMS.some(x => /caja|cuentas|gu[ií]as|gastos|reportes/i.test(x.label)), false)
 })
 
 test('tenant switch debe resolver contexto nuevo y rechazar rutas arbitrarias', () => {
@@ -24,6 +24,7 @@ test('tenant switch debe resolver contexto nuevo y rechazar rutas arbitrarias', 
   assert.equal(realWorkspaceBusinessId(realWorkspaceHref(b, 'ventas')), b)
   assert.equal(realWorkspaceBusinessId(realWorkspaceHref(b, 'inicio')), b)
   assert.equal(realWorkspaceBusinessId(realWorkspaceHref(b, 'medios-de-cobro')), b)
+  assert.equal(realWorkspaceBusinessId(realWorkspaceHref(b, 'cobros-qr')), b)
   assert.equal(realWorkspaceBusinessId('/real/empresas/' + a + '/cuentas'), null)
   assert.equal(realWorkspaceBusinessId('/b/' + a + '/catalogo'), null)
   assert.equal(realWorkspaceBusinessId('/real/empresas/' + a + '/ventas/otra'), null)
@@ -41,4 +42,5 @@ test('títulos de rutas de identidad y comercio se muestran sin datos WALOS', ()
   assert.equal(realWorkspaceTitle(realWorkspaceHref(a, 'compras')), 'Compras y recepciones')
   assert.equal(realWorkspaceTitle(realWorkspaceHref(a, 'pos')), 'Punto de venta')
   assert.equal(realWorkspaceTitle(realWorkspaceHref(a, 'medios-de-cobro')), 'Medios de cobro')
+  assert.equal(realWorkspaceTitle(realWorkspaceHref(a, 'cobros-qr')), 'Cobros QR')
 })
