@@ -231,7 +231,7 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
           <p>El destinatario debe entrar con su propia cuenta y pegar el código desde «Ingresar código de invitación».</p>
         </div>}
         </div>
-      </section>
+      </section>}
     </>}
     {uncertain && <p className="real-auth-message real-ops-warning" role="alert">La respuesta de la escritura se perdió o no pudo validarse. No repitas la operación automáticamente: consultá el estado actualizado. En una invitación podría haberse consumido el único código emitido. <button className="real-auth-link" type="button" onClick={() => void reload()}>Reconsultar equipo</button></p>}
     {notice && <p className="real-auth-message" role="status">{notice}</p>}
