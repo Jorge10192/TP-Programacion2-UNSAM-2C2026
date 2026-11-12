@@ -136,9 +136,9 @@ export function RealPhotoManager({ token, owner, title, canManage, onUnauthorize
   </section>
 }
 
-type PreviewProps = Shared & { alt:string; className?:string; revision?:number }
+type PreviewProps = Shared & { alt:string; className?:string; revision?:number; fallbackText?:string; fallbackIcon?:'user'|'building'|'briefcase'|'package'|'boxes' }
 /** Vista previa perezosa: evita una descarga por cada fila paginada no visible. */
-export function RealPhotoPreview({token,owner,alt,className='',revision=0}: PreviewProps) {
+export function RealPhotoPreview({token,owner,alt,className='',revision=0,fallbackText,fallbackIcon}: PreviewProps) {
   const path=photoCollectionPath(owner)
   const gateway=useMemo(()=>createPhotoGateway(token,owner),[token,path])
   const element=useRef<HTMLSpanElement>(null)
@@ -164,7 +164,7 @@ export function RealPhotoPreview({token,owner,alt,className='',revision=0}: Prev
     {cover
       ?<AuthenticatedPhoto token={token} owner={owner} photo={cover} alt={alt}/>
       :<span className="e3-photo-fallback" aria-hidden="true">
-        <Icon name={owner.kind==='PROFILE'?'user':owner.kind==='BUSINESS'?'building':owner.kind==='SUPPLIER'?'briefcase':'package'} size={26}/>
+        {fallbackText ? <span>{fallbackText}</span> : <Icon name={fallbackIcon ?? (owner.kind==='PROFILE'?'user':owner.kind==='BUSINESS'?'building':owner.kind==='SUPPLIER'?'briefcase':'package')} size={26}/>}
       </span>}
   </span>
 }
