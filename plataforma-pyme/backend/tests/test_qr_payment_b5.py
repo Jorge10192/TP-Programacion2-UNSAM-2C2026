@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert, update
+from sqlalchemy import insert, update, select
 
 from app.infrastructure.models import Membership, QrPaymentIntent
 from app.main import create_app
@@ -72,9 +72,9 @@ def test_qr_list_reports_expiration_without_mutating_intent(isolated, monkeypatc
     summary = client.get(base(bid), headers=owner).json()
     assert len(summary) == 1 and summary[0]["status"] == "EXPIRADA"
     assert summary[0]["sale_id"] is None
-    original = db.get(QrPaymentIntent, UUID(qr["id"]))
-    db.refresh(original)
-    assert original.status == "ESPERANDO_PAGO"
+    original_status = db.scalar(select(QrPaymentIntent.status).where(
+        QrPaymentIntent.id == UUID(qr["id"])))
+    assert original_status == "ESPERANDO_PAGO"
 
 
 @pytest.mark.integration
