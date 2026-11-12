@@ -99,6 +99,7 @@ test('T11-C: 409 de proveedor duplicado y 422 de compra inválida son atómicos'
   page.on('request', req => {
     if (req.method() === 'POST' && req.url().endsWith('/api/v1' + f.root + '/suppliers')) uiPosts++
   })
+  await page.getByRole('button', { name: 'Agregar proveedor REAL' }).click()
   await page.getByLabel('Nombre comercial').fill(f.supplierName)
   await page.getByRole('button', { name: 'Crear proveedor' }).click()
   await expect(page.getByRole('alert')).toBeVisible()

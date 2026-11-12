@@ -95,6 +95,8 @@ test('T11-F: UI sede, catálogo y proveedor con estados persistentes después de
   await page.getByRole('button', { name: 'Empresa', exact: true }).click()
   await page.getByRole('button', { name: 'Abrir Proveedores' }).click()
   await expect(page.getByRole('heading', { name: 'Proveedores' })).toBeVisible()
+  await page.getByRole('button', { name: 'Agregar proveedor REAL' }).click()
+  await expect(page.getByRole('heading', { name: 'Nuevo proveedor' })).toBeVisible()
   await page.getByLabel('Nombre comercial').fill('Proveedor T11-F CRUD')
   await page.getByRole('button', { name: 'Crear proveedor' }).click()
   const supplier = page.locator('article.real-ops-tile').filter({ hasText: 'Proveedor T11-F CRUD' })
