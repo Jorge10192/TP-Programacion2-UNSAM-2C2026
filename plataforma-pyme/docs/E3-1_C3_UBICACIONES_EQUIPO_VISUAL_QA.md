@@ -20,6 +20,17 @@
 - Selectores de rol y activación/desactivación solamente para canManageTeam, sin permitir cambiar la propia cuenta ni titular.
 - Invitación con token mostrado una sola vez; no hay envío automático de email. Sin renovación ni reenvío implícito.
 
+## Invitación frente a cambio de rol interno
+
+Ambos controles tienen propósitos diferentes y sus opciones **no son idénticas por diseño**, aunque sus etiquetas visuales sean consistentes:
+
+- **Invitar a un nuevo colaborador:** la API acepta solamente `TRABAJADOR` o `ENCARGADO`. Esta operación genera un código de un solo uso; el destinatario debe aceptarlo para incorporar su membresía. El titular o un administrador con permiso de invitación puede iniciarla.
+- **Cambiar el rol de un integrante existente:** la API admite `TRABAJADOR`, `ENCARGADO` o `ADMINISTRADOR`. La operación es exclusivamente del `TITULAR_ADMINISTRATIVO` mediante el cambio de membresía, no un camino de invitación directa como Administrador.
+- **Titular administrativo:** no aparece como destino en ninguno de los controles. Ninguno permite transferir la titularidad.
+- **UX:** el directorio explica que la edición es un cambio interno (ascenso o reasignación), y el formulario de invitación explica por qué Administrador no está disponible. Ambos selectores muestran nombres de rol con la misma capitalización. El cambio de rol solicita confirmación explícita.
+
+No se modifican los contratos de API, el modelo de roles, la autorización del backend ni los datos históricos.
+
 ## Invariantes técnicos
 
 1. **Sin cambios a backend, migraciones, API, realOperationsGateway, contratos, roles o reglas de permisos.**
