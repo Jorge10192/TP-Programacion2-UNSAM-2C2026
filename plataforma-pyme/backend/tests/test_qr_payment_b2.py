@@ -88,7 +88,6 @@ def body(items, discount=0):
             ]}
 
 
-pytestmark = pytest.mark.integration if False else []
 
 
 @pytest.mark.integration
