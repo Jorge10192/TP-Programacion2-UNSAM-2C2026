@@ -6,6 +6,8 @@ import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { canManageLocations, createOperationsGateway, operationsError } from '../businesses/realOperationsGateway.ts'
 import type { Assignment, LocationInput, LocationKind, LocationRecord, TeamMember } from '../businesses/realOperationsGateway.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
+import { RealSetupGuide } from '../onboarding/RealSetupGuide.tsx'
+import { locationSetupSuggestion } from '../onboarding/realSetupGuidance.ts'
 
 const kinds: LocationKind[] = ['LOCAL', 'FERIA', 'DEPOSITO', 'OFICINA', 'CASA', 'OTRO']
 const blank: LocationInput = { name: '', kind: 'LOCAL', address: '', map_url: '', can_sell: true, can_store: true }
@@ -183,6 +185,10 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
 
   const locationView = creating ? 'editor' : locationForAssignments ? 'assignments' : 'list'
   const focusLocation = rows.find((row) => row.id === (editingId ?? locationForAssignments))
+  const setupSuggestion = locationSetupSuggestion({
+    verified: !loading && !error && !!business && locationView === 'list',
+    count: rows.length, activeCount, canManage: authorized,
+  })
   useEffect(() => {
     if (locationView === previousView.current) return
     if (locationView === 'list') listHeadingRef.current?.focus()
@@ -195,6 +201,7 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
     <nav className="real-business-nav" aria-label="Navegación de empresa">
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId)}>Empresa</button>
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId + '/equipo')}>Equipo</button>
+      <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId + '/inicio')}>Primeros pasos</button>
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>
     </>}
@@ -236,6 +243,7 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
         <div className="e3-ops-stat"><span>Pausadas</span><strong>{rows.length - activeCount}</strong></div>
         <div className="e3-ops-stat"><span>Sede principal</span><strong className="e3-ops-stat-name">{rows.find((loc) => loc.is_primary)?.name ?? 'Sin definir'}</strong></div>
       </div>
+      <RealSetupGuide suggestion={setupSuggestion} businessId={businessId} onNavigate={onNavigate}/>
       {rows.length > 0 && <div className="e3-ops-filterbar">
         <label className="e3-ops-search"><Icon name="search" size={18}/><span className="e3-ops-visually-hidden">Buscar ubicaciones</span>
           <input type="search" aria-label="Buscar ubicaciones" placeholder="Buscar por nombre, tipo o dirección" value={search} onChange={(e) => setSearch(e.target.value)}/></label>

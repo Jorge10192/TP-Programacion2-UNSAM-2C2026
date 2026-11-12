@@ -52,8 +52,8 @@ export function RealAcceptInvitationPage({ token, userId, onNavigate, onUnauthor
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>
     <span className="real-auth-eyebrow">E2-7 · T04 · Invitaciones</span>
-    <h1>Aceptar invitación</h1>
-    <p>Ingresá con el usuario REAL cuyo correo fue invitado. Si te compartieron un código de invitación, pegalo aquí. El secreto no quedará en la URL ni en el almacenamiento local.</p>
+    <h1>Ingresar código de invitación</h1>
+    <p>Pegá el código que recibiste para unirte a una empresa. Debés haber iniciado sesión con el mismo correo al que enviaron la invitación. El código no quedará en la URL ni en el almacenamiento local.</p>
     <form className="real-auth-form" onSubmit={(event) => void accept(event)}>
       <label>Código de 43 caracteres
         <input type="password" required autoComplete="off" minLength={43} maxLength={43}

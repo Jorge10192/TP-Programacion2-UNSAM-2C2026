@@ -318,7 +318,7 @@ export function RealAuthApp() {
           </details>
           <div className="real-auth-actions">
             <button type="button" className="real-auth-primary" onClick={() => go('/real/empresas')}>Mis empresas</button>
-            <button type="button" className="real-auth-secondary" onClick={() => go('/real/invitaciones/aceptar')}>Aceptar invitación</button>
+            <button type="button" className="real-auth-secondary" onClick={() => go('/real/invitaciones/aceptar')}>Ingresar código de invitación</button>
             <button type="button" className="real-auth-secondary" onClick={() => void onRefreshProfile()} disabled={busy}>{busy ? 'Consultando…' : 'Actualizar desde API'}</button>
             <button type="button" className="real-auth-secondary" onClick={onLogout}>Cerrar sesión</button>
           </div>

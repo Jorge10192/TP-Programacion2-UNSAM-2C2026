@@ -120,6 +120,20 @@ test('E3-1C3: sedes y equipo, filtros, permisos y responsive REAL', async ({ req
   await expect(page.getByRole('heading', {name:'Equipo e invitaciones',exact:true})).toBeVisible()
   await expect(page.getByLabel('Resumen de equipo')).toContainText('2')
   await expect(page.locator('article.e3-ops-member')).toHaveCount(2)
+  // H3: solo abre el formulario, nunca emite una invitación por tocar el encabezado.
+  let browserInvitations = 0
+  page.on('request', req => {
+    if (req.method() === 'POST' && /\/invitations$/.test(new URL(req.url()).pathname))
+      browserInvitations++
+  })
+  const invitationToggle = page.getByRole('button', {name:'Invitar a un colaborador', exact:true})
+  await expect(invitationToggle).toHaveAttribute('aria-expanded','false')
+  await expect(page.getByRole('combobox', {name:'Rol propuesto'})).toBeHidden()
+  await expect(page.getByRole('button', {name:'Emitir invitación REAL'})).toBeHidden()
+  await invitationToggle.focus()
+  await page.keyboard.press('Enter')
+  await expect(invitationToggle).toHaveAttribute('aria-expanded','true')
+  await expect(page.getByRole('combobox', {name:'Rol propuesto'})).toBeVisible()
   const workerMember = page.locator('article.e3-ops-member').filter({hasText:'Trabajador QA E3'})
   await expect(workerMember.getByRole('combobox', {name:'Rol',exact:true}).locator('option'))
     .toHaveText(['Administrador', 'Encargado', 'Trabajador'])
@@ -132,6 +146,13 @@ test('E3-1C3: sedes y equipo, filtros, permisos y responsive REAL', async ({ req
   await expect(page.locator('article.e3-ops-member')).toContainText('TRABAJADOR')
   await page.getByLabel('Buscar integrantes').clear()
   await expect(page.getByRole('button', {name:'Emitir invitación REAL'})).toBeVisible()
+  await invitationToggle.click()
+  await expect(invitationToggle).toHaveAttribute('aria-expanded','false')
+  await expect(page.getByRole('button', {name:'Emitir invitación REAL'})).toBeHidden()
+  await invitationToggle.click()
+  await expect(invitationToggle).toHaveAttribute('aria-expanded','true')
+  await expect(page.getByRole('button', {name:'Emitir invitación REAL'})).toBeVisible()
+  expect(browserInvitations, 'Desplegar o plegar no emite invitaciones').toBe(0)
   const width = await page.evaluate(() => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth))
   expect(width, 'Sin desplazamiento horizontal a 390 px').toBeLessThanOrEqual(391)
 
@@ -140,6 +161,7 @@ test('E3-1C3: sedes y equipo, filtros, permisos y responsive REAL', async ({ req
   await expect(page.getByRole('heading', {name:'Equipo e invitaciones',exact:true})).toBeVisible()
   await expect(page.getByText('El directorio de equipo es privado')).toBeVisible()
   await expect(page.getByLabel('Resumen de equipo')).toHaveCount(0)
+  await expect(page.getByRole('button', {name:'Invitar a un colaborador', exact:true})).toHaveCount(0)
   await expect(page.getByRole('button', {name:'Emitir invitación REAL'})).toHaveCount(0)
   await expect(page.locator('article.e3-ops-member')).toHaveCount(0)
 })

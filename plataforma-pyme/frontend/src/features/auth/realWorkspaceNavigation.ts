@@ -45,7 +45,7 @@ export function realWorkspaceBusinessId(path: string): string | null {
 
 export function realWorkspaceTitle(path: string): string {
   if (path === '/real/perfil') return 'Mi perfil'
-  if (path === '/real/invitaciones/aceptar') return 'Aceptar invitación'
+  if (path === '/real/invitaciones/aceptar') return 'Ingresar código de invitación'
   if (path === '/real/empresas/nueva') return 'Crear empresa'
   if (path === '/real/empresas') return 'Mis empresas'
   const businessId = realWorkspaceBusinessId(path)
