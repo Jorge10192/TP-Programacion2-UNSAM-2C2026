@@ -126,13 +126,16 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const overAvailable=stockForSelected!==null&&requestedMilli!==null
     &&requestedMilli>stockForSelected.quantityMilli
 
+  // IDs primitivos: el efecto solo cambia cuando cambia la selección,
+  // la sede autorizada o se solicita actualizar; sin referencias incompletas.
+  const stockItemId=selected?.item_type==='BIEN'?selected.id:null
+  const stockSiteId=location?.can_store?location.id:null
   // Saldo real por artículo/sede. No se inventa el stock para productos sin
   // historial, y no se permite confirmar desde una lectura fallida/desactualizada.
   useEffect(()=>{
-    if(!selected||selected.item_type!=='BIEN'||!location||!location.can_store)
-      return
-    const itemId=selected.id
-    const currentSiteId=location.id
+    if(!stockItemId||!stockSiteId)return
+    const itemId=stockItemId
+    const currentSiteId=stockSiteId
     const controller=new AbortController()
     void inventoryApi.balances(0,1,{locationId:currentSiteId,catalogItemId:itemId},controller.signal)
       .then(rows=>{
@@ -152,7 +155,7 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
         if(!controller.signal.aborted)setStockLoading(false)
       })
     return ()=>controller.abort()
-  },[inventoryApi,selected?.id,selected?.item_type,location?.id,location?.can_store,stockRefresh,onUnauthorized])
+  },[inventoryApi,stockItemId,stockSiteId,stockRefresh,onUnauthorized])
   // Consulta el inventario de la sede, paginado y acotado. No sumamos
   // unidades heterogéneas ni tomamos una página incompleta como stock cero.
   useEffect(()=>{
