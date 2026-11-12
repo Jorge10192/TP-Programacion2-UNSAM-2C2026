@@ -266,7 +266,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
               <span className="e3-commerce-card-icon"><Icon name={item.kind==='SERVICIO'?'briefcase':item.kind==='INSUMO'?'boxes':'package'} size={22}/></span>
               <span className={'real-catalog-status '+(item.status==='ACTIVO'?'real-catalog-active':'')}>{item.status}</span>
             </div>
-            <RealPhotoPreview token={token} owner={{kind:'CATALOG',businessId,resourceId:item.id}} alt={"Foto de "+item.name} className="e3-catalog-photo"/>
+            <RealPhotoPreview token={token} owner={{kind:'CATALOG',businessId,resourceId:item.id}} alt={"Foto de "+item.name} className="e3-catalog-photo" fallbackIcon={item.kind==='SERVICIO'?'briefcase':item.kind==='INSUMO'?'boxes':'package'}/>
             <div className="e3-commerce-card-name"><strong>{item.name}</strong><span>{label(item.kind)} · {item.category}</span></div>
             <div className="e3-commerce-chips"><span>{item.unit}</span><span>{item.sellable?'Vendible':'No vendible'}</span></div>
             <small className="e3-commerce-sku">SKU: {item.sku??'Sin SKU'}</small>
