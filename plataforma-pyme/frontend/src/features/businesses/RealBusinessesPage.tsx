@@ -6,6 +6,7 @@ import {
   businessErrorMessage, canEditBusiness, createBusinessGateway,
 } from './businessGateway.ts'
 import type { ActivityKind, BusinessChanges, NewBusiness, RealBusiness } from './businessGateway.ts'
+import './realBusinessDetails.css'
 import '../auth/realPeopleBusiness.css'
 
 export type BusinessRoute = { kind: 'list' } | { kind: 'create' } | { kind: 'detail'; businessId: string }
@@ -22,6 +23,22 @@ type Props = {
 
 const activityKinds: ActivityKind[] = ['PRODUCTOS', 'SERVICIOS', 'MIXTO']
 const emptyNewBusiness: NewBusiness = { name: '', category: '', activity_kind: 'PRODUCTOS' }
+
+// Rutas existentes del sistema REAL. No se agregan endpoints ni permisos.
+const detailSections = [
+  { title: 'Administración', description: 'Organizá las sedes, el equipo y los recursos de tu empresa.', actions: [
+    { suffix: 'ubicaciones', title: 'Ubicaciones', detail: 'Sedes y disponibilidad para operar.' },
+    { suffix: 'equipo', title: 'Equipo e invitaciones', detail: 'Integrantes, roles y acceso.' },
+    { suffix: 'catalogo', title: 'Catálogo', detail: 'Productos, insumos y servicios.' },
+    { suffix: 'proveedores', title: 'Proveedores', detail: 'Tus relaciones comerciales.' },
+  ] },
+  { title: 'Operaciones', description: 'Accedé a los movimientos disponibles para tu negocio.', actions: [
+    { suffix: 'compras', title: 'Compras y recepciones', detail: 'Compras y recepción de mercadería.' },
+    { suffix: 'inventario', title: 'Inventario', detail: 'Saldos y movimientos de stock.' },
+    { suffix: 'pos', title: 'Punto de venta', detail: 'Prepará y revisá una venta.' },
+    { suffix: 'ventas', title: 'Historial de ventas', detail: 'Comprobantes y consultas.' },
+  ] },
+] as const
 
 export function RealBusinessesPage({
   token, userId, route, onNavigate, onUnauthorized, pendingCreation, setPendingCreation,
@@ -219,7 +236,7 @@ export function RealBusinessesPage({
     </>
   }
 
-  return <section className={"real-auth-card real-business-panel" + (route.kind === "list" ? " e3-companies-page" : "")} aria-label="Empresas reales">
+  return <section className={"real-auth-card real-business-panel" + (route.kind === "list" ? " e3-companies-page" : route.kind === "detail" ? " e3-business-detail" : "")} aria-label="Empresas reales">
     <div className="real-business-nav">
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/perfil')}>Volver al perfil</button>
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas')}>Mis empresas</button>
@@ -275,38 +292,83 @@ export function RealBusinessesPage({
         </div>
       </div>}
     </> : <>
-      <h1>Empresa real</h1>
+      <div className="e3-detail-header">
+        <div className="e3-detail-mark" aria-hidden="true">▦</div>
+        <div className="e3-detail-heading">
+          <h1>Datos de la empresa</h1>
+          <p>Consultá los datos registrados y las herramientas de tu negocio.</p>
+        </div>
+        {!loading && selected && canEditBusiness(selected) && !editing && <button
+          type="button" className="real-auth-primary e3-detail-edit-trigger"
+          onClick={() => setEditing(true)}>Editar datos</button>}
+      </div>
       {loading && <p role="status">Comprobando pertenencia a la empresa…</p>}
       {!loading && selected && <>
-        <h2 className="real-business-name">{selected.name}</h2>
-        <dl className="real-auth-profile">
-          <div><dt>Rubro</dt><dd>{selected.category}</dd></div>
-          <div><dt>Actividad</dt><dd>{selected.activity_kind}</dd></div>
-          <div><dt>Estado</dt><dd>{selected.status}</dd></div>
-          <div><dt>Tu rol en esta empresa</dt><dd>{selected.membership.role.replaceAll('_', ' ')}</dd></div>
-          <div><dt>Tu membresía</dt><dd>{selected.membership.status}</dd></div>
-          <div><dt>Identificador del negocio</dt><dd className="real-auth-id">{selected.id}</dd></div>
-        </dl>
-        <p className="real-auth-note">Podés consultar inventario, movimientos e historial de ventas REALES. El punto de venta permite preparar y revisar operaciones; su registro requiere habilitación explícita del entorno y autorización de FastAPI.</p>
-        <div className="real-auth-actions">
-          <button className="real-auth-primary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/ubicaciones')}>Ubicaciones reales</button>
-          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/equipo')}>Equipo e invitaciones</button>
-          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/catalogo')}>Catálogo REAL</button>
-          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/proveedores')}>Proveedores REAL</button>
-          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/compras')}>Compras y recepciones REAL</button>
-          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/inventario')}>Inventario REAL</button>
-          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/pos')}>Punto de venta REAL · preparar carrito</button>
-          <button className="real-auth-secondary" type="button" onClick={() => onNavigate('/real/empresas/' + selected.id + '/ventas')}>Historial de ventas REAL · consulta</button>
-        </div>
-        {canEditBusiness(selected) && !editing && <button className="real-auth-secondary" type="button" onClick={() => setEditing(true)}>Editar perfil empresarial</button>}
-        {canEditBusiness(selected) && editing && <form className="real-auth-form" onSubmit={(e) => void updateCompany(e)}>
-          {fields(changes, (field, value) => setChanges((old) => ({ ...old, [field]: value })))}
-          <div className="real-auth-actions">
-            <button className="real-auth-primary" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar cambios'}</button>
-            <button className="real-auth-secondary" type="button" disabled={busy} onClick={() => { setEditing(false); setChanges({ name: selected.name, category: selected.category, activity_kind: selected.activity_kind }) }}>Cancelar</button>
+        <section className="e3-detail-overview" aria-label="Información de la empresa">
+          <div className="e3-detail-overview-head">
+            <div>
+              <p className="e3-detail-kicker">Identidad empresarial</p>
+              <h2 className="e3-detail-business-name">{selected.name}</h2>
+              <p className="e3-detail-category">{selected.category}</p>
+            </div>
+            <span className={selected.status === 'ACTIVA' ? 'e3-detail-status e3-detail-status-active' : 'e3-detail-status'}>
+              {selected.status === 'ACTIVA' ? 'Activa' : 'Suspendida'}
+            </span>
           </div>
-        </form>}
-        {!canEditBusiness(selected) && <p className="real-auth-note">La edición no está habilitada para tu rol o el estado actual de la empresa.</p>}
+          <dl className="e3-detail-facts">
+            <div><dt>Nombre comercial</dt><dd>{selected.name}</dd></div>
+            <div><dt>Rubro</dt><dd>{selected.category}</dd></div>
+            <div><dt>Actividad</dt><dd>{selected.activity_kind === 'MIXTO' ? 'Productos y servicios' : selected.activity_kind === 'PRODUCTOS' ? 'Productos' : 'Servicios'}</dd></div>
+            <div><dt>Tu rol</dt><dd>{selected.membership.role.replaceAll('_', ' ')}</dd></div>
+            <div><dt>Estado de membresía</dt><dd>{selected.membership.status}</dd></div>
+          </dl>
+          <details className="e3-detail-technical">
+            <summary>Información técnica</summary>
+            <dl>
+              <div><dt>Identificador del negocio</dt><dd><code>{selected.id}</code></dd></div>
+              <div><dt>Fecha de alta</dt><dd>{selected.created_at}</dd></div>
+            </dl>
+          </details>
+        </section>
+        {canEditBusiness(selected) && editing && <section className="e3-detail-edit-panel" aria-labelledby="e3-edit-heading">
+          <h2 id="e3-edit-heading">Editar datos de la empresa</h2>
+          <p>Revisá nombre, rubro y actividad. Los cambios se guardan solo cuando confirmás.</p>
+          <form className="real-auth-form e3-detail-edit-form" aria-label="Formulario de edición de empresa" onSubmit={(e) => void updateCompany(e)}>
+            {fields(changes, (field, value) => setChanges((old) => ({ ...old, [field]: value })))}
+            <div className="real-auth-actions">
+              <button className="real-auth-primary" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar cambios'}</button>
+              <button className="real-auth-secondary" type="button" disabled={busy} onClick={() => {
+                setEditing(false)
+                setChanges({ name: selected.name, category: selected.category, activity_kind: selected.activity_kind })
+              }}>Cancelar</button>
+            </div>
+          </form>
+        </section>}
+        {!canEditBusiness(selected) && <p className="e3-detail-readonly" role="note">
+          Esta información es de solo lectura para tu rol o el estado actual de la empresa.
+        </p>}
+        {detailSections.map((group) => <section className="e3-detail-section" key={group.title} aria-label={group.title}>
+          <div className="e3-detail-section-head">
+            <h2>{group.title}</h2>
+            <p>{group.description}</p>
+          </div>
+          <div className="e3-detail-actions">
+            {group.actions.map((action) => <button
+              key={action.suffix} type="button" className="e3-detail-action"
+              aria-label={'Abrir ' + action.title}
+              onClick={() => onNavigate('/real/empresas/' + selected.id + '/' + action.suffix)}>
+              <span className="e3-detail-action-icon" aria-hidden="true">{action.title.slice(0, 1)}</span>
+              <span className="e3-detail-action-body">
+                <strong>{action.title}</strong>
+                <small aria-hidden="true">{action.detail}</small>
+              </span>
+              <span className="e3-detail-action-arrow" aria-hidden="true">›</span>
+            </button>)}
+          </div>
+        </section>)}
+        <p className="e3-detail-footnote">
+          Cada operación se valida con los permisos de tu usuario y las reglas de la API.
+        </p>
       </>}
     </>}
     {notice && <p className="real-auth-message" role="status">{notice}</p>}
