@@ -52,6 +52,14 @@ test('E3-2A: foto perfil, empresa, galería servicios y proveedor con POS, sin c
   const content=await request.get(api+'/photos/'+publicPhoto.id+'/content',{headers})
   expect(content.status()).toBe(200)
   expect(content.headers()['content-type']).toContain('image/webp')
+  // Reemplazo personal real: no mantiene fotos anteriores ni URLs activas.
+  await profile.locator('input[type=file]').setInputFiles(image)
+  await expect.poll(async()=>{
+    const result=await request.get(api+'/photos/me',{headers})
+    return (await result.json())[0]?.id
+  }).not.toBe(publicPhoto.id)
+  const replaced=await request.get(api+'/photos/'+publicPhoto.id+'/content',{headers})
+  expect(replaced.status()).toBe(404)
 
   await page.getByRole('button',{name:'Mis empresas',exact:true}).first().click()
   const companyCard=page.getByRole('button',{name:/Empresa imágenes E3/})
@@ -83,6 +91,11 @@ test('E3-2A: foto perfil, empresa, galería servicios y proveedor con POS, sin c
   await expect(provider.getByText('Foto guardada en PostgreSQL.')).toBeVisible()
   const providerPhotos=await request.get(api+'/photos/businesses/'+bid+'/suppliers/'+sid,{headers})
   expect((await providerPhotos.json())).toHaveLength(1)
+  page.once('dialog',dialog=>{ void dialog.accept() })
+  await provider.getByRole('button',{name:'Quitar foto'}).click()
+  await expect(provider.getByText('Foto quitada correctamente.')).toBeVisible()
+  const afterDelete=await request.get(api+'/photos/businesses/'+bid+'/suppliers/'+sid,{headers})
+  expect(await afterDelete.json()).toHaveLength(0)
 
   await page.getByRole('navigation',{name:'Secciones disponibles en REAL'})
     .getByRole('button',{name:'Punto de venta',exact:true}).click()
@@ -93,4 +106,10 @@ test('E3-2A: foto perfil, empresa, galería servicios y proveedor con POS, sin c
   await expect(posCard.locator('img')).toHaveCount(1)
   const width=await page.evaluate(()=>Math.max(document.body.scrollWidth,document.documentElement.scrollWidth))
   expect(width).toBeLessThanOrEqual(1366)
+  // La portada también debe adaptarse a una pantalla móvil sin overflow horizontal.
+  await page.setViewportSize({width:390,height:844})
+  await posCard.scrollIntoViewIfNeeded()
+  await expect(posCard.locator('img')).toHaveCount(1)
+  const mobileWidth=await page.evaluate(()=>Math.max(document.body.scrollWidth,document.documentElement.scrollWidth))
+  expect(mobileWidth).toBeLessThanOrEqual(390)
 })
