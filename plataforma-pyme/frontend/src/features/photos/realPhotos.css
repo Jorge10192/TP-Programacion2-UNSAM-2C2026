@@ -20,3 +20,20 @@
 .e3-photo-preview .e3-photo-img,.e3-photo-preview .e3-photo-fallback{height:100%;width:100%;object-fit:cover}
 .e3-photo-manager :is(button,input):focus-visible{outline:3px solid #397ce0;outline-offset:2px}
 @media(max-width:480px){.e3-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.e3-photo-card .e3-photo-img{height:120px}}
+
+/* Integración de imágenes con el diseño E3 ya aprobado. */
+.e3-profile-avatar{overflow:hidden}
+.e3-profile-avatar .e3-photo-preview,.e3-detail-mark .e3-photo-preview{width:100%;height:100%;border-radius:inherit}
+.e3-detail-mark{overflow:hidden}
+.e3-profile-avatar .e3-photo-fallback,.e3-detail-mark .e3-photo-fallback{background:transparent;color:inherit}
+.e3-company-tile .e3-company-photo{width:100%;height:88px;border-radius:12px}
+.e3-company-tile .e3-company-photo .e3-photo-fallback{min-height:88px}
+.e3-catalog-tile .e3-catalog-photo{width:100%;height:122px;margin-bottom:4px}
+.e3-supplier-tile .e3-supplier-photo{width:100%;height:105px;margin-bottom:3px}
+.e3-pos-product-card .e3-pos-card-image.e3-photo-preview{width:100%;height:120px;border-radius:12px}
+.e3-pos-product-card .e3-pos-card-image.e3-photo-preview .e3-photo-img{height:100%;width:100%;object-fit:cover}
+.e3-pos-product-card .e3-pos-card-image.e3-photo-preview .e3-photo-fallback{height:100%;width:100%;min-height:0}
+@media(max-width:430px){
+  .e3-company-tile .e3-company-photo{height:78px}
+  .e3-catalog-tile .e3-catalog-photo,.e3-pos-product-card .e3-pos-card-image.e3-photo-preview{height:105px}
+}
