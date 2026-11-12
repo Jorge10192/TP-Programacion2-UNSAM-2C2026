@@ -1,0 +1,49 @@
+/* E3-1H3 — guidance is neutral and subordinate to live data and permission errors. */
+.e3-h3-guide {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  flex-wrap: wrap;
+  border: 1px solid #d7e2ef;
+  border-radius: 13px;
+  background: #f8fafd;
+  margin: 15px 0 19px;
+  padding: 16px 18px;
+}
+.e3-h3-guide-icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #37619a;
+  background: #eaf1fa;
+}
+.e3-h3-guide-copy { min-width: 0; flex: 1 1 250px; }
+.e3-h3-guide-copy strong {
+  display: block;
+  color: #1e3f69;
+  font-weight: 780;
+  line-height: 1.35;
+  font-size: 14px;
+}
+.e3-h3-guide-copy p {
+  margin: 5px 0 0;
+  color: #526985;
+  line-height: 1.6;
+  font-size: 12px;
+}
+.e3-h3-guide-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  flex: none;
+  min-height: 42px;
+  font-size: 12px;
+}
+@media(max-width: 600px) {
+  .e3-h3-guide { padding: 14px; }
+  .e3-h3-guide-action { width: 100%; }
+}
