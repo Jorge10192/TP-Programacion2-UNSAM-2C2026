@@ -3,8 +3,10 @@ import type { FormEvent } from 'react'
 import { ApiHttpError } from '../../api/httpClient.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
 import { UUID_V4_PATTERN } from '../businesses/businessGateway.ts'
-import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
-import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
+import { createOperationsGateway, canReadTeam } from '../businesses/realOperationsGateway.ts'
+import type { LocationRecord, TeamMember } from '../businesses/realOperationsGateway.ts'
+import { Icon } from '../../app/Icon.tsx'
+import './realSalesVisual.css'
 import {
   createSalesReadGateway, SALES_PAGE_SIZE, salesReadErrorMessage,
 } from './realSalesReadGateway.ts'
@@ -13,6 +15,7 @@ import type { SaleReceipt, SaleSummary } from './realSalesReadGateway.ts'
 type Props = {
   token: string
   userId: string
+  userDisplayName: string
   businessId: string
   onNavigate: (path: string) => void
   onUnauthorized: () => void
@@ -32,11 +35,17 @@ function qty(value: number): string {
 function short(value: string): string { return value.slice(0, 8) + '…' }
 
 /** T09-D is intentionally READ-ONLY: no sale creation, no DEMO or payment accreditation. */
-export function RealSalesPage({ token, userId, businessId, onNavigate, onUnauthorized }: Props) {
+export function RealSalesPage({ token, userId, userDisplayName, businessId, onNavigate, onUnauthorized }: Props) {
   const companyApi = useMemo(() => createOperationsGateway(token, userId), [token, userId])
   const salesApi = useMemo(() => createSalesReadGateway(token, businessId), [token, businessId])
   const [company, setCompany] = useState<RealBusiness | null>(null)
   const [locations, setLocations] = useState<LocationRecord[]>([])
+  const [actorDirectory,setActorDirectory]=useState<{
+    businessId:string;actors:Array<Pick<TeamMember,'user_id'|'display_name'>>
+  }|null>(null)
+  const [search,setSearch]=useState('')
+  const backRef=useRef<HTMLButtonElement>(null)
+  const historyTitleRef=useRef<HTMLHeadingElement>(null)
   const [metadataError, setMetadataError] = useState('')
   const [locationId, setLocationId] = useState('')
   const [refreshCount, setRefreshCount] = useState(0)
@@ -55,6 +64,21 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
   const detailEpoch = useRef(0)
   const detailController = useRef<AbortController | null>(null)
 
+  const permittedActors=company&&canReadTeam(company)&&actorDirectory?.businessId===businessId
+    ? actorDirectory.actors:[]
+  const actorName=(id:string)=>{
+    if(id===userId)return userDisplayName.trim()||'Tu cuenta'
+    return permittedActors.find(actor=>actor.user_id===id)?.display_name.trim()||'Nombre no disponible'
+  }
+  const filteredRows=rows.filter(row=>{
+    const term=search.trim().toLocaleLowerCase('es-AR')
+    return !term||[row.id,row.request_id,locationNameById(row.location_id),
+      actorName(row.created_by_id)].some(value=>value.toLocaleLowerCase('es-AR').includes(term))
+  })
+  function locationNameById(id:string|null):string{
+    return id===null?'Venta sin sede (servicios)'
+      :locations.find(item=>item.id===id)?.name??'Sede '+short(id)
+  }
   const locationName = useCallback((id: string | null) => {
     if (id === null) return 'Venta sin sede (servicios)'
     return locations.find(item => item.id === id)?.name ?? 'Sede ' + short(id)
@@ -75,6 +99,28 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
     })
     return () => { controller.abort() }
   }, [companyApi, businessId, onUnauthorized])
+
+  // La identidad del vendedor se resuelve desde la empresa actual,
+  // sin exponer directorios de equipo a roles sin autorización.
+  useEffect(()=>{
+    const controller=new AbortController()
+    if(!company||company.id!==businessId||!canReadTeam(company))
+      return ()=>controller.abort()
+    void companyApi.team(businessId,controller.signal).then(people=>{
+      if(!controller.signal.aborted)
+        setActorDirectory({businessId,
+          actors:people.map(({user_id,display_name})=>({user_id,display_name}))})
+    }).catch(err=>{
+      if(controller.signal.aborted)return
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+    })
+    return ()=>controller.abort()
+  },[company,companyApi,businessId,onUnauthorized])
+
+  useEffect(()=>{
+    if(receipt)backRef.current?.focus()
+    else historyTitleRef.current?.focus()
+  },[receipt])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -151,6 +197,12 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
     }
   }
 
+  function closeDetail(){
+    detailController.current?.abort()
+    detailEpoch.current++
+    setReceipt(null);setDetailError('');setDetailLoading(false)
+  }
+
   function requestSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const id = requestInput.trim()
@@ -176,19 +228,44 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
     setRefreshCount(value => value + 1)
   }
 
-  return <section className="real-auth-card real-business-panel real-sales-panel" aria-label="Historial de ventas REALES">
+  return <section className="real-auth-card real-business-panel real-sales-panel e3-sales-page" aria-label="Historial de ventas REALES">
+    {receipt&&<div className="e3-sales-backbar">
+      <button type="button" ref={backRef} className="e3-sales-back" onClick={closeDetail}>
+        <Icon name="arrow-left" size={18}/>Volver al historial
+      </button>
+      <span>Consulta de solo lectura · sin nuevas operaciones</span>
+    </div>}
+    {!receipt&&<>
     <nav className="real-business-nav" aria-label="Navegación de empresa">
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId)}>Empresa</button>
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId + '/inventario')}>Inventario</button>
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>
-    <span className="real-auth-eyebrow">E2-7 · T09-D · Consulta REAL</span>
-    <h1>Historial de ventas</h1>
-    <p>Comprobantes confirmados en PostgreSQL. Solo se muestran las ventas de esta empresa para las que tenés permiso; los trabajadores y encargados ven exclusivamente las sedes asignadas.</p>
+    <header className="e3-sales-heading">
+      <span className="e3-sales-heading-icon"><Icon name="receipt" size={27}/></span>
+      <div className="e3-sales-heading-copy">
+        <span className="e3-sales-eyebrow">{company?.name??'Empresa'} · Ventas confirmadas</span>
+        <h1 ref={historyTitleRef} tabIndex={-1}>Historial de ventas</h1>
+        <p>Comprobantes confirmados en PostgreSQL, según permisos de empresa y sedes autorizadas.</p>
+      </div>
+      <button type="button" className="real-auth-primary e3-sales-new-sale"
+        onClick={()=>onNavigate('/real/empresas/'+businessId+'/pos')}>
+        <Icon name="plus" size={16}/>Ir al punto de venta
+      </button>
+    </header>
     <p className="real-auth-note"><strong>Solo lectura.</strong> Acá no se registran ventas, no se modifica stock ni se acreditan pagos. Los medios de pago del comprobante son declaraciones, no confirmaciones de bancos o Mercado Pago.</p>
     {company && <div className="real-ops-toolbar"><strong>{company.name}</strong><span>{company.membership.role.replaceAll('_', ' ')}</span></div>}
     {metadataError && <p role="status" className="real-auth-message real-ops-warning">{metadataError}</p>}
-    <div className="real-sales-filters">
+    {status==='ready'&&<div className="e3-sales-loaded-summary" aria-label="Resumen de ventas cargadas">
+      <div><span>Ventas cargadas</span><strong>{rows.length}</strong></div>
+      <div><span>Sedes en registros cargados</span><strong>{new Set(rows.map(x=>x.location_id??'servicios')).size}</strong></div>
+    </div>}
+    <div className="real-sales-filters e3-sales-filters">
+      <label>Buscar en ventas cargadas
+        <input type="search" value={search} aria-label="Buscar ventas cargadas"
+          onChange={event=>setSearch(event.target.value)}
+          placeholder="Sede, responsable, venta o solicitud"/>
+      </label>
       <label>Ubicación
         <select aria-label="Filtrar ventas por ubicación" value={locationId}
           onChange={event => {
@@ -215,12 +292,14 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
       {status === 'loading' && <p role="status">Consultando ventas autorizadas desde FastAPI…</p>}
       {status === 'error' && <p role="alert" className="real-auth-message real-auth-error">{listError} <button type="button" className="real-auth-link" onClick={refresh}>Reintentar consulta</button></p>}
       {status === 'ready' && rows.length === 0 && <div className="real-business-empty">No hay ventas accesibles con el filtro elegido. Esto no significa que otras sedes no tengan ventas.</div>}
-      {status === 'ready' && rows.length > 0 && <div className="real-sales-list">
-        {rows.map(row => <article className="real-sales-row" key={row.id}>
+      {status==='ready'&&rows.length>0&&filteredRows.length===0&&<p className="real-business-empty">No hay coincidencias entre las ventas cargadas. Podés quitar el filtro o cargar más páginas.</p>}
+      {status === 'ready' && filteredRows.length > 0 && <div className="real-sales-list e3-sales-card-grid">
+        {filteredRows.map(row => <article className="real-sales-row" key={row.id}>
           <div className="real-sales-row-main">
             <strong>{cents(row.total_cents)}</strong>
             <span>{date(row.created_at)} · {locationName(row.location_id)}</span>
             <small>Venta {short(row.id)} · CONFIRMADA</small>
+            <small className="e3-sales-actor">Registró la venta: <strong>{actorName(row.created_by_id)}</strong></small>
           </div>
           <button className="real-auth-secondary" type="button" onClick={() => void readDetail('id', row.id)}>Ver comprobante</button>
         </article>)}
@@ -242,19 +321,28 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
         </button>
       </form>
     </section>
+    </>}
     {detailLoading && <p role="status">Cargando comprobante histórico…</p>}
     {detailError && <p role="alert" className="real-auth-message real-auth-error">{detailError}</p>}
-    {receipt && <section className="real-sales-receipt" aria-label="Comprobante de venta REAL">
+    {receipt && <div className="e3-sales-detail-view">
+      <header className="e3-sales-heading e3-sales-detail-heading">
+        <span className="e3-sales-heading-icon"><Icon name="receipt" size={27}/></span>
+        <div className="e3-sales-heading-copy">
+          <span className="e3-sales-eyebrow">{company?.name??'Empresa'} · Comprobante interno</span>
+          <h1>Comprobante de venta</h1>
+          <p>{date(receipt.created_at)} · {locationName(receipt.location_id)}</p>
+        </div>
+      </header>
+      <section className="real-sales-receipt e3-sales-receipt" aria-label="Comprobante de venta REAL">
       <div className="real-sales-receipt-head">
         <div><span className="real-auth-eyebrow">Comprobante histórico REAL</span><h2>Venta confirmada</h2></div>
         <strong>{cents(receipt.total_cents)}</strong>
       </div>
-      <dl className="real-auth-profile">
-        <div><dt>ID de venta</dt><dd className="real-auth-id">{receipt.id}</dd></div>
-        <div><dt>Solicitud original</dt><dd className="real-auth-id">{receipt.request_id}</dd></div>
+      <dl className="real-auth-profile e3-sales-detail-facts">
         <div><dt>Fecha</dt><dd>{date(receipt.created_at)}</dd></div>
         <div><dt>Sede</dt><dd>{locationName(receipt.location_id)}</dd></div>
-        <div><dt>Responsable (ID)</dt><dd className="real-auth-id">{receipt.created_by_id}</dd></div>
+        <div><dt>Registró la venta</dt><dd>{actorName(receipt.created_by_id)}</dd></div>
+        <div><dt>Estado</dt><dd>Confirmada</dd></div>
       </dl>
       <h3>Artículos y servicios</h3>
       <div className="real-sales-receipt-lines">
@@ -287,10 +375,16 @@ export function RealSalesPage({ token, userId, businessId, onNavigate, onUnautho
         <p className="real-auth-note">Estos saldos son snapshots históricos; para conocer el stock actual, consultá Inventario REAL.</p>
       </>}
       {receipt.notes && <p>Observaciones: {receipt.notes}</p>}
-      <button type="button" className="real-auth-link" onClick={() => {
-        detailController.current?.abort(); detailEpoch.current++
-        setReceipt(null); setDetailError(''); setDetailLoading(false)
-      }}>Cerrar comprobante</button>
-    </section>}
+      <details className="e3-sales-trace">
+        <summary>Identificadores de trazabilidad</summary>
+        <dl>
+          <div><dt>ID de venta</dt><dd>{receipt.id}</dd></div>
+          <div><dt>Solicitud original</dt><dd>{receipt.request_id}</dd></div>
+          <div><dt>Usuario responsable (ID)</dt><dd>{receipt.created_by_id}</dd></div>
+        </dl>
+      </details>
+      <button type="button" className="real-auth-secondary e3-sales-close" onClick={closeDetail}>Cerrar comprobante</button>
+      </section>
+    </div>}
   </section>
 }

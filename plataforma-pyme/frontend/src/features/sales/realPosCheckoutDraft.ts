@@ -2,7 +2,7 @@
  * T10-D — composición pura de pagos DECLARADOS, sin conexión ni POST.
  * No acredita bancos, tarjetas ni Mercado Pago. No usa floats para pesos.
  */
-import { pesosToCents } from '../catalog/realCatalogGateway.ts'
+import { centsToPesos, pesosToCents } from '../catalog/realCatalogGateway.ts'
 import {
   SALE_PAYMENT_METHODS, validateSaleCommand,
 } from './realSaleCommand.ts'
@@ -48,4 +48,33 @@ export function composePosCheckout(
     location_id: locationId, lines: lines.map(row => ({ ...row })),
     discount_cents: discountCents, notes, payments,
   })
+}
+
+/** Distribuye únicamente el saldo pendiente en el ÚLTIMO medio declarado.
+ * Nunca modifica los anteriores ni crea una escritura. Calcula en centavos exactos.
+ * No se admite un último pago cero: en ese caso se debe quitar ese medio.
+ */
+export function completeLastPosPayment(
+  totalCents: number,
+  payments: readonly PosPaymentDraft[],
+): PosPaymentDraft[] {
+  if (!Number.isSafeInteger(totalCents) || totalCents <= 0)
+    throw new RangeError('Primero ingresá un carrito con total positivo.')
+  if (!Array.isArray(payments) || payments.length < 1 || payments.length > 6)
+    throw new RangeError('Se requieren de 1 a 6 medios de pago.')
+  let previousCents=0n
+  for (const payment of payments.slice(0,-1)) {
+    const cents=pesosToCents(payment.amountText)
+    if (cents===null || cents<=0)
+      throw new RangeError('Completá los importes anteriores antes de calcular el último.')
+    previousCents+=BigInt(cents)
+  }
+  const remaining=BigInt(totalCents)-previousCents
+  if (remaining<=0n)
+    throw new RangeError('Los medios anteriores ya cubren o exceden el total. Ajustalos o quitá el último medio.')
+  // La conversión reutiliza los límites de centavos existentes.
+  const text=centsToPesos(Number(remaining))
+  return payments.map((payment,i)=>i===payments.length-1
+    ? {...payment,amountText:text}
+    : {...payment})
 }

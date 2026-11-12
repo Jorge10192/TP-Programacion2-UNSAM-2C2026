@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { composePosCheckout, POS_PAYMENT_LABELS } from '../src/features/sales/realPosCheckoutDraft.ts'
+import { completeLastPosPayment, composePosCheckout, POS_PAYMENT_LABELS } from '../src/features/sales/realPosCheckoutDraft.ts'
 import { SALE_PAYMENT_METHODS } from '../src/features/sales/realSaleCommand.ts'
 
 const product = '74f29998-41f4-4eba-b960-b1578146a9bb'
@@ -101,4 +101,44 @@ test('T10-D importe individual requiere total positivo e íntegro', () => {
     assert.throws(() => composePosCheckout(location, rows, discount, notes,
       pays.map(x => ({ method: x.method, amountText: '12000', reference: x.reference }))), RangeError)
   }
+})
+
+test('E3-1G descuento sobre total y botón de completar el último pago con centavos exactos',()=>{
+  const original=[
+    {method:'EFECTIVO',amountText:'5000,01',reference:'adelanto'},
+    {method:'TRANSFERENCIA',amountText:'',reference:'operación QA'},
+  ]
+  const completed=completeLastPosPayment(1200000,original)
+  assert.deepEqual(completed.map(x=>x.amountText),['5000,01','6999,99'])
+  assert.equal(completed[1].reference,'operación QA')
+  assert.deepEqual(original.map(x=>x.amountText),['5000,01',''])
+  const result=composePosCheckout(site,lines(),200000,'',completed)
+  assert.equal(result.totals.subtotal_cents,1400000)
+  assert.equal(result.totals.discount_cents,200000)
+  assert.equal(result.totals.total_cents,1200000)
+  assert.deepEqual(result.body.payments.map(x=>x.amount_cents),[500001,699999])
+})
+
+test('E3-1G saldo de pago sigue el nuevo descuento sin alterar métodos previos',()=>{
+  const pays=[
+    {method:'EFECTIVO',amountText:'8000,00',reference:''},
+    {method:'TARJETA',amountText:'4000,00',reference:'ref'},
+  ]
+  assert.equal(completeLastPosPayment(1000000,pays)[1].amountText,'2000,00')
+  assert.equal(completeLastPosPayment(1400000,pays)[1].amountText,'6000,00')
+  assert.equal(completeLastPosPayment(150000,[{...pays[0],amountText:''}])[0].amountText,'1500,00')
+})
+
+test('E3-1G último medio debe ser positivo; no admite previos inválidos ni pagos inventados',()=>{
+  const pays=[
+    {method:'EFECTIVO',amountText:'100,00',reference:''},
+    {method:'TRANSFERENCIA',amountText:'',reference:''},
+  ]
+  assert.throws(()=>completeLastPosPayment(10000,pays),RangeError)
+  assert.throws(()=>completeLastPosPayment(9000,pays),RangeError)
+  for(const bad of ['','0','-1','4.000,00','cien','1,234']){
+    assert.throws(()=>completeLastPosPayment(10000,[{...pays[0],amountText:bad},pays[1]]),RangeError)
+  }
+  assert.throws(()=>completeLastPosPayment(0,pays),RangeError)
+  assert.throws(()=>completeLastPosPayment(10000,[]),RangeError)
 })

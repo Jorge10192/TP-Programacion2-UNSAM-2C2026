@@ -65,6 +65,10 @@ test('T09-D: historial REAL, comprobante por ID y recuperación request_id tras 
   await expect(details.getByRole('heading', { name: 'Venta confirmada' })).toBeVisible()
   await expect(details).toContainText('Pagos declarados')
   await expect(details).toContainText('Asesoría QA')
+  // El comprobante ahora ocupa una vista exclusiva: volver permite consultar otra solicitud.
+  await expect(page.locator('.real-sales-row')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Volver al historial' }).click()
+  await expect(page.locator('.real-sales-row')).toHaveCount(2)
 
   await page.getByLabel('Clave original de solicitud (UUID4)').fill(f.first.request_id)
   await page.getByRole('button', { name: 'Consultar solicitud' }).click()

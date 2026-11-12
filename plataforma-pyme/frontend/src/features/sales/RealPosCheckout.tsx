@@ -7,7 +7,7 @@ import type { PosCartLine } from './realPosDraft.ts'
 import { previewPosCart, posQuantityText } from './realPosDraft.ts'
 import type { SaleCommand, SaleTotals } from './realSaleCommand.ts'
 import { SALE_PAYMENT_METHODS } from './realSaleCommand.ts'
-import { composePosCheckout, POS_PAYMENT_LABELS } from './realPosCheckoutDraft.ts'
+import { completeLastPosPayment, composePosCheckout, POS_PAYMENT_LABELS } from './realPosCheckoutDraft.ts'
 import type { PosPaymentDraft } from './realPosCheckoutDraft.ts'
 import { createSaleWriteCoordinator } from './realSaleWriteCoordinator.ts'
 import type { ConfirmedSale } from './realSaleWriteCoordinator.ts'
@@ -26,6 +26,7 @@ type Props = {
   cart: readonly PosCartLine[]
   discountText: string
   onDraftLock: (locked: boolean) => void
+  onStageChange: (stage: PosCheckoutStage) => void
   onConfirmed: () => void
   onUnauthorized: () => void
   onNavigate: (path: string) => void
@@ -40,7 +41,8 @@ const MUTATIONS_ENABLED = import.meta.env.VITE_PYME_ENABLE_REAL_SALES === '1'
 const pesos = (c: number) => new Intl.NumberFormat('es-AR', {
   style: 'currency', currency: 'ARS',
 }).format(c / 100)
-type Stage = 'checking' | 'editing' | 'review' | 'sending' | 'pending' | 'confirmed' | 'blocked'
+export type PosCheckoutStage = 'checking' | 'editing' | 'review' | 'sending' | 'pending' | 'confirmed' | 'blocked'
+type Stage = PosCheckoutStage
 type Review = { body: SaleCommand; totals: SaleTotals }
 const initialPayment = (amount: number | null): PosPaymentDraft => ({
   method: 'EFECTIVO', amountText: centsToPesos(amount), reference: '',
@@ -62,7 +64,7 @@ function readableError(error: unknown): string {
 
 export function RealPosCheckout({
   token, userId, businessId, businessName, role, businessActive, location,
-  items, cart, discountText, onDraftLock, onConfirmed, onUnauthorized, onNavigate,
+  items, cart, discountText, onDraftLock, onStageChange, onConfirmed, onUnauthorized, onNavigate,
 }: Props) {
   const coordinator = useMemo(
     () => createSaleWriteCoordinator(token, userId, businessId),
@@ -79,6 +81,7 @@ export function RealPosCheckout({
   const [ack, setAck] = useState(false)
   const [recoveryChecked, setRecoveryChecked] = useState(false)
   const busy = useRef(false)
+  useEffect(()=>onStageChange(stage),[stage,onStageChange])
 
   const draft = useMemo(() => {
     try {
@@ -243,9 +246,26 @@ export function RealPosCheckout({
     } catch { return acc }
   }, 0n)
   const currentTotal = draft.totals?.total_cents ?? null
+  const outstandingCents=currentTotal===null?null:BigInt(currentTotal)-totalPayments
+  function fillLastPayment(){
+    setNotice('')
+    try{
+      if(currentTotal===null)throw new RangeError('Primero armá un carrito con total válido.')
+      setPayments(completeLastPosPayment(currentTotal,shownPayments))
+      setPaymentModified(true)
+    }catch(err){
+      setNotice(readableError(err))
+    }
+  }
 
-  return <section className="real-ops-subpanel real-pos-checkout" aria-label="Pagos y confirmación REAL">
-    <h2>4. Pagos declarados y confirmación</h2>
+  return <section className={'real-ops-subpanel real-pos-checkout e3-pos-checkout e3-pos-checkout-'+stage}
+      aria-label="Pagos y confirmación REAL" data-stage={stage}>
+    <h2>{stage==='review'?'Detalle final para confirmar la venta'
+      :stage==='pending'?'Recuperar venta pendiente'
+      :stage==='confirmed'?'Venta confirmada'
+      :stage==='sending'?'Procesando venta'
+      :stage==='blocked'?'Verificar venta pendiente'
+      :'4. Pagos declarados y confirmación'}</h2>
     <p className="real-auth-note"><strong>Los pagos son declaraciones del vendedor.</strong> No se consulta ni acredita dinero en bancos, tarjetas, Cuenta DNI o Mercado Pago. Una venta confirmada sí genera comprobante y, si incluye bienes físicos, descuenta stock en PostgreSQL.</p>
 
     {stage === 'checking' && <p role="status">Verificando ventas pendientes en IndexedDB…</p>}
@@ -256,6 +276,12 @@ export function RealPosCheckout({
 
     {stage === 'editing' && <>
       <p>Revisá los importes y declaralos en uno o varios medios. Los importes deben sumar exactamente el total de la venta.</p>
+      {draft.totals && <div className="e3-pos-payment-breakdown" aria-label="Cálculo del total a cobrar" role="status">
+        <span>Subtotal de artículos <strong>{pesos(draft.totals.subtotal_cents)}</strong></span>
+        <span>Descuento aplicado a la venta <strong>−{pesos(draft.totals.discount_cents)}</strong></span>
+        <span>Total a cobrar <strong>{pesos(draft.totals.total_cents)}</strong></span>
+        <small>El descuento cambia el total a pagar; no altera los precios unitarios de catálogo.</small>
+      </div>}
       {shownPayments.map((row, i) => <div className="real-pos-payment" key={i}>
         <label>Medio de pago {i + 1}
           <select aria-label={'Medio de pago ' + (i + 1)} value={row.method} onChange={event =>
@@ -272,6 +298,17 @@ export function RealPosCheckout({
           <input aria-label={'Referencia de pago ' + (i + 1)} maxLength={120}
             value={row.reference} onChange={event => changePayment(i, { reference: event.target.value })}/>
         </label>
+        {i===shownPayments.length-1&&<div className="e3-pos-fill-payment-block">
+          <button type="button" className="real-auth-secondary e3-pos-fill-payment"
+            aria-label="Completar saldo con último medio de pago" onClick={fillLastPayment}
+            disabled={currentTotal===null}>Completar saldo pendiente</button>
+          {currentTotal===null&&<small role="status">
+            Primero agregá artículos al carrito y obtené un total válido para completar el saldo.
+          </small>}
+          {currentTotal!==null&&<small>
+            Calcula el importe restante después del descuento y los medios anteriores. No registra la venta.
+          </small>}
+        </div>}
         {shownPayments.length > 1 && <button className="real-auth-link" type="button" onClick={() => {
           setPaymentModified(true)
           setPayments(shownPayments.filter((_, index) => index !== i))
@@ -282,35 +319,54 @@ export function RealPosCheckout({
           setPaymentModified(true)
           setPayments([...shownPayments, { method: 'TRANSFERENCIA', amountText: '', reference: '' }])
         }}>Agregar otro medio de pago</button>
-      <p className="real-pos-payment-summary">Pagos ingresados: <strong>{pesos(Number(totalPayments))}</strong>
+      <p className="real-pos-payment-summary" role="status">Pagos ingresados: <strong>{pesos(Number(totalPayments))}</strong>
         {' · '} Total a declarar: <strong>{currentTotal === null ? '—' : pesos(currentTotal)}</strong>
+        {outstandingCents!==null&&<span className={'e3-pos-outstanding'+
+          (outstandingCents===0n?' e3-pos-paid':outstandingCents<0n?' e3-pos-excess':'')}>
+          {outstandingCents===0n?' · Importe cubierto'
+            :outstandingCents>0n?' · Falta declarar: '+pesos(Number(outstandingCents))
+            :' · Excedente: '+pesos(Number(-outstandingCents))}
+        </span>}
       </p>
       <label>Notas de la venta (opcional)
         <textarea aria-label="Notas de la venta" rows={2} maxLength={500}
           value={notes} onChange={event => setNotes(event.target.value)}/>
       </label>
       {notice && <p role="alert" className="real-auth-message real-auth-error">{notice}</p>}
-      <button type="button" className="real-auth-primary" disabled={!currentTotal}
-        onClick={reviewSale}>Revisar venta y pagos</button>
+      <div className="e3-pos-finalize-bar">
+        <p>El siguiente paso muestra el detalle completo y pide confirmación. Todavía no registra la venta ni mueve stock.</p>
+        <button type="button" className="real-auth-primary" disabled={!currentTotal}
+          onClick={reviewSale}>Finalizar venta</button>
+      </div>
     </>}
 
     {stage === 'review' && review && <>
       <div className="real-pos-final-review" aria-label="Revisión final de la venta">
-        <h3>Revisión final, antes del registro</h3>
+        <h3>Detalle completo de la venta · pendiente de confirmación</h3>
         <p><strong>Empresa:</strong> {businessName}</p>
         <p><strong>Sede:</strong> {location?.name ?? 'Sin sede · servicios'}</p>
-        {review.body.lines.map((line, i) => <p key={i}>
-          {items.find(item => item.id === line.catalog_item_id)?.name ?? 'Artículo'}:
-          {' '}{posQuantityText(line.quantity_milli)} × {pesos(line.unit_price_cents)}
-          {' = '} <strong>{pesos(review.totals.line_totals_cents[i])}</strong>
-        </p>)}
-        <p>Subtotal: <strong>{pesos(review.totals.subtotal_cents)}</strong></p>
-        <p>Descuento: <strong>−{pesos(review.totals.discount_cents)}</strong></p>
-        <p className="real-pos-final-total">TOTAL: <strong>{pesos(review.totals.total_cents)}</strong></p>
+        <div className="e3-pos-review-lines" aria-label="Artículos incluidos en la venta">
+          {review.body.lines.map((line,i)=>{
+            const item=items.find(entry=>entry.id===line.catalog_item_id)
+            return <div key={line.catalog_item_id} className="e3-pos-review-line">
+              <div><strong>{item?.name??'Artículo'}</strong>
+                <small>{posQuantityText(line.quantity_milli)} {item?.unit??''} × {pesos(line.unit_price_cents)} por unidad</small>
+              </div>
+              <strong>{pesos(review.totals.line_totals_cents[i])}</strong>
+            </div>
+          })}
+        </div>
+        <div className="e3-pos-review-totals" aria-label="Total con descuento">
+          <p>Subtotal de artículos <strong>{pesos(review.totals.subtotal_cents)}</strong></p>
+          <p>Descuento aplicado <strong>−{pesos(review.totals.discount_cents)}</strong></p>
+          <p className="real-pos-final-total">Total a cobrar <strong>{pesos(review.totals.total_cents)}</strong></p>
+        </div>
         <h4>Pagos declarados</h4>
-        {review.body.payments.map((payment, i) =>
-          <p key={i}>{POS_PAYMENT_LABELS[payment.method]} · {pesos(payment.amount_cents)}
-            {payment.reference ? ' · ' + payment.reference : ''}</p>)}
+        <div className="e3-pos-review-payments">
+          {review.body.payments.map((payment,i)=>
+            <div key={i}><span>{POS_PAYMENT_LABELS[payment.method]}{payment.reference?' · '+payment.reference:''}</span>
+              <strong>{pesos(payment.amount_cents)}</strong></div>)}
+        </div>
         {review.body.notes && <p>Notas: {review.body.notes}</p>}
       </div>
       <label className="real-pos-ack">
@@ -319,7 +375,7 @@ export function RealPosCheckout({
         Confirmo empresa, sede, precios, cantidades y medios declarados. Entiendo que una venta confirmada registra comprobante y afecta stock físico.
       </label>
       {!MUTATIONS_ENABLED && <p className="real-auth-note">El registro de ventas REAL está deshabilitado en este entorno. Solo se habilita mediante configuración explícita en un entorno autorizado; podés revisar los datos sin registrar operaciones.</p>}
-      <div className="real-pos-confirm-actions">
+      <div className="real-pos-confirm-actions e3-pos-confirm-actions">
         <button type="button" className="real-auth-secondary" onClick={() => {
           setStage('editing'); setReview(null); setAck(false); onDraftLock(false)
         }}>Volver a editar</button>
