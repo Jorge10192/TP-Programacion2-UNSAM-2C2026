@@ -412,6 +412,10 @@ export function RealPosCheckout({
             disabled={qrBusy || !qrRecoveryChecked} onClick={() => void beginQrIntent(true)}>
             Reintentar mismo QR y clave
           </button>}
+          <button type="button" className="real-auth-secondary"
+            onClick={() => onNavigate('/real/empresas/' + businessId + '/cobros-qr')}>
+            Ver cobros QR anteriores
+          </button>
           {qrConnection !== 'active' && <button type="button" className="real-auth-secondary"
             onClick={() => onNavigate('/real/empresas/' + businessId + '/medios-de-cobro')}>
             Ir a Medios de cobro
