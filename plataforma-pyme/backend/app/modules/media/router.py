@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.api.dependencies import get_db
 from app.modules.auth.dependencies import current_auth
@@ -23,9 +24,9 @@ def list_profile(ctx: AuthContext = Depends(current_auth), db: Session = Depends
 async def upload_profile(file: UploadFile = File(...), ctx: AuthContext = Depends(current_auth),
                          db: Session = Depends(get_db)):
     service = PhotoService(db)
-    service.assert_upload_allowed(ctx, "PROFILE", ctx.user.id, None)
+    await run_in_threadpool(service.assert_upload_allowed, ctx, "PROFILE", ctx.user.id, None)
     content, width, height = await clean_photo(file)
-    return service.upload(ctx, "PROFILE", ctx.user.id, None, content, width, height)
+    return await run_in_threadpool(service.upload, ctx, "PROFILE", ctx.user.id, None, content, width, height)
 
 
 @router.get("/businesses/{business_id}", response_model=list[PhotoView])
@@ -38,9 +39,9 @@ def list_business(business_id: UUID, ctx: AuthContext = Depends(current_auth),
 async def upload_business(business_id: UUID, file: UploadFile = File(...),
                           ctx: AuthContext = Depends(current_auth), db: Session = Depends(get_db)):
     service = PhotoService(db)
-    service.assert_upload_allowed(ctx, "BUSINESS", business_id, business_id)
+    await run_in_threadpool(service.assert_upload_allowed, ctx, "BUSINESS", business_id, business_id)
     content, width, height = await clean_photo(file)
-    return service.upload(ctx, "BUSINESS", business_id, business_id, content, width, height)
+    return await run_in_threadpool(service.upload, ctx, "BUSINESS", business_id, business_id, content, width, height)
 
 
 @router.get("/businesses/{business_id}/catalog/{item_id}", response_model=list[PhotoView])
@@ -53,9 +54,9 @@ def list_catalog_photos(business_id: UUID, item_id: UUID,
 async def upload_catalog_photo(business_id: UUID, item_id: UUID, file: UploadFile = File(...),
                                ctx: AuthContext = Depends(current_auth), db: Session = Depends(get_db)):
     service = PhotoService(db)
-    service.assert_upload_allowed(ctx, "CATALOG", item_id, business_id)
+    await run_in_threadpool(service.assert_upload_allowed, ctx, "CATALOG", item_id, business_id)
     content, width, height = await clean_photo(file)
-    return service.upload(ctx, "CATALOG", item_id, business_id, content, width, height)
+    return await run_in_threadpool(service.upload, ctx, "CATALOG", item_id, business_id, content, width, height)
 
 
 @router.get("/businesses/{business_id}/suppliers/{supplier_id}", response_model=list[PhotoView])
@@ -68,9 +69,9 @@ def list_supplier_photos(business_id: UUID, supplier_id: UUID,
 async def upload_supplier_photo(business_id: UUID, supplier_id: UUID, file: UploadFile = File(...),
                                 ctx: AuthContext = Depends(current_auth), db: Session = Depends(get_db)):
     service = PhotoService(db)
-    service.assert_upload_allowed(ctx, "SUPPLIER", supplier_id, business_id)
+    await run_in_threadpool(service.assert_upload_allowed, ctx, "SUPPLIER", supplier_id, business_id)
     content, width, height = await clean_photo(file)
-    return service.upload(ctx, "SUPPLIER", supplier_id, business_id, content, width, height)
+    return await run_in_threadpool(service.upload, ctx, "SUPPLIER", supplier_id, business_id, content, width, height)
 
 
 @router.get("/{photo_id}/content")
