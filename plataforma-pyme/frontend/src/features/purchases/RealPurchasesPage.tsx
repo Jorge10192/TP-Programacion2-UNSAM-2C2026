@@ -10,6 +10,8 @@ import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents, p
   supplyErrorMessage, validatePurchase } from './realSupplyGateway.ts'
 import type { Purchase, PurchaseReceipt, NewPurchase, Supplier, PurchaseLineInput } from './realSupplyGateway.ts'
 import { RealReceiptDetail } from './RealReceiptDetail.tsx'
+import { Icon } from '../../app/Icon.tsx'
+import './realPurchasesVisual.css'
 import { pendingScope, supplyJournal, PendingConflictError, PendingStorageError, newPurchaseIntent, newReceiptIntent } from './supplyPendingJournal.ts'
 import { suggestedUnitCost, costExceedsSalePrice, previewLineTotalCents, previewPurchaseTotalCents, unitCostFromExactLineTotal } from './purchaseCostProposal.ts'
 import type { SupplyPending } from './supplyPendingJournal.ts'
@@ -30,6 +32,9 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
  const alive=useRef(true)
  const receiptLookup=useRef(false)
  const receiptDetailRef=useRef<HTMLDivElement|null>(null)
+ const backButtonRef=useRef<HTMLButtonElement|null>(null)
+ const listHeadingRef=useRef<HTMLHeadingElement|null>(null)
+ const previousForm=useRef(false)
  const [business,setBusiness]=useState<RealBusiness|null>(null)
  const [purchases,setPurchases]=useState<Purchase[]>([])
  const [suppliers,setSuppliers]=useState<Supplier[]>([])
@@ -43,6 +48,8 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
  const [error,setError]=useState('')
  const [notice,setNotice]=useState('')
  const [form,setForm]=useState(false)
+ const [search,setSearch]=useState('')
+ const [statusFilter,setStatusFilter]=useState('TODOS')
  const [draft,setDraft]=useState<Draft>(emptyDraft)
  const [consent,setConsent]=useState(false)
  const [pending,setPending]=useState<Extract<SupplyPending,{kind:'purchase.create'}>|null>(null)
@@ -270,6 +277,22 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
    try{await supplyJournal.discard(pending.scope,pending.key);if(alive.current){setPending(null);setDraft(emptyDraft());setConsent(false);setNotice('Pendiente local descartado; no borramos documentos en FastAPI.')}}
    catch(err){failed(err)}finally{if(alive.current)setBusy(false)}
  }
+ // Sólo cambiar la vista: nunca descartar una intención durable de IndexedDB.
+ function closePurchaseForm(){if(!busy)setForm(false)}
+ function openPurchaseForm(){if(canWrite&&!busy&&!loading&&journalReady){setForm(true);setError('')}}
+ useEffect(()=>{
+   if(previousForm.current===form)return
+   if(form)backButtonRef.current?.focus()
+   else listHeadingRef.current?.focus()
+   previousForm.current=form
+ },[form])
+ const visiblePurchases=purchases.filter(p=>
+   (statusFilter==='TODOS'||p.status===statusFilter)&&
+   [p.reference,p.supplier_name_snapshot||'',p.id].some(value=>
+     value.toLocaleLowerCase('es-AR').includes(search.trim().toLocaleLowerCase('es-AR'))))
+ const loadedPending=purchases.filter(p=>p.status==='REGISTRADA').length
+ const loadedReceived=purchases.filter(p=>p.status==='RECIBIDA').length
+ const statuses=[...new Set(purchases.map(p=>p.status))]
  function changeLine(index:number,patch:Partial<DraftLine>){
    setDraft(old=>({...old,lines:old.lines.map((x,i)=>i===index?{...x,...patch}:x)}))
  }
@@ -284,23 +307,66 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
      setError(err instanceof Error?err.message:'El importe total del renglón no es válido.')
    }
  }
- return <section className="real-auth-card real-business-panel">
-   <nav className="real-business-nav" aria-label="Operaciones REAL">
+ return <section className="real-auth-card real-business-panel e3-purchases-page">
+   {!form&&<>
+     <nav className="real-business-nav" aria-label="Operaciones REAL">
      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId)}>Empresa</button>
      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/proveedores')}>Proveedores</button>
      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/catalogo')}>Catálogo</button>
      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/ubicaciones')}>Ubicaciones</button>
    </nav>
-   <span className="real-auth-eyebrow">E2-7 · T07 · Compras REAL</span>
-   <h1>Compras y recepción</h1>
-   <p>Empresa: <strong>{business?.name??'Cargando'}</strong>. Registrar una compra no aumenta inventario. Solo una recepción confirmada agrega stock.</p>
-   <div className="real-ops-toolbar"><strong>{purchases.length} compras cargadas{hasMore?' (no es todo el historial)':''}</strong>
+   </>}
+   {form&&<div className="e3-purchase-backbar">
+     <button ref={backButtonRef} type="button" className="e3-purchase-back" disabled={busy} onClick={closePurchaseForm}>
+       <Icon name="arrow-left" size={18}/>Volver a compras
+     </button>
+     <span className="e3-purchase-view-tag">{pending?'Intención pendiente':'Registrar compra'}</span>
+   </div>}
+   <header className="e3-purchase-heading">
+     <span className="e3-purchase-heading-icon"><Icon name="shopping" size={26}/></span>
+     <div className="e3-purchase-heading-copy">
+       <span className="e3-purchase-eyebrow">{business?.name??'Empresa'} · Compras</span>
+       {form?<h1>{pending?'Compra pendiente recuperada':'Nueva compra'}</h1>
+         :<h1 ref={listHeadingRef} tabIndex={-1}>Compras y recepción</h1>}
+       <p>{form?'Registrar una compra no aumenta inventario. La recepción es una operación separada.':
+         'Consultá tus compras y su estado de recepción por sede.'}</p>
+     </div>
+     {!form&&canWrite&&<button type="button" className="real-auth-primary e3-purchase-new-action"
+       disabled={busy||loading||!journalReady} onClick={openPurchaseForm}>
+       <Icon name="plus" size={17}/>Registrar compra REAL</button>}
+   </header>
+   {notice&&<p className="real-auth-message" role="status">{notice}</p>}
+   {error&&<p className="real-auth-message real-auth-error" role="alert">{error}</p>}
+   {!form&&<>
+     <div className="e3-purchase-stats" aria-label="Resumen de compras cargadas">
+       <div><span>Compras cargadas</span><strong>{purchases.length}</strong></div>
+       <div><span>Pendientes de recepción</span><strong>{loadedPending}</strong></div>
+       <div><span>Recibidas</span><strong>{loadedReceived}</strong></div>
+     </div>
+     <div className="e3-purchase-filters">
+       <label className="e3-purchase-search"><Icon name="search" size={18}/>
+         <span className="e3-purchase-visually-hidden">Buscar compras cargadas</span>
+         <input type="search" aria-label="Buscar compras cargadas" placeholder="Buscar referencia, proveedor o ID"
+           value={search} onChange={e=>setSearch(e.target.value)}/>
+       </label>
+       <label>Estado
+         <select aria-label="Filtrar compras por estado" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+           <option value="TODOS">Todos</option>
+           {statuses.map(state=><option key={state} value={state}>{purchaseStatusPresentation(state).label}</option>)}
+         </select>
+       </label>
+     </div>
+     <p className="e3-purchase-scope-note">{purchases.length} compras cargadas.
+       {hasMore?' Hay más páginas; filtros y contadores sólo aplican a las cargadas.':' Se consultó la última página.'}
+       Registrar una compra no agrega stock; sólo una recepción confirmada lo modifica.</p>
+<div className="real-ops-toolbar e3-purchase-toolbar"><strong>{purchases.length} compras cargadas{hasMore?' (no es todo el historial)':''}</strong>
      <button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void refresh()}>Actualizar datos</button>
    </div>
    {loading&&<p role="status">Consultando proveedores, catálogo, compras y ubicaciones…</p>}
    {!loading&&purchases.length===0&&<div className="real-business-empty">Todavía no hay compras reales en esta empresa.</div>}
-   <div className="real-supply-list">
-     {purchases.map(p=>{const visualState=purchaseStatusPresentation(p.status);return <article key={p.id} className="real-supply-card">
+   {!loading&&purchases.length>0&&visiblePurchases.length===0&&<div className="real-business-empty">No hay compras con esos filtros dentro de las páginas cargadas.</div>}
+   <div className="real-supply-list e3-purchases-grid">
+     {visiblePurchases.map(p=>{const visualState=purchaseStatusPresentation(p.status);return <article key={p.id} className="real-supply-card">
        <div className="real-catalog-tile-header"><strong>{p.reference||'Compra '+p.id.slice(0,8)}</strong><span className={"real-catalog-status "+(visualState.tone==="pending"?"real-supply-pending-status":visualState.tone==="confirmed"?"real-catalog-active":"real-supply-neutral-status")}>{visualState.label}</span></div>
        <small>{p.purchased_on} · Proveedor: {p.supplier_name_snapshot||'Sin proveedor'} · {p.lines.length} {p.lines.length === 1 ? 'renglón' : 'renglones'}</small>
        <strong className="real-supply-total">{money(p.total_cents)}</strong>
@@ -332,7 +398,8 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
        <button className="real-auth-secondary" type="button" disabled={busy} onClick={()=>setReceiptFor(null)}>Cerrar</button>
      </div>
    </section>}
-   {canWrite&&!form&&<div className="real-auth-actions"><button type="button" className="real-auth-primary" disabled={busy||loading||!journalReady} onClick={()=>setForm(true)}>Registrar compra REAL</button></div>}
+   
+      </>}
    {canWrite&&form&&<form className="real-auth-form real-ops-form" onSubmit={e=>void savePurchase(e)}>
      <h2>{pending?'Compra pendiente recuperada':'Nueva compra sin recepción'}</h2>
      <p>La identidad de cada compra y sus renglones se guarda en IndexedDB antes del POST. No guarda tokens, pero los datos comerciales NO están cifrados. Evitá dispositivos compartidos.</p>
@@ -399,12 +466,12 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
      <div className="real-auth-actions">
        <button type="submit" className="real-auth-primary" disabled={busy||!journalReady||draft.lines.some(x=>x.totalDraft!==null)||(!pending&&!consent)}>{busy?'Procesando…':pending?'Reintentar MISMA compra':'Registrar compra sin stock'}</button>
        {pending&&<button type="button" className="real-auth-secondary" disabled={busy} onClick={()=>void discardPurchase()}>Descartar tras verificar</button>}
-       <button type="button" className="real-auth-secondary" disabled={busy} onClick={()=>setForm(false)}>Cerrar formulario</button>
+       <button type="button" className="real-auth-secondary" disabled={busy} onClick={closePurchaseForm}>Cerrar formulario</button>
      </div>
    </form>}
-   {catalogMore&&<button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void more('catalog')}>Cargar 100 artículos más para compras</button>}
-   {suppliersMore&&<button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void more('suppliers')}>Cargar 100 proveedores más</button>}
-   {notice&&<p className="real-auth-message" role="status">{notice}</p>}
-   {error&&<p className="real-auth-message real-auth-error" role="alert">{error}</p>}
+      {form&&catalogMore&&<button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void more('catalog')}>Cargar 100 artículos más para compras</button>}
+   {form&&suppliersMore&&<button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void more('suppliers')}>Cargar 100 proveedores más</button>}
+   
+   
  </section>
 }

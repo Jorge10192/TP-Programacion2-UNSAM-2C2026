@@ -1,0 +1,71 @@
+/* E3-1E1 — Compras REAL. Presentación exclusiva, sin alterar lógica ni DEMO. */
+.real-workspace-mode .real-auth-main>.e3-purchases-page{max-width:1230px}
+.e3-purchases-page{min-width:0}
+.e3-purchases-page .real-business-nav{margin-bottom:24px}
+.e3-purchase-heading{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:12px 0 23px}
+.e3-purchase-heading-icon{display:grid;place-items:center;width:62px;height:62px;flex:0 0 62px;border-radius:18px;background:#e9f2ff;color:#2467be}
+.e3-purchase-heading-copy{flex:1;min-width:195px}
+.e3-purchase-eyebrow{display:block;margin-bottom:7px;text-transform:uppercase;letter-spacing:1.2px;font-size:11px;font-weight:850;color:#4976b4;overflow-wrap:anywhere}
+.e3-purchase-heading h1{font-size:clamp(24px,3vw,32px);line-height:1.3;color:#172943;margin:0 0 7px}
+.e3-purchase-heading p{font-size:13px;color:#64748b;line-height:1.6;margin:0}
+.e3-purchase-new-action{display:inline-flex;gap:9px;align-items:center;justify-content:center;margin-left:auto}
+.e3-purchase-backbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:0 0 21px;border-bottom:1px solid #e1e9f4;margin-bottom:24px}
+.e3-purchase-back{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:9px 15px;border:1px solid #cbdcf2;border-radius:12px;background:#edf4ff;color:#265eaa;font:inherit;font-size:13px;font-weight:850;cursor:pointer;transition:background .16s,transform .1s}
+.e3-purchase-back:hover:not(:disabled){background:#dceaff}
+.e3-purchase-back:active:not(:disabled){background:#c9ddfb;transform:translateY(1px);box-shadow:inset 0 2px 5px #174a8822}
+.e3-purchase-back:disabled{opacity:.6;cursor:not-allowed}
+.e3-purchase-view-tag{display:inline-flex;border:1px solid #dce6f2;background:#f5f8fd;border-radius:999px;color:#49698f;padding:7px 12px;font-size:11px;font-weight:800}
+.e3-purchase-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0 21px}
+.e3-purchase-stats>div{padding:16px 18px;min-width:0;border:1px solid #e0e9f5;border-radius:14px;background:#f6f9fd;display:grid;gap:8px}
+.e3-purchase-stats span{font-size:12px;font-weight:700;color:#5d728e}
+.e3-purchase-stats strong{font-size:26px;line-height:1.2;color:#18549d;font-variant-numeric:tabular-nums}
+.e3-purchase-filters{display:flex;gap:13px;align-items:flex-end;flex-wrap:wrap;margin:16px 0}
+.e3-purchase-search{display:flex;align-items:center;gap:9px;flex:1 1 280px;min-width:0;min-height:46px;border:1px solid #cbdcf0;border-radius:11px;background:#fff;color:#6183ac;padding:0 14px}
+.e3-purchase-search:focus-within{border-color:#3980e2;box-shadow:0 0 0 3px #3980e219}
+.e3-purchase-search input{flex:1;min-width:0;padding:10px 0;border:0;outline:none;background:transparent;color:#193657;font:inherit;font-size:13px}
+.e3-purchase-filters>label:not(.e3-purchase-search){display:grid;gap:7px;min-width:156px;color:#506b89;font-size:12px;font-weight:800}
+.e3-purchase-filters select{min-height:46px;width:100%;padding:9px 12px;border:1px solid #cbdcf0;border-radius:10px;background:#fff;color:#193657;font:inherit}
+.e3-purchase-visually-hidden{position:absolute;width:1px;height:1px;white-space:nowrap;clip:rect(0,0,0,0);overflow:hidden}
+.e3-purchase-scope-note{margin:0 0 16px;padding:11px 14px;background:#f2f7ff;border-left:3px solid #8bb3eb;border-radius:8px;color:#506f94;font-size:12px;line-height:1.65}
+.e3-purchases-page .e3-purchase-toolbar{margin:12px 0;align-items:center}
+.e3-purchases-page .e3-purchases-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin:15px 0 24px}
+.e3-purchases-page .e3-purchases-grid .real-supply-card{border:1px solid #dae6f4;background:#fff;border-radius:16px;padding:20px;gap:13px}
+.e3-purchases-page .real-supply-card .real-catalog-tile-header strong{font-size:17px;color:#172943}
+.e3-purchases-page .real-supply-total{font-size:21px}
+.e3-purchases-page .real-supply-card ul{padding-top:11px;border-top:1px solid #e7edf5;color:#516d8b}
+.e3-purchases-page .real-supply-card button{transition:background .16s,transform .1s,box-shadow .16s}
+.e3-purchases-page .real-supply-card button:active:not(:disabled){transform:translateY(1px);box-shadow:inset 0 2px 5px #1b53871e}
+.e3-purchases-page>.real-ops-form{background:#fff;border:1px solid #dce6f3;border-radius:17px;padding:clamp(18px,3vw,31px);margin:18px 0 24px;box-shadow:0 5px 20px #17436f09}
+.e3-purchases-page>.real-ops-form>h2{font-size:21px;color:#1e4e87;margin:0 0 8px}
+.e3-purchases-page>.real-ops-form>p{font-size:12px;line-height:1.6;color:#5b7594;border-bottom:1px solid #e5edf7;padding-bottom:17px;margin:0 0 20px}
+.e3-purchases-page>.real-ops-form .real-intent-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;min-width:0}
+.e3-purchases-page>.real-ops-form .real-intent-fields>label{min-width:0}
+.e3-purchases-page>.real-ops-form .real-intent-fields>label input,
+.e3-purchases-page>.real-ops-form .real-intent-fields>label select,
+.e3-purchases-page>.real-ops-form .real-intent-fields>label textarea{width:100%;min-width:0}
+.e3-purchases-page>.real-ops-form .real-supply-line,
+.e3-purchases-page>.real-ops-form .real-supply-grand-total,
+.e3-purchases-page>.real-ops-form .real-intent-fields>p,
+.e3-purchases-page>.real-ops-form .real-intent-fields>button{grid-column:1/-1}
+.e3-purchases-page>.real-ops-form .real-supply-line{border-color:#dbe6f5;background:#f8fbff;padding:19px;border-radius:13px}
+.e3-purchases-page>.real-ops-form .real-supply-grand-total{background:#f1f7ff;border:1px solid #d8e8fb;border-radius:12px;padding:17px 19px;margin-top:5px}
+.e3-purchases-page>.real-ops-form .real-supply-grand-total strong{font-size:24px}
+.e3-purchases-page>.real-ops-form .real-auth-actions{padding-top:17px;border-top:1px solid #e5edf7;margin-top:20px}
+.e3-purchases-page button:focus-visible,.e3-purchases-page input:focus-visible,.e3-purchases-page select:focus-visible,.e3-purchases-page textarea:focus-visible{outline:3px solid #3980e2;outline-offset:2px}
+.e3-purchases-page .e3-purchase-heading h1:focus{outline:2px solid #3980e2;outline-offset:4px;border-radius:4px}
+@media(max-width:930px){.e3-purchases-page .e3-purchases-grid{grid-template-columns:1fr}}
+@media(max-width:710px){
+ .e3-purchase-new-action{margin:0;width:100%}
+ .e3-purchase-heading-icon{width:52px;height:52px;flex-basis:52px;border-radius:14px}
+ .e3-purchases-page>.real-ops-form .real-intent-fields{grid-template-columns:1fr}
+ .e3-purchases-page>.real-ops-form .real-supply-line,.e3-purchases-page>.real-ops-form .real-supply-grand-total{grid-column:1}
+ .e3-purchase-filters{flex-direction:column;align-items:stretch}
+ .e3-purchase-search{flex-basis:auto}
+}
+@media(max-width:480px){
+ .e3-purchase-stats{gap:7px}
+ .e3-purchase-stats>div{padding:12px 10px}
+ .e3-purchase-stats span{font-size:10px}
+ .e3-purchase-stats strong{font-size:22px}
+}
+@media(prefers-reduced-motion:reduce){.e3-purchase-back,.e3-purchases-page .real-supply-card button{transition:none}}
