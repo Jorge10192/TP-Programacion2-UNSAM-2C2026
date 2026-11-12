@@ -417,7 +417,7 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
               className={'real-pos-product e3-pos-product-card'+
                 (existing?' e3-pos-card-in-cart':'')} aria-label={'Artículo '+item.name}>
               <RealPhotoPreview token={token} owner={{kind:'CATALOG',businessId,resourceId:item.id}}
-                alt={"Foto de "+item.name} className="e3-pos-card-image"/>
+                alt={"Foto de "+item.name} className="e3-pos-card-image" fallbackIcon={item.item_type==='SERVICIO'?'briefcase':'package'}/>
               <span className="e3-pos-card-category">{item.category||item.kind}</span>
               <strong>{item.name}</strong>
               <small>SKU: {item.sku||'Sin SKU'} · {item.unit}</small>
