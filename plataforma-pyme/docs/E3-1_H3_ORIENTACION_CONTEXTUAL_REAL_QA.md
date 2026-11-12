@@ -21,6 +21,12 @@ Cerrar la primera experiencia de configuración con orientación **contextual y 
 
 La acción del perfil que abre la pantalla se denomina **«Ingresar código de invitación»**, igual que el título de la pantalla de ingreso. El botón dentro del formulario conserva **«Aceptar invitación»**, ya que únicamente este último envía el código de 43 caracteres al backend. El secreto sigue en estado React en memoria, no se copia a URLs ni a almacenamiento local. Se añadió una comprobación E2E de navegación sin aceptación accidental en `auth-registration-ui.spec.ts`. No se modifican permisos, token ni contratos de API.
 
+## Ajuste final aprobado: invitaciones plegables
+
+En **Equipo → Invitar a un colaborador**, el encabezado funciona como botón accesible y muestra inicialmente el formulario plegado. Al activarlo con clic, Enter o Espacio se despliega el formulario REAL original para ingresar correo y rol y emitir el código de un solo uso. `aria-expanded`, `aria-controls`, indicador de apertura y foco visible permiten usarlo con teclado o lector de pantalla. Plegar el formulario no emite invitaciones, no borra el borrador y no modifica permisos, API, idempotencia, ni datos. Tras emitir, el código sigue visible en el panel abierto hasta ocultarlo manualmente. El encabezado permanece deshabilitado mientras se emite, para evitar ocultar la respuesta por accidente.
+
+Se amplió la prueba E2E `locations-team-visual.spec.ts` para comprobar panel cerrado inicialmente, apertura por teclado, cierre/reapertura, ningún POST al alternar y ausencia de formulario para roles sin permiso. Se exige CI verde sobre el nuevo commit y revisión de escritorio/móvil.
+
 ## Salvaguardas
 
 1. No se cambian `FastAPI`, SQL, Alembic, RBAC, autenticación ni endpoints.
