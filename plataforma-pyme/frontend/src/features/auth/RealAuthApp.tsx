@@ -301,7 +301,7 @@ export function RealAuthApp() {
         <span className="real-auth-eyebrow">{isProfile ? 'Cuenta personal' : 'Acceso seguro'}</span>
         {isProfile ? <>
           <div className="e3-profile-heading">
-            <span className="e3-profile-avatar"><RealPhotoPreview token={session.token} owner={{kind:'PROFILE'}} alt="Foto de perfil" revision={photoRevision}/></span>
+            <span className="e3-profile-avatar"><RealPhotoPreview token={session.token} owner={{kind:'PROFILE'}} alt="Foto de perfil" revision={photoRevision} fallbackText={session.user.display_name.slice(0,1).toUpperCase() || "U"}/></span>
             <div>
               <h1>Mi perfil</h1>
               <p>Consultá los datos de tu cuenta y administrá el acceso a tus empresas.</p>
