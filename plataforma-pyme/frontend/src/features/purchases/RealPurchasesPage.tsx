@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiHttpError } from '../../api/httpClient.ts'
-import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
+import { Icon } from '../../app/Icon.tsx'
+import './realPurchasesVisual.css'
+import { createOperationsGateway, canReadTeam } from '../businesses/realOperationsGateway.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
-import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
+import type { LocationRecord, TeamMember } from '../businesses/realOperationsGateway.ts'
 import { createCatalogGateway, centsToPesos } from '../catalog/realCatalogGateway.ts'
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
 import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents, purchaseStatusPresentation, missingReceiptMessage, inspectReceipt,
@@ -30,11 +32,17 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
  const alive=useRef(true)
  const receiptLookup=useRef(false)
  const receiptDetailRef=useRef<HTMLDivElement|null>(null)
+ const backRef=useRef<HTMLButtonElement>(null)
+ const listTitleRef=useRef<HTMLHeadingElement>(null)
+ const lastFormView=useRef(false)
  const [business,setBusiness]=useState<RealBusiness|null>(null)
  const [purchases,setPurchases]=useState<Purchase[]>([])
  const [suppliers,setSuppliers]=useState<Supplier[]>([])
  const [catalog,setCatalog]=useState<CatalogItem[]>([])
  const [locations,setLocations]=useState<LocationRecord[]>([])
+ const [teamActors,setTeamActors]=useState<{
+   businessId:string;people:Array<Pick<TeamMember,'user_id'|'display_name'>>
+ }|null>(null)
  const [hasMore,setHasMore]=useState(false)
  const [catalogMore,setCatalogMore]=useState(false)
  const [suppliersMore,setSuppliersMore]=useState(false)
@@ -48,6 +56,8 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
  const [pending,setPending]=useState<Extract<SupplyPending,{kind:'purchase.create'}>|null>(null)
  const [pendingReceipt,setPendingReceipt]=useState<Extract<SupplyPending,{kind:'purchase.receive'}>|null>(null)
  const [shownReceipt,setShownReceipt]=useState<PurchaseReceipt|null>(null)
+ const [search,setSearch]=useState('')
+ const [stateFilter,setStateFilter]=useState<'TODAS'|'REGISTRADA'|'RECIBIDA'|'CANCELADA'>('TODAS')
  useEffect(()=>{
    if(!shownReceipt)return
    const detail=receiptDetailRef.current
@@ -93,6 +103,24 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
    }).finally(()=>{if(!ctrl.signal.aborted&&alive.current)setLoading(false)})
    return ()=>{ctrl.abort();alive.current=false}
  },[api,catalogApi,companies,businessId,purchaseScope,onUnauthorized])
+ // El equipo es privado: consultarlo únicamente cuando el servidor ya informó
+ // que la membresía puede leerlo. La recepción histórica no se atribuye
+ // al usuario conectado si pertenece a otra persona.
+ useEffect(()=>{
+   const controller=new AbortController()
+   if(!business||business.id!==businessId||!canReadTeam(business))
+     return ()=>controller.abort()
+   void companies.team(businessId,controller.signal).then(rows=>{
+     if(!controller.signal.aborted)
+       setTeamActors({businessId,people:rows.map(({user_id,display_name})=>({user_id,display_name}))})
+   }).catch(err=>{
+     if(controller.signal.aborted)return
+     if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+     // 403 o falta de acceso: mantener nombres no disponibles;
+     // no filtrar personas ni hacer una segunda solicitud.
+   })
+   return ()=>controller.abort()
+ },[business,businessId,companies,onUnauthorized])
  const canWrite=business?.status==='ACTIVA'&&business.membership.status==='ACTIVA'
   &&['TITULAR_ADMINISTRATIVO','ADMINISTRADOR'].includes(business.membership.role)
  const canReceive=business?.status==='ACTIVA'&&business.membership.status==='ACTIVA'
@@ -101,6 +129,27 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
  const activeSuppliers=suppliers.filter(x=>x.status==='ACTIVO')
  const totalPreview=draft.lines.some(x=>x.totalDraft!==null)?null:previewPurchaseTotalCents(draft.lines)
  const selected=purchases.find(x=>x.id===receiptFor)
+ const visiblePurchases=purchases.filter(p=>
+   (stateFilter==='TODAS'||p.status===stateFilter)
+   &&[p.reference,p.supplier_name_snapshot,p.id].some(value=>
+     (value??'').toLocaleLowerCase('es-AR').includes(search.trim().toLocaleLowerCase('es-AR'))))
+ const receivedCount=purchases.filter(p=>p.status==='RECIBIDA').length
+ const registeredCount=purchases.filter(p=>p.status==='REGISTRADA').length
+ useEffect(()=>{
+   if(lastFormView.current===form)return
+   if(form)backRef.current?.focus()
+   else listTitleRef.current?.focus()
+   lastFormView.current=form
+ },[form])
+ function closePurchaseForm(){
+   if(busy||pending)return
+   setForm(false);setDraft(emptyDraft());setConsent(false);setError('')
+ }
+ function startPurchaseForm(){
+   if(!canWrite||busy||loading||!journalReady)return
+   setDraft(emptyDraft());setConsent(false);setError('');setNotice('');setForm(true)
+ }
+
  function failed(err:unknown){
    if(!alive.current)return
    if(err instanceof ApiHttpError&&err.status===401){onUnauthorized();return}
@@ -284,23 +333,60 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
      setError(err instanceof Error?err.message:'El importe total del renglón no es válido.')
    }
  }
- return <section className="real-auth-card real-business-panel">
+ return <section className="real-auth-card real-business-panel e3-purchases-page">
+   {form&&<div className="e3-purchases-backbar">
+     <button ref={backRef} type="button" className="e3-purchases-back"
+       disabled={busy||!!pending} onClick={closePurchaseForm}>
+       <Icon name="arrow-left" size={18}/>Volver a compras
+     </button>
+     {pending&&<span className="e3-purchases-pending-label">Intención pendiente: conservar clave</span>}
+   </div>}
+   {!form&&<>
    <nav className="real-business-nav" aria-label="Operaciones REAL">
      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId)}>Empresa</button>
      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/proveedores')}>Proveedores</button>
      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/catalogo')}>Catálogo</button>
      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/ubicaciones')}>Ubicaciones</button>
    </nav>
-   <span className="real-auth-eyebrow">E2-7 · T07 · Compras REAL</span>
-   <h1>Compras y recepción</h1>
-   <p>Empresa: <strong>{business?.name??'Cargando'}</strong>. Registrar una compra no aumenta inventario. Solo una recepción confirmada agrega stock.</p>
+   <header className="e3-purchases-heading">
+     <span className="e3-purchases-heading-icon"><Icon name="shopping" size={27}/></span>
+     <div className="e3-purchases-heading-copy">
+       <span className="e3-purchases-kicker">{business?.name??'Empresa'} · Comercial</span>
+       <h1 ref={listTitleRef} tabIndex={-1}>Compras y recepción</h1>
+       <p>Registrá compras, consultá comprobantes y recibí mercadería en ubicaciones autorizadas.</p>
+     </div>
+     {canWrite&&<button type="button" className="real-auth-primary e3-purchases-heading-action"
+       disabled={busy||loading||!journalReady} onClick={startPurchaseForm}>
+       <Icon name="plus" size={17}/>Registrar compra REAL
+     </button>}
+   </header>
+   <p className="e3-purchases-safety-note">Registrar una compra no aumenta el inventario. Solo una recepción confirmada agrega stock real.</p>
+   {!loading&&<div className="e3-purchases-summary" aria-label="Resumen de compras cargadas">
+     <div><span>Compras cargadas</span><strong>{purchases.length}</strong></div>
+     <div><span>Pendientes de recepción</span><strong>{registeredCount}</strong></div>
+     <div><span>Recibidas</span><strong>{receivedCount}</strong></div>
+   </div>}
+   {!loading&&purchases.length>0&&<div className="e3-purchases-filterbar">
+     <label className="e3-purchases-search"><Icon name="search" size={17}/>
+       <input type="search" aria-label="Buscar compras cargadas" placeholder="Buscar por referencia o proveedor"
+         value={search} onChange={e=>setSearch(e.target.value)}/>
+     </label>
+     <label className="e3-purchases-state-filter">Estado
+       <select aria-label="Filtrar compras por estado" value={stateFilter}
+         onChange={e=>setStateFilter(e.target.value as typeof stateFilter)}>
+         <option value="TODAS">Todas</option><option value="REGISTRADA">Pendientes</option>
+         <option value="RECIBIDA">Recibidas</option><option value="CANCELADA">Canceladas</option>
+       </select>
+     </label>
+   </div>}
    <div className="real-ops-toolbar"><strong>{purchases.length} compras cargadas{hasMore?' (no es todo el historial)':''}</strong>
      <button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void refresh()}>Actualizar datos</button>
    </div>
    {loading&&<p role="status">Consultando proveedores, catálogo, compras y ubicaciones…</p>}
    {!loading&&purchases.length===0&&<div className="real-business-empty">Todavía no hay compras reales en esta empresa.</div>}
-   <div className="real-supply-list">
-     {purchases.map(p=>{const visualState=purchaseStatusPresentation(p.status);return <article key={p.id} className="real-supply-card">
+   {!loading&&purchases.length>0&&visiblePurchases.length===0&&<div className="real-business-empty">No encontramos compras con esos filtros en las páginas cargadas.</div>}
+   <div className="real-supply-list e3-purchases-card-list">
+     {visiblePurchases.map(p=>{const visualState=purchaseStatusPresentation(p.status);return <article key={p.id} className="real-supply-card">
        <div className="real-catalog-tile-header"><strong>{p.reference||'Compra '+p.id.slice(0,8)}</strong><span className={"real-catalog-status "+(visualState.tone==="pending"?"real-supply-pending-status":visualState.tone==="confirmed"?"real-catalog-active":"real-supply-neutral-status")}>{visualState.label}</span></div>
        <small>{p.purchased_on} · Proveedor: {p.supplier_name_snapshot||'Sin proveedor'} · {p.lines.length} {p.lines.length === 1 ? 'renglón' : 'renglones'}</small>
        <strong className="real-supply-total">{money(p.total_cents)}</strong>
@@ -310,6 +396,7 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
        {shownReceipt?.purchase_id===p.id&&<div ref={receiptDetailRef} tabIndex={-1} className="real-supply-receipt-focus" aria-label="Comprobante de recepción consultado">
          <RealReceiptDetail receipt={shownReceipt} purchase={p}
            locations={locations} viewer={{id:userId,displayName:userDisplayName}}
+           actors={business&&canReadTeam(business)&&teamActors?.businessId===businessId?teamActors.people:[]}
            onClose={()=>setShownReceipt(null)}/>
        </div>}
 
@@ -332,10 +419,21 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
        <button className="real-auth-secondary" type="button" disabled={busy} onClick={()=>setReceiptFor(null)}>Cerrar</button>
      </div>
    </section>}
-   {canWrite&&!form&&<div className="real-auth-actions"><button type="button" className="real-auth-primary" disabled={busy||loading||!journalReady} onClick={()=>setForm(true)}>Registrar compra REAL</button></div>}
-   {canWrite&&form&&<form className="real-auth-form real-ops-form" onSubmit={e=>void savePurchase(e)}>
-     <h2>{pending?'Compra pendiente recuperada':'Nueva compra sin recepción'}</h2>
-     <p>La identidad de cada compra y sus renglones se guarda en IndexedDB antes del POST. No guarda tokens, pero los datos comerciales NO están cifrados. Evitá dispositivos compartidos.</p>
+   </>}
+   {form&&canWrite&&<section className="e3-purchases-form-view">
+     <header className="e3-purchases-heading e3-purchases-form-heading">
+       <span className="e3-purchases-heading-icon"><Icon name="shopping" size={27}/></span>
+       <div className="e3-purchases-heading-copy">
+         <span className="e3-purchases-kicker">{business?.name??'Empresa'} · Compras</span>
+         <h1>{pending?'Compra pendiente recuperada':'Nueva compra'}</h1>
+         <p>Seleccioná proveedor, fecha y renglones. El stock se registra únicamente al confirmar la recepción.</p>
+       </div>
+     </header>
+     <form className="real-auth-form real-ops-form e3-purchases-editor" onSubmit={e=>void savePurchase(e)}>
+     <div className="e3-purchases-form-section-head">
+       <h2>Datos de la compra</h2>
+       <p>La identidad de cada compra y sus renglones se guarda en IndexedDB antes del POST. No guarda tokens; los datos comerciales no están cifrados. Evitá dispositivos compartidos.</p>
+     </div>
      <fieldset className="real-intent-fields" disabled={busy||!!pending||!journalReady}>
        <label>Fecha de compra<input type="date" required value={draft.date} onChange={e=>setDraft(old=>({...old,date:e.target.value}))}/></label>
        <label>Proveedor (opcional)
@@ -399,9 +497,9 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
      <div className="real-auth-actions">
        <button type="submit" className="real-auth-primary" disabled={busy||!journalReady||draft.lines.some(x=>x.totalDraft!==null)||(!pending&&!consent)}>{busy?'Procesando…':pending?'Reintentar MISMA compra':'Registrar compra sin stock'}</button>
        {pending&&<button type="button" className="real-auth-secondary" disabled={busy} onClick={()=>void discardPurchase()}>Descartar tras verificar</button>}
-       <button type="button" className="real-auth-secondary" disabled={busy} onClick={()=>setForm(false)}>Cerrar formulario</button>
+       <button type="button" className="real-auth-secondary" disabled={busy||!!pending} onClick={closePurchaseForm}>Cancelar</button>
      </div>
-   </form>}
+   </form></section>}
    {catalogMore&&<button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void more('catalog')}>Cargar 100 artículos más para compras</button>}
    {suppliersMore&&<button type="button" className="real-auth-secondary" disabled={busy||loading} onClick={()=>void more('suppliers')}>Cargar 100 proveedores más</button>}
    {notice&&<p className="real-auth-message" role="status">{notice}</p>}
