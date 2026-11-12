@@ -62,7 +62,7 @@ test('T11-F: UI sede, catálogo y proveedor con estados persistentes después de
   expect((await get('/locations'))[0].status).toBe('ACTIVA')
 
   await page.getByRole('button', { name: 'Empresa', exact: true }).click()
-  await page.getByRole('button', { name: 'Catálogo REAL' }).click()
+  await page.getByRole('button', { name: 'Abrir Catálogo' }).click()
   await expect(page.getByRole('heading', { name: 'Catálogo de artículos' })).toBeVisible()
   for (const [name, kind, price] of [
     ['Bien T11-F CRUD', 'REVENTA', '1500'],
@@ -93,7 +93,7 @@ test('T11-F: UI sede, catálogo y proveedor con estados persistentes después de
   await expect(good).toContainText('ACTIVO')
 
   await page.getByRole('button', { name: 'Empresa', exact: true }).click()
-  await page.getByRole('button', { name: 'Proveedores REAL' }).click()
+  await page.getByRole('button', { name: 'Abrir Proveedores' }).click()
   await expect(page.getByRole('heading', { name: 'Proveedores' })).toBeVisible()
   await page.getByLabel('Nombre comercial').fill('Proveedor T11-F CRUD')
   await page.getByRole('button', { name: 'Crear proveedor' }).click()

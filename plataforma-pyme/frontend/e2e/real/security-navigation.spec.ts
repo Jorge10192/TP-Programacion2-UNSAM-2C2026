@@ -59,7 +59,7 @@ test('T11-C: cambiar A→B ignora respuesta tardía de A y no filtra proveedores
   await page.getByRole('button', { name: 'Mis empresas' }).click()
   await expect(page.getByRole('heading', { name: 'Mis empresas' })).toBeVisible()
   await page.getByRole('button', { name: /T11 Empresa Alfa/ }).click()
-  await expect(page.getByRole('heading', { name: 'Empresa real' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Datos de la empresa' })).toBeVisible()
 
   let releaseA: (() => void) | undefined
   let observedA: (() => void) | undefined
@@ -71,14 +71,14 @@ test('T11-C: cambiar A→B ignora respuesta tardía de A y no filtra proveedores
     await delayA
     await route.continue().catch(() => {}) // navigation may abort stale GET
   })
-  await page.getByRole('button', { name: 'Proveedores REAL' }).click()
+  await page.getByRole('button', { name: 'Abrir Proveedores' }).click()
   try {
     await interceptedA
     await page.getByRole('button', { name: 'Mis empresas' }).click()
     await expect(page.getByRole('heading', { name: 'Mis empresas' })).toBeVisible()
     await page.getByRole('button', { name: /T11 Empresa Beta/ }).click()
-    await expect(page.getByRole('heading', { name: 'Empresa real' })).toBeVisible()
-    await page.getByRole('button', { name: 'Proveedores REAL' }).click()
+    await expect(page.getByRole('heading', { name: 'Datos de la empresa' })).toBeVisible()
+    await page.getByRole('button', { name: 'Abrir Proveedores' }).click()
     await expect(page.getByText(supplierB)).toBeVisible()
   } finally {
     releaseA?.()
