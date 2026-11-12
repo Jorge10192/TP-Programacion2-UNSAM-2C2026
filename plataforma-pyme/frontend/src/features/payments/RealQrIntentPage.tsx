@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ApiHttpError } from '../../api/httpClient.ts'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
 import { createQrIntentGateway, qrIntentError } from './qrIntentGateway.ts'
-import type { QrIntent } from './qrIntentGateway.ts'
+import type { QrIntent, QrPaymentEvent, QrSimAction } from './qrIntentGateway.ts'
 import './realQrIntent.css'
 
 type Props = {
@@ -15,6 +15,13 @@ type Props = {
   onUnauthorized: () => void
 }
 
+const LAB_UI_ENABLED = import.meta.env.VITE_PYME_ENABLE_QR_DEMO_LAB === '1'
+const ACTIONS: { action: QrSimAction; label: string }[] = [
+  { action: 'APROBAR', label: 'Simular aprobación' },
+  { action: 'RECHAZAR', label: 'Simular rechazo' },
+  { action: 'EXPIRAR', label: 'Simular vencimiento' },
+  { action: 'INDETERMINAR', label: 'Simular resultado incierto' },
+]
 const pesos = (c: number) => new Intl.NumberFormat('es-AR', {
   style: 'currency', currency: 'ARS',
 }).format(c / 100)
@@ -33,6 +40,10 @@ export function RealQrIntentPage({
   const [intent, setIntent] = useState<QrIntent | null>(null)
   const [companyName, setCompanyName] = useState('')
   const [siteName, setSiteName] = useState('')
+  const [isManager, setIsManager] = useState(false)
+  const [events, setEvents] = useState<QrPaymentEvent[]>([])
+  const [uncertain, setUncertain] = useState(false)
+  const actionRef = useRef<{action: QrSimAction; key: string} | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -46,11 +57,15 @@ export function RealQrIntentPage({
     setLoading(true); setError(''); setIntent(null)
     void Promise.all([
       api.get(intentId, ctrl.signal),
+      api.events(intentId, ctrl.signal),
       operations.business(businessId, ctrl.signal),
       operations.locations(businessId, ctrl.signal),
-    ]).then(([qr, company, sites]) => {
+    ]).then(([qr, history, company, sites]) => {
       if (ctrl.signal.aborted) return
       setIntent(qr)
+      setEvents(history)
+      setIsManager(['TITULAR_ADMINISTRATIVO','ADMINISTRADOR'].includes(company.membership.role) &&
+        company.status === 'ACTIVA')
       setCompanyName(company.name)
       setSiteName(sites.find(site => site.id === qr.location_id)?.name ?? '')
     }).catch(err => {
@@ -65,10 +80,12 @@ export function RealQrIntentPage({
   const displayStatus = intent && intent.status === 'ESPERANDO_PAGO' && secondsRemaining === 0
     ? 'EXPIRADA' : intent?.status
   async function refresh() {
+
     if (busy || !intent) return
     setBusy(true); setError('')
     try {
-      setIntent(await api.get(intentId))
+      const [current, history] = await Promise.all([api.get(intentId), api.events(intentId)])
+      setIntent(current); setEvents(history)
     } catch (err) {
       if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
       else setError(qrIntentError(err))
@@ -78,8 +95,34 @@ export function RealQrIntentPage({
     if (busy || displayStatus !== 'ESPERANDO_PAGO') return
     if (!window.confirm('¿Cancelar este intento QR de prueba? No se generó una venta.')) return
     setBusy(true); setError('')
-    try { setIntent(await api.cancel(intentId)) }
+    try {
+      const result = await api.cancel(intentId)
+      setIntent(result)
+      setEvents(await api.events(intentId))
+    }
     catch (err) {
+      if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
+      else setError(qrIntentError(err))
+    } finally { setBusy(false) }
+  }
+
+  async function simulate(action: QrSimAction, replay = false) {
+    if (!LAB_UI_ENABLED || !isManager || busy || !intent ||
+        !['ESPERANDO_PAGO','INDETERMINADA'].includes(displayStatus ?? '')) return
+    if (uncertain && !replay) return
+    if (!replay) actionRef.current = { action, key: crypto.randomUUID() }
+    const original = actionRef.current
+    if (!original) return
+    setBusy(true); setError('')
+    try {
+      const result = await api.simulate(intentId, original.action, original.key)
+      const history = await api.events(intentId)
+      setIntent(result); setEvents(history)
+      setUncertain(false); actionRef.current = null
+    } catch (err) {
+      const unknown = err instanceof ApiTransportError || (err instanceof ApiHttpError && err.status >= 500)
+      if (unknown) setUncertain(true)
+      else { actionRef.current = null; setUncertain(false) }
       if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
       else setError(qrIntentError(err))
     } finally { setBusy(false) }
@@ -126,6 +169,37 @@ export function RealQrIntentPage({
         </div>
       </div>
       <div className="e3-qr-details">
+        {LAB_UI_ENABLED && isManager && <div className="e3-qr-lab" aria-label="Laboratorio de cobros ficticios">
+          <h2>Laboratorio QR · Solo pruebas</h2>
+          <p><strong>Este laboratorio NO valida un cobro Mercado Pago.</strong> Solo cambia el estado DEMO del intento y registra un evento auditado. No crea ventas ni modifica stock.</p>
+          {displayStatus === 'ESPERANDO_PAGO' || displayStatus === 'INDETERMINADA'
+            ? <div className="e3-qr-lab-actions">
+              {!uncertain && ACTIONS.filter(row=>row.action!=='INDETERMINAR' ||
+                displayStatus==='ESPERANDO_PAGO').map(({action,label})=>
+                <button key={action} type="button" className="real-auth-secondary"
+                  disabled={busy || (secondsRemaining===0 && action!=='EXPIRAR')}
+                  onClick={()=>void simulate(action)}>{label}</button>)}
+              {uncertain && <>
+                <p role="alert">Resultado incierto: consultá el estado antes de intentar otra acción.</p>
+                <button type="button" className="real-auth-secondary" disabled={busy}
+                  onClick={()=>void refresh()}>Consultar estado y eventos</button>
+                <button type="button" className="real-auth-secondary" disabled={busy || !actionRef.current}
+                  onClick={()=>{ if(actionRef.current) void simulate(actionRef.current.action,true) }}>
+                  Reintentar mismo evento y clave
+                </button>
+              </>}
+            </div>
+            : <p role="status">El intento ya está resuelto; no pueden simularse nuevas transiciones.</p>}
+        </div>}
+        <div className="e3-qr-history">
+          <h2>Historial de eventos</h2>
+          <p>Registros del servidor, ordenados por secuencia. Ningún evento representa acreditación externa.</p>
+          {events.length === 0 ? <p>Aún no hay eventos registrados para este intento.</p> :
+            <ol>{events.map(e=><li key={e.id}>
+              <strong>{e.action}</strong> · {e.from_status} → {e.to_status}
+              <small>{new Date(e.created_at).toLocaleString('es-AR')} · Evento {e.sequence}</small>
+            </li>)}</ol>}
+        </div>
         <h2>Detalle de la venta</h2>
         <p><strong>Empresa:</strong> {companyName || 'Empresa activa'}</p>
         <p><strong>Ubicación:</strong> {intent.location_id ? siteName || 'Sede de venta' : 'Servicios sin sede'}</p>
@@ -148,7 +222,7 @@ export function RealQrIntentPage({
           <p className="e3-qr-grand-total">Total a cobrar <strong>{pesos(intent.total_cents)}</strong></p>
         </div>
         {intent.notes && <p className="e3-qr-note"><strong>Nota interna:</strong> {intent.notes}</p>}
-        <p className="e3-qr-footnote">Las imágenes son vistas actuales del catálogo; nombre, cantidad, precio e importes pertenecen al snapshot original. La aprobación simulada y el cierre real de venta se implementarán en B3–B4.</p>
+        <p className="e3-qr-footnote">Las imágenes son vistas actuales del catálogo; nombre, cantidad, precio e importes pertenecen al snapshot original. El laboratorio de B3 solo registra estados ficticios; el cierre de venta con control transaccional corresponde a B4.</p>
       </div>
     </div>}
   </section>
