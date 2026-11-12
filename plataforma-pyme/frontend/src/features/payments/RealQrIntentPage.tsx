@@ -4,6 +4,7 @@ import { RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
 import { createQrIntentGateway, qrIntentError } from './qrIntentGateway.ts'
 import type { QrIntent, QrPaymentEvent, QrSimAction } from './qrIntentGateway.ts'
+import type { SaleReceipt } from '../sales/realSalesReadGateway.ts'
 import './realQrIntent.css'
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
 }
 
 const LAB_UI_ENABLED = import.meta.env.VITE_PYME_ENABLE_QR_DEMO_LAB === '1'
+const FINALIZE_QA_ENABLED = LAB_UI_ENABLED && import.meta.env.VITE_PYME_ENABLE_QR_FINALIZATION_QA === '1'
 const ACTIONS: { action: QrSimAction; label: string }[] = [
   { action: 'APROBAR', label: 'Simular aprobación' },
   { action: 'RECHAZAR', label: 'Simular rechazo' },
@@ -42,6 +44,8 @@ export function RealQrIntentPage({
   const [siteName, setSiteName] = useState('')
   const [isManager, setIsManager] = useState(false)
   const [events, setEvents] = useState<QrPaymentEvent[]>([])
+  const [receipt, setReceipt] = useState<SaleReceipt | null>(null)
+  const [saleOutcomeUnknown, setSaleOutcomeUnknown] = useState(false)
   const [uncertain, setUncertain] = useState(false)
   const actionRef = useRef<{action: QrSimAction; key: string} | null>(null)
   const [loading, setLoading] = useState(true)
@@ -64,6 +68,11 @@ export function RealQrIntentPage({
       if (ctrl.signal.aborted) return
       setIntent(qr)
       setEvents(history)
+      if (qr.status === 'FINALIZADA') {
+        void api.receipt(intentId, ctrl.signal).then(sale=>{
+          if (!ctrl.signal.aborted && qr.sale_id === sale.id) setReceipt(sale)
+        }).catch(err=>{ if (!ctrl.signal.aborted) setError(qrIntentError(err)) })
+      }
       setIsManager(['TITULAR_ADMINISTRATIVO','ADMINISTRADOR'].includes(company.membership.role) &&
         company.status === 'ACTIVA')
       setCompanyName(company.name)
@@ -86,6 +95,11 @@ export function RealQrIntentPage({
     try {
       const [current, history] = await Promise.all([api.get(intentId), api.events(intentId)])
       setIntent(current); setEvents(history)
+      if (current.status === 'FINALIZADA') {
+        const sale = await api.receipt(intentId)
+        if (current.sale_id !== sale.id) throw new Error('Comprobante QR incompatible')
+        setReceipt(sale); setSaleOutcomeUnknown(false)
+      }
       if (actionRef.current && history.some(event => event.event_key === actionRef.current?.key)) {
         setUncertain(false); actionRef.current = null
       }
@@ -129,6 +143,24 @@ export function RealQrIntentPage({
       else { actionRef.current = null; setUncertain(false) }
       if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
       else setError(qrIntentError(err))
+    } finally { setBusy(false) }
+  }
+
+  async function finalizeDemoSale() {
+    if (!FINALIZE_QA_ENABLED || !isManager || busy || intent?.status !== 'APROBADA_DEMO') return
+    if (!window.confirm('¿Registrar UNA venta interna en la base de pruebas? Se descontará stock QA. Esta operación NO acredita dinero real.')) return
+    setBusy(true); setError('')
+    try {
+      const done = await api.finalize(intentId)
+      setIntent(done.intent); setReceipt(done.sale)
+      setEvents(await api.events(intentId))
+      setSaleOutcomeUnknown(false)
+    } catch (err) {
+      if (err instanceof ApiTransportError || (err instanceof ApiHttpError && err.status >= 500))
+        setSaleOutcomeUnknown(true)
+      if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
+      else setError(qrIntentError(err) +
+        ' Antes de repetir el cierre consultá el estado de la venta por GET.')
     } finally { setBusy(false) }
   }
 
@@ -197,7 +229,31 @@ export function RealQrIntentPage({
             </div>
             : <p role="status">El intento ya está resuelto; no pueden simularse nuevas transiciones.</p>}
         </div>}
-        <div className="e3-qr-history">
+        {FINALIZE_QA_ENABLED && isManager && intent.status === 'APROBADA_DEMO' &&
+          <section className="e3-qr-finalize" aria-label="Registrar venta QA">
+            <h2>Confirmar venta de prueba</h2>
+            <p>El pago fue aprobado únicamente por el simulador. Este botón registra UNA venta en PostgreSQL QA y descuenta stock de forma transaccional, sin mover dinero real.</p>
+            <button type="button" className="real-auth-primary" disabled={busy || saleOutcomeUnknown}
+              onClick={()=>void finalizeDemoSale()}>
+              {busy ? 'Registrando…' : 'Registrar venta QA y descontar stock'}
+            </button>
+            {saleOutcomeUnknown && <p role="alert">Resultado incierto: consultá estado, eventos y comprobante mediante GET. No generes otro QR.</p>}
+          </section>}
+        {intent.status === 'REQUIERE_REVISION' &&
+          <p className="e3-qr-warning" role="alert"><strong>Requiere revisión:</strong> la venta no fue registrada. El stock, la sede o el catálogo deben verificarse. No hubo un débito parcial.</p>}
+        {intent.status === 'FINALIZADA' && <section className="e3-qr-finalize" aria-label="Venta QA confirmada">
+          <h2>Venta de prueba confirmada</h2>
+          <p><strong>Registro QA, no dinero real.</strong> El comprobante está vinculado a este QR. No se puede registrar otra venta con el mismo intento.</p>
+          {receipt ? <div>
+              <p>Comprobante: <code>{receipt.id}</code></p>
+              <p>Total: <strong>{pesos(receipt.total_cents)}</strong> · Medio: Mercado Pago DEMO QA</p>
+              <p>Renglones: {receipt.lines.length} · Movimientos de inventario: {receipt.balances_after.length} saldos actualizados</p>
+            </div> : <button type="button" className="real-auth-secondary" disabled={busy}
+                onClick={()=>void refresh()}>Consultar comprobante</button>}
+        </section>}
+        {saleOutcomeUnknown && <button type="button" className="real-auth-secondary"
+          disabled={busy} onClick={()=>void refresh()}>Consultar resultado original del cierre</button>}
+                <div className="e3-qr-history">
           <h2>Historial de eventos</h2>
           <p>Registros del servidor, ordenados por secuencia. Ningún evento representa acreditación externa.</p>
           {events.length === 0 ? <p>Aún no hay eventos registrados para este intento.</p> :
@@ -228,7 +284,7 @@ export function RealQrIntentPage({
           <p className="e3-qr-grand-total">Total a cobrar <strong>{pesos(intent.total_cents)}</strong></p>
         </div>
         {intent.notes && <p className="e3-qr-note"><strong>Nota interna:</strong> {intent.notes}</p>}
-        <p className="e3-qr-footnote">Las imágenes son vistas actuales del catálogo; nombre, cantidad, precio e importes pertenecen al snapshot original. El laboratorio de B3 solo registra estados ficticios; el cierre de venta con control transaccional corresponde a B4.</p>
+        <p className="e3-qr-footnote">Las imágenes son vistas actuales del catálogo; nombre, cantidad, precio e importes pertenecen al snapshot original. El laboratorio de B3 registra resultados ficticios. El cierre de B4, disponible solo en QA descartable, crea una venta interna; Mercado Pago no acredita fondos.</p>
       </div>
     </div>}
   </section>
