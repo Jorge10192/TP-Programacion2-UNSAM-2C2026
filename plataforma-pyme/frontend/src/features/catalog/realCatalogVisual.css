@@ -106,3 +106,54 @@
 @media(prefers-reduced-motion:reduce){
  .e3-commerce-card-actions button,.e3-commerce-back,.e3-commerce-page .e3-catalog-tile,.e3-commerce-page .e3-supplier-tile{transition:none}
 }
+
+/* E3-1D2A — alta/edición REAL de datos comerciales de proveedor. */
+.e3-supplier-contact-editor .e3-supplier-form-section{
+  margin:0 0 18px; min-width:0; border:1px solid #dce7f5;
+  border-radius:13px; background:#f9fbff; padding:20px;
+}
+.e3-supplier-contact-editor .e3-supplier-form-section legend{
+  padding:0 9px; margin-left:-7px; color:#234c86;
+  font-size:15px; font-weight:850; letter-spacing:.01em;
+}
+.e3-supplier-contact-editor .e3-commerce-form-grid{margin-top:5px}
+.e3-supplier-contact-editor .e3-supplier-form-section label,
+.e3-supplier-contact-editor .e3-supplier-whatsapp-control>label:first-child,
+.e3-supplier-contact-editor .e3-supplier-link-field>label:first-child{
+  display:grid; gap:8px; font-weight:750; font-size:12px; color:#2d4b73;
+  min-width:0;
+}
+.e3-supplier-contact-editor .e3-supplier-form-section input:not([type=checkbox]),
+.e3-supplier-contact-editor .e3-supplier-form-section textarea{
+  display:block; width:100%; min-width:0; padding:11px 13px;
+  min-height:45px; border:1px solid #c7d9f0; border-radius:10px;
+  background:#fff; color:#193353; font:inherit; font-size:13px;
+  overflow-wrap:anywhere;
+}
+.e3-supplier-contact-editor .e3-supplier-form-section textarea{
+  min-height:94px; line-height:1.55; resize:vertical;
+}
+.e3-supplier-contact-editor .e3-supplier-form-section input:disabled{
+  background:#eaf1fa; color:#64748b;
+}
+.e3-supplier-whatsapp-control,.e3-supplier-link-field{min-width:0}
+.e3-supplier-contact-editor .e3-supplier-same-phone{
+  display:flex!important; align-items:center; gap:8px; margin-top:8px;
+  font-size:11px!important; color:#53749b!important; font-weight:650!important;
+}
+.e3-supplier-contact-editor .e3-supplier-same-phone input{
+  width:17px; height:17px; min-height:0; accent-color:#376fc5; flex:none;
+}
+.e3-supplier-map-search{
+  display:inline-flex; flex-wrap:wrap; gap:5px; margin-top:9px;
+  color:#2563ad; font-size:11px; font-weight:800; line-height:1.5;
+}
+.e3-supplier-map-search span{color:#71839b; font-weight:500}
+.e3-supplier-detail-actions{margin-top:22px; gap:10px}
+.e3-supplier-detail-actions button{display:inline-flex;align-items:center;gap:8px}
+.e3-supplier-contact-editor .e3-commerce-form-actions{
+  padding:5px 0 2px; margin-top:8px; justify-content:flex-end;
+}
+@media(max-width:720px){
+ .e3-supplier-contact-editor .e3-supplier-form-section{padding:15px}
+}
