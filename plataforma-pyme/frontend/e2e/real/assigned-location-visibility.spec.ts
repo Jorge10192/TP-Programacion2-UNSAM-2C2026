@@ -90,7 +90,7 @@ test('T11-E: trabajador solo ve sus sedes SELL y STORE, revocación efectiva tra
 
   await page.getByRole('button', { name: 'Empresa', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Datos de la empresa' })).toBeVisible()
-  await page.getByRole('button', { name: 'Inventario REAL' }).click()
+  await page.getByRole('button', { name: 'Abrir Inventario' }).click()
   await expect(page.getByRole('heading', { name: 'Inventario' })).toBeVisible()
   await page.getByRole('button', { name: 'Transferir entre ubicaciones' }).click()
   await expect(page.getByRole('heading', { name: 'Trasladar stock entre ubicaciones' })).toBeVisible()
