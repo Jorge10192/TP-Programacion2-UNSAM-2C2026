@@ -9,7 +9,7 @@ const b = '713fa8a7-5c21-4c3b-9b39-ade992cf8df2'
 
 test('navegación REAL sólo expone endpoints existentes y ningún módulo DEMO/diferido', () => {
   assert.deepEqual(REAL_WORKSPACE_ITEMS.map(x => x.section), [
-    'inicio', '', 'ubicaciones', 'equipo', 'catalogo', 'proveedores',
+    'inicio', '', 'ubicaciones', 'equipo', 'medios-de-cobro', 'catalogo', 'proveedores',
     'compras', 'inventario', 'pos', 'ventas',
   ])
   for (const item of REAL_WORKSPACE_ITEMS) {
@@ -23,6 +23,7 @@ test('tenant switch debe resolver contexto nuevo y rechazar rutas arbitrarias', 
   assert.notEqual(realWorkspaceHref(a, 'catalogo'), realWorkspaceHref(b, 'catalogo'))
   assert.equal(realWorkspaceBusinessId(realWorkspaceHref(b, 'ventas')), b)
   assert.equal(realWorkspaceBusinessId(realWorkspaceHref(b, 'inicio')), b)
+  assert.equal(realWorkspaceBusinessId(realWorkspaceHref(b, 'medios-de-cobro')), b)
   assert.equal(realWorkspaceBusinessId('/real/empresas/' + a + '/cuentas'), null)
   assert.equal(realWorkspaceBusinessId('/b/' + a + '/catalogo'), null)
   assert.equal(realWorkspaceBusinessId('/real/empresas/' + a + '/ventas/otra'), null)
@@ -39,4 +40,5 @@ test('títulos de rutas de identidad y comercio se muestran sin datos WALOS', ()
   assert.equal(realWorkspaceTitle(realWorkspaceHref(a, 'inicio')), 'Inicio')
   assert.equal(realWorkspaceTitle(realWorkspaceHref(a, 'compras')), 'Compras y recepciones')
   assert.equal(realWorkspaceTitle(realWorkspaceHref(a, 'pos')), 'Punto de venta')
+  assert.equal(realWorkspaceTitle(realWorkspaceHref(a, 'medios-de-cobro')), 'Medios de cobro')
 })
