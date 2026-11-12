@@ -40,6 +40,7 @@ function routeFromPath(path: string): Route {
 /** Independent from E1's demoStore, fixtures and commercial navigation. */
 export function RealAuthApp() {
   const [path, setPath] = useState<Route>(() => routeFromPath(window.location.pathname))
+  const [photoRevision, setPhotoRevision] = useState(0)
   // UI-only preference for the current browser session; never stored or shared between users.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
@@ -300,7 +301,7 @@ export function RealAuthApp() {
         <span className="real-auth-eyebrow">{isProfile ? 'Cuenta personal' : 'Acceso seguro'}</span>
         {isProfile ? <>
           <div className="e3-profile-heading">
-            <span className="e3-profile-avatar"><RealPhotoPreview token={session.token} owner={{kind:'PROFILE'}} alt="Foto de perfil"/></span>
+            <span className="e3-profile-avatar"><RealPhotoPreview token={session.token} owner={{kind:'PROFILE'}} alt="Foto de perfil" revision={photoRevision}/></span>
             <div>
               <h1>Mi perfil</h1>
               <p>Consultá los datos de tu cuenta y administrá el acceso a tus empresas.</p>
@@ -312,7 +313,7 @@ export function RealAuthApp() {
             <div><dt>Teléfono</dt><dd>{session.user.contact_phone || 'No informado'}</dd></div>
             <div><dt>Estado de tu cuenta</dt><dd><span className="e3-status-pill">{session.user.status}</span></dd></div>
           </dl>
-          <RealPhotoManager token={session.token} owner={{kind:'PROFILE'}} title="Foto de perfil" canManage onUnauthorized={onBusinessAuthLost}/>
+          <RealPhotoManager token={session.token} owner={{kind:'PROFILE'}} title="Foto de perfil" canManage onUnauthorized={onBusinessAuthLost} onChanged={()=>setPhotoRevision(n=>n+1)}/>
           <details className="e3-technical-details">
             <summary>Información técnica de la cuenta</summary>
             <p>Identificador de usuario: <code>{session.user.id}</code></p>
