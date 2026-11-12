@@ -6,6 +6,8 @@ import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { createOperationsGateway, operationsError, canReadTeam, canManageTeam, canManageLocations } from '../businesses/realOperationsGateway.ts'
 import type { InvitationIssued, InvitationInput, TeamMember, MemberChanges } from '../businesses/realOperationsGateway.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
+import { RealSetupGuide } from '../onboarding/RealSetupGuide.tsx'
+import { teamSetupSuggestion } from '../onboarding/realSetupGuidance.ts'
 
 const roles = ['ADMINISTRADOR', 'ENCARGADO', 'TRABAJADOR'] as const
 const roleLabels: Record<(typeof roles)[number], string> = {
@@ -112,11 +114,18 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
     && [member.display_name, member.email, member.role, member.job_title ?? '']
       .some((value) => value.toLocaleLowerCase('es-AR').includes(search.trim().toLocaleLowerCase('es-AR'))))
   const activeMembers = members.filter((member) => member.status === 'ACTIVA').length
+  const setupSuggestion = teamSetupSuggestion({
+    verified: !loading && !error && !uncertain && !!company,
+    canRead: !!company && canReadTeam(company),
+    onlySelf: members.length === 1 && members[0].user_id === userId,
+    canInvite,
+  })
 
   return <section className="real-auth-card real-business-panel e3-ops-page e3-team-page">
     <nav className="real-business-nav" aria-label="Navegación de empresa">
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId)}>Empresa</button>
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId + '/ubicaciones')}>Ubicaciones</button>
+      <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId + '/inicio')}>Primeros pasos</button>
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>
     <header className="e3-ops-heading">
@@ -137,6 +146,7 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
         <Icon name="shield" size={25}/><div><strong>El directorio de equipo es privado</strong>
         <p>Tu rol permite consultar la empresa, pero no acceder al listado de integrantes. Solicitá acceso a un administrador.</p></div>
       </div> : <>
+        <RealSetupGuide suggestion={setupSuggestion} businessId={businessId} onNavigate={onNavigate}/>
         <div className="e3-ops-summary" aria-label="Resumen de equipo">
           <div className="e3-ops-stat"><span>Integrantes</span><strong>{members.length}</strong></div>
           <div className="e3-ops-stat"><span>Activos</span><strong>{activeMembers}</strong></div>
