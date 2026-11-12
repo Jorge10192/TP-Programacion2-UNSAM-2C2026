@@ -78,9 +78,14 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
 
   const role = company?.membership.role ?? ''
   const manager = canOverrideSalesPrice(role)
-  const authorizedSites = locations.filter(site =>
-    canOverrideSalesPrice(role) || assignedLocationIds.includes(site.id))
-  const location = authorizedSites.find(row => row.id === siteId) ?? null
+  // Derivar una referencia estable para los cálculos del carrito y React Compiler.
+  // La lista y la sede activa solo se recalculan al cambiar asignaciones/selección.
+  const authorizedSites = useMemo(() => locations.filter(site =>
+    canOverrideSalesPrice(role) || assignedLocationIds.includes(site.id)),
+    [locations, role, assignedLocationIds])
+  const location = useMemo(() =>
+    authorizedSites.find(row => row.id === siteId) ?? null,
+    [authorizedSites, siteId])
   const canWork = company?.status === 'ACTIVA' && company.membership.status === 'ACTIVA'
   const saleSites = authorizedSites.filter(site => site.status === 'ACTIVA' && site.can_sell)
   const selected = items.find(row => row.id === selectedId) ?? null

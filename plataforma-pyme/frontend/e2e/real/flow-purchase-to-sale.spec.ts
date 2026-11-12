@@ -1,4 +1,4 @@
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 
 // T11-B: browser POS + real FastAPI + one disposable PostgreSQL per CI job.
