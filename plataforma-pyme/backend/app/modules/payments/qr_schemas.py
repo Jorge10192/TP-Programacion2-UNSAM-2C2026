@@ -75,3 +75,22 @@ class QrIntentView(BaseModel):
     expires_at: datetime
     qr_png_data_uri: str
     lines: list[QrIntentLineView]
+
+class QrSimulateRequest(BaseModel):
+    """Acción exclusivamente ficticia, sin token de banco ni acreditación."""
+    model_config = ConfigDict(extra="forbid")
+    action: Literal["APROBAR", "RECHAZAR", "EXPIRAR", "INDETERMINAR"]
+
+
+class QrPaymentEventView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    business_id: UUID
+    intent_id: UUID
+    event_key: UUID
+    sequence: int
+    action: Literal["CREAR", "CANCELAR", "APROBAR", "RECHAZAR", "EXPIRAR", "INDETERMINAR"]
+    from_status: str
+    to_status: QrState
+    actor_id: UUID
+    created_at: datetime
