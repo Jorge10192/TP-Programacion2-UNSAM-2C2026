@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
 from app.infrastructure.models import (
-    AuthSession, Business, CatalogItem, PhotoAsset, Supplier, User,
+    AuthSession, Business, CatalogItem, Membership, PhotoAsset, Supplier, User,
 )
 from app.modules.auth.session_service import AuthContext
 from app.modules.businesses.permissions import BusinessPermission, has_business_permission
@@ -176,6 +176,47 @@ class PhotoService:
             result = PhotoView.from_record(photo)
             self.db.commit()
             return result
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def get_team_avatar(self, ctx: AuthContext, business_id: UUID, member_user_id: UUID) -> bytes:
+        """Only team readers may view active colleagues' profile avatars in their tenant.
+
+        Personal photos remain private in /me; no public or cross-company URL is issued.
+        The BYTEA column is selected only after both memberships are authorized.
+        """
+        try:
+            pair = BusinessRepository(self.db).own_business(ctx.user.id, business_id)
+            if pair is None:
+                raise _not_found()
+            company, membership = pair
+            if not has_business_permission(
+                role=membership.role, membership_status=membership.status,
+                business_status=company.status, permission=BusinessPermission.READ_MEMBERS,
+            ):
+                raise _not_found()
+            target = self.db.scalar(
+                select(Membership.id).join(User, User.id == Membership.user_id)
+                .where(
+                    Membership.business_id == business_id,
+                    Membership.user_id == member_user_id,
+                    Membership.status == "ACTIVA", User.status == "ACTIVO",
+                )
+            )
+            if target is None:
+                raise _not_found()
+            content = self.db.scalar(
+                select(PhotoAsset.content).where(
+                    PhotoAsset.owner_type == "PROFILE",
+                    PhotoAsset.owner_id == member_user_id,
+                    PhotoAsset.position == 0,
+                )
+            )
+            if content is None:
+                raise _not_found()
+            self.db.rollback()
+            return content
         except Exception:
             self.db.rollback()
             raise

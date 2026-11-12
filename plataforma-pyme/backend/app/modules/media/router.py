@@ -74,6 +74,18 @@ async def upload_supplier_photo(business_id: UUID, supplier_id: UUID, file: Uplo
     return await run_in_threadpool(service.upload, ctx, "SUPPLIER", supplier_id, business_id, content, width, height)
 
 
+@router.get("/businesses/{business_id}/members/{member_user_id}/avatar")
+def view_team_avatar(business_id: UUID, member_user_id: UUID,
+                     ctx: AuthContext = Depends(current_auth),
+                     db: Session = Depends(get_db)) -> Response:
+    content = PhotoService(db).get_team_avatar(ctx, business_id, member_user_id)
+    return Response(
+        content=content, media_type="image/webp",
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                 "Content-Disposition": 'inline; filename="avatar.webp"'},
+    )
+
+
 @router.get("/{photo_id}/content")
 def view_photo(photo_id: UUID, ctx: AuthContext = Depends(current_auth),
                db: Session = Depends(get_db)) -> Response:

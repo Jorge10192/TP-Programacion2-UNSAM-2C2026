@@ -71,6 +71,7 @@ def test_photo_endpoints_require_bearer():
             assert client.get(path).status_code == 401
             assert client.post(path, files={"file": ("a.png", png(), "image/png")}).status_code == 401
         assert client.get(f"/api/v1/photos/{pid}/content").status_code == 401
+        assert client.get(f"/api/v1/photos/businesses/{bid}/members/{rid}/avatar").status_code == 401
         assert client.delete(f"/api/v1/photos/{pid}").status_code == 401
 
 
@@ -123,7 +124,7 @@ def upload(client: TestClient, path: str, auth: dict[str, str]):
 @pytest.mark.skipif(os.environ.get("RUN_DB_INTEGRATION") != "1", reason="PostgreSQL QA obligatorio")
 def test_real_photos_all_owners_and_tenant_isolation(isolated):
     client, connection = isolated
-    owner, _ = actor(client)
+    owner, owner_id = actor(client)
     outsider, outsider_id = actor(client)
     bid = company(client, owner)
     other_bid = company(client, outsider)
@@ -188,6 +189,15 @@ def test_real_photos_all_owners_and_tenant_isolation(isolated):
     assert len(client.get(catalog_url, headers=owner).json()) == 7
     assert upload(client, catalog_url, owner).status_code == 201
 
+    # Foto PERSONAL en equipo: el titular puede consultarla, un extraño no.
+    team_avatar = f"/api/v1/photos/businesses/{bid}/members/{owner_id}/avatar"
+    assert client.get(team_avatar, headers=owner).status_code == 200
+    assert client.get(team_avatar, headers=outsider).status_code == 404
+    assert client.get(
+        f"/api/v1/photos/businesses/{other_bid}/members/{owner_id}/avatar",
+        headers=outsider,
+    ).status_code == 404
+
     # Trabajador puede consultar fotos, pero no alterarlas.
     connection.execute(insert(Membership).values(
         id=uuid4(), business_id=bid, user_id=outsider_id,
@@ -198,6 +208,8 @@ def test_real_photos_all_owners_and_tenant_isolation(isolated):
     company_photo_id = client.get(company_url, headers=outsider).json()[0]["id"]
     assert client.get(f"/api/v1/photos/{company_photo_id}/content", headers=outsider).status_code == 200
     assert client.delete(f"/api/v1/photos/{company_photo_id}", headers=outsider).status_code == 403
+    # Consultar fotos empresariales no concede acceso a retratos de otros integrantes.
+    assert client.get(team_avatar, headers=outsider).status_code == 404
     assert client.get(f"/api/v1/photos/businesses/{other_bid}", headers=owner).status_code == 404
 
     # Un Administrador tiene capacidad para sustituir fotos, sin rol global.
@@ -208,6 +220,15 @@ def test_real_photos_all_owners_and_tenant_isolation(isolated):
     ))
     assert upload(client, company_url, administrator).status_code == 201
     assert len(client.get(company_url, headers=administrator).json()) == 1
+    team_image = client.get(team_avatar, headers=administrator)
+    assert team_image.status_code == 200
+    assert team_image.headers["cache-control"] == "private, no-store"
+    assert team_image.content.startswith(b"RIFF")
+    # Un usuario de la otra empresa no puede consultar el avatar sin membresía.
+    assert client.get(
+        f"/api/v1/photos/businesses/{other_bid}/members/{owner_id}/avatar",
+        headers=administrator,
+    ).status_code == 404
 
     # Al suspender la empresa se mantiene la lectura, nunca la escritura.
     connection.execute(
@@ -217,6 +238,7 @@ def test_real_photos_all_owners_and_tenant_isolation(isolated):
     assert upload(client, company_url, administrator).status_code == 409
     assert client.get(company_url, headers=owner).status_code == 200
     assert client.get(company_url, headers=outsider).status_code == 200
+    assert client.get(team_avatar, headers=administrator).status_code == 404
 
     # Un miembro INACTIVO pierde toda visibilidad sobre fotos privadas.
     connection.execute(
