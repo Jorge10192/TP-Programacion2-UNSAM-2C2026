@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert, select, update
+from sqlalchemy import insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -95,8 +95,10 @@ def rejected_sql(conn, query):
         sp.rollback()
 
 
-def test_assign_list_idempotent_revoke_reactivate(ctx):
+@pytest.mark.parametrize("db_timezone", ["UTC", "America/Argentina/Buenos_Aires"])
+def test_assign_list_idempotent_revoke_reactivate(ctx, db_timezone):
     client, conn = ctx
+    conn.execute(text("SELECT set_config('TimeZone', :zone, true)"), {"zone": db_timezone})
     owner, _ = actor(client)
     _, worker = actor(client)
     bid = business(client, owner)
