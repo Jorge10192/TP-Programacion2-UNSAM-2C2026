@@ -77,7 +77,7 @@ for (const viewport of [
     await expect(page.getByRole('heading', { name: 'Datos de la empresa' })).toBeVisible()
     await expect(page.getByRole('heading', { name: f.company.name })).toBeVisible()
 
-    const posButton = page.getByRole('button', { name: /Punto de venta REAL/ })
+    const posButton = page.getByRole('button', { name: 'Abrir Punto de venta' })
     await posButton.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible()
