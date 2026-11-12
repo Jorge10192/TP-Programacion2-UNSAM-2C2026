@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: plataforma-pyme/frontend
@@ -48,7 +48,7 @@ jobs:
   browser-e2e:
     name: E2E Chromium escritorio y móvil
     needs: frontend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
