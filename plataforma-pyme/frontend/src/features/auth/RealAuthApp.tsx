@@ -14,6 +14,7 @@ import { RealSalesPage } from '../sales/RealSalesPage'
 import { RealPosPage } from '../sales/RealPosPage'
 import { RealPaymentConnectionsPage } from '../payments/RealPaymentConnectionsPage'
 import { RealQrIntentPage } from '../payments/RealQrIntentPage.tsx'
+import { RealQrHistoryPage } from '../payments/RealQrHistoryPage.tsx'
 import { RealPhotoManager, RealPhotoPreview } from '../photos/RealPhotos.tsx'
 import { RealTeamPage } from '../team/RealTeamPage'
 import { RealAcceptInvitationPage } from '../team/RealAcceptInvitationPage'
@@ -36,7 +37,7 @@ function routeFromPath(path: string): Route {
     || path === '/real/invitaciones/aceptar') return path
   const qrMatch = /^\/real\/empresas\/([^/]+)\/qr-cobros\/([^/]+)$/.exec(path)
   if (qrMatch && UUID_PATTERN.test(qrMatch[1]) && UUID_PATTERN.test(qrMatch[2])) return path as Route
-  const detailMatch = /^\/real\/empresas\/([^/]+)(?:\/(inicio|ubicaciones|equipo|catalogo|proveedores|compras|inventario|ventas|pos|medios-de-cobro))?$/.exec(path)
+  const detailMatch = /^\/real\/empresas\/([^/]+)(?:\/(inicio|ubicaciones|equipo|catalogo|proveedores|compras|inventario|ventas|pos|medios-de-cobro|cobros-qr))?$/.exec(path)
   if (detailMatch && UUID_PATTERN.test(detailMatch[1])) return path as Route
   return '/real/login'
 }
@@ -214,7 +215,7 @@ export function RealAuthApp() {
     : path === '/real/empresas/nueva' ? { kind: 'create' }
     : path.startsWith('/real/empresas/') ? { kind: 'detail', businessId: path.slice('/real/empresas/'.length) }
     : null
-  const operationsMatch = /^\/real\/empresas\/([^/]+)\/(inicio|ubicaciones|equipo|catalogo|proveedores|compras|inventario|ventas|pos|medios-de-cobro)$/.exec(path)
+  const operationsMatch = /^\/real\/empresas\/([^/]+)\/(inicio|ubicaciones|equipo|catalogo|proveedores|compras|inventario|ventas|pos|medios-de-cobro|cobros-qr)$/.exec(path)
   const operationBusinessId = operationsMatch && UUID_PATTERN.test(operationsMatch[1]) ? operationsMatch[1] : null
   const operationsKind = operationBusinessId ? operationsMatch?.[2] : null
   const qrMatch = /^\/real\/empresas\/([^/]+)\/qr-cobros\/([^/]+)$/.exec(path)
@@ -260,6 +261,10 @@ export function RealAuthApp() {
             ? <RealQrIntentPage key={session.user.id + ':' + path} token={session.token}
                 userId={session.user.id} businessId={qrBusinessId} intentId={qrIntentId}
                 onNavigate={(next) => go(next as Route)} onUnauthorized={onBusinessAuthLost}/>
+          : operationBusinessId && operationsKind === 'cobros-qr'
+            ? <RealQrHistoryPage key={session.user.id + ':' + path} token={session.token}
+                businessId={operationBusinessId} onNavigate={(next) => go(next as Route)}
+                onUnauthorized={onBusinessAuthLost}/>
           : operationBusinessId && operationsKind === 'medios-de-cobro'
             ? <RealPaymentConnectionsPage key={session.user.id + ':' + path} token={session.token} userId={session.user.id}
                 businessId={operationBusinessId} onUnauthorized={onBusinessAuthLost}/>
