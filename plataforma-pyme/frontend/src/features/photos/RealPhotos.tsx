@@ -69,6 +69,7 @@ export function RealPhotoManager({ token, owner, title, canManage, onUnauthorize
     event.target.value=''
     if (!selected.length || busy || !canManage) return
     if (isCatalog && selected.length+photos.length>maximum) {
+      setNotice('')
       setError('El artículo o servicio admite hasta 8 fotos; quitá alguna antes de agregar más.')
       return
     }

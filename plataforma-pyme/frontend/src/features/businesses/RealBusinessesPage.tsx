@@ -342,7 +342,7 @@ export function RealBusinessesPage({
             </dl>
           </details>
         </section>
-        <RealPhotoManager token={token} owner={{kind:'BUSINESS',businessId:selected.id}} title="Foto o logo de la empresa" canManage={canEditBusiness(selected)} onUnauthorized={onUnauthorized} onChanged={()=>setBusinessPhotoRevision(n=>n+1)}/>
+        {!editing&&<RealPhotoManager token={token} owner={{kind:'BUSINESS',businessId:selected.id}} title="Foto o logo de la empresa" canManage={false} onUnauthorized={onUnauthorized} onChanged={()=>setBusinessPhotoRevision(n=>n+1)}/>}
         {canEditBusiness(selected) && editing && <section className="e3-detail-edit-panel" aria-labelledby="e3-edit-heading">
           <h2 id="e3-edit-heading">Editar datos de la empresa</h2>
           <p>Revisá nombre, rubro y actividad. Los cambios se guardan solo cuando confirmás.</p>
@@ -356,6 +356,9 @@ export function RealBusinessesPage({
               }}>Cancelar</button>
             </div>
           </form>
+          <RealPhotoManager token={token} owner={{kind:'BUSINESS',businessId:selected.id}}
+            title="Foto o logo de la empresa" canManage={true} onUnauthorized={onUnauthorized}
+            onChanged={()=>setBusinessPhotoRevision(n=>n+1)}/>
         </section>}
         {!canEditBusiness(selected) && <p className="e3-detail-readonly" role="note">
           Esta información es de solo lectura para tu rol o el estado actual de la empresa.

@@ -37,3 +37,15 @@
   .e3-company-tile .e3-company-photo{height:78px}
   .e3-catalog-tile .e3-catalog-photo,.e3-pos-product-card .e3-pos-card-image.e3-photo-preview{height:105px}
 }
+
+/* Foto opcional seleccionada durante el alta: el archivo se carga solo tras crear la ficha. */
+.e3-photo-draft{margin:18px 0;padding:15px;border:1px solid #cadcf3;background:#f4f9ff;border-radius:13px;min-width:0}
+.e3-photo-draft legend{padding:0 6px;color:#1b4f88;font-size:14px;font-weight:800}
+.e3-photo-draft p{font-size:12px;color:#53718e;line-height:1.55;margin:6px 0 12px}
+.e3-photo-draft label{display:grid;gap:7px;font-size:12px;color:#204d81;font-weight:750}
+.e3-photo-draft input{max-width:100%;width:100%;border:1px solid #c8d9f0;background:white;border-radius:9px;padding:10px}
+.e3-photo-draft ul{display:grid;gap:6px;padding:0;margin:10px 0;list-style:none}
+.e3-photo-draft li{display:flex;align-items:center;justify-content:space-between;gap:9px;min-width:0;font-size:11px}
+.e3-photo-draft li span{overflow-wrap:anywhere;min-width:0}
+.e3-photo-draft li button{flex:none;font-size:11px;padding:6px 8px;min-height:32px}
+.e3-photo-draft :is(button,input):focus-visible{outline:3px solid #397ce0;outline-offset:2px}

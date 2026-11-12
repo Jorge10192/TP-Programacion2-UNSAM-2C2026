@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon.tsx'
 import { RealPhotoManager, RealPhotoPreview } from '../photos/RealPhotos.tsx'
+import { RealPhotoDraftPicker } from '../photos/RealPhotoDraftPicker.tsx'
+import { createPhotoGateway, photoErrorMessage } from '../photos/photoGateway.ts'
 import '../catalog/realCatalogVisual.css'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
@@ -25,6 +27,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
  const [notice,setNotice]=useState('')
  const [draft,setDraft]=useState<SupplierCommercialDraft>(newSupplierCommercialDraft)
  const [editingId,setEditingId]=useState<string|null>(null)
+ const [createPhoto,setCreatePhoto]=useState<File[]>([])
  const [sameWhatsapp,setSameWhatsapp]=useState(false)
  const [unknown,setUnknown]=useState(false)
  const [creating,setCreating]=useState(false)
@@ -89,19 +92,28 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
      return
    }
    if(!alive.current)return
-   setCreating(false);setEditingId(null);setSameWhatsapp(false);setDraft(newSupplierCommercialDraft())
-   setItems(old=>editingId
-     ?old.map(x=>x.id===saved.id?saved:x)
-     :[saved,...old])
+   let photoIssue=''
+   if(!editingId&&createPhoto.length){
+     try{
+       await createPhotoGateway(token,{kind:'SUPPLIER',businessId,resourceId:saved.id}).upload(createPhoto[0])
+     }catch(err){
+       photoIssue='Proveedor guardado, pero no se pudo confirmar su fotografía: '+photoErrorMessage(err)+
+         ' Revisá la ficha antes de volver a intentarlo.'
+     }
+   }
+   if(!alive.current)return
+   setCreating(false);setEditingId(null);setCreatePhoto([]);setDetailId(saved.id)
+   setSameWhatsapp(false);setDraft(newSupplierCommercialDraft())
+   setItems(old=>[saved,...old.filter(x=>x.id!==saved.id)])
    setNotice(editingId?'Cambios del proveedor confirmados en PostgreSQL.':'Proveedor registrado en PostgreSQL. No se realizó ninguna compra.')
+   if(photoIssue)setError(photoIssue)
    // La escritura ya está confirmada: fallar el GET posterior NO autoriza reintentar POST/PATCH.
    try{
      const rows=await gateway.suppliers()
      if(!alive.current)return
-     setItems(rows);setHasMore(rows.length===SUPPLY_PAGE_SIZE)
-   }catch(err){
-     fail(err,false)
-     if(alive.current)setError('El proveedor se guardó correctamente, pero no se pudo actualizar el listado. Usá «Actualizar» para reconsultar; no repitas el guardado.')
+     setItems(rows.some(x=>x.id===saved.id)?rows:[saved,...rows]);setHasMore(rows.length===SUPPLY_PAGE_SIZE)
+   }catch{
+     if(alive.current)setError(photoIssue||'Proveedor guardado, pero no se pudo actualizar el listado. Consultá la ficha; no repitas el alta.')
    }finally{if(alive.current)setBusy(false)}
  }
  async function status(s:Supplier){
@@ -124,7 +136,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
  const activeCount=items.filter(x=>x.status==='ACTIVO').length
  function startCreate(){
    if(!canWrite||busy||unknown)return
-   setDraft(newSupplierCommercialDraft());setSameWhatsapp(false);setEditingId(null)
+   setDraft(newSupplierCommercialDraft());setCreatePhoto([]);setSameWhatsapp(false);setEditingId(null)
    setCreating(true);setDetailId(null);setError('');setNotice('')
  }
  function startEdit(supplier:Supplier){
@@ -137,7 +149,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
      payment_methods:[...supplier.payment_methods] as SupplierPaymentMethod[],
      promotions:supplier.promotions.map(rule=>({...rule,days:[...rule.days]})),
    })
-   setSameWhatsapp(false);setEditingId(supplier.id);setDetailId(null)
+   setSameWhatsapp(false);setCreatePhoto([]);setEditingId(supplier.id);setDetailId(null)
    setCreating(true);setError('');setNotice('')
  }
  function openDetail(supplier:Supplier){
@@ -146,7 +158,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
  function closeSubview(){
    if(busy)return
    setCreating(false);setEditingId(null);setDetailId(null)
-   setSameWhatsapp(false);setDraft(newSupplierCommercialDraft());setError('')
+   setSameWhatsapp(false);setCreatePhoto([]);setDraft(newSupplierCommercialDraft());setError('')
  }
  const setField=<K extends keyof SupplierCommercialDraft>(key:K,value:SupplierCommercialDraft[K])=>
    setDraft(old=>({...old,[key]:value}))
@@ -412,11 +424,15 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
          <label>Notas (opcional)<textarea rows={4} maxLength={650} value={draft.notes}
            onChange={e=>setField('notes',e.target.value)} placeholder="Ej.: Horarios de entrega, condiciones de pedido y retiro…"/></label>
        </fieldset>
+       {!editingId&&<RealPhotoDraftPicker title="Fotografía del nuevo proveedor" files={createPhoto}
+         onChange={setCreatePhoto} maximum={1}/>}
        <div className="real-auth-actions e3-commerce-form-actions">
          <button className="real-auth-primary" type="submit" disabled={busy||unknown}>{busy?'Guardando…':editingId?'Guardar cambios':'Crear proveedor'}</button>
          <button className="real-auth-secondary" type="button" disabled={busy} onClick={closeSubview}>Cancelar</button>
        </div>
      </form>
+     {editingId&&<RealPhotoManager token={token} owner={{kind:'SUPPLIER',businessId,resourceId:editingId}}
+       title="Foto del proveedor (edición)" canManage={canWrite} onUnauthorized={onUnauthorized}/>}
      <p className="e3-commerce-disclaimer">Los días de cada promoción, el medio requerido y el beneficio se guardan como información comercial. No se aplican descuentos, no se procesan pagos ni se generan movimientos de inventario.</p>
    </section>}
  </section>
