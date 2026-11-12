@@ -4,6 +4,7 @@ Un QR ficticio APROBADA_DEMO no constituye acreditación Mercado Pago.
 Solo la acción administrativa en una base descartable puede cerrar una Sale.
 """
 import os
+from hashlib import sha256
 from dataclasses import dataclass
 from uuid import UUID, NAMESPACE_URL, uuid4, uuid5
 
@@ -53,7 +54,9 @@ def qr_finalization_enabled() -> bool:
 
 def sale_key_for_intent(business_id: UUID, intent_id: UUID) -> UUID:
     # Identidad determinística 1:1, única para QR mock de este tenant.
-    return uuid5(NAMESPACE_URL, f"pyme/e3-b4/demo-sale/{business_id}/{intent_id}")
+    digest = sha256(f"pyme/e3-b4/demo-sale/{business_id}/{intent_id}".encode("utf-8")).digest()
+    # RFC4122 v4 bits, determinístico para este intento; compatible con GET /sales/by-request.
+    return UUID(bytes=digest[:16], version=4)
 
 
 class QrSettlementService:
