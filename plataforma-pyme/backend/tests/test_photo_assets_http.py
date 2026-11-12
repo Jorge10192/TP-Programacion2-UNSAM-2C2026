@@ -164,6 +164,11 @@ def test_real_photos_all_owners_and_tenant_isolation(isolated):
     # No se puede subir a otra empresa ni a un item del otro tenant.
     assert upload(client, f"/api/v1/photos/businesses/{other_bid}/catalog/{item_id}", outsider).status_code == 404
     assert upload(client, catalog_url, outsider).status_code == 404
+    # Un actor sin acceso no debe forzar decodificación costosa de archivos.
+    forbidden_invalid = client.post(company_url, headers=outsider, files={
+        "file": ("corrupto.png", b"this is not an image", "image/png"),
+    })
+    assert forbidden_invalid.status_code == 404
 
     # Una sola foto: la segunda reemplaza y la primera deja de existir.
     before = client.get(me, headers=owner).json()[0]["id"]
