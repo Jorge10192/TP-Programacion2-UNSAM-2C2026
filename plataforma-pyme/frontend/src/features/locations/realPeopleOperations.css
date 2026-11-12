@@ -79,6 +79,8 @@
 .e3-ops-restricted { display:flex; align-items:flex-start; gap:13px; margin:21px 0; padding:21px; border:1px solid #b8d0ef; border-radius:13px; background:#f0f6ff; color:#2a5181; }
 .e3-ops-restricted strong { display:block; margin-bottom:6px; color:#234b7e; }
 .e3-ops-restricted p { margin:0; font-size:13px; line-height:1.55; }
+.e3-ops-role-guidance { margin:12px 0 15px; padding:11px 14px; border-radius:10px; background:#edf4ff; border-left:3px solid #7aa9e9; color:#3d567a; font-size:12px; line-height:1.65; }
+.e3-ops-role-guidance strong { color:#204e8d; }
 .e3-ops-invite .real-ops-secret { background:#fff; margin:18px 0 0; }
 .e3-ops-page button:focus-visible,.e3-ops-page select:focus-visible,.e3-ops-page input:focus-visible,.e3-ops-page a:focus-visible { outline:3px solid #397ce0; outline-offset:2px; }
 @media(max-width:920px) {
