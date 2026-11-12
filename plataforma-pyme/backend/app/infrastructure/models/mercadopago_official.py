@@ -34,6 +34,7 @@ class MercadoPagoTestAccount(Base):
     __tablename__ = "mp_test_accounts"
     __table_args__ = (
         UniqueConstraint("business_id", name="uq_mp_test_account_business"),
+        UniqueConstraint("business_id", "id", name="uq_mp_test_account_tenant_id"),
         UniqueConstraint("mp_user_id", name="uq_mp_test_account_seller"),
         CheckConstraint("status IN ('ACTIVA','INACTIVA')", name="ck_mp_test_account_status"),
     )
