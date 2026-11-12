@@ -8,6 +8,7 @@ import type { InvitationIssued, InvitationInput, TeamMember, MemberChanges } fro
 import type { RealBusiness } from '../businesses/businessGateway.ts'
 import { RealSetupGuide } from '../onboarding/RealSetupGuide.tsx'
 import { teamSetupSuggestion } from '../onboarding/realSetupGuidance.ts'
+import { RealTeamAvatar } from '../photos/RealTeamAvatar.tsx'
 
 const roles = ['ADMINISTRADOR', 'ENCARGADO', 'TRABAJADOR'] as const
 const roleLabels: Record<(typeof roles)[number], string> = {
@@ -169,7 +170,8 @@ export function RealTeamPage({ token, userId, businessId, onNavigate, onUnauthor
         <div className="real-ops-list e3-ops-directory">
           {visibleMembers.map((member) => <article className="real-ops-person e3-ops-member" key={member.id}>
             <div className="e3-ops-person-identity">
-              <span className="e3-ops-avatar" aria-hidden="true">{member.display_name.slice(0, 1).toLocaleUpperCase('es-AR')}</span>
+              <RealTeamAvatar token={token} businessId={businessId} memberUserId={member.user_id}
+                initials={member.display_name.slice(0, 1).toLocaleUpperCase('es-AR')}/>
               <div className="real-ops-person-info">
                 <div className="e3-ops-person-name"><strong>{member.display_name}</strong>
                   {member.user_id === userId && <span className="e3-ops-self">Tu cuenta</span>}

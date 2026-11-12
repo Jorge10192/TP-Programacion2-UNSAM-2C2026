@@ -1,4 +1,5 @@
 """Todos los modelos reales: registro explícito para metadatos Alembic."""
+from app.infrastructure.models.photo_asset import PhotoAsset
 from app.infrastructure.models.user import User
 from app.infrastructure.models.auth_session import AuthSession
 from app.infrastructure.models.business import Business
@@ -19,4 +20,4 @@ from app.infrastructure.models.sale import Sale
 from app.infrastructure.models.sale_line import SaleLine
 from app.infrastructure.models.sale_payment import SalePayment
 
-__all__ = ["User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem", "Supplier", "Purchase", "PurchaseLine", "PurchaseReceipt", "StockBalance", "StockMovement", "InventoryOperation", "Sale", "SaleLine", "SalePayment"]
+__all__ = ["PhotoAsset", "User", "AuthSession", "Business", "Membership", "BusinessCreationRequest", "BusinessInvitation", "Location", "LocationAssignment", "CatalogItem", "Supplier", "Purchase", "PurchaseLine", "PurchaseReceipt", "StockBalance", "StockMovement", "InventoryOperation", "Sale", "SaleLine", "SalePayment"]

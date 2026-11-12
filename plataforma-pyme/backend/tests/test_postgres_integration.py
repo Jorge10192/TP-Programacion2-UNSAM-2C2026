@@ -6,6 +6,8 @@ No escribe ni altera registros comerciales.
 import os
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 
 from app.infrastructure.db import get_engine
@@ -26,7 +28,9 @@ def test_real_postgres_accepts_queries() -> None:
         assert conn.execute(text("SELECT current_setting('server_version_num')")).scalar_one().startswith("16")
 
 
-def test_real_postgres_has_current_sales_foundation_alembic_revision() -> None:
+def test_real_postgres_has_current_alembic_revision() -> None:
+    """La DB efímera debe estar en HEAD, sin fijar una migración histórica."""
+    current_head = ScriptDirectory.from_config(Config("alembic.ini")).get_current_head()
     with get_engine().connect() as conn:
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "e26a_sales_foundation"
+        assert version == current_head

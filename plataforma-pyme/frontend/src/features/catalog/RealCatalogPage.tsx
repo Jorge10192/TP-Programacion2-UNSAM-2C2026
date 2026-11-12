@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Icon } from '../../app/Icon.tsx'
+import { RealPhotoManager, RealPhotoPreview } from '../photos/RealPhotos.tsx'
+import { RealPhotoDraftPicker } from '../photos/RealPhotoDraftPicker.tsx'
+import { createPhotoGateway, photoErrorMessage } from '../photos/photoGateway.ts'
 import './realCatalogVisual.css'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
@@ -40,6 +43,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
   const [uncertain,setUncertain]=useState(false)
   const [form,setForm]=useState(false)
   const [editing,setEditing]=useState<string|null>(null)
+  const [createPhotos,setCreatePhotos]=useState<File[]>([])
   const [draft,setDraft]=useState<Draft>(emptyDraft)
   const [filter,setFilter]=useState('')
   const [statusFilter,setStatusFilter]=useState<'TODOS'|'ACTIVO'|'INACTIVO'>('TODOS')
@@ -115,18 +119,18 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
 
   function startCreate(){
     if(!canWrite||busy||uncertain)return
-    setDraft(emptyDraft);setEditing(null);setDetailId(null);setForm(true);setError('');setNotice('')
+    setDraft(emptyDraft);setCreatePhotos([]);setEditing(null);setDetailId(null);setForm(true);setError('');setNotice('')
   }
   function openDetail(item:CatalogItem){
     setDetailId(item.id);setForm(false);setEditing(null);setError('');setNotice('')
   }
   function closeSubview(){
     if(busy)return
-    setForm(false);setEditing(null);setDetailId(null);setDraft(emptyDraft);setError('')
+    setForm(false);setEditing(null);setDetailId(null);setDraft(emptyDraft);setCreatePhotos([]);setError('')
   }
   function startEdit(item:CatalogItem){
     if(!canWrite||busy||uncertain)return
-    setDetailId(null)
+    setDetailId(null);setCreatePhotos([])
     setDraft({
       name:item.name,kind:item.kind,category:item.category,sku:item.sku,unit:item.unit,
       description:item.description,observations:item.observations,sellable:item.sellable,
@@ -158,15 +162,32 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
     try{body=getBody()}catch(err){setError(catalogErrorMessage(err));return}
     setBusy(true)
     try{
-      if(editing)await gateway.update(editing,body)
-      else await gateway.create(body)
+      const saved=editing?await gateway.update(editing,body):await gateway.create(body)
       if(!mounted.current.active)return
-      // Name edits change backend sort order: reload instead of adjusting offset blindly.
-      setForm(false);setEditing(null)
-      const first=await gateway.page(0)
+      let photoIssue=''
+      if(!editing&&createPhotos.length){
+        const photos=createPhotoGateway(token,{kind:'CATALOG',businessId,resourceId:saved.id})
+        try{
+          for(const file of createPhotos) await photos.upload(file)
+        }catch(err){
+          photoIssue='Se guardó el artículo, pero no se completaron todas las fotos: '+photoErrorMessage(err)+
+            ' Revisá la galería antes de volver a cargarlas.'
+        }
+      }
       if(!mounted.current.active)return
-      setItems(first);setHasMore(first.length===CATALOG_PAGE_SIZE);setLoaded(true)
+      // El artículo ya está guardado; un GET posterior no autoriza repetir el POST.
+      setForm(false);setEditing(null);setCreatePhotos([]);setDetailId(null)
+      setItems(old=>[saved,...old.filter(item=>item.id!==saved.id)])
       setNotice(editing?'Ficha actualizada en PostgreSQL.':'Artículo creado en PostgreSQL.')
+      if(photoIssue)setError(photoIssue)
+      try{
+        const first=await gateway.page(0)
+        if(!mounted.current.active)return
+        setItems(first.some(item=>item.id===saved.id)?first:[saved,...first])
+        setHasMore(first.length===CATALOG_PAGE_SIZE);setLoaded(true)
+      }catch{
+        if(mounted.current.active)setError(photoIssue||'Artículo guardado, pero el listado no se pudo actualizar. Consultá la ficha; no repitas el alta.')
+      }
     }catch(err){handle(err,true)}
     finally{if(mounted.current.active)setBusy(false)}
   }
@@ -265,6 +286,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
               <span className="e3-commerce-card-icon"><Icon name={item.kind==='SERVICIO'?'briefcase':item.kind==='INSUMO'?'boxes':'package'} size={22}/></span>
               <span className={'real-catalog-status '+(item.status==='ACTIVO'?'real-catalog-active':'')}>{item.status}</span>
             </div>
+            <RealPhotoPreview token={token} owner={{kind:'CATALOG',businessId,resourceId:item.id}} alt={"Foto de "+item.name} className="e3-catalog-photo" fallbackIcon={item.kind==='SERVICIO'?'briefcase':item.kind==='INSUMO'?'boxes':'package'}/>
             <div className="e3-commerce-card-name"><strong>{item.name}</strong><span>{label(item.kind)} · {item.category}</span></div>
             <div className="e3-commerce-chips"><span>{item.unit}</span><span>{item.sellable?'Vendible':'No vendible'}</span></div>
             <small className="e3-commerce-sku">SKU: {item.sku??'Sin SKU'}</small>
@@ -302,6 +324,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
         <div><h3>Descripción</h3><p>{selected.description||'Sin descripción registrada.'}</p></div>
         <div><h3>Observaciones</h3><p>{selected.observations||'Sin observaciones.'}</p></div>
       </div>
+      <RealPhotoManager token={token} owner={{kind:'CATALOG',businessId,resourceId:selected.id}} title={"Fotografías de "+selected.name} canManage={canWrite} onUnauthorized={onUnauthorized}/>
       <p className="e3-commerce-disclaimer">La ficha describe el artículo. El stock y sus movimientos se consultan exclusivamente en Inventario REAL.</p>
       {canWrite&&<div className="real-auth-actions">
         <button className="real-auth-primary" type="button" disabled={busy||uncertain} onClick={()=>startEdit(selected)}>Editar artículo</button>
@@ -331,12 +354,16 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
           <label className="e3-commerce-span-all">Observaciones<textarea rows={3} maxLength={600} value={draft.observations}
             onChange={e=>updateField('observations',e.target.value)}/></label>
         </div>
+        {!editing&&<RealPhotoDraftPicker title="Fotografías del nuevo artículo o servicio" files={createPhotos}
+          onChange={setCreatePhotos} maximum={8}/>}
         <div className="real-auth-actions e3-commerce-form-actions">
           <button type="submit" className="real-auth-primary" disabled={busy||uncertain}>{busy?'Guardando…':'Guardar artículo'}</button>
           <button type="button" className="real-auth-secondary" disabled={busy} onClick={closeSubview}>Cancelar</button>
         </div>
       </form>
-      <p className="e3-commerce-disclaimer">Las fotografías de artículos y su carga REAL se implementarán en una etapa posterior; no se guardan imágenes ficticias.</p>
+      {editing&&<RealPhotoManager token={token} owner={{kind:'CATALOG',businessId,resourceId:editing}}
+        title="Fotografías del artículo (edición)" canManage={canWrite} onUnauthorized={onUnauthorized}/>}
+      <p className="e3-commerce-disclaimer">Las fotografías son opcionales y se guardan por separado de los datos comerciales. Los cambios de imágenes no modifican stock ni precios.</p>
     </section>}
   </section>
 }

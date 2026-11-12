@@ -20,8 +20,11 @@ from app.modules.purchases.transfer_router import router as transfer_router
 from app.modules.purchases.adjustment_router import router as adjustment_router
 from app.modules.sales.router import router as sales_router
 
+from app.modules.media.router import router as photos_router
+
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(auth_router)
+api_v1_router.include_router(photos_router)
 api_v1_router.include_router(businesses_router)
 
 api_v1_router.include_router(invitations_router)
