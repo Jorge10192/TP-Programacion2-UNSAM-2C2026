@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.models import (
     CatalogItem, Location, LocationAssignment, MerchantPaymentConnection,
-    QrPaymentIntent, QrPaymentIntentLine, StockBalance,
+    QrPaymentIntent, QrPaymentIntentLine, QrPaymentSettlement, StockBalance,
 )
 from app.modules.auth.tokens import now_utc
 from app.modules.locations.permissions import can_operate_at_location
@@ -93,7 +93,12 @@ class QrIntentService:
             QrPaymentIntentLine.intent_id == row.id,
         ).order_by(QrPaymentIntentLine.line_number)).all()
         current_state = "EXPIRADA" if row.status == "ESPERANDO_PAGO" and row.expires_at <= now_utc() else row.status
+        sale_id = self.db.scalar(select(QrPaymentSettlement.sale_id).where(
+            QrPaymentSettlement.business_id == row.business_id,
+            QrPaymentSettlement.intent_id == row.id,
+        ))
         return QrIntentView(
+            sale_id=sale_id,
             id=row.id, business_id=row.business_id, location_id=row.location_id,
             request_id=row.request_id, provider="MOCK_QA", status=current_state,
             currency="ARS", reference=row.reference, subtotal_cents=row.subtotal_cents,
