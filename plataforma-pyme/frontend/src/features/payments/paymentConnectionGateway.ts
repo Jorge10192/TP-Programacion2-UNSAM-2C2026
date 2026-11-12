@@ -21,7 +21,7 @@ function parse(value: unknown, businessId: string): DemoPaymentConnection {
     || !(r.updated_at === null || typeof r.updated_at === 'string')) {
     throw new Error('Respuesta incompatible')
   }
-  return r as DemoPaymentConnection
+  return r as unknown as DemoPaymentConnection
 }
 
 export function createPaymentConnectionGateway(token: string, businessId: string) {
