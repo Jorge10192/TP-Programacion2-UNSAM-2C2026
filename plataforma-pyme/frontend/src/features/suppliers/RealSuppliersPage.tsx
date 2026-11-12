@@ -105,7 +105,8 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
    setCreating(false);setEditingId(null);setCreatePhoto([]);setDetailId(null)
    setSameWhatsapp(false);setDraft(newSupplierCommercialDraft())
    setItems(old=>[saved,...old.filter(x=>x.id!==saved.id)])
-   setNotice(editingId?'Cambios del proveedor confirmados en PostgreSQL.':'Proveedor registrado en PostgreSQL. No se realizó ninguna compra.')
+   // Una carga fotográfica parcial requiere un único aviso claro.
+   setNotice(photoIssue?'':editingId?'Cambios del proveedor confirmados en PostgreSQL.':'Proveedor registrado en PostgreSQL. No se realizó ninguna compra.')
    if(photoIssue)setError(photoIssue)
    // La escritura ya está confirmada: fallar el GET posterior NO autoriza reintentar POST/PATCH.
    try{
@@ -113,7 +114,11 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
      if(!alive.current)return
      setItems(rows.some(x=>x.id===saved.id)?rows:[saved,...rows]);setHasMore(rows.length===SUPPLY_PAGE_SIZE)
    }catch{
-     if(alive.current)setError(photoIssue||'Proveedor guardado, pero no se pudo actualizar el listado. Consultá la ficha; no repitas el alta.')
+     if(alive.current){
+       setNotice('')
+       setError((photoIssue?photoIssue+' ':'')+
+         'El proveedor está guardado, pero el listado no se pudo actualizar. Consultá la ficha; no repitas el alta.')
+     }
    }finally{if(alive.current)setBusy(false)}
  }
  async function status(s:Supplier){
@@ -425,7 +430,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
            onChange={e=>setField('notes',e.target.value)} placeholder="Ej.: Horarios de entrega, condiciones de pedido y retiro…"/></label>
        </fieldset>
        {!editingId&&<RealPhotoDraftPicker title="Fotografía del nuevo proveedor" files={createPhoto}
-         onChange={setCreatePhoto} maximum={1}/>}
+         onChange={setCreatePhoto} maximum={1} disabled={busy}/>}
        <div className="real-auth-actions e3-commerce-form-actions">
          <button className="real-auth-primary" type="submit" disabled={busy||unknown}>{busy?'Guardando…':editingId?'Guardar cambios':'Crear proveedor'}</button>
          <button className="real-auth-secondary" type="button" disabled={busy} onClick={closeSubview}>Cancelar</button>
