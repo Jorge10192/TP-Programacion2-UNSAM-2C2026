@@ -65,7 +65,8 @@ test('E3-1H3: guía contextual con datos REAL, servicios sin stock y navegación
   await expect(page).toHaveURL(new RegExp('/catalogo$'))
   await expect(guide).toHaveCount(0)
   await page.getByRole('button',{name:'Crear artículo REAL'}).click()
-  await page.getByLabel('Tipo',{exact:true}).selectOption('SERVICIO')
+  await expect(page.getByRole('heading',{name:'Nuevo artículo',exact:true})).toBeVisible()
+  await page.locator('section[aria-label="Formulario de artículo"] select').first().selectOption('SERVICIO')
   await expect(page.getByText('Los servicios no requieren stock inicial ni movimientos de inventario.',{exact:false})).toBeVisible()
   await page.getByRole('button',{name:'Cancelar',exact:true}).click()
 
