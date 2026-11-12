@@ -168,13 +168,23 @@ class PhotoService:
 
     def get_content(self, ctx: AuthContext, photo_id: UUID) -> bytes:
         try:
-            photo = self.db.get(PhotoAsset, photo_id)
+            # Primer paso sin bytea: no cargar archivos ajenos antes de autorizar.
+            photo = self.db.scalar(
+                select(PhotoAsset).options(load_only(
+                    PhotoAsset.id, PhotoAsset.owner_type, PhotoAsset.owner_id,
+                    PhotoAsset.business_id,
+                )).where(PhotoAsset.id == photo_id)
+            )
             if photo is None:
                 raise _not_found()
             self._authorize(
                 ctx, photo.owner_type, photo.owner_id, photo.business_id, writing=False,
             )
-            content = photo.content
+            content = self.db.scalar(
+                select(PhotoAsset.content).where(PhotoAsset.id == photo_id)
+            )
+            if content is None:
+                raise _not_found()
             self.db.rollback()
             return content
         except Exception:
