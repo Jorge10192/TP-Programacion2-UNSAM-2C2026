@@ -59,6 +59,7 @@ def upgrade() -> None:
         sa.Column("external_pos_id",sa.String(64),nullable=False),
         sa.Column("provider_order_id",sa.String(90)),
         sa.Column("payment_id",sa.String(90)),
+        sa.Column("sale_id",sa.Uuid(as_uuid=True)),
         sa.Column("qr_data",sa.Text()),
         sa.Column("total_cents",sa.BigInteger(),nullable=False),
         sa.Column("status",sa.String(24),nullable=False),
@@ -76,18 +77,34 @@ def upgrade() -> None:
         sa.UniqueConstraint("business_id","request_id",name="uq_mp_order_request"),
         sa.UniqueConstraint("provider_order_id",name="uq_mp_order_provider_id"),
         sa.UniqueConstraint("external_reference",name="uq_mp_order_external_ref"),
+        sa.UniqueConstraint("business_id","sale_id",name="uq_mp_order_sale"),
+        sa.ForeignKeyConstraint(["business_id","sale_id"],
+            ["sales.business_id","sales.id"],name="fk_mp_order_sale_tenant",ondelete="RESTRICT"),
         sa.CheckConstraint("total_cents BETWEEN 1 AND 99999999999",name="ck_mp_order_total"),
         sa.CheckConstraint(
             "status IN ('PREPARANDO','INDETERMINADA','CREADA','PROCESADA',"
             "'CANCELADA','EXPIRADA','REEMBOLSADA','REQUIERE_REVISION')",
             name="ck_mp_order_status"),
     )
+    # Salida QA verificada separada de pagos DECLARADOS y del MOCK_QA B4.
+    op.drop_constraint("ck_sale_payments_declared_method","sale_payments",type_="check")
+    op.create_check_constraint("ck_sale_payments_declared_method","sale_payments",
+        "method IN ('EFECTIVO','TRANSFERENCIA','CUENTA_DNI','TARJETA',"
+        "'MERCADO_PAGO_DECLARADO','MERCADO_PAGO_DEMO_QA','MERCADO_PAGO_QR_TEST')")
 
 def downgrade() -> None:
     bind=op.get_bind()
     for table in ("mp_test_orders","mp_test_accounts","mp_oauth_pending"):
         if bind.execute(sa.text(f"SELECT EXISTS (SELECT 1 FROM {table} LIMIT 1)")).scalar_one():
             raise RuntimeError("B6 preserva credenciales OAuth y órdenes existentes: no se puede revertir")
+    if bind.execute(sa.text(
+        "SELECT EXISTS (SELECT 1 FROM sale_payments WHERE method='MERCADO_PAGO_QR_TEST' LIMIT 1)"
+    )).scalar_one():
+        raise RuntimeError("Ventas QA MP TEST existentes: no se revierte el método")
+    op.drop_constraint("ck_sale_payments_declared_method","sale_payments",type_="check")
+    op.create_check_constraint("ck_sale_payments_declared_method","sale_payments",
+        "method IN ('EFECTIVO','TRANSFERENCIA','CUENTA_DNI','TARJETA',"
+        "'MERCADO_PAGO_DECLARADO','MERCADO_PAGO_DEMO_QA')")
     op.drop_table("mp_test_orders")
     op.drop_table("mp_test_accounts")
     op.drop_index("ix_mp_oauth_pending_business",table_name="mp_oauth_pending")
