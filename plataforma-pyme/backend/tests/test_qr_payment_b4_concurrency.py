@@ -18,6 +18,7 @@ from app.infrastructure.models import (
 )
 from app.main import create_app
 from test_sales_concurrency_integration import sales_company, stock_and_sales
+from test_receipt_concurrency_integration import committed_company
 from test_receipt_api_integration import physical, receive
 
 pytestmark = [
