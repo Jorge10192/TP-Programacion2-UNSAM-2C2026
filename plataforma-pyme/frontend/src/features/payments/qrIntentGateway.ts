@@ -3,6 +3,8 @@ import { ApiHttpError, ApiTransportError, createApiClient } from '../../api/http
 import { UUID_PATTERN, UUID_V4_PATTERN } from '../businesses/businessGateway.ts'
 import type { PosCartLine } from '../sales/realPosDraft.ts'
 import { calculateSaleTotals } from '../sales/realSaleCommand.ts'
+import { parseSaleReceipt } from '../sales/realSalesReadGateway.ts'
+import type { SaleReceipt } from '../sales/realSalesReadGateway.ts'
 
 export type QrIntentCommand = {
   location_id: string | null
@@ -30,7 +32,7 @@ export type QrPaymentEvent = {
   intent_id: string
   event_key: string
   sequence: number
-  action: 'CREAR' | 'CANCELAR' | QrSimAction
+  action: 'CREAR' | 'CANCELAR' | 'FINALIZAR' | 'REVISION' | QrSimAction
   from_status: string
   to_status: QrIntent['status']
   actor_id: string
@@ -53,8 +55,11 @@ export type QrIntent = {
   created_at: string
   expires_at: string
   qr_png_data_uri: string
+  sale_id?: string | null
   lines: QrIntentLine[]
 }
+
+export type QrFinalized = { intent: QrIntent; sale: SaleReceipt; replayed: boolean }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value)
@@ -86,6 +91,9 @@ export function parseQrIntent(raw: unknown, businessId: string): QrIntent {
       (raw.total_cents as number) < 1 ||
       (raw.subtotal_cents as number) - (raw.discount_cents as number) !== raw.total_cents ||
       typeof raw.reference !== 'string' || !/^PYME-DEMO-[A-F0-9]{32}$/.test(raw.reference) ||
+      !(raw.sale_id === undefined || raw.sale_id === null || UUID_PATTERN.test(String(raw.sale_id))) ||
+      (raw.status === 'FINALIZADA' && !UUID_PATTERN.test(String(raw.sale_id))) ||
+      (raw.status !== 'FINALIZADA' && raw.sale_id !== undefined && raw.sale_id !== null) ||
       typeof raw.notes !== 'string' || typeof raw.created_at !== 'string' ||
       typeof raw.expires_at !== 'string' || !Number.isFinite(Date.parse(raw.expires_at)) ||
       typeof raw.qr_png_data_uri !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(raw.qr_png_data_uri) ||
@@ -140,7 +148,7 @@ export function createQrIntentGateway(token: string, businessId: string, transpo
               entry.business_id !== businessId || entry.intent_id !== intentId ||
               !UUID_PATTERN.test(String(entry.actor_id)) || !UUID_PATTERN.test(String(entry.event_key)) ||
               entry.sequence !== i + 1 || typeof entry.from_status !== 'string' ||
-              !['CREAR','CANCELAR','APROBAR','RECHAZAR','EXPIRAR','INDETERMINAR'].includes(String(entry.action)) ||
+              !['CREAR','CANCELAR','APROBAR','RECHAZAR','EXPIRAR','INDETERMINAR','FINALIZAR','REVISION'].includes(String(entry.action)) ||
               !['ESPERANDO_PAGO','CANCELADA','EXPIRADA','APROBADA_DEMO','RECHAZADA','INDETERMINADA',
                 'REQUIERE_REVISION','FINALIZADA'].includes(String(entry.to_status)) ||
               typeof entry.created_at !== 'string' || !Number.isFinite(Date.parse(entry.created_at)))
@@ -156,6 +164,46 @@ export function createQrIntentGateway(token: string, businessId: string, transpo
       return api.request<unknown>(path + '/' + intentId + '/simulate', {
         method: 'POST', body: { action }, idempotencyKey: eventKey,
       }).then(raw => parseQrIntent(raw, businessId))
+    },
+    async finalize(intentId: string): Promise<QrFinalized> {
+      if (!UUID_PATTERN.test(intentId)) throw new TypeError('Intento inválido')
+      // El servidor usa el ID del QR como identidad idempotente: no generar una venta nueva al reintentar.
+      const raw = await api.request<unknown>(path + '/' + intentId + '/finalize-demo', {
+        method: 'POST',
+      })
+      try {
+        if (!isObject(raw) || typeof raw.replayed !== 'boolean') throw Error('Respuesta de cierre inválida')
+        const intent = parseQrIntent(raw.intent, businessId)
+        const sale = parseSaleReceipt(raw.sale, businessId)
+        if (intent.id !== intentId || intent.status !== 'FINALIZADA' ||
+            intent.sale_id !== sale.id || intent.total_cents !== sale.total_cents ||
+            intent.subtotal_cents !== sale.subtotal_cents ||
+            intent.discount_cents !== sale.discount_cents ||
+            sale.payments.length !== 1 ||
+            sale.payments[0].method !== 'MERCADO_PAGO_DEMO_QA' ||
+            sale.payments[0].reference !== intent.reference ||
+            sale.payments[0].amount_cents !== intent.total_cents ||
+            sale.location_id !== intent.location_id || sale.notes !== intent.notes ||
+            sale.lines.length !== intent.lines.length ||
+            sale.lines.some((l,i) => l.catalog_item_id !== intent.lines[i].catalog_item_id ||
+              l.description_snapshot !== intent.lines[i].description_snapshot ||
+              l.quantity_milli !== intent.lines[i].quantity_milli ||
+              l.unit_price_cents !== intent.lines[i].unit_price_cents ||
+              l.line_total_cents !== intent.lines[i].line_total_cents))
+          throw Error('Comprobante distinto del QR original')
+        return { intent, sale, replayed: raw.replayed }
+      } catch { throw new ApiTransportError('invalid-response', true) }
+    },
+    receipt(intentId: string, signal?: AbortSignal): Promise<SaleReceipt> {
+      if (!UUID_PATTERN.test(intentId)) throw new TypeError('Intento inválido')
+      return api.request<unknown>(path + '/' + intentId + '/receipt', {signal})
+        .then(raw => {
+          const sale = parseSaleReceipt(raw, businessId)
+          if (sale.payments.length !== 1 ||
+              sale.payments[0].method !== 'MERCADO_PAGO_DEMO_QA')
+            throw new ApiTransportError('invalid-response', false)
+          return sale
+        })
     },
     cancel(intentId: string): Promise<QrIntent> {
       if (!UUID_PATTERN.test(intentId)) throw new TypeError('Intento inválido')
