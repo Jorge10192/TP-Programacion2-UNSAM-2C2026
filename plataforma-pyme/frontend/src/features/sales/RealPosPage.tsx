@@ -7,6 +7,9 @@ import { CATALOG_PAGE_SIZE, centsToPesos, createCatalogGateway, pesosToCents } f
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
 import type { PosCartLine } from './realPosDraft.ts'
 import { RealPosCheckout } from './RealPosCheckout.tsx'
+import type { PosCheckoutStage } from './RealPosCheckout.tsx'
+import { Icon } from '../../app/Icon.tsx'
+import './realSalesVisual.css'
 import { canOverrideSalesPrice, parsePosQuantity, posLineTotalCents, posQuantityText, previewPosCart } from './realPosDraft.ts'
 
 type Props = {
@@ -48,6 +51,9 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
   const [cart, setCart] = useState<PosCartLine[]>([])
   const [draftError, setDraftError] = useState('')
   const [checkoutLocked, setCheckoutLocked] = useState(true)
+  const [checkoutStage,setCheckoutStage]=useState<PosCheckoutStage>('checking')
+  const onCheckoutStageChange=useCallback((stage:PosCheckoutStage)=>setCheckoutStage(stage),[])
+  const isDedicatedCheckout=['review','sending','pending','confirmed'].includes(checkoutStage)
   const onDraftLock = useCallback((locked: boolean) => setCheckoutLocked(locked), [])
   const onSaleConfirmed = useCallback(() => {
     setCart([]); setDiscountText('0'); setSelectedId(''); setDraftError('')
@@ -185,25 +191,37 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
     }
   }
 
-  return <section className="real-auth-card real-business-panel real-pos-panel" aria-label="Preparación de ventas REAL">
-    <nav className="real-business-nav" aria-label="Navegación de empresa">
+  return <section className="real-auth-card real-business-panel real-pos-panel e3-pos-page" aria-label="Preparación de ventas REAL">
+    {!isDedicatedCheckout&&<nav className="real-business-nav" aria-label="Navegación de empresa">
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId)}>Empresa</button>
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId + '/ventas')}>Historial de ventas</button>
       <button className="real-auth-link" type="button" onClick={() => onNavigate('/real/empresas/' + businessId + '/catalogo')}>Catálogo</button>
-    </nav>
-    <span className="real-auth-eyebrow">E2-7 · T10-D · POS REAL · pagos y revisión</span>
-    <h1>Punto de venta</h1>
-    <p>Armá el carrito con artículos y servicios de esta empresa. Los precios y permisos se comprobarán otra vez en FastAPI al confirmar una venta.</p>
+    </nav>}
+    <header className="e3-sales-heading">
+      <span className="e3-sales-heading-icon"><Icon name="shopping-cart" size={27}/></span>
+      <div className="e3-sales-heading-copy">
+        <span className="e3-sales-eyebrow">{company?.name??'Empresa'} · Ventas REAL</span>
+        <h1>{checkoutStage==='review'?'Revisión y confirmación'
+          :checkoutStage==='sending'?'Procesando venta'
+          :checkoutStage==='pending'?'Recuperación de venta'
+          :checkoutStage==='confirmed'?'Venta confirmada'
+          :'Punto de venta'}</h1>
+        <p>{isDedicatedCheckout
+          ?'Comprobá la solicitud y su estado antes de iniciar otra venta. No se enviará ninguna operación automáticamente.'
+          :'Armá el carrito y declará los pagos de la venta. FastAPI volverá a validar permisos, precios y stock al confirmar.'}</p>
+      </div>
+      {isDedicatedCheckout&&<span className="e3-sales-mode-indicator">{checkoutStage==='review'?'Paso 2 · Revisión':checkoutStage==='confirmed'?'Confirmada':checkoutStage==='pending'?'Recuperación':'Verificando'}</span>}
+    </header>
     <p className="real-auth-note"><strong>Modo de validación T10-D.</strong> Podés preparar un carrito, declarar pagos y revisar la venta. El registro final sigue deshabilitado por defecto fuera de los ensayos aislados con PostgreSQL descartable. Nunca se acredita dinero externo automáticamente.</p>
     {loadState === 'loading' && <p role="status">Cargando empresa, sedes y catálogo REAL desde FastAPI…</p>}
     {loadState === 'error' && <p role="alert" className="real-auth-message real-auth-error">{loadError}</p>}
     {loadState === 'ready' && company && <>
-      <div className="real-ops-toolbar">
+      <div className="real-ops-toolbar e3-pos-tenant-strip">
         <strong>{company.name}</strong>
         <span>{role.replaceAll('_', ' ')} · {company.status}</span>
       </div>
       {!canWork && <p role="alert" className="real-auth-message real-ops-warning">La empresa o tu membresía no está activa. No podés preparar ventas.</p>}
-      <fieldset className="real-pos-draft-fieldset" disabled={checkoutLocked}>
+      <fieldset className={'real-pos-draft-fieldset e3-pos-draft-fieldset'+(isDedicatedCheckout?' e3-pos-draft-hidden':'')} disabled={checkoutLocked}>
       <section className="real-ops-subpanel" aria-label="Ubicación para la venta">
         <h2>1. Ubicación de venta</h2>
         <label>Elegí la sede
@@ -215,7 +233,8 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
         </label>
         {!manager && <p className="real-auth-note">Solo podés vender en sedes donde tengas asignación activa. FastAPI verifica la asignación al confirmar; elegir una sede acá no concede permisos.</p>}
       </section>
-      <section className="real-ops-subpanel" aria-label="Catálogo disponible">
+      <div className="e3-pos-workspace-grid">
+      <section className="real-ops-subpanel e3-pos-catalog-section" aria-label="Catálogo disponible">
         <h2>2. Artículos y servicios</h2>
         <p className="real-auth-note">{items.length} fichas consultadas de PostgreSQL. {hasMore
           ? 'Hay más páginas sin consultar. La búsqueda solo abarca las fichas cargadas.'
@@ -274,7 +293,7 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
         </div>}
         {draftError && <p role="alert" className="real-auth-message real-auth-error">{draftError}</p>}
       </section>
-      <section className="real-ops-subpanel" aria-label="Carrito de venta">
+      <section className="real-ops-subpanel e3-pos-cart-section" aria-label="Carrito de venta">
         <h2>3. Carrito · borrador</h2>
         {cart.length === 0 && <p className="real-business-empty">Aún no agregaste artículos. No se realizó ninguna venta.</p>}
         {cart.map(row => {
@@ -303,11 +322,12 @@ export function RealPosPage({ token, userId, businessId, onNavigate, onUnauthori
         </div>}
         <p className="real-auth-note">El carrito todavía no es una venta. La revisión de pagos y la confirmación quedan separadas en el paso siguiente. Si existe un intento pendiente, se bloquea la edición para evitar duplicados.</p>
       </section>
+      </div>
       </fieldset>
       <RealPosCheckout token={token} userId={userId} businessId={businessId}
         businessName={company.name} role={role} businessActive={canWork}
         location={location} items={items} cart={cart} discountText={discountText}
-        onDraftLock={onDraftLock} onConfirmed={onSaleConfirmed}
+        onDraftLock={onDraftLock} onStageChange={onCheckoutStageChange} onConfirmed={onSaleConfirmed}
         onUnauthorized={onUnauthorized} onNavigate={onNavigate}/>
     </>}
   </section>

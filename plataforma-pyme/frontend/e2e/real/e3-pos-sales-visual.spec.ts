@@ -1,0 +1,95 @@
+import { test, expect } from '@playwright/test'
+import { randomUUID } from 'node:crypto'
+
+const api='http://127.0.0.1:18001/api/v1'
+test.beforeAll(()=>{
+  if(process.env.PYME_DISPOSABLE_QA!=='1')
+    throw new Error('E3-1G requiere PostgreSQL descartable y PYME_DISPOSABLE_QA=1')
+})
+
+test('E3-1G: historial→comprobante independiente→POS→revisión y regreso, sin POST desde UI',async({request,page})=>{
+  const email='e3-1g-'+randomUUID()+'@example.com'
+  const password='Clave POS visual QA aislada!'
+  const register=await request.post(api+'/auth/register',{
+    data:{email,password,display_name:'Vendedor E3 QA'},
+  })
+  expect(register.status(),await register.text()).toBe(201)
+  const login=await request.post(api+'/auth/login',{data:{email,password}})
+  expect(login.status(),await login.text()).toBe(200)
+  const auth={Authorization:'Bearer '+(await login.json()).access_token}
+  async function create(path:string,data:object){
+    const response=await request.post(api+path,{
+      headers:{...auth,'Idempotency-Key':randomUUID()},data,
+    })
+    expect(response.status(),await response.text()).toBe(201)
+    return response.json()
+  }
+  const company=await create('/businesses',{
+    name:'Empresa E3-G QA',category:'Pruebas',activity_kind:'MIXTO',
+  })
+  const root='/businesses/'+company.id
+  const location=await create(root+'/locations',{
+    name:'Sede de prueba G',kind:'LOCAL',can_sell:true,can_store:false,address:'',map_url:'',
+  })
+  const item=await create(root+'/catalog',{
+    name:'Servicio G consulta',kind:'SERVICIO',unit:'SERVICIO',sellable:true,
+    price_cents:150000,
+  })
+  const recorded=await create(root+'/sales',{
+    location_id:location.id,
+    lines:[{catalog_item_id:item.id,quantity_milli:1000,unit_price_cents:150000}],
+    payments:[{method:'EFECTIVO',amount_cents:150000}],
+  })
+  let uiPosts=0
+  page.on('request',req=>{
+    if(req.method()==='POST'&&new URL(req.url()).pathname===
+      '/api/v1'+root+'/sales')uiPosts++
+  })
+
+  await page.setViewportSize({width:390,height:844})
+  await page.goto('/real/empresas/'+company.id+'/ventas')
+  await page.getByLabel('Correo electrónico',{exact:true}).fill(email)
+  await page.getByLabel('Contraseña',{exact:true}).fill(password)
+  await page.getByRole('button',{name:'Ingresar',exact:true}).click()
+  await expect(page.getByRole('heading',{name:'Historial de ventas',exact:true})).toBeVisible()
+  const history=page.locator('.real-sales-row')
+  await expect(history).toHaveCount(1)
+  await expect(history).toContainText('Vendedor E3 QA')
+  await page.getByLabel('Buscar ventas cargadas').fill('No existe')
+  await expect(history).toHaveCount(0)
+  await page.getByLabel('Buscar ventas cargadas').fill('')
+  await expect(history).toHaveCount(1)
+  await history.getByRole('button',{name:'Ver comprobante'}).click()
+  await expect(page.getByRole('heading',{name:'Comprobante de venta',exact:true})).toBeVisible()
+  await expect(history).toHaveCount(0)
+  const receipt=page.getByRole('region',{name:'Comprobante de venta REAL'})
+  await expect(receipt).toContainText('Servicio G consulta')
+  await expect(receipt).toContainText('Vendedor E3 QA')
+  await receipt.getByText('Identificadores de trazabilidad').click()
+  await expect(receipt).toContainText(recorded.request_id)
+  await expect(page.getByRole('button',{name:'Volver al historial'})).toBeFocused()
+  await page.getByRole('button',{name:'Volver al historial'}).click()
+  await expect(history).toHaveCount(1)
+  await page.getByRole('button',{name:'Ir al punto de venta'}).click()
+  await expect(page.getByRole('heading',{name:'Punto de venta',exact:true})).toBeVisible()
+  await page.getByLabel('Sede del punto de venta').selectOption(location.id)
+  await page.getByRole('button',{name:/Servicio G consulta/}).click()
+  await page.getByRole('button',{name:'Agregar al carrito'}).click()
+  await expect(page.getByLabel('Carrito de venta')).toContainText('Servicio G consulta')
+  await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1500,00')
+  await page.getByRole('button',{name:'Revisar venta y pagos'}).click()
+  await expect(page.getByRole('heading',{name:'Revisión y confirmación',exact:true})).toBeVisible()
+  await expect(page.getByLabel('Revisión final de la venta')).toContainText('1.500,00')
+  await expect(page.getByLabel('Carrito de venta')).toBeHidden()
+  await expect(page.getByRole('button',{name:'Confirmar y registrar venta REAL'})).toBeDisabled()
+  await page.getByRole('button',{name:'Volver a editar'}).click()
+  await expect(page.getByRole('heading',{name:'Punto de venta',exact:true})).toBeVisible()
+  await expect(page.getByLabel('Carrito de venta')).toBeVisible()
+  expect(uiPosts).toBe(0)
+  const list=await request.get(api+root+'/sales',{headers:auth})
+  expect(list.status(),await list.text()).toBe(200)
+  expect(await list.json()).toHaveLength(1)
+  const width=await page.evaluate(()=>Math.max(
+    document.documentElement.scrollWidth,document.body.scrollWidth))
+  expect(width,'Responsive a 390 px').toBeLessThanOrEqual(391)
+})

@@ -26,6 +26,7 @@ type Props = {
   cart: readonly PosCartLine[]
   discountText: string
   onDraftLock: (locked: boolean) => void
+  onStageChange: (stage: PosCheckoutStage) => void
   onConfirmed: () => void
   onUnauthorized: () => void
   onNavigate: (path: string) => void
@@ -40,7 +41,8 @@ const MUTATIONS_ENABLED = import.meta.env.VITE_PYME_ENABLE_REAL_SALES === '1'
 const pesos = (c: number) => new Intl.NumberFormat('es-AR', {
   style: 'currency', currency: 'ARS',
 }).format(c / 100)
-type Stage = 'checking' | 'editing' | 'review' | 'sending' | 'pending' | 'confirmed' | 'blocked'
+export type PosCheckoutStage = 'checking' | 'editing' | 'review' | 'sending' | 'pending' | 'confirmed' | 'blocked'
+type Stage = PosCheckoutStage
 type Review = { body: SaleCommand; totals: SaleTotals }
 const initialPayment = (amount: number | null): PosPaymentDraft => ({
   method: 'EFECTIVO', amountText: centsToPesos(amount), reference: '',
@@ -62,7 +64,7 @@ function readableError(error: unknown): string {
 
 export function RealPosCheckout({
   token, userId, businessId, businessName, role, businessActive, location,
-  items, cart, discountText, onDraftLock, onConfirmed, onUnauthorized, onNavigate,
+  items, cart, discountText, onDraftLock, onStageChange, onConfirmed, onUnauthorized, onNavigate,
 }: Props) {
   const coordinator = useMemo(
     () => createSaleWriteCoordinator(token, userId, businessId),
@@ -79,6 +81,7 @@ export function RealPosCheckout({
   const [ack, setAck] = useState(false)
   const [recoveryChecked, setRecoveryChecked] = useState(false)
   const busy = useRef(false)
+  useEffect(()=>onStageChange(stage),[stage,onStageChange])
 
   const draft = useMemo(() => {
     try {
@@ -244,8 +247,14 @@ export function RealPosCheckout({
   }, 0n)
   const currentTotal = draft.totals?.total_cents ?? null
 
-  return <section className="real-ops-subpanel real-pos-checkout" aria-label="Pagos y confirmación REAL">
-    <h2>4. Pagos declarados y confirmación</h2>
+  return <section className={'real-ops-subpanel real-pos-checkout e3-pos-checkout e3-pos-checkout-'+stage}
+      aria-label="Pagos y confirmación REAL" data-stage={stage}>
+    <h2>{stage==='review'?'Revisión final de la venta'
+      :stage==='pending'?'Recuperar venta pendiente'
+      :stage==='confirmed'?'Venta confirmada'
+      :stage==='sending'?'Procesando venta'
+      :stage==='blocked'?'Verificar venta pendiente'
+      :'4. Pagos declarados y confirmación'}</h2>
     <p className="real-auth-note"><strong>Los pagos son declaraciones del vendedor.</strong> No se consulta ni acredita dinero en bancos, tarjetas, Cuenta DNI o Mercado Pago. Una venta confirmada sí genera comprobante y, si incluye bienes físicos, descuenta stock en PostgreSQL.</p>
 
     {stage === 'checking' && <p role="status">Verificando ventas pendientes en IndexedDB…</p>}
