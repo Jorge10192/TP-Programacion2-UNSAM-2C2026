@@ -53,17 +53,19 @@ test('E27-SAL-05: precio excepcional, descuento y pagos desbalanceados bloqueado
   await page.getByRole('button', { name: 'Ingresar', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible()
   await page.getByLabel('Sede del punto de venta').selectOption(locationId)
-  await page.getByRole('button', { name: /Servicio de pago QA/ }).click()
+  await page.getByRole('button', { name: 'Agregar una unidad de Servicio de pago QA al detalle de venta' }).click()
+  await page.getByRole('region',{name:'Carrito de venta'}).locator('.real-pos-cart-row')
+    .filter({hasText:'Servicio de pago QA'}).getByRole('button',{name:'Editar cantidad'}).click()
   await page.getByRole('button', { name: 'Modificar precio excepcionalmente' }).click()
   await page.getByLabel('Precio unitario de la venta').fill('1800')
-  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Guardar cambios en detalle' }).click()
   await page.getByLabel('Descuento de la venta').fill('300')
-  await expect(page.locator('.real-pos-summary')).toContainText('1.500,00')
+  await expect(page.getByLabel('Desglose del total de compra')).toContainText('1.500,00')
   await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1500,00')
 
   // Pago declarado $1400 contra total $1500: revisión no da éxito ni envía POST.
   await page.getByLabel('Importe declarado 1').fill('1400')
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await expect(page.getByRole('alert')).toContainText('Los pagos declarados deben sumar exactamente el total.')
   await expect(page.getByLabel('Revisión final de la venta')).toHaveCount(0)
   expect(salePosts).toBe(0)
@@ -85,7 +87,7 @@ test('E27-SAL-05: precio excepcional, descuento y pagos desbalanceados bloqueado
 
   // Al corregir el importe, la misma revisión de UI sí es válida.
   await page.getByLabel('Importe declarado 1').fill('1500')
-  await page.getByRole('button', { name: 'Revisar venta y pagos' }).click()
+  await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await expect(page.getByLabel('Revisión final de la venta')).toContainText('1.500,00')
   expect(salePosts).toBe(0) // Review still never writes; explicit consent remains required.
 })
