@@ -3,14 +3,14 @@
 **Fecha:** 12 de noviembre de 2026.  
 **Proyecto:** Asistente PyME, plataforma generalista multiempresa/multirrubro, UNSAM Programación 2. WALOS no es el producto.  
 **Base inalterada:** main en 0f1b1ca569605e18f9207520f1d4e0e5a563688e.  
-**Rama funcional auditada:** feature/e3-2a-imagenes-real-backend, después de la corrección funcional 320577f11efc5d3117557501543b4f283a24d50d. PR #65 en DRAFT.  
+**Rama funcional auditada:** feature/e3-2a-imagenes-real-backend, último commit funcional validado c60a0eb21ef764c03af9795744a1ebabdb811849. PR #65 en DRAFT.  
 **Alcance:** auditoría de integración transversal y regresión de E3-2A con identidad, empresas, equipo, catálogo, proveedores, compras, inventario, POS, CI y documentación del cierre E2-7/T12. **No equivale** a pentest, certificación de producción, auditoría exhaustiva de cada línea o aprobación final del diseño.
 
 ## 1. Resumen ejecutivo
 
 La funcionalidad de fotografías probada manualmente es operativa y está aislada por empresa. Los hallazgos realizados por el usuario se concentraron en la ubicación de los controles y en pantallas donde la miniatura no estaba integrada. Se corrigieron sobre la rama del PR, sin merge ni cambios en la base local.
 
-**Dictamen provisional:** la implementación queda preparada para revalidación automatizada y revisión humana de los cambios. La auditoría no declara cerrada la calidad final mientras los tres workflows del último HEAD y las comprobaciones de las pantallas modificadas no terminen aprobados.
+**Dictamen técnico post-regresión: APTO PARA REVISIÓN VISUAL DE LAS CORRECCIONES.** Los tres workflows del último commit de código finalizaron aprobados; falta exclusivamente la aprobación humana de los cambios de UX y las pruebas manuales suspendidas por decisión del usuario. No existe autorización de merge.
 
 ## 2. Resultado de QA manual declarado por el usuario
 
@@ -85,16 +85,21 @@ Si la carga de fotos falla **después** de crear un artículo o proveedor, la fi
 
 La base anterior a las correcciones pasó 908 Pytest, 54 Playwright REAL y 6 DEMO sobre el SHA anterior de E3-2A. **Es evidencia histórica, no prueba de este cambio.**
 
-La primera ejecución de los nuevos commits detectó un problema externo reproducible: Playwright rechazó Chromium en el runner ubuntu26.04-x64. Se fijaron los tres YAML exclusivos de PyME a ubuntu-24.04 para restablecer la suite. La corrida CI definitiva debe verificarse contra el último HEAD, incluidos los tests añadidos y este documento.
+La primera ejecución de los nuevos commits detectó un problema externo reproducible: Playwright rechazó Chromium en el runner ubuntu26.04-x64. Se fijaron los tres YAML exclusivos de PyME a ubuntu-24.04. Después la suite integral encontró dos regresiones de navegación: altas de artículo/proveedor que abrían ficha en lugar de regresar al listado. Se preservó el retorno al listado y se corrigió el Playwright nuevo para abrir «Ver ficha» de forma explícita.
 
-**No certificar verde ni merge mientras los jobs sigan en curso o fallidos.**
+**CI COMPLETA, aprobada sobre el último commit de código `c60a0eb21ef764c03af9795744a1ebabdb811849` (12/11/2026):**
+- [Backend FastAPI, Python 3.12/3.14 y Docker](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43295787831): **SUCCESS**.
+- [Frontend build/lint/tests/Chromium](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43295788008): **SUCCESS**.
+- [Fullstack PostgreSQL/Alembic/REAL/DEMO](https://github.com/Jorge10192/TP-Programacion2-UNSAM-2C2026/actions/runs/43295787735): **SUCCESS**; **908 Pytest aprobados, 54 Playwright REAL y 6 DEMO**; Alembic `e32a_photo_assets (head)`, `No new upgrade operations detected`.
+
+La presente actualización documental es posterior a ese SHA de código; debe verificarse que los workflows del commit documental también terminen antes de declarar verde el HEAD final. La aprobación automática no equivale a conformidad visual ni autoriza merge.
 
 ## 8. Puertas de cierre
 
-1. CI Backend Python 3.12 y 3.14 + PostgreSQL, imagen Docker, Alembic HEAD/check: SUCCESS en SHA final.
-2. CI frontend build, lint y tests del contrato: SUCCESS en SHA final.
-3. Full-stack Playwright REAL y DEMO en PostgreSQL descartable: SUCCESS en SHA final.
+1. CI Backend Python 3.12 y 3.14 + PostgreSQL, imagen Docker, Alembic HEAD/check: **APROBADO en código c60a0eb2**; revisar nuevamente SHA documental final.
+2. CI frontend build, lint y tests del contrato: **APROBADO en código c60a0eb2**; revisar nuevamente SHA documental final.
+3. Full-stack Playwright REAL y DEMO en PostgreSQL descartable: **APROBADO en código c60a0eb2**; revisar nuevamente SHA documental final.
 4. Revisión humana de nuevas pantallas: altas de artículo/proveedor, edición, Compras, Existencias, equipo y revisión POS.
 5. Aprobación explícita del usuario antes de convertir PR #65 a READY o hacer merge a main.
 
-**Estado de este documento:** auditoría estática de integración realizada; CI final y aceptación manual de correcciones pendientes al momento de redacción. No se modificó la base local del usuario.
+**Estado de este documento:** auditoría transversal realizada con CI de código completamente aprobada; aceptación manual de las nuevas pantallas pendiente. No se modificó la base local del usuario y no existe autorización de merge.
