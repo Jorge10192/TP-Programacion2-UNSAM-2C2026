@@ -1,0 +1,108 @@
+/* E3-1D — Catálogo y Proveedores REAL.
+   Estilos aislados del DEMO, sin alterar gateways ni contratos. */
+.real-workspace-mode .real-auth-main>.e3-commerce-page{max-width:1230px}
+.e3-commerce-page{min-width:0}
+.e3-commerce-page .real-business-nav{margin-bottom:26px}
+.e3-commerce-heading{display:flex;gap:17px;align-items:center;flex-wrap:wrap;margin:15px 0 23px}
+.e3-commerce-heading-icon{display:grid;place-items:center;width:64px;height:64px;flex:0 0 64px;border-radius:19px;background:#e9f2ff;color:#2467be}
+.e3-commerce-heading-copy{flex:1;min-width:215px}
+.e3-commerce-eyebrow{display:block;text-transform:uppercase;letter-spacing:1.2px;font-size:11px;font-weight:850;color:#4976b4;margin:0 0 7px;overflow-wrap:anywhere}
+.e3-commerce-heading h1{font-size:clamp(24px,3vw,33px);line-height:1.22;color:#172943;margin:0 0 8px}
+.e3-commerce-heading-copy p{font-size:13px;line-height:1.55;color:#64748b;margin:0;overflow-wrap:anywhere}
+.e3-commerce-top-action{display:inline-flex;align-items:center;gap:9px;justify-content:center;margin-left:auto}
+.e3-commerce-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:4px 0 18px;font-size:13px;color:#60758c}
+.e3-commerce-toolbar strong{color:#254976;overflow-wrap:anywhere}
+.e3-commerce-toolbar button{padding:10px 13px;font-size:12px}
+.e3-commerce-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:17px 0 18px}
+.e3-commerce-stats>div{display:grid;gap:8px;min-width:0;padding:17px 19px;background:#f6f9fd;border:1px solid #e0e9f4;border-radius:14px}
+.e3-commerce-stats span{font-size:12px;font-weight:650;color:#5d728a}
+.e3-commerce-stats strong{font-size:26px;color:#18559c;line-height:1.1;font-variant-numeric:tabular-nums}
+.e3-commerce-page .real-catalog-coverage{margin:16px 0;background:#f0f6ff;border-color:#73a0dc;line-height:1.5;color:#3b608b;min-width:0;overflow-wrap:anywhere}
+.e3-commerce-filters{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:21px 0 18px}
+.e3-commerce-filters>label:not(.e3-commerce-search){display:grid;gap:7px;min-width:140px;color:#4f6681;font-size:12px;font-weight:800}
+.e3-commerce-filters select{width:100%;min-height:45px;padding:9px 13px;background:#fff;border:1px solid #cbdaf0;border-radius:10px;color:#1b3353;font:inherit}
+.e3-commerce-search{display:flex;align-items:center;gap:9px;flex:1 1 280px;min-width:190px;min-height:45px;padding:0 13px;border:1px solid #cbdaf0;border-radius:10px;color:#6889aa;background:#fff}
+.e3-commerce-search:focus-within{border-color:#3980e2;box-shadow:0 0 0 3px #3980e21f}
+.e3-commerce-search input{flex:1;min-width:0;padding:10px 0;border:0;outline:none;background:transparent;font:inherit;font-size:13px;color:#1e3555}
+.e3-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.e3-commerce-empty{display:grid;gap:6px}
+.e3-commerce-empty strong{display:block;font-size:16px;color:#214b80}
+.e3-commerce-empty p{margin:0;font-size:13px}
+.e3-commerce-page .e3-commerce-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:15px;margin:18px 0 25px}
+.e3-commerce-page .e3-catalog-tile,.e3-commerce-page .e3-supplier-tile{background:#fff;border:1px solid #dce5ef;border-radius:16px;padding:19px;min-height:0;display:flex;flex-direction:column;gap:12px;transition:box-shadow .16s,border-color .16s}
+.e3-commerce-page .e3-catalog-tile:hover,.e3-commerce-page .e3-supplier-tile:hover{border-color:#a5c6f2;box-shadow:0 6px 20px #194e8b10}
+.e3-commerce-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.e3-commerce-card-icon{display:grid;place-items:center;flex:0 0 45px;width:45px;height:45px;border-radius:13px;background:#e9f2ff;color:#2865b7}
+.e3-commerce-card-name{display:grid;gap:7px}
+.e3-commerce-card-name strong,.e3-supplier-tile>strong{font-size:17px;line-height:1.4;color:#172943;overflow-wrap:anywhere}
+.e3-commerce-card-name>span{font-size:12px;color:#607590;overflow-wrap:anywhere}
+.e3-commerce-chips{display:flex;gap:7px;flex-wrap:wrap}
+.e3-commerce-chips>span{display:inline-flex;padding:5px 9px;background:#edf2f9;border-radius:7px;color:#36597c;font-size:10px;font-weight:800;overflow-wrap:anywhere}
+.e3-commerce-sku{font-size:11px;color:#617892;overflow-wrap:anywhere}
+.e3-commerce-page .e3-commerce-prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:auto;padding:15px 0 0;border-top:1px solid #e6edf6}
+.e3-commerce-prices span{min-width:0;overflow-wrap:anywhere;line-height:1.35}
+.e3-commerce-prices b{font-size:15px;overflow-wrap:anywhere}
+.e3-commerce-card-actions{margin:0!important;padding-top:13px;border-top:1px solid #e7edf5;gap:7px}
+.e3-commerce-card-actions button{flex:1 1 auto;min-height:40px;padding:8px 10px;font-size:11px;cursor:pointer;transition:background .14s,border-color .14s,transform .1s}
+.e3-commerce-card-actions button:hover:not(:disabled){background:#e1efff;color:#1e5ba7;border-color:#99bce9}
+.e3-commerce-card-actions button:active:not(:disabled){transform:translateY(1px);background:#cbdffb;box-shadow:inset 0 2px 4px #22559b24}
+.e3-commerce-loadmore{margin:0 0 15px}
+.e3-commerce-backbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid #dfe8f2;margin:0 0 25px;padding-bottom:20px}
+.e3-commerce-back{display:inline-flex;align-items:center;gap:9px;border:1px solid #cbdcf2;border-radius:11px;min-height:44px;padding:10px 15px;background:#edf4ff;color:#245da8;font:inherit;font-size:13px;font-weight:800;cursor:pointer;transition:background .14s,transform .1s}
+.e3-commerce-back:hover:not(:disabled){background:#dceaff}
+.e3-commerce-back:active:not(:disabled){background:#c6ddfa;transform:translateY(1px)}
+.e3-commerce-back:disabled{cursor:not-allowed;opacity:.6}
+.e3-commerce-view-label{border-radius:999px;padding:7px 11px;border:1px solid #dbe6f2;background:#f6f9fd;color:#526d8e;font-size:11px;font-weight:800}
+.e3-commerce-subsurface{margin:24px 0 0;border:1px solid #dce5ef;border-radius:17px;background:#fff;padding:clamp(17px,3vw,30px);box-shadow:0 6px 22px #123c7008;min-width:0}
+.e3-commerce-detail-heading{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid #e7edf5;padding-bottom:22px;margin-bottom:22px}
+.e3-commerce-detail-heading>div{flex:1;min-width:200px}
+.e3-commerce-detail-heading h2{font-size:21px;color:#172943;margin:0 0 7px;overflow-wrap:anywhere}
+.e3-commerce-detail-heading p{font-size:12px;color:#637891;margin:0}
+.e3-commerce-fact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:0}
+.e3-commerce-fact-grid>div{min-width:0;background:#f6f9fd;border:1px solid #e6edf6;border-radius:12px;padding:14px 16px}
+.e3-commerce-fact-grid dt{color:#637891;font-size:11px;font-weight:700}
+.e3-commerce-fact-grid dd{margin:7px 0 0;font-size:14px;font-weight:750;color:#183251;line-height:1.5;overflow-wrap:anywhere}
+.e3-commerce-note-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:17px 0}
+.e3-commerce-note-grid>div{border:1px solid #e1e9f4;border-radius:12px;background:#fff;padding:17px;min-width:0}
+.e3-commerce-note-grid h3,.e3-supplier-payments h3{color:#213e61;font-size:14px;margin:0 0 10px}
+.e3-commerce-note-grid p{font-size:13px;color:#617590;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.e3-commerce-section-head{border-bottom:1px solid #e7eef6;margin-bottom:20px;padding-bottom:18px}
+.e3-commerce-section-head h2{font-size:20px;color:#1a4b88;margin:0 0 8px}
+.e3-commerce-section-head p{font-size:13px;line-height:1.55;color:#637891;margin:0}
+.e3-commerce-form.real-ops-form{padding:0;margin:0;background:transparent;border:0}
+.e3-commerce-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.e3-commerce-form-grid>label{min-width:0}
+.e3-commerce-span-all{grid-column:1/-1}
+.e3-commerce-sellable{display:flex;align-items:center;padding:13px 15px;border:1px solid #e1e9f5;border-radius:11px;background:#f6f9fd}
+.e3-commerce-form-actions{margin:10px 0 0}
+.e3-commerce-disclaimer{background:#f0f5fc;border-left:3px solid #9abde8;border-radius:8px;padding:12px 15px;font-size:12px;line-height:1.6;color:#56718e;margin:22px 0 0;overflow-wrap:anywhere}
+.e3-supplier-tile>.e3-supplier-offerings{font-size:12px;color:#617690;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.e3-supplier-compact-fields{display:grid;gap:10px;margin-top:4px;min-height:32px}
+.e3-supplier-compact-fields>span{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#4c6683;overflow-wrap:anywhere}
+.e3-supplier-compact-fields>span>svg{flex:none}
+.e3-supplier-tile .e3-commerce-card-actions{margin-top:auto!important}
+.e3-supplier-payments{border-top:1px solid #e7eef6;margin-top:15px;padding-top:20px}
+.e3-commerce-page button:focus-visible,.e3-commerce-page input:focus-visible,.e3-commerce-page select:focus-visible,.e3-commerce-page textarea:focus-visible{outline:3px solid #3c80db;outline-offset:2px}
+.e3-commerce-page .e3-commerce-heading-copy h1:focus{outline:2px solid #3c80db;outline-offset:4px;border-radius:4px}
+@media(max-width:720px){
+ .e3-commerce-top-action{width:100%;margin:0}
+ .e3-commerce-filters{align-items:stretch}
+ .e3-commerce-search{flex:1 1 100%;min-width:0}
+ .e3-commerce-filters>label:not(.e3-commerce-search){flex:1 1 145px}
+ .e3-commerce-form-grid{grid-template-columns:1fr}
+ .e3-commerce-span-all{grid-column:auto}
+}
+@media(max-width:520px){
+ .e3-commerce-heading-icon{width:53px;height:53px;flex-basis:53px;border-radius:15px}
+ .e3-commerce-stats{gap:7px}
+ .e3-commerce-stats>div{padding:12px 10px}
+ .e3-commerce-stats span{font-size:10px}
+ .e3-commerce-stats strong{font-size:22px}
+ .e3-commerce-fact-grid,.e3-commerce-note-grid{grid-template-columns:1fr}
+ .e3-commerce-page .e3-commerce-grid{grid-template-columns:1fr}
+ .e3-commerce-page .e3-commerce-prices{gap:10px}
+ .e3-commerce-subsurface{padding:17px}
+}
+@media(prefers-reduced-motion:reduce){
+ .e3-commerce-card-actions button,.e3-commerce-back,.e3-commerce-page .e3-catalog-tile,.e3-commerce-page .e3-supplier-tile{transition:none}
+}

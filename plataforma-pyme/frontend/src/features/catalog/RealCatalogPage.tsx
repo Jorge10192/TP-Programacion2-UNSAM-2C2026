@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Icon } from '../../app/Icon.tsx'
+import './realCatalogVisual.css'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
@@ -21,6 +23,9 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
   const gateway=useMemo(()=>createCatalogGateway(token,businessId),[token,businessId])
   const companies=useMemo(()=>createOperationsGateway(token,userId),[token,userId])
   const mounted=useRef({active:true})
+  const backRef=useRef<HTMLButtonElement>(null)
+  const listTitleRef=useRef<HTMLHeadingElement>(null)
+  const previousView=useRef<'list'|'form'|'detail'>('list')
   const [business,setBusiness]=useState<RealBusiness|null>(null)
   const [items,setItems]=useState<CatalogItem[]>([])
   const [hasMore,setHasMore]=useState(false)
@@ -36,6 +41,8 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
   const [draft,setDraft]=useState<Draft>(emptyDraft)
   const [filter,setFilter]=useState('')
   const [statusFilter,setStatusFilter]=useState<'TODOS'|'ACTIVO'|'INACTIVO'>('TODOS')
+  const [kindFilter,setKindFilter]=useState<'TODOS'|CatalogKind>('TODOS')
+  const [detailId,setDetailId]=useState<string|null>(null)
 
   useEffect(()=>{
     const controller=new AbortController()
@@ -60,6 +67,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
   const canWrite=business!==null&&canManageCatalog(
     business.membership.role,business.membership.status,business.status)
   const visible=items.filter(x=>(statusFilter==='TODOS'||x.status===statusFilter)
+    &&(kindFilter==='TODOS'||x.kind===kindFilter)
     &&(x.name.toLocaleLowerCase('es-AR').includes(filter.toLocaleLowerCase('es-AR'))
        ||(x.sku??'').toLocaleLowerCase('es-AR').includes(filter.toLocaleLowerCase('es-AR'))))
 
@@ -103,8 +111,20 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
     finally{if(mounted.current.active)setMoreLoading(false)}
   }
 
-  function startCreate(){setDraft(emptyDraft);setEditing(null);setForm(true);setError('');setNotice('')}
+  function startCreate(){
+    if(!canWrite||busy||uncertain)return
+    setDraft(emptyDraft);setEditing(null);setDetailId(null);setForm(true);setError('');setNotice('')
+  }
+  function openDetail(item:CatalogItem){
+    setDetailId(item.id);setForm(false);setEditing(null);setError('');setNotice('')
+  }
+  function closeSubview(){
+    if(busy)return
+    setForm(false);setEditing(null);setDetailId(null);setDraft(emptyDraft);setError('')
+  }
   function startEdit(item:CatalogItem){
+    if(!canWrite||busy||uncertain)return
+    setDetailId(null)
     setDraft({
       name:item.name,kind:item.kind,category:item.category,sku:item.sku,unit:item.unit,
       description:item.description,observations:item.observations,sellable:item.sellable,
@@ -166,88 +186,148 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
   }
 
   const updateField=<K extends keyof Draft>(key:K,value:Draft[K])=>setDraft(old=>({...old,[key]:value}))
-  return <section className="real-auth-card real-business-panel">
-    <nav className="real-business-nav">
+  const selected=items.find(item=>item.id===detailId)
+  const view:'list'|'form'|'detail'=form?'form':selected?'detail':'list'
+  const loadedActive=items.filter(item=>item.status==='ACTIVO').length
+  useEffect(()=>{
+    if(previousView.current===view)return
+    if(view==='list')listTitleRef.current?.focus()
+    else backRef.current?.focus()
+    previousView.current=view
+  },[view])
+  return <section className="real-auth-card real-business-panel e3-commerce-page e3-catalog-page">
+    {view==='list'&&<nav className="real-business-nav" aria-label="Navegación de empresa">
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId)}>Empresa</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/ubicaciones')}>Ubicaciones</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas')}>Mis empresas</button>
-    </nav>
-    <span className="real-auth-eyebrow">E2-7 · T05 · Catálogo REAL</span>
-    <h1>Catálogo de artículos</h1>
-    <p>Productos elaborados, reventa, insumos y servicios desde FastAPI. No se consultan artículos DEMO ni se administran existencias desde este módulo.</p>
-    {loading&&<p role="status">Consultando catálogo de PostgreSQL…</p>}
-    {business&&<div className="real-ops-toolbar">
-      <strong>{business.name}</strong>
-      <button type="button" className="real-auth-secondary" disabled={loading||busy||moreLoading} onClick={()=>void refresh()}>Actualizar catálogo</button>
+    </nav>}
+    {view!=='list'&&<div className="e3-commerce-backbar">
+      <button ref={backRef} type="button" className="e3-commerce-back" disabled={busy} onClick={closeSubview}>
+        <Icon name="arrow-left" size={18}/>Volver al catálogo
+      </button>
+      <span className="e3-commerce-view-label">{view==='form'?'Edición de artículo':'Ficha de artículo'}</span>
     </div>}
-    {!loading&&loaded&&<>
-      <p className="real-catalog-coverage" role="status">
-        {items.length} ficha{items.length===1?'':'s'} cargada{items.length===1?'':'s'}.
-        {hasMore?' Existen potencialmente más páginas: todavía NO se consultó el catálogo completo.':' La última página fue consultada.'}
-      </p>
-      <div className="real-catalog-filters">
-        <label>Buscar entre páginas cargadas<input type="search" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Nombre o SKU (búsqueda local)"/></label>
-        <label>Estado<select value={statusFilter} onChange={e=>setStatusFilter(e.target.value as typeof statusFilter)}>
-          <option value="TODOS">Todos</option><option value="ACTIVO">Activos</option><option value="INACTIVO">Inactivos</option>
-        </select></label>
+    <header className="e3-commerce-heading">
+      <span className="e3-commerce-heading-icon"><Icon name={view==='detail'?'book':'package'} size={28}/></span>
+      <div className="e3-commerce-heading-copy">
+        <span className="e3-commerce-eyebrow">{business?.name??'Empresa'} · Comercial</span>
+        {view==='list'
+          ? <h1 ref={listTitleRef} tabIndex={-1}>Catálogo de artículos</h1>
+          : <h1>{view==='form'?(editing?'Editar artículo':'Nuevo artículo'):'Ficha del artículo'}</h1>}
+        <p>{view==='list'?'Organizá lo que vendés y los insumos que utilizás.':view==='detail'?(selected?.name??'Ficha de artículo'):'Completá los datos de la ficha seleccionada.'}</p>
       </div>
-      {items.length===0&&<div className="real-business-empty">Esta empresa no tiene fichas registradas.</div>}
-      {items.length>0&&visible.length===0&&<div className="real-business-empty">Sin coincidencias entre las páginas ya cargadas. No es una búsqueda global.</div>}
-      <div className="real-catalog-grid">
-        {visible.map(item=><article key={item.id} className="real-catalog-tile">
-          <div className="real-catalog-tile-header">
-            <strong>{item.name}</strong>
-            <span className={'real-catalog-status '+(item.status==='ACTIVO'?'real-catalog-active':'')}>{item.status}</span>
-          </div>
-          <small>{label(item.kind)} · {item.unit} · {item.category}</small>
-          <small>SKU: {item.sku??'Sin SKU'} · {item.sellable?'A la venta':'No vendible'}</small>
-          <div className="real-catalog-prices"><span>Precio <b>{formatMoney(item.price_cents)}</b></span>
-            <span>Costo ref. <b>{formatMoney(item.reference_cost_cents)}</b></span></div>
-          {item.description&&<p>{item.description}</p>}
-          {canWrite&&<div className="real-auth-actions">
-            <button type="button" className="real-auth-secondary" disabled={busy||uncertain}
-              onClick={()=>startEdit(item)}>Editar</button>
-            <button type="button" className="real-auth-secondary" disabled={busy||uncertain}
-              onClick={()=>void changeStatus(item)}>{item.status==='ACTIVO'?'Desactivar':'Reactivar'}</button>
-          </div>}
-        </article>)}
-      </div>
-      {hasMore&&<button type="button" className="real-auth-secondary" disabled={moreLoading||busy||loading}
-        onClick={()=>void next()}>{moreLoading?'Cargando página siguiente…':'Cargar los siguientes 100'}</button>}
-      {canWrite&&!form&&<div className="real-auth-actions">
-        <button className="real-auth-primary" type="button" disabled={busy||uncertain} onClick={startCreate}>Crear artículo REAL</button>
-      </div>}
-      {canWrite&&form&&<form className="real-auth-form real-ops-form" onSubmit={e=>void save(e)}>
-        <h2>{editing?'Editar artículo':'Nuevo artículo'}</h2>
-        <label>Nombre<input required minLength={2} maxLength={90} value={draft.name} onChange={e=>updateField('name',e.target.value)}/></label>
-        <label>Tipo<select value={draft.kind} onChange={e=>changeKind(e.target.value as CatalogKind)}>
-          {CATALOG_KINDS.map(k=><option value={k} key={k}>{label(k)}</option>)}</select></label>
-        <label>Rubro o categoría<input required minLength={2} maxLength={60} value={draft.category} onChange={e=>updateField('category',e.target.value)}/></label>
-        <label>Unidad<select value={draft.unit} onChange={e=>updateField('unit',e.target.value as CatalogUnit)}>
-          {CATALOG_UNITS.filter(u=>draft.kind==='SERVICIO'?u==='SERVICIO':u!=='SERVICIO').map(u=><option key={u} value={u}>{u}</option>)}</select></label>
-        <label>SKU (opcional)<input maxLength={32} placeholder="Ej.: PRODUCTO-001" value={draft.sku??''}
-          onChange={e=>updateField('sku',e.target.value||null)}/></label>
-        <label className="real-ops-check"><input type="checkbox" checked={draft.sellable}
-          onChange={e=>updateField('sellable',e.target.checked)}/> Artículo vendible</label>
-        <label>Precio (pesos, opcional)<input inputMode="decimal" placeholder="1250,50" value={draft.price}
-          onChange={e=>updateField('price',e.target.value)}/></label>
-        <label>Costo de referencia (pesos, opcional)<input inputMode="decimal" placeholder="800,00" value={draft.cost}
-          onChange={e=>updateField('cost',e.target.value)}/></label>
-        <label>Descripción<textarea rows={3} maxLength={450} value={draft.description}
-          onChange={e=>updateField('description',e.target.value)}/></label>
-        <label>Observaciones<textarea rows={3} maxLength={600} value={draft.observations}
-          onChange={e=>updateField('observations',e.target.value)}/></label>
-        <div className="real-auth-actions">
-          <button type="submit" className="real-auth-primary" disabled={busy||uncertain}>{busy?'Guardando…':'Guardar artículo'}</button>
-          <button type="button" className="real-auth-secondary" disabled={busy} onClick={()=>{setForm(false);setEditing(null)}}>Cancelar</button>
-        </div>
-      </form>}
-      {!canWrite&&<p className="real-auth-note">Tu membresía puede consultar el catálogo, pero no crear, editar o cambiar el estado de artículos.</p>}
-    </>}
+      {view==='list'&&canWrite&&<button className="real-auth-primary e3-commerce-top-action" type="button"
+        disabled={busy||uncertain||loading} onClick={startCreate}><Icon name="plus" size={18}/>Crear artículo REAL</button>}
+    </header>
     {uncertain&&<div className="real-auth-message real-ops-warning" role="alert">La operación podría haberse confirmado en el servidor. No la reintentes sin verificar primero.
       <button type="button" className="real-auth-link" onClick={()=>void refresh()}>Reconsultar catálogo</button>
     </div>}
     {notice&&<p className="real-auth-message" role="status">{notice}</p>}
     {error&&<p className="real-auth-message real-auth-error" role="alert">{error}</p>}
+    {loading&&<p role="status">Consultando catálogo de PostgreSQL…</p>}
+    {view==='list'&&<>
+      {business&&<div className="e3-commerce-toolbar"><span>Empresa: <strong>{business.name}</strong></span>
+        <button type="button" className="real-auth-secondary" disabled={loading||busy||moreLoading} onClick={()=>void refresh()}>Actualizar catálogo</button>
+      </div>}
+      {!loading&&loaded&&<>
+        <div className="e3-commerce-stats" aria-label="Resumen del catálogo cargado">
+          <div><span>Fichas cargadas</span><strong>{items.length}</strong></div>
+          <div><span>Activas cargadas</span><strong>{loadedActive}</strong></div>
+          <div><span>Inactivas cargadas</span><strong>{items.length-loadedActive}</strong></div>
+        </div>
+        <p className="real-catalog-coverage" role="status">
+          {items.length} ficha{items.length===1?'':'s'} cargada{items.length===1?'':'s'}.
+          {hasMore?' Hay más páginas posibles: los filtros solo abarcan lo cargado.':' Se consultó la última página.'}
+        </p>
+        <div className="e3-commerce-filters">
+          <label className="e3-commerce-search"><Icon name="search" size={18}/><span className="e3-sr-only">Buscar entre páginas cargadas</span>
+            <input type="search" aria-label="Buscar entre páginas cargadas" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Buscar por nombre o SKU"/></label>
+          <label>Tipo<select aria-label="Filtrar catálogo por tipo" value={kindFilter} onChange={e=>setKindFilter(e.target.value as typeof kindFilter)}>
+            <option value="TODOS">Todos</option>{CATALOG_KINDS.map(k=><option value={k} key={k}>{label(k)}</option>)}
+          </select></label>
+          <label>Estado<select aria-label="Filtrar catálogo por estado" value={statusFilter} onChange={e=>setStatusFilter(e.target.value as typeof statusFilter)}>
+            <option value="TODOS">Todos</option><option value="ACTIVO">Activos</option><option value="INACTIVO">Inactivos</option>
+          </select></label>
+        </div>
+        {items.length===0&&<div className="real-business-empty e3-commerce-empty"><strong>Tu catálogo todavía está vacío</strong><p>Creá tu primera ficha para comenzar a registrar productos, insumos o servicios.</p></div>}
+        {items.length>0&&visible.length===0&&<div className="real-business-empty e3-commerce-empty"><strong>Sin coincidencias en las páginas cargadas</strong><p>Probá otra búsqueda o cargá más artículos si hay páginas pendientes.</p></div>}
+        <div className="real-catalog-grid e3-commerce-grid">
+          {visible.map(item=><article key={item.id} className="real-catalog-tile e3-catalog-tile">
+            <div className="e3-commerce-card-top">
+              <span className="e3-commerce-card-icon"><Icon name={item.kind==='SERVICIO'?'briefcase':item.kind==='INSUMO'?'boxes':'package'} size={22}/></span>
+              <span className={'real-catalog-status '+(item.status==='ACTIVO'?'real-catalog-active':'')}>{item.status}</span>
+            </div>
+            <div className="e3-commerce-card-name"><strong>{item.name}</strong><span>{label(item.kind)} · {item.category}</span></div>
+            <div className="e3-commerce-chips"><span>{item.unit}</span><span>{item.sellable?'Vendible':'No vendible'}</span></div>
+            <small className="e3-commerce-sku">SKU: {item.sku??'Sin SKU'}</small>
+            <div className="real-catalog-prices e3-commerce-prices">
+              <span>Precio de venta <b>{formatMoney(item.price_cents)}</b></span>
+              <span>Costo de referencia <b>{formatMoney(item.reference_cost_cents)}</b></span>
+            </div>
+            <div className="real-auth-actions e3-commerce-card-actions">
+              <button type="button" className="real-auth-secondary" onClick={()=>openDetail(item)}>Ver ficha</button>
+              {canWrite&&<button type="button" className="real-auth-secondary" disabled={busy||uncertain} onClick={()=>startEdit(item)}>Editar</button>}
+              {canWrite&&<button type="button" className="real-auth-secondary" disabled={busy||uncertain}
+                onClick={()=>void changeStatus(item)}>{item.status==='ACTIVO'?'Desactivar':'Reactivar'}</button>}
+            </div>
+          </article>)}
+        </div>
+        {hasMore&&<button type="button" className="real-auth-secondary e3-commerce-loadmore" disabled={moreLoading||busy||loading}
+          onClick={()=>void next()}>{moreLoading?'Cargando página siguiente…':'Cargar los siguientes 100'}</button>}
+        {!canWrite&&<p className="real-auth-note">Tu membresía puede consultar el catálogo, pero no crear, editar o cambiar el estado de artículos.</p>}
+      </>}
+    </>}
+    {view==='detail'&&selected&&<section className="e3-commerce-subsurface" aria-label="Detalle del artículo">
+      <div className="e3-commerce-detail-heading"><span className="e3-commerce-card-icon"><Icon name="package" size={24}/></span>
+        <div><h2>{selected.name}</h2><p>{label(selected.kind)} · {selected.category}</p></div>
+        <span className={'real-catalog-status '+(selected.status==='ACTIVO'?'real-catalog-active':'')}>{selected.status}</span>
+      </div>
+      <dl className="e3-commerce-fact-grid">
+        <div><dt>Tipo de artículo</dt><dd>{label(selected.kind)}</dd></div>
+        <div><dt>Unidad</dt><dd>{selected.unit}</dd></div>
+        <div><dt>SKU</dt><dd>{selected.sku??'No asignado'}</dd></div>
+        <div><dt>Disponible para venta</dt><dd>{selected.sellable?'Sí':'No'}</dd></div>
+        <div><dt>Precio de venta</dt><dd>{formatMoney(selected.price_cents)}</dd></div>
+        <div><dt>Costo de referencia</dt><dd>{formatMoney(selected.reference_cost_cents)}</dd></div>
+      </dl>
+      <div className="e3-commerce-note-grid">
+        <div><h3>Descripción</h3><p>{selected.description||'Sin descripción registrada.'}</p></div>
+        <div><h3>Observaciones</h3><p>{selected.observations||'Sin observaciones.'}</p></div>
+      </div>
+      <p className="e3-commerce-disclaimer">La ficha describe el artículo. El stock y sus movimientos se consultan exclusivamente en Inventario REAL.</p>
+      {canWrite&&<div className="real-auth-actions">
+        <button className="real-auth-primary" type="button" disabled={busy||uncertain} onClick={()=>startEdit(selected)}>Editar artículo</button>
+      </div>}
+    </section>}
+    {view==='form'&&canWrite&&<section className="e3-commerce-subsurface e3-commerce-form-screen" aria-label="Formulario de artículo">
+      <div className="e3-commerce-section-head"><h2>Datos del artículo</h2><p>La información se guardará únicamente en la empresa seleccionada.</p></div>
+      <form className="real-auth-form real-ops-form e3-commerce-form" onSubmit={e=>void save(e)}>
+        <div className="e3-commerce-form-grid">
+          <label>Nombre<input required minLength={2} maxLength={90} value={draft.name} onChange={e=>updateField('name',e.target.value)}/></label>
+          <label>Tipo<select value={draft.kind} onChange={e=>changeKind(e.target.value as CatalogKind)}>
+            {CATALOG_KINDS.map(k=><option value={k} key={k}>{label(k)}</option>)}</select></label>
+          <label>Rubro o categoría<input required minLength={2} maxLength={60} value={draft.category} onChange={e=>updateField('category',e.target.value)}/></label>
+          <label>Unidad<select value={draft.unit} onChange={e=>updateField('unit',e.target.value as CatalogUnit)}>
+            {CATALOG_UNITS.filter(u=>draft.kind==='SERVICIO'?u==='SERVICIO':u!=='SERVICIO').map(u=><option key={u} value={u}>{u}</option>)}</select></label>
+          <label>SKU (opcional)<input maxLength={32} placeholder="Ej.: PRODUCTO-001" value={draft.sku??''}
+            onChange={e=>updateField('sku',e.target.value||null)}/></label>
+          <div className="e3-commerce-sellable"><label className="real-ops-check"><input type="checkbox" checked={draft.sellable}
+            onChange={e=>updateField('sellable',e.target.checked)}/> Artículo vendible</label></div>
+          <label>Precio (pesos, opcional)<input inputMode="decimal" placeholder="1250,50" value={draft.price}
+            onChange={e=>updateField('price',e.target.value)}/></label>
+          <label>Costo de referencia (pesos, opcional)<input inputMode="decimal" placeholder="800,00" value={draft.cost}
+            onChange={e=>updateField('cost',e.target.value)}/></label>
+          <label className="e3-commerce-span-all">Descripción<textarea rows={3} maxLength={450} value={draft.description}
+            onChange={e=>updateField('description',e.target.value)}/></label>
+          <label className="e3-commerce-span-all">Observaciones<textarea rows={3} maxLength={600} value={draft.observations}
+            onChange={e=>updateField('observations',e.target.value)}/></label>
+        </div>
+        <div className="real-auth-actions e3-commerce-form-actions">
+          <button type="submit" className="real-auth-primary" disabled={busy||uncertain}>{busy?'Guardando…':'Guardar artículo'}</button>
+          <button type="button" className="real-auth-secondary" disabled={busy} onClick={closeSubview}>Cancelar</button>
+        </div>
+      </form>
+      <p className="e3-commerce-disclaimer">Las fotografías de artículos y su carga REAL se implementarán en una etapa posterior; no se guardan imágenes ficticias.</p>
+    </section>}
   </section>
 }
