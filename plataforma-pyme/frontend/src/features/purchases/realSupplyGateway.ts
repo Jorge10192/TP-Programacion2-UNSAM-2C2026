@@ -8,6 +8,62 @@ export type Supplier = {
   website:string; instagram:string; notes:string; payment_methods:string[]
   promotions:unknown[]; status:'ACTIVO'|'INACTIVO'; created_at:string; updated_at:string
 }
+/**
+ * E3-1D2A: subconjunto editable del proveedor.
+ * Campos comerciales de D2B (payment_methods/promotions), status y tenant NO se escriben aquí.
+ */
+export type SupplierContactDraft = Pick<Supplier,
+  'name'|'offerings'|'contact_person'|'phone'|'whatsapp'|'email'|
+  'address'|'maps_url'|'website'|'instagram'|'notes'>
+export const emptySupplierContact:SupplierContactDraft={
+  name:'',offerings:'',contact_person:'',phone:'',whatsapp:'',email:'',
+  address:'',maps_url:'',website:'',instagram:'',notes:'',
+}
+const supplierContactLimits:Record<keyof SupplierContactDraft,number>={
+  name:90,offerings:240,contact_person:100,phone:35,whatsapp:35,email:120,
+  address:160,maps_url:2048,website:2048,instagram:31,notes:650,
+}
+export function validateSupplierContact(input:SupplierContactDraft):SupplierContactDraft{
+  const values={...emptySupplierContact}
+  for(const field of Object.keys(values) as (keyof SupplierContactDraft)[]){
+    if(typeof input[field]!=='string')throw new RangeError(field+': requiere texto.')
+    const cleaned=input[field].trim()
+    if(cleaned.length>supplierContactLimits[field])throw new RangeError(field+': supera el máximo permitido.')
+    values[field]=cleaned
+  }
+  if(values.name.length<2)throw new RangeError('Ingresá un nombre comercial de al menos dos caracteres.')
+  if(values.phone&&!/^\+?[\d\s().-]{6,35}$/.test(values.phone))
+    throw new RangeError('Teléfono comercial: usá solamente números y signos telefónicos.')
+  if(values.whatsapp){
+    if(!/^\+[1-9][\d\s().-]{6,22}$/.test(values.whatsapp) ||
+      values.whatsapp.replace(/\D/g,'').length<8 ||
+      values.whatsapp.replace(/\D/g,'').length>15)
+      throw new RangeError('WhatsApp: usá el número completo con prefijo internacional (+54...).')
+  }
+  if(values.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email))
+    throw new RangeError('Correo electrónico: dirección inválida.')
+  if(values.instagram&&!/^@?[a-zA-Z0-9._]{1,30}$/.test(values.instagram))
+    throw new RangeError('Instagram: usá un nombre de usuario, por ejemplo @proveedor.')
+  for(const field of ['maps_url','website'] as const){
+    if(!values[field])continue
+    let url:URL
+    try {url=new URL(values[field])}catch{throw new RangeError('Ingresá un enlace HTTPS válido.')}
+    if(url.protocol!=='https:'||!url.hostname||url.username||url.password||url.port)
+      throw new RangeError('Los enlaces deben ser HTTPS, sin usuario, contraseña ni puerto.')
+    if(field==='maps_url'){
+      const host=url.hostname.toLowerCase().replace(/\.$/,'')
+      const ok=host==='maps.app.goo.gl'
+        ||((host==='google.com'||host==='www.google.com')
+          &&(url.pathname==='/maps'||url.pathname.startsWith('/maps/')))
+        ||(host==='maps.google.com'&&(url.pathname!=='/'||url.searchParams.has('q')))
+        ||(host==='goo.gl'&&url.pathname.startsWith('/maps/'))
+      if(!ok)throw new RangeError('Google Maps: pegá un enlace oficial de Google Maps.')
+    }
+  }
+  // Desestructuración explícita evita incluir state, tenant y arreglos de promociones.
+  return values
+}
+
 export type PurchaseLineInput = {
   catalog_item_id:string|null; description:string; unit:string
   quantity_milli:number; unit_cost_cents:number
@@ -156,6 +212,12 @@ export function createSupplyGateway(token:string,businessId:string,fetchImpl?:ty
       x=>parseSupplier(x,businessId)),
     createSupplier:async(name:string)=>parseSupplier(await api.request<unknown>(suppliers,{
       method:'POST',body:{name:name.trim()}}),businessId),
+    createSupplierDetailed:async(input:SupplierContactDraft)=>parseSupplier(
+      await api.request<unknown>(suppliers,{method:'POST',body:validateSupplierContact(input)}),businessId),
+    updateSupplierDetails:async(supplierId:string,input:SupplierContactDraft)=>parseSupplier(
+      await api.request<unknown>(suppliers+'/'+id(supplierId),{
+        method:'PATCH',body:validateSupplierContact(input),
+      }),businessId),
     changeSupplier:async(supplierId:string,status:'ACTIVO'|'INACTIVO')=>parseSupplier(
       await api.request<unknown>(suppliers+'/'+id(supplierId)+'/status',{
         method:'PATCH',body:{status}}),businessId),

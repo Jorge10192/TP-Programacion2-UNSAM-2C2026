@@ -5,8 +5,8 @@ import '../catalog/realCatalogVisual.css'
 import { ApiHttpError, ApiTransportError } from '../../api/httpClient.ts'
 import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
-import { createSupplyGateway, SUPPLY_PAGE_SIZE, supplyErrorMessage } from '../purchases/realSupplyGateway.ts'
-import type { Supplier } from '../purchases/realSupplyGateway.ts'
+import { createSupplyGateway, SUPPLY_PAGE_SIZE, supplyErrorMessage, emptySupplierContact, validateSupplierContact } from '../purchases/realSupplyGateway.ts'
+import type { Supplier, SupplierContactDraft } from '../purchases/realSupplyGateway.ts'
 type Props={token:string;userId:string;businessId:string;onNavigate:(route:string)=>void;onUnauthorized:()=>void}
 export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthorized}:Props){
  const gateway=useMemo(()=>createSupplyGateway(token,businessId),[token,businessId])
@@ -14,7 +14,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
  const alive=useRef(true)
  const backRef=useRef<HTMLButtonElement>(null)
  const listRef=useRef<HTMLHeadingElement>(null)
- const previousView=useRef<'list'|'create'|'detail'>('list')
+ const previousView=useRef<'list'|'form'|'detail'>('list')
  const [business,setBusiness]=useState<RealBusiness|null>(null)
  const [items,setItems]=useState<Supplier[]>([])
  const [hasMore,setHasMore]=useState(false)
@@ -22,7 +22,9 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
  const [busy,setBusy]=useState(false)
  const [error,setError]=useState('')
  const [notice,setNotice]=useState('')
- const [name,setName]=useState('')
+ const [draft,setDraft]=useState<SupplierContactDraft>(emptySupplierContact)
+ const [editingId,setEditingId]=useState<string|null>(null)
+ const [sameWhatsapp,setSameWhatsapp]=useState(false)
  const [unknown,setUnknown]=useState(false)
  const [creating,setCreating]=useState(false)
  const [detailId,setDetailId]=useState<string|null>(null)
@@ -67,19 +69,39 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
      setItems(old=>[...old,...rows]);setHasMore(rows.length===SUPPLY_PAGE_SIZE)
    }catch(err){fail(err)}finally{if(alive.current)setLoading(false)}
  }
- async function create(e:FormEvent<HTMLFormElement>){
-   e.preventDefault();if(!canWrite||busy||unknown)return
-   setBusy(true);setError('');setNotice('')
+ async function save(e:FormEvent<HTMLFormElement>){
+   e.preventDefault()
+   if(!canWrite||busy||unknown)return
+   setError('');setNotice('')
+   let payload:SupplierContactDraft
+   try {payload=validateSupplierContact(draft)}
+   catch(err){setError(err instanceof Error?err.message:'Revisá los datos del proveedor.');return}
+   setBusy(true)
+   let saved:Supplier
+   try {
+     saved=editingId
+       ?await gateway.updateSupplierDetails(editingId,payload)
+       :await gateway.createSupplierDetailed(payload)
+   }catch(err){
+     fail(err,true)
+     if(alive.current)setBusy(false)
+     return
+   }
+   if(!alive.current)return
+   setCreating(false);setEditingId(null);setSameWhatsapp(false);setDraft(emptySupplierContact)
+   setItems(old=>editingId
+     ?old.map(x=>x.id===saved.id?saved:x)
+     :[saved,...old])
+   setNotice(editingId?'Cambios del proveedor confirmados en PostgreSQL.':'Proveedor registrado en PostgreSQL. No se realizó ninguna compra.')
+   // La escritura ya está confirmada: fallar el GET posterior NO autoriza reintentar POST/PATCH.
    try{
-     await gateway.createSupplier(name)
-     if(!alive.current)return
-     setName('')
      const rows=await gateway.suppliers()
      if(!alive.current)return
      setItems(rows);setHasMore(rows.length===SUPPLY_PAGE_SIZE)
-     setCreating(false)
-     setNotice('Proveedor registrado en PostgreSQL. No se realizó ninguna compra.')
-   }catch(err){fail(err,true)}finally{if(alive.current)setBusy(false)}
+   }catch(err){
+     fail(err,false)
+     if(alive.current)setError('El proveedor se guardó correctamente, pero no se pudo actualizar el listado. Usá «Actualizar» para reconsultar; no repitas el guardado.')
+   }finally{if(alive.current)setBusy(false)}
  }
  async function status(s:Supplier){
    if(!canWrite||busy||unknown)return
@@ -97,11 +119,36 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
  const visible=items.filter(x=>(statusFilter==='TODOS'||x.status===statusFilter)
    &&[x.name,x.offerings,x.contact_person,x.email].some(value=>value.toLocaleLowerCase('es-AR').includes(filter.trim().toLocaleLowerCase('es-AR'))))
  const detail=items.find(x=>x.id===detailId)
- const view:'list'|'create'|'detail'=creating?'create':detail?'detail':'list'
+ const view:'list'|'form'|'detail'=creating?'form':detail?'detail':'list'
  const activeCount=items.filter(x=>x.status==='ACTIVO').length
- function startCreate(){if(!canWrite||busy||unknown)return;setCreating(true);setDetailId(null);setName('');setError('');setNotice('')}
- function openDetail(supplier:Supplier){setDetailId(supplier.id);setCreating(false);setError('');setNotice('')}
- function closeSubview(){if(busy)return;setCreating(false);setDetailId(null);setName('');setError('')}
+ function startCreate(){
+   if(!canWrite||busy||unknown)return
+   setDraft({...emptySupplierContact});setSameWhatsapp(false);setEditingId(null)
+   setCreating(true);setDetailId(null);setError('');setNotice('')
+ }
+ function startEdit(supplier:Supplier){
+   if(!canWrite||busy||unknown)return
+   setDraft({
+     name:supplier.name,offerings:supplier.offerings,contact_person:supplier.contact_person,
+     phone:supplier.phone,whatsapp:supplier.whatsapp,email:supplier.email,
+     address:supplier.address,maps_url:supplier.maps_url,website:supplier.website,
+     instagram:supplier.instagram,notes:supplier.notes,
+   })
+   setSameWhatsapp(false);setEditingId(supplier.id);setDetailId(null)
+   setCreating(true);setError('');setNotice('')
+ }
+ function openDetail(supplier:Supplier){
+   setDetailId(supplier.id);setCreating(false);setEditingId(null);setError('');setNotice('')
+ }
+ function closeSubview(){
+   if(busy)return
+   setCreating(false);setEditingId(null);setDetailId(null)
+   setSameWhatsapp(false);setDraft({...emptySupplierContact});setError('')
+ }
+ const setField=<K extends keyof SupplierContactDraft>(key:K,value:SupplierContactDraft[K])=>
+   setDraft(old=>({...old,[key]:value}))
+ const addressSearchUrl=draft.address.trim()
+   ?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(draft.address.trim()):null
  useEffect(()=>{
    if(previousView.current===view)return
    if(view==='list')listRef.current?.focus()
@@ -118,15 +165,15 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
      <button type="button" ref={backRef} className="e3-commerce-back" disabled={busy} onClick={closeSubview}>
        <Icon name="arrow-left" size={18}/>Volver a proveedores
      </button>
-     <span className="e3-commerce-view-label">{view==='create'?'Alta de proveedor':'Ficha de proveedor'}</span>
+     <span className="e3-commerce-view-label">{view==='form'?(editingId?'Edición de proveedor':'Alta de proveedor'):'Ficha de proveedor'}</span>
    </div>}
    <header className="e3-commerce-heading">
      <span className="e3-commerce-heading-icon"><Icon name="briefcase" size={28}/></span>
      <div className="e3-commerce-heading-copy">
        <span className="e3-commerce-eyebrow">{business?.name??'Empresa'} · Comercial</span>
        {view==='list'?<h1 tabIndex={-1} ref={listRef}>Proveedores</h1>
-         :<h1>{view==='create'?'Nuevo proveedor':'Datos del proveedor'}</h1>}
-       <p>{view==='list'?'Organizá los proveedores de tu empresa.':view==='create'?'Registrá un proveedor mediante la API REAL.':detail?.name??'Proveedor seleccionado'}</p>
+         :<h1>{view==='form'?(editingId?'Editar proveedor':'Nuevo proveedor'):'Datos del proveedor'}</h1>}
+       <p>{view==='list'?'Organizá los proveedores de tu empresa.':view==='form'?(editingId?'Actualizá la información comercial de esta empresa.':'Registrá un proveedor mediante la API REAL.'):detail?.name??'Proveedor seleccionado'}</p>
      </div>
      {view==='list'&&canWrite&&<button type="button" className="real-auth-primary e3-commerce-top-action" disabled={busy||unknown||loading} onClick={startCreate}>
        <Icon name="plus" size={18}/>Agregar proveedor REAL
@@ -154,7 +201,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
        </p>
        <div className="e3-commerce-filters">
          <label className="e3-commerce-search"><Icon name="search" size={18}/><span className="e3-sr-only">Buscar entre proveedores cargados</span>
-           <input type="search" aria-label="Buscar entre proveedores cargados" placeholder="Buscar proveedor o contacto" value={filter} onChange={e=>setFilter(e.target.value)}/></label>
+           <input type="search" aria-label="Buscar entre proveedores cargados" placeholder="Buscar por nombre, contacto o rubro" value={filter} onChange={e=>setFilter(e.target.value)}/></label>
          <label>Estado<select aria-label="Filtrar proveedores por estado" value={statusFilter} onChange={e=>setStatusFilter(e.target.value as typeof statusFilter)}>
            <option value="TODOS">Todos</option><option value="ACTIVO">Activos</option><option value="INACTIVO">Inactivos</option>
          </select></label>
@@ -175,6 +222,8 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
            </div>
            <div className="real-auth-actions e3-commerce-card-actions">
              <button type="button" className="real-auth-secondary" onClick={()=>openDetail(supplier)}>Ver ficha</button>
+             {canWrite&&<button type="button" className="real-auth-secondary" disabled={busy||unknown}
+               onClick={()=>startEdit(supplier)}>Editar</button>}
              {canWrite&&<button type="button" className="real-auth-secondary" disabled={busy||unknown}
                onClick={()=>void status(supplier)}>{supplier.status==='ACTIVO'?'Desactivar':'Reactivar'}</button>}
            </div>
@@ -206,18 +255,76 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
      {detail.payment_methods.length>0&&<section className="e3-supplier-payments" aria-label="Medios de pago informados">
        <h3>Medios de pago registrados</h3><div className="e3-commerce-chips">{detail.payment_methods.map((method,i)=><span key={method+i}>{method}</span>)}</div>
      </section>}
-     <p className="e3-commerce-disclaimer">Estos datos son de solo lectura. La API actual de esta pantalla solo permite crear proveedores por nombre y cambiar su estado; la edición avanzada queda para una etapa posterior.</p>
+     {canWrite&&<div className="real-auth-actions e3-supplier-detail-actions">
+       <button className="real-auth-primary" type="button" disabled={busy||unknown} onClick={()=>startEdit(detail)}>
+         <Icon name="user" size={17}/>Editar proveedor</button>
+     </div>}
+     <p className="e3-commerce-disclaimer">Los datos de contacto son editables por usuarios autorizados. Los medios de pago y las promociones se incorporarán a la edición en E3-1D2B.</p>
    </section>}
-   {view==='create'&&canWrite&&<section className="e3-commerce-subsurface e3-commerce-form-screen" aria-label="Formulario de proveedor">
-     <div className="e3-commerce-section-head"><h2>Datos del proveedor</h2><p>Alta REAL: por ahora la API admite registrar únicamente el nombre comercial.</p></div>
-     <form className="real-auth-form real-ops-form e3-commerce-form" onSubmit={e=>void create(e)}>
-       <label>Nombre comercial<input required minLength={2} maxLength={90} value={name} onChange={e=>setName(e.target.value)}/></label>
+   {view==='form'&&canWrite&&<section className="e3-commerce-subsurface e3-commerce-form-screen e3-supplier-contact-editor" aria-label="Formulario de proveedor">
+     <div className="e3-commerce-section-head">
+       <h2>{editingId?'Editar datos del proveedor':'Registrar datos del proveedor'}</h2>
+       <p>Solo el nombre comercial es obligatorio. La información se guarda únicamente dentro de {business?.name??'la empresa seleccionada'}.</p>
+     </div>
+     <form className="real-auth-form real-ops-form e3-commerce-form" onSubmit={e=>void save(e)}>
+       <fieldset className="e3-supplier-form-section">
+         <legend>1. Identificación comercial</legend>
+         <div className="e3-commerce-form-grid">
+           <label>Nombre comercial *<input required minLength={2} maxLength={90} autoComplete="organization"
+             value={draft.name} onChange={e=>setField('name',e.target.value)} placeholder="Ej.: Distribuidora del Sur"/></label>
+           <label>Persona de contacto (opcional)<input maxLength={100} autoComplete="off"
+             value={draft.contact_person} onChange={e=>setField('contact_person',e.target.value)} placeholder="Ej.: Responsable comercial"/></label>
+           <label className="e3-commerce-span-all">Productos o servicios que ofrece (opcional)
+             <input maxLength={240} value={draft.offerings} onChange={e=>setField('offerings',e.target.value)}
+               placeholder="Ej.: Alimentos, envases, logística…"/></label>
+         </div>
+       </fieldset>
+       <fieldset className="e3-supplier-form-section">
+         <legend>2. Contacto y ubicación</legend>
+         <div className="e3-commerce-form-grid">
+           <label>Teléfono comercial (opcional)<input type="tel" maxLength={35} inputMode="tel"
+             value={draft.phone} onChange={e=>setDraft(old=>({...old,phone:e.target.value,
+               ...(sameWhatsapp?{whatsapp:e.target.value}:{} )}))} placeholder="+5491112345678"/></label>
+           <div className="e3-supplier-whatsapp-control">
+             <label htmlFor="real-supplier-whatsapp">WhatsApp (con prefijo internacional)</label>
+             <input id="real-supplier-whatsapp" type="tel" maxLength={35} inputMode="tel"
+               value={draft.whatsapp} disabled={sameWhatsapp} onChange={e=>setField('whatsapp',e.target.value)} placeholder="+5491112345678"/>
+             <label className="e3-supplier-same-phone">
+               <input type="checkbox" checked={sameWhatsapp} onChange={e=>{
+                 setSameWhatsapp(e.target.checked)
+                 if(e.target.checked)setField('whatsapp',draft.phone)
+               }}/>Usar el teléfono comercial
+             </label>
+           </div>
+           <label>Correo electrónico (opcional)<input type="email" maxLength={120} autoComplete="off"
+             value={draft.email} onChange={e=>setField('email',e.target.value)} placeholder="ventas@proveedor.com"/></label>
+           <label>Dirección o referencia (opcional)<input maxLength={160} autoComplete="street-address"
+             value={draft.address} onChange={e=>setField('address',e.target.value)} placeholder="Ej.: Av. Principal 123"/></label>
+           <div className="e3-supplier-link-field">
+             <label htmlFor="real-supplier-maps-url">Google Maps (enlace HTTPS, opcional)</label>
+             <input id="real-supplier-maps-url" type="url" maxLength={2048}
+               value={draft.maps_url} onChange={e=>setField('maps_url',e.target.value)} placeholder="https://maps.app.goo.gl/…"/>
+             {addressSearchUrl&&<a className="e3-supplier-map-search" href={addressSearchUrl} target="_blank" rel="noopener noreferrer">
+               Buscar esta dirección en Google Maps <span>(no verifica el punto exacto)</span>
+             </a>}
+           </div>
+           <label>Sitio web / catálogo digital (HTTPS, opcional)<input type="url" maxLength={2048}
+             value={draft.website} onChange={e=>setField('website',e.target.value)} placeholder="https://ejemplo.com"/></label>
+           <label>Instagram (usuario, opcional)<input maxLength={31}
+             value={draft.instagram} onChange={e=>setField('instagram',e.target.value)} placeholder="@empresa"/></label>
+         </div>
+       </fieldset>
+       <fieldset className="e3-supplier-form-section">
+         <legend>3. Observaciones comerciales</legend>
+         <label>Notas (opcional)<textarea rows={4} maxLength={650} value={draft.notes}
+           onChange={e=>setField('notes',e.target.value)} placeholder="Ej.: Horarios de entrega, condiciones de pedido y retiro…"/></label>
+       </fieldset>
        <div className="real-auth-actions e3-commerce-form-actions">
-         <button className="real-auth-primary" type="submit" disabled={busy||unknown}>{busy?'Guardando…':'Crear proveedor'}</button>
+         <button className="real-auth-primary" type="submit" disabled={busy||unknown}>{busy?'Guardando…':editingId?'Guardar cambios':'Crear proveedor'}</button>
          <button className="real-auth-secondary" type="button" disabled={busy} onClick={closeSubview}>Cancelar</button>
        </div>
      </form>
-     <p className="e3-commerce-disclaimer">Registrar un proveedor no registra una compra ni modifica inventario. La edición de contacto, promociones y otros datos no está disponible todavía en REAL.</p>
+     <p className="e3-commerce-disclaimer">Los medios de pago y las promociones son informativos y se editarán en E3-1D2B. Este formulario no modifica esos datos ni registra compras o movimientos de inventario.</p>
    </section>}
  </section>
 }
