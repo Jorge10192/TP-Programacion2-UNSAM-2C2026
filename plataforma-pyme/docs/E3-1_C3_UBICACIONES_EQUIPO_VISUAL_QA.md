@@ -31,6 +31,22 @@ Ambos controles tienen propósitos diferentes y sus opciones **no son idénticas
 
 No se modifican los contratos de API, el modelo de roles, la autorización del backend ni los datos históricos.
 
+## Navegación visual de Ubicaciones: vistas independientes (revisión UX 12/11)
+
+**Observación en QA manual:** los formularios y asignaciones aparecían debajo de las tarjetas, a veces simultáneamente, sin respuesta clara al pulsar un botón.
+
+**Decisión:** dentro de la misma ruta REAL de Ubicaciones, renderizar **una única vista por vez**:
+
+- **Listado**: resumen, búsqueda, filtros, tarjetas y acciones; sin formularios desplegados al final.
+- **Nueva ubicación / Editar ubicación**: pantalla exclusiva, encabezado con nombre de sede (si existe) y **«Volver a ubicaciones»** en la parte superior; formulario prellenado al editar.
+- **Asignaciones de sede**: pantalla exclusiva con título y personal asignable; regreso mediante el mismo botón superior.
+- Al presionar los botones se aplica feedback visual breve (`:hover`, `:active`, `:focus-visible`) y, al entrar a una vista dedicada, se mueve el foco al botón Volver para mejorar navegación por teclado.
+- **Cancelar / Volver** desecha únicamente el borrador sin escribir; **Guardar** conserva la operación API anterior y vuelve al listado cuando se confirma. Los resultados inciertos siguen exigiendo reconsulta explícita. Las alertas de guardado/error se muestran por encima del contenido, no al final de la lista.
+- El listado conserva las búsquedas/filtros mientras se cambia de vista dentro de la misma empresa; ningún formulario cruza de tenant. No se crean rutas, pestañas nuevas ni popups reales; es una navegación interna con apariencia de pantalla independiente.
+- Se mantienen los botones de pausar/reactivar y hacer principal en las tarjetas, con sus confirmaciones anteriores; estas acciones no abren editores.
+
+**Pruebas ampliadas:** acceso a editar/asignaciones, ocultamiento del listado al entrar, foco en Volver, descarte sin PATCH, guardado real y persistencia, volver al listado y responsive a 390 px (exclusivamente en DB descartable).
+
 ## Invariantes técnicos
 
 1. **Sin cambios a backend, migraciones, API, realOperationsGateway, contratos, roles o reglas de permisos.**

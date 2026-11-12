@@ -107,3 +107,63 @@
   .e3-ops-member .e3-ops-person-identity { align-items:flex-start; }
 }
 @media(prefers-reduced-motion:reduce) { .e3-ops-page * { scroll-behavior:auto; } }
+
+
+/* E3-1C3 · Navegación por vistas exclusivas de sede: no expandir formularios bajo tarjetas. */
+.real-workspace-mode .e3-location-workspace { min-width:0; }
+.e3-location-subview-backbar {
+  display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
+  gap:12px; padding:0 0 22px; margin:0 0 24px; border-bottom:1px solid #e1e9f4;
+}
+.e3-location-back-button {
+  display:inline-flex; align-items:center; justify-content:center; gap:9px;
+  min-height:45px; padding:9px 15px; border:1px solid #cbdcf4;
+  border-radius:12px; color:#255aa4; background:#edf4ff;
+  font:inherit; font-weight:800; font-size:13px; cursor:pointer;
+  transition:background-color .16s ease, transform .1s ease, box-shadow .16s ease;
+}
+.e3-location-back-button:hover:not(:disabled) { background:#dceafd; border-color:#a7c9f9; }
+.e3-location-back-button:active:not(:disabled) {
+  transform:translateY(1px); background:#c9ddfb;
+  box-shadow:inset 0 2px 6px #22559422;
+}
+.e3-location-back-button:disabled { opacity:.65; cursor:not-allowed; }
+.e3-location-view-badge {
+  display:inline-flex; padding:7px 12px; border:1px solid #dce5f2;
+  border-radius:999px; background:#f5f8fd; color:#496991;
+  font-weight:750; font-size:11px;
+}
+.e3-location-subview-header { padding:0 0 22px; margin:0 0 8px; border-bottom:1px solid #ecf1f7; }
+.e3-ops-editor-screen,.e3-ops-assignments-screen {
+  margin:22px 0 0; background:#fff; border:1px solid #dde6f2;
+  border-radius:17px; padding:clamp(18px,3.3vw,32px);
+  box-shadow:0 5px 20px #163a6b09;
+}
+.e3-ops-editor-screen .e3-ops-section-heading,
+.e3-ops-assignments-screen .e3-ops-section-heading {
+  border-bottom:1px solid #e7eef8; padding-bottom:17px; margin-bottom:20px;
+}
+.e3-ops-editor-screen .e3-ops-toggle-group { background:#f7faff; }
+.e3-ops-assignments-screen .real-ops-person { border-bottom:1px solid #e5edf6; }
+.e3-ops-assignments-screen .real-ops-person:first-of-type { border-top:0; }
+.e3-location-workspace .e3-ops-card-actions button {
+  cursor:pointer; transition:background-color .16s ease, transform .1s ease,
+  box-shadow .16s ease, border-color .16s ease;
+}
+.e3-location-workspace .e3-ops-card-actions button:hover:not(:disabled) {
+  background:#deebff; border-color:#9bc3fa; color:#164f9b;
+}
+.e3-location-workspace .e3-ops-card-actions button:active:not(:disabled) {
+  transform:translateY(1px); background:#bad3ff;
+  box-shadow:inset 0 2px 6px #1d4e8f2c; border-color:#7aabf1;
+}
+.e3-location-workspace .e3-ops-heading-copy h1:focus { outline:2px solid #4381e0; outline-offset:4px; border-radius:4px; }
+@media(max-width:620px) {
+  .e3-location-subview-backbar { align-items:flex-start; }
+  .e3-location-view-badge { font-size:10px; }
+  .e3-ops-editor-screen,.e3-ops-assignments-screen { padding:17px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .e3-location-workspace .e3-ops-card-actions button,
+  .e3-location-back-button { transition:none; }
+}

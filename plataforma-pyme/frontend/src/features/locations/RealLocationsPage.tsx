@@ -16,6 +16,9 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
   const gateway = useMemo(() => createOperationsGateway(token, userId), [token, userId])
   const active = useRef({ valid: true })
   const assignmentGeneration = useRef(0)
+  const backButtonRef = useRef<HTMLButtonElement>(null)
+  const listHeadingRef = useRef<HTMLHeadingElement>(null)
+  const previousView = useRef<'list' | 'editor' | 'assignments'>('list')
   const [business, setBusiness] = useState<RealBusiness | null>(null)
   const [rows, setRows] = useState<LocationRecord[]>([])
   const [members, setMembers] = useState<TeamMember[]>([])
@@ -75,9 +78,9 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
       ])
       if (!active.current.valid) return
       setBusiness(company); setRows(locations); setUncertain(false)
-      if (locationForAssignments) {
-        setLocationForAssignments(null); setAssignments([]); setMembers([])
-      }
+      assignmentGeneration.current += 1
+      setLocationForAssignments(null); setAssignments([]); setMembers([]); setLoadingAssignments(false)
+      setCreating(false); setEditingId(null); setDraft(blank)
     } catch (err) { handleError(err) }
     finally { if (active.current.valid) setLoading(false) }
   }
@@ -118,14 +121,31 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
     finally { if (active.current.valid) setBusy(false) }
   }
 
+  function openCreate() {
+    if (!authorized || busy || uncertain) return
+    setDraft(blank); setEditingId(null); setCreating(true); setError(''); setNotice('')
+  }
+
+  function closeSubview() {
+    if (busy) return
+    assignmentGeneration.current += 1
+    setCreating(false); setEditingId(null); setDraft(blank)
+    setLocationForAssignments(null); setAssignments([]); setMembers([]); setLoadingAssignments(false)
+    setError(''); setNotice('')
+  }
+
   function openEdit(row: LocationRecord) {
+    if (!authorized || busy || uncertain) return
+    assignmentGeneration.current += 1
+    setLocationForAssignments(null)
     setDraft({ name: row.name, kind: row.kind, address: row.address, map_url: row.map_url,
       can_sell: row.can_sell, can_store: row.can_store })
     setEditingId(row.id); setCreating(true); setError(''); setNotice('')
   }
 
   async function openAssignments(location: LocationRecord) {
-    if (!authorized) return
+    if (!authorized || busy) return
+    setCreating(false); setEditingId(null); setDraft(blank)
     const generation = ++assignmentGeneration.current
     setLocationForAssignments(location.id); setLoadingAssignments(true)
     setAssignments([]); setMembers([]); setError(''); setNotice('')
@@ -161,25 +181,51 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
     && [loc.name, loc.kind, loc.address].some((value) => value.toLocaleLowerCase('es-AR').includes(search.trim().toLocaleLowerCase('es-AR'))))
   const activeCount = rows.filter((loc) => loc.status === 'ACTIVA').length
 
-  return <section className="real-auth-card real-business-panel e3-ops-page e3-locations-page">
+  const locationView = creating ? 'editor' : locationForAssignments ? 'assignments' : 'list'
+  const focusLocation = rows.find((row) => row.id === (editingId ?? locationForAssignments))
+  useEffect(() => {
+    if (locationView === previousView.current) return
+    if (locationView === 'list') listHeadingRef.current?.focus()
+    else backButtonRef.current?.focus()
+    previousView.current = locationView
+  }, [locationView])
+
+  return <section className="real-auth-card real-business-panel e3-ops-page e3-locations-page e3-location-workspace">
+    {locationView === 'list' && <>
     <nav className="real-business-nav" aria-label="Navegación de empresa">
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId)}>Empresa</button>
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas/' + businessId + '/equipo')}>Equipo</button>
       <button type="button" className="real-auth-link" onClick={() => onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>
-    <header className="e3-ops-heading">
+    </>}
+    {locationView !== 'list' && <div className="e3-location-subview-backbar">
+      <button ref={backButtonRef} type="button" className="e3-location-back-button" onClick={closeSubview} disabled={busy}>
+        <Icon name="arrow-left" size={19}/>Volver a ubicaciones
+      </button>
+      <span className="e3-location-view-badge">{locationView === 'editor' ? 'Edición de sede' : 'Personal y accesos'}</span>
+    </div>}
+    {locationView === 'list' ? <header className="e3-ops-heading">
       <div className="e3-ops-heading-icon"><Icon name="pin" size={29}/></div>
       <div className="e3-ops-heading-copy">
         <span className="e3-ops-kicker">Organización · Sedes</span>
-        <h1>Ubicaciones</h1>
+        <h1 ref={listHeadingRef} tabIndex={-1}>Ubicaciones</h1>
         <p>Administrá los lugares donde vendés y guardás mercadería.</p>
       </div>
-      {authorized && !creating && <button className="real-auth-primary e3-ops-heading-cta" type="button" disabled={busy || uncertain} onClick={() => {
-        setDraft(blank); setEditingId(null); setCreating(true); setError(''); setNotice('')
-      }}><Icon name="plus" size={17}/>Crear ubicación real</button>}
-    </header>
+      {authorized && <button className="real-auth-primary e3-ops-heading-cta" type="button" disabled={busy || uncertain} onClick={openCreate}><Icon name="plus" size={17}/>Crear ubicación real</button>}
+    </header> : <header className="e3-ops-heading e3-location-subview-header">
+      <div className="e3-ops-heading-icon"><Icon name={locationView === 'editor' ? 'pin' : 'users'} size={29}/></div>
+      <div className="e3-ops-heading-copy">
+        <span className="e3-ops-kicker">{business?.name ?? 'Empresa'} · Ubicaciones</span>
+        <h1>{locationView === 'editor' ? (editingId ? 'Editar ubicación' : 'Nueva ubicación') : 'Asignaciones de sede'}</h1>
+        <p>{locationView === 'editor' ? (focusLocation?.name ?? 'Nueva sede') : (selected?.name ?? 'Sede seleccionada')}</p>
+      </div>
+    </header>}
     {loading && <p role="status">Cargando ubicaciones…</p>}
+    {uncertain && <p className="real-auth-message real-ops-warning" role="alert">Resultado de escritura incierto. Consultá el estado actualizado antes de repetir; no se enviará otra solicitud automáticamente. <button className="real-auth-link" type="button" onClick={() => void refresh()}>Reconsultar ubicaciones</button></p>}
+    {notice && <p className="real-auth-message" role="status">{notice}</p>}
+    {error && <p className="real-auth-message real-auth-error" role="alert">{error}</p>}
     {!loading && business && <>
+      {locationView === 'list' && <>
       <div className="e3-ops-context">
         <span>Empresa: <strong>{business.name}</strong></span>
         <button className="real-auth-secondary" type="button" onClick={() => void refresh()} disabled={busy}>Actualizar listado</button>
@@ -218,15 +264,17 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
           </div>
           {loc.map_url && <a className="e3-ops-map-link" href={loc.map_url} target="_blank" rel="noopener noreferrer">Ver ubicación en Maps</a>}
           {authorized && <div className="real-auth-actions e3-ops-card-actions">
-            <button className="real-auth-secondary" type="button" disabled={busy} onClick={() => openEdit(loc)}>Editar</button>
+            <button className="real-auth-secondary" type="button" disabled={busy || uncertain} onClick={() => openEdit(loc)}>Editar</button>
             <button className="real-auth-secondary" type="button" disabled={busy || uncertain} onClick={() => void mutateLocation(loc, 'status')}>{loc.status === 'ACTIVA' ? 'Pausar' : 'Reactivar'}</button>
             {loc.status === 'ACTIVA' && !loc.is_primary && <button className="real-auth-secondary" type="button" disabled={busy || uncertain} onClick={() => void mutateLocation(loc, 'primary')}>Hacer principal</button>}
             <button className="real-auth-secondary" type="button" disabled={busy} onClick={() => void openAssignments(loc)}>Asignaciones</button>
           </div>}
         </article>)}
       </div>
-      {authorized && creating && <section className="e3-ops-editor" aria-label="Formulario de ubicación">
-        <div className="e3-ops-section-heading"><h2>{editingId ? 'Editar ubicación' : 'Nueva ubicación'}</h2><p>Los cambios se guardan en la empresa seleccionada.</p></div>
+      </>}
+      {locationView === 'editor' && authorized && (
+        <section className="e3-ops-editor e3-ops-editor-screen" aria-label="Formulario de ubicación">
+        <div className="e3-ops-section-heading"><h2>Información de la ubicación</h2><p>Completá los datos de esta sede. Los cambios se guardarán únicamente en la empresa seleccionada.</p></div>
         <form className="real-auth-form real-ops-form e3-ops-form" onSubmit={(e) => void save(e)}>
           <div className="e3-ops-form-grid">
             <label>Nombre<input required minLength={2} maxLength={80} value={draft.name} onChange={(e) => setDraft((old) => ({ ...old, name:e.target.value }))}/></label>
@@ -240,12 +288,14 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
           </div>
           <div className="real-auth-actions e3-ops-form-actions">
             <button className="real-auth-primary" type="submit" disabled={busy || uncertain}>{busy ? 'Guardando…' : 'Guardar en PostgreSQL'}</button>
-            <button className="real-auth-secondary" type="button" onClick={() => { setCreating(false); setEditingId(null); setDraft(blank) }} disabled={busy}>Cancelar</button>
+            <button className="real-auth-secondary" type="button" onClick={closeSubview} disabled={busy}>Cancelar</button>
           </div>
         </form>
-      </section>}
-      {authorized && selected && <section className="real-ops-subpanel e3-ops-assignments" aria-label="Asignaciones de sede">
-        <div className="e3-ops-section-heading"><h2>Asignaciones de {selected.name}</h2><p>Solo Encargados y Trabajadores activos pueden asignarse a una sede.</p></div>
+      </section>
+      )}
+      {locationView === 'assignments' && authorized && selected && (
+        <section className="real-ops-subpanel e3-ops-assignments e3-ops-assignments-screen" aria-label="Asignaciones de sede">
+        <div className="e3-ops-section-heading"><h2>Personal asignado</h2><p>Solo Encargados y Trabajadores activos pueden asignarse a una sede.</p></div>
         {loadingAssignments ? <p role="status">Consultando asignaciones…</p> : <>
           {eligibleMembers.length === 0 && <p>Aún no hay trabajadores disponibles. Podés invitarlos desde Equipo.</p>}
           {eligibleMembers.map((member) => {
@@ -260,11 +310,8 @@ export function RealLocationsPage({ token, userId, businessId, onNavigate, onUna
             </div>
           })}
         </>}
-        <button className="real-auth-link" type="button" onClick={() => { assignmentGeneration.current++; setLocationForAssignments(null) }}>Cerrar asignaciones</button>
-      </section>}
+      </section>
+      )}
     </>}
-    {uncertain && <p className="real-auth-message real-ops-warning" role="alert">Resultado de escritura incierto. Consultá el estado actualizado antes de repetir; no se enviará otra solicitud automáticamente. <button className="real-auth-link" type="button" onClick={() => void refresh()}>Reconsultar ubicaciones</button></p>}
-    {notice && <p className="real-auth-message" role="status">{notice}</p>}
-    {error && <p className="real-auth-message real-auth-error" role="alert">{error}</p>}
   </section>
 }
