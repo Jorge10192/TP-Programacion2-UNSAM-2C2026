@@ -74,7 +74,7 @@ for (const viewport of [
     await companyButton.focus()
     await expect(companyButton).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('heading', { name: 'Empresa real' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Datos de la empresa' })).toBeVisible()
     await expect(page.getByRole('heading', { name: f.company.name })).toBeVisible()
 
     const posButton = page.getByRole('button', { name: /Punto de venta REAL/ })
@@ -131,7 +131,7 @@ test('T11-D: REAL→DEMO→REAL no conserva sesión ni hace POST comercial', asy
   })
   await page.goto('/real/empresas/' + f.company.id)
   await loginByKeyboard(page, f)
-  await expect(page.getByRole('heading', { name: 'Empresa real' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Datos de la empresa' })).toBeVisible()
   await page.getByRole('link', { name: 'Entrar a DEMO' }).click()
   await expect(page).toHaveURL(/\/inicio$/)
   await expect(page.getByText('Sin autenticación ni pagos reales', { exact: false })).toBeVisible()
