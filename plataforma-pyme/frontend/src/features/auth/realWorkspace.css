@@ -13,6 +13,8 @@
   --pyme-ui-sidebar: 254px;
 }
 .real-workspace-mode { background: var(--pyme-ui-bg); color: var(--pyme-ui-ink); }
+/* H2: use a per-session shell class so the sidebar and content shift together. */
+.real-workspace-mode.rw-collapsed { --pyme-ui-sidebar: 76px; }
 .real-workspace-mode .real-auth-main { display: block; max-width: none; min-width: 0; width: auto; margin: 0 0 0 var(--pyme-ui-sidebar); padding: 28px clamp(16px, 3vw, 46px) 60px; }
 .real-workspace-mode .real-auth-main > .real-auth-card { max-width: 1550px; margin: 0 auto; }
 .real-workspace-mode .real-auth-main > .real-auth-card:not(.real-business-panel) { max-width: 900px; }
@@ -46,20 +48,36 @@
 .rw-real-badge { border-radius: 8px; padding: 7px 9px; background: #dff4ec; color: #0b7054; font-size: 10px; font-weight: 850; letter-spacing: .8px; }
 .rw-company-select-label { display: grid; gap: 3px; font-size: 10px; font-weight: 800; color: var(--pyme-ui-muted); }
 .rw-company-select-label select { border: 1px solid #cdd9e8; background: #fff; color: var(--pyme-ui-ink); min-height: 38px; padding: 7px 10px; border-radius: 9px; max-width: 205px; min-width: 125px; }
-.rw-profile-button, .rw-signout, .rw-trigger, .rw-close { background: #f3f6fb; color: var(--pyme-ui-ink); border: 1px solid var(--pyme-ui-border); border-radius: 9px; padding: 9px 11px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 730; }
+.rw-profile-button, .rw-signout, .rw-trigger, .rw-close, .rw-toggle-desktop { background: #f3f6fb; color: var(--pyme-ui-ink); border: 1px solid var(--pyme-ui-border); border-radius: 9px; padding: 9px 11px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 730; }
 .rw-role-note { font-size: 10px; color: var(--pyme-ui-muted); max-width: 140px; line-height: 1.4; }
 .rw-profile-button span { max-width: 125px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rw-signout:hover, .rw-profile-button:hover { background: #e8f0fc; }
+.rw-signout:hover, .rw-profile-button:hover, .rw-toggle-desktop:hover { background: #e8f0fc; }
+.rw-toggle-desktop { flex: none; }
 .rw-trigger, .rw-close { display: none; }
 .rw-overlay { display: none; }
 .rw-shell-error { flex: 1 0 100%; color: #a22942; font-size: 12px; padding: 0; margin: 0; }
 @media(max-width: 1050px) { .rw-profile-button span { display: none; } .rw-topbar-actions { gap: 9px; } }
+@media(min-width: 901px) {
+  .real-workspace-mode.rw-collapsed .rw-brand { justify-content: center; padding-inline: 8px; }
+  .real-workspace-mode.rw-collapsed .rw-brand-copy,
+  .real-workspace-mode.rw-collapsed .rw-nav-caption,
+  .real-workspace-mode.rw-collapsed .rw-nav-text,
+  .real-workspace-mode.rw-collapsed .rw-nav-helper,
+  .real-workspace-mode.rw-collapsed .rw-nav-warning,
+  .real-workspace-mode.rw-collapsed .rw-mode { display: none; }
+  .real-workspace-mode.rw-collapsed .rw-sidebar-scroll { padding-inline: 9px; }
+  .real-workspace-mode.rw-collapsed .rw-nav-item { justify-content: center; padding-inline: 0; }
+  .real-workspace-mode.rw-collapsed .rw-nav-item svg { flex: none; }
+  .real-workspace-mode.rw-collapsed .rw-nav-section { margin-top: 9px; padding-top: 9px; }
+  .real-workspace-mode.rw-collapsed .rw-sidebar-footer { padding: 5px; }
+}
 @media(max-width: 900px) {
   .real-workspace-mode .real-auth-main { margin: 0; padding: 20px 14px 55px; }
   .rw-topbar { margin: 0; padding: 10px 14px; min-height: 66px; }
   .rw-sidebar { transform: translateX(-101%); transition: transform .2s ease; width: min(315px, 87vw); z-index: 120; }
   .rw-sidebar.rw-sidebar-open { transform: translateX(0); }
   .rw-trigger, .rw-close { display: inline-flex; }
+  .rw-toggle-desktop { display: none; }
   .rw-close { margin-left: auto; background: #ffffff1c; color: #fff; border-color: #ffffff42; width: 34px; height: 34px; font-size: 20px; }
   .rw-overlay { position: fixed; inset: 0; display: block; z-index: 110; background: rgba(15, 29, 51, .52); border: none; }
 }
