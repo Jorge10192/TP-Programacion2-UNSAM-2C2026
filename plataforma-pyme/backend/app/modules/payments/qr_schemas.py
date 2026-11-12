@@ -102,3 +102,19 @@ class QrFinalizedView(BaseModel):
     intent: QrIntentView
     sale: SaleView
     replayed: bool
+
+
+class QrIntentSummaryView(BaseModel):
+    """Listado liviano para la empresa, sin PNG, notas ni líneas privadas."""
+    id: UUID
+    business_id: UUID
+    location_id: UUID | None
+    created_by_id: UUID
+    status: QrState
+    provider: Literal["MOCK_QA"]
+    currency: Literal["ARS"]
+    reference: str
+    total_cents: int
+    created_at: datetime
+    expires_at: datetime
+    sale_id: UUID | None = None
