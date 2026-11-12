@@ -49,6 +49,14 @@ def test_untrusted_uploads_are_rejected_without_database():
     assert data.startswith(b"RIFF") and data[8:12] == b"WEBP"
     assert (width, height) == (34, 25)
 
+    # Un logo transparente debe conservar su canal alfa en la versión WebP.
+    transparent = BytesIO()
+    Image.new("RGBA", (34, 25), (255, 255, 255, 0)).save(transparent, "PNG")
+    logo, _, _ = asyncio.run(probe(transparent.getvalue(), "image/png"))
+    with Image.open(BytesIO(logo)) as saved:
+        assert saved.mode == "RGBA"
+        assert saved.getpixel((0, 0))[3] == 0
+
 
 def test_photo_endpoints_require_bearer():
     with TestClient(create_app()) as client:
