@@ -1,0 +1,86 @@
+/* E3-1F1 · Inventario REAL: lista de consulta y operaciones independientes.
+   Los saldos y movimientos provienen exclusivamente de FastAPI/PostgreSQL. */
+.real-workspace-mode .real-auth-main>.e3-inventory-page{max-width:1240px}
+.e3-inventory-page{min-width:0}
+.e3-inventory-page .real-business-nav{margin-bottom:22px}
+.e3-inventory-heading{display:flex;align-items:center;gap:17px;flex-wrap:wrap;margin:14px 0 23px}
+.e3-inventory-heading-icon{display:grid;place-items:center;width:63px;height:63px;flex:0 0 63px;border-radius:18px;background:#e8f2ff;color:#2566b8}
+.e3-inventory-heading-copy{flex:1;min-width:190px}
+.e3-inventory-eyebrow{display:block;font-size:11px;color:#4a77b5;letter-spacing:1.15px;font-weight:850;text-transform:uppercase;margin-bottom:7px;overflow-wrap:anywhere}
+.e3-inventory-heading h1{font-size:clamp(24px,3.1vw,33px);line-height:1.2;color:#182c48;margin:0 0 7px}
+.e3-inventory-heading-copy p{color:#61778e;font-size:13px;line-height:1.6;margin:0;overflow-wrap:anywhere}
+.e3-inventory-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:15px 0 17px}
+.e3-inventory-stats>div{display:grid;gap:8px;padding:18px 19px;border:1px solid #dfe9f5;border-radius:14px;background:#f6f9fe;min-width:0}
+.e3-inventory-stats span{font-weight:750;font-size:11px;color:#5b7491}
+.e3-inventory-stats strong{font-size:26px;line-height:1.1;color:#235aa6;font-variant-numeric:tabular-nums}
+.e3-inventory-limits-note{margin:0 0 21px;border-left:3px solid #99bdec;border-radius:7px;background:#f1f7ff;color:#4e6b8e;font-size:12px;line-height:1.55;padding:11px 15px}
+.e3-inventory-page .real-inventory-controls{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:19px 0}
+.e3-inventory-page .real-inventory-controls>label{min-width:min(100%,190px);flex:1 1 230px}
+.e3-inventory-page .real-inventory-controls select{width:100%;min-height:45px;border-radius:10px;background:#fff;border:1px solid #cbdbf0;color:#1f3859}
+.e3-inventory-page .real-inventory-controls>button{min-height:45px}
+.e3-inventory-launch{margin:20px 0 24px;padding:17px;background:#f7faff;border:1px solid #e0eaf5;border-radius:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.e3-inventory-launch button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:45px;transition:transform .1s ease,background-color .15s ease}
+.e3-inventory-launch button:active:not(:disabled){transform:translateY(1px)}
+.e3-inventory-launch>span{flex:1 1 100%;color:#607b97;font-size:11px;line-height:1.5}
+.e3-inventory-tabs{margin:19px 0;display:flex;gap:9px;flex-wrap:wrap}
+.e3-inventory-tabs button{min-height:43px;transition:background-color .15s ease,transform .1s ease}
+.e3-inventory-tabs button:active:not(:disabled){transform:translateY(1px)}
+.e3-inventory-page .real-inventory-history-filters{padding:17px;background:#f7faff;border:1px solid #e1e9f5;border-radius:14px;margin:18px 0}
+.e3-inventory-page .real-inventory-history-filters input,
+.e3-inventory-page .real-inventory-history-filters select{width:100%;max-width:100%;min-height:44px;background:#fff;border:1px solid #cbdbf0;border-radius:10px}
+.e3-inventory-balance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,315px),1fr));gap:13px;margin:15px 0 23px}
+.e3-inventory-balance-grid .real-inventory-balance{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;border:1px solid #dce7f5;background:#fff;border-radius:15px;padding:18px;transition:border-color .15s ease,box-shadow .15s ease}
+.e3-inventory-balance-grid .real-inventory-balance:hover{border-color:#aac9ef;box-shadow:0 4px 18px #235d9510}
+.e3-inventory-balance-grid .real-inventory-balance>div{min-width:0;overflow-wrap:anywhere}
+.e3-inventory-balance-grid .real-inventory-balance h3{font-size:15px;line-height:1.45;margin:0 0 7px;color:#183652}
+.e3-inventory-balance-grid .real-inventory-balance p{font-size:12px;line-height:1.55;color:#64809b;margin:0 0 9px}
+.e3-inventory-balance-grid .real-inventory-balance small{font-size:10px;color:#68809a;line-height:1.6}
+.e3-inventory-balance-grid .real-inventory-balance>strong{flex:none;font-size:23px;font-variant-numeric:tabular-nums}
+.e3-inventory-movement-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,370px),1fr));gap:12px;margin:17px 0 24px}
+.e3-inventory-movement-list .real-inventory-movement{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;background:#fff;border:1px solid #dce7f5;border-radius:14px;padding:17px;min-width:0}
+.e3-inventory-movement-list .real-inventory-movement-info{min-width:0;overflow-wrap:anywhere}
+.e3-inventory-movement-list .real-inventory-movement-info h3{font-size:15px;color:#1c3b63;margin:0 0 7px}
+.e3-inventory-movement-list .real-inventory-movement-info p{line-height:1.5;font-size:12px;color:#4e6b89;margin:0 0 7px}
+.e3-inventory-movement-list .real-inventory-movement-info small{font-size:10px;color:#7890a8;line-height:1.5}
+.e3-inventory-movement-list .real-inventory-movement>strong{flex:none;font-variant-numeric:tabular-nums;font-size:17px}
+.e3-inventory-movement-list .real-inventory-trace{margin:12px 0 0}
+.e3-inventory-operation-view{border:1px solid #dce7f5;border-radius:18px;background:#fff;padding:clamp(17px,3vw,29px);box-shadow:0 5px 20px #24517a09;min-width:0}
+.e3-inventory-operation-view>.real-transfer-panel{margin:0;border:0;border-radius:0;box-shadow:none;padding:0;max-width:100%;min-width:0}
+.e3-inventory-operation-view .real-transfer-top{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;flex-wrap:wrap;padding-bottom:19px;border-bottom:1px solid #e4edf7;margin-bottom:21px}
+.e3-inventory-operation-view .real-transfer-top h2{font-size:20px;color:#204e86;margin:0 0 8px}
+.e3-inventory-operation-view .real-transfer-top p{color:#5b7290;font-size:12px;line-height:1.6;margin:0;max-width:720px}
+.e3-inventory-operation-view .real-transfer-top button{min-height:43px;flex:none;cursor:pointer}
+.e3-inventory-operation-view .real-transfer-form,.e3-inventory-operation-view .real-transfer-pending,.e3-inventory-operation-view .real-transfer-confirmed{border-radius:13px;min-width:0}
+.e3-inventory-operation-view .real-transfer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.e3-inventory-operation-view .real-transfer-grid>label{min-width:0}
+.e3-inventory-operation-view .real-transfer-grid select,.e3-inventory-operation-view .real-transfer-grid input{width:100%;min-width:0;max-width:100%}
+.e3-inventory-operation-view .real-transfer-balance{min-width:0}
+.e3-inventory-page button:focus-visible,.e3-inventory-page input:focus-visible,
+.e3-inventory-page select:focus-visible,.e3-inventory-page textarea:focus-visible{outline:3px solid #3e80df;outline-offset:2px}
+.e3-inventory-heading h1:focus{outline:2px solid #3e80df;outline-offset:4px;border-radius:4px}
+@media(max-width:690px){
+ .e3-inventory-operation-view .real-transfer-grid{grid-template-columns:1fr}
+ .e3-inventory-stats{gap:7px}
+ .e3-inventory-stats>div{padding:13px 11px}
+ .e3-inventory-stats strong{font-size:23px}
+ .e3-inventory-stats span{font-size:10px}
+ .e3-inventory-page .real-inventory-controls>button{width:100%}
+ .e3-inventory-launch button{flex:1 1 100%}
+ .e3-inventory-operation-view{padding:16px}
+}
+@media(prefers-reduced-motion:reduce){
+ .e3-inventory-launch button,.e3-inventory-tabs button,.e3-inventory-balance-grid .real-inventory-balance{transition:none}
+}
+
+
+/* E3-1F1 QA: responsable visible del movimiento; IDs solo en trazabilidad. */
+.e3-inventory-movement-list .e3-inventory-actor {
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:5px;
+  margin:12px 0 2px;padding:9px 11px;
+  border:1px solid #e3ebf7;border-radius:10px;background:#f6f9ff;
+  font-size:11px;line-height:1.55;color:#607894;
+  overflow-wrap:anywhere;
+}
+.e3-inventory-movement-list .e3-inventory-actor strong {
+  color:#1f4e89;font-weight:800;font-size:12px;overflow-wrap:anywhere;
+}

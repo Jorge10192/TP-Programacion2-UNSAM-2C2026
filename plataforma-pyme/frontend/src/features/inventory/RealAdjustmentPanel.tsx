@@ -200,7 +200,7 @@ export function RealAdjustmentPanel({
    <div><h2>Stock inicial y ajustes</h2>
     <p>Las operaciones se registran en FastAPI y PostgreSQL, con trazabilidad y versión de saldo. No sustituyen compras ni movimientos anteriores.</p>
    </div>
-   <button type="button" className="real-auth-secondary" disabled={busy} onClick={onClose}>Cerrar</button>
+   <button type="button" className="real-auth-secondary" disabled={busy} onClick={onClose}>Volver a inventario</button>
   </div>
   <p className="real-auth-note">Solo titular y administrador pueden registrar stock inicial. Los encargados asignados pueden ajustar existencias. Trabajadores: solo lectura. La API comprueba el rol y permiso STORE en la sede.</p>
   <p className="real-auth-note">Si aceptás, la identidad del intento y sus datos comerciales (sin token ni contraseña) se guardan <strong>sin cifrar</strong> en IndexedDB de este navegador hasta resolverlos. Evitá dispositivos compartidos.</p>

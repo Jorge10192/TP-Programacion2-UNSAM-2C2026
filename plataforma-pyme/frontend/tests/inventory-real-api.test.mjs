@@ -7,7 +7,7 @@ import {
 } from '../src/features/inventory/realInventoryGateway.ts'
 import {
   filterLoadedHistory, loadedInventoryCountLabel, loadedMovementCounts, movementTraceFields,
-  loadedHistorySummary, loadedMatchCountLabel,
+  loadedHistorySummary, loadedMatchCountLabel, movementActorName,
 } from '../src/features/inventory/inventoryHistoryView.ts'
 
 const business='12dd5528-f5cc-4931-bd39-f5e9da116d25'
@@ -313,4 +313,29 @@ test('T08-3 QA visual: resumen singular, plural y sin movimientos por sede',()=>
  for(const values of [[1,2,0],[-1,0,0],[2,0,3],[2,1,-1]]){
   assert.throws(()=>loadedHistorySummary(...values),RangeError)
  }
+})
+
+test('E3-1F1: nombre real del actor de un movimiento, sin reemplazar el UUID de trazabilidad',()=>{
+ const viewer={id:actor,displayName:'Jorge_Prueba'}
+ assert.equal(movementActorName(movement().actor_id,viewer), 'Jorge_Prueba')
+ const trace=movementTraceFields(movement())
+ assert.ok(trace.some(field=>field.label==='Responsable (ID)'&&field.value===actor))
+})
+
+test('E3-1F1: persona diferente a quien consulta, nombre de equipo autorizado',()=>{
+ const viewer={id:actor,displayName:'Jorge'}
+ const otherActor='be8382b4-1ac8-4405-8c49-83f17e34f339'
+ assert.equal(movementActorName(otherActor,viewer,[
+   {user_id:actor,display_name:'Jorge'},
+   {user_id:otherActor,display_name:'Miguel'},
+ ]),'Miguel')
+ assert.notEqual(movementActorName(otherActor,viewer,[]),'Jorge')
+})
+
+test('E3-1F1: directorio no disponible o actor histórico ausente no atribuye autor erróneo',()=>{
+ const viewer={id:actor,displayName:'Jorge'}
+ const pastActor='be8382b4-1ac8-4405-8c49-83f17e34f339'
+ assert.equal(movementActorName(pastActor,viewer,[]),'Nombre no disponible')
+ assert.equal(movementActorName(pastActor,viewer,[{user_id:actor,display_name:'Jorge'}]),'Nombre no disponible')
+ assert.equal(movementActorName(actor,{id:actor,displayName:'  '}),'Tu cuenta')
 })
