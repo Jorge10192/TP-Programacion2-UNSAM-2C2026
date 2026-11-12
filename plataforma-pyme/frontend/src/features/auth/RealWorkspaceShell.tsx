@@ -12,6 +12,8 @@ type Props = {
   userName: string
   path: string
   businessId: string | null
+  collapsed: boolean
+  onToggleCollapse: () => void
   onNavigate: (route: string) => void
   onUnauthorized: () => void
   onLogout: () => void
@@ -19,7 +21,7 @@ type Props = {
 
 /** Shared navigation only. Business state remains inside API-backed page components. */
 export function RealWorkspaceShell({ token, userId, userName, path, businessId,
-  onNavigate, onUnauthorized, onLogout }: Props) {
+  collapsed, onToggleCollapse, onNavigate, onUnauthorized, onLogout }: Props) {
   const [companies, setCompanies] = useState<RealBusiness[]>([])
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
@@ -95,25 +97,26 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
       aria-label="Navegación REAL" role={drawerOpen ? 'dialog' : undefined} aria-modal={drawerOpen || undefined}>
       <div className="rw-brand">
         <span className="rw-logo" aria-hidden="true"><Icon name="building" size={23} /></span>
-        <div><strong>Asistente PyME</strong><small>Gestión de empresas</small></div>
+        <div className="rw-brand-copy"><strong>Asistente PyME</strong><small>Gestión de empresas</small></div>
         <button ref={closeRef} type="button" className="rw-close" aria-label="Cerrar menú" onClick={() => setDrawerOpen(false)}>×</button>
       </div>
       <nav className="rw-sidebar-scroll" aria-label="Secciones disponibles en REAL">
         <p className="rw-nav-caption">Mi espacio</p>
         <button type="button" className={'rw-nav-item' + (path === '/real/empresas' ? ' rw-active' : '')}
-          aria-label="Ir al listado de empresas"
+          aria-label="Ir al listado de empresas" title="Mis empresas"
           aria-current={path === '/real/empresas' ? 'page' : undefined} onClick={() => navigate('/real/empresas')}>
-          <Icon name="home" size={18}/>Mis empresas</button>
+          <Icon name="home" size={18}/><span className="rw-nav-text">Mis empresas</span></button>
         <button type="button" className={'rw-nav-item' + (path === '/real/perfil' ? ' rw-active' : '')}
-          aria-current={path === '/real/perfil' ? 'page' : undefined} onClick={() => navigate('/real/perfil')}>
-          <Icon name="user" size={18}/>Mi perfil</button>
+          aria-current={path === '/real/perfil' ? 'page' : undefined} aria-label="Mi perfil" title="Mi perfil" onClick={() => navigate('/real/perfil')}>
+          <Icon name="user" size={18}/><span className="rw-nav-text">Mi perfil</span></button>
         {businessId && active && sections.map((section) => <div className="rw-nav-section" key={section}>
           <p className="rw-nav-caption">{section}</p>
           {REAL_WORKSPACE_ITEMS.filter((item) => item.group === section).map((item) => {
             const target = realWorkspaceHref(active.id, item.section)
             return <button type="button" className={'rw-nav-item' + (path === target ? ' rw-active' : '')}
               key={item.section} aria-current={path === target ? 'page' : undefined}
-              onClick={() => navigate(target)}><Icon name={item.icon} size={18}/>{item.label}</button>
+              aria-label={item.label} title={item.label}
+              onClick={() => navigate(target)}><Icon name={item.icon} size={18}/><span className="rw-nav-text">{item.label}</span></button>
           })}
         </div>)}
         {businessId && state === 'error' && <p className="rw-nav-warning" role="alert">No se pudo verificar tu empresa. Abrí «Mis empresas» para actualizar.</p>}
@@ -128,6 +131,10 @@ export function RealWorkspaceShell({ token, userId, userName, path, businessId,
       <div className="rw-topbar-left">
         <button ref={triggerRef} type="button" className="rw-trigger" aria-label="Abrir menú" aria-controls="real-workspace-nav"
           aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><Icon name="menu" size={20}/></button>
+        <button type="button" className="rw-toggle-desktop"
+          aria-label={collapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'}
+          aria-pressed={collapsed} title={collapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'}
+          onClick={onToggleCollapse}><Icon name={collapsed ? 'panel' : 'panel-hide'} size={19}/></button>
         <div className="rw-title-block"><span className="rw-breadcrumb">Espacio REAL / {title}</span>
           <strong>{title}</strong></div>
       </div>
