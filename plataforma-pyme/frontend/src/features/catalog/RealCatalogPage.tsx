@@ -11,6 +11,8 @@ import {
   pesosToCents, validateCatalogDraft,
 } from './realCatalogGateway.ts'
 import type { CatalogCreate, CatalogItem, CatalogKind, CatalogUnit } from './realCatalogGateway.ts'
+import { RealSetupGuide } from '../onboarding/RealSetupGuide.tsx'
+import { catalogSetupSuggestion } from '../onboarding/realSetupGuidance.ts'
 
 type Props={token:string;userId:string;businessId:string;onNavigate:(path:string)=>void;onUnauthorized:()=>void}
 type Draft = Omit<CatalogCreate,'price_cents'|'reference_cost_cents'> & {price:string;cost:string}
@@ -189,6 +191,10 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
   const selected=items.find(item=>item.id===detailId)
   const view:'list'|'form'|'detail'=form?'form':selected?'detail':'list'
   const loadedActive=items.filter(item=>item.status==='ACTIVO').length
+  const setupSuggestion=catalogSetupSuggestion({
+    verified:view==='list'&&!loading&&loaded&&!error&&!uncertain&&!!business,
+    count:items.length,canWrite,
+  })
   useEffect(()=>{
     if(previousView.current===view)return
     if(view==='list')listTitleRef.current?.focus()
@@ -199,6 +205,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
     {view==='list'&&<nav className="real-business-nav" aria-label="Navegación de empresa">
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId)}>Empresa</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/ubicaciones')}>Ubicaciones</button>
+      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/inicio')}>Primeros pasos</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>}
     {view!=='list'&&<div className="e3-commerce-backbar">
@@ -230,6 +237,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
         <button type="button" className="real-auth-secondary" disabled={loading||busy||moreLoading} onClick={()=>void refresh()}>Actualizar catálogo</button>
       </div>}
       {!loading&&loaded&&<>
+        <RealSetupGuide suggestion={setupSuggestion} businessId={businessId} onNavigate={onNavigate}/>
         <div className="e3-commerce-stats" aria-label="Resumen del catálogo cargado">
           <div><span>Fichas cargadas</span><strong>{items.length}</strong></div>
           <div><span>Activas cargadas</span><strong>{loadedActive}</strong></div>
@@ -301,6 +309,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
     </section>}
     {view==='form'&&canWrite&&<section className="e3-commerce-subsurface e3-commerce-form-screen" aria-label="Formulario de artículo">
       <div className="e3-commerce-section-head"><h2>Datos del artículo</h2><p>La información se guardará únicamente en la empresa seleccionada.</p></div>
+      {draft.kind==='SERVICIO'&&<p className="real-auth-note" role="note">Los servicios no requieren stock inicial ni movimientos de inventario. Su precio y disponibilidad comercial se registran en esta ficha.</p>}
       <form className="real-auth-form real-ops-form e3-commerce-form" onSubmit={e=>void save(e)}>
         <div className="e3-commerce-form-grid">
           <label>Nombre<input required minLength={2} maxLength={90} value={draft.name} onChange={e=>updateField('name',e.target.value)}/></label>
