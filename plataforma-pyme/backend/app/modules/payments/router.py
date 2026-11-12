@@ -8,7 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
-from app.infrastructure.models import MerchantPaymentConnection
+from app.infrastructure.models import MerchantPaymentConnection, QrPaymentIntent
+from app.modules.auth.tokens import now_utc
 from app.modules.auth.dependencies import current_auth, unauthorized
 from app.modules.auth.session_service import AuthContext
 from app.modules.businesses.repository import BusinessRepository
@@ -105,6 +106,14 @@ def disconnect_demo(
         _authorize(db, context, business_id, write=True)
         connection = _lookup(db, business_id)
         if connection is not None and connection.status != "INACTIVA":
+            pending = db.scalar(select(QrPaymentIntent.id).where(
+                QrPaymentIntent.business_id == business_id,
+                QrPaymentIntent.merchant_connection_id == connection.id,
+                QrPaymentIntent.status == "ESPERANDO_PAGO",
+                QrPaymentIntent.expires_at > now_utc(),
+            ).limit(1))
+            if pending is not None:
+                raise HTTPException(409, detail="Cancelá el QR DEMO pendiente antes de desvincular la cuenta")
             connection.status = "INACTIVA"
             connection.updated_by_user_id = context.user.id
         db.commit()
