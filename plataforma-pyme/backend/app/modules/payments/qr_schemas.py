@@ -74,6 +74,7 @@ class QrIntentView(BaseModel):
     created_at: datetime
     expires_at: datetime
     qr_png_data_uri: str
+    sale_id: UUID | None = None
     lines: list[QrIntentLineView]
 
 class QrSimulateRequest(BaseModel):
@@ -89,7 +90,7 @@ class QrPaymentEventView(BaseModel):
     intent_id: UUID
     event_key: UUID
     sequence: int
-    action: Literal["CREAR", "CANCELAR", "APROBAR", "RECHAZAR", "EXPIRAR", "INDETERMINAR"]
+    action: Literal["CREAR", "CANCELAR", "APROBAR", "RECHAZAR", "EXPIRAR", "INDETERMINAR", "FINALIZAR", "REVISION"]
     from_status: str
     to_status: QrState
     actor_id: UUID
