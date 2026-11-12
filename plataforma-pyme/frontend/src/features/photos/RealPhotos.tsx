@@ -30,10 +30,10 @@ function AuthenticatedPhoto({ token, photo, alt, owner }: Shared & { photo: Phot
       </span>
 }
 
-type ManagerProps = Shared & { title: string; canManage: boolean; onUnauthorized?: () => void }
+type ManagerProps = Shared & { title: string; canManage: boolean; onUnauthorized?: () => void; onChanged?: () => void }
 
 /** Galería privada: edición explícita, errores recuperables y controles por rol. */
-export function RealPhotoManager({ token, owner, title, canManage, onUnauthorized }: ManagerProps) {
+export function RealPhotoManager({ token, owner, title, canManage, onUnauthorized, onChanged }: ManagerProps) {
   const path = photoCollectionPath(owner)
   const gateway = useMemo(() => createPhotoGateway(token, owner), [token, path])
   const [photos,setPhotos] = useState<PhotoRecord[]>([])
@@ -76,6 +76,7 @@ export function RealPhotoManager({ token, owner, title, canManage, onUnauthorize
     try {
       for(const file of selected) await gateway.upload(file)
       await refresh()
+      onChanged?.()
       setNotice(isCatalog?'Fotografías guardadas en PostgreSQL.':'Foto guardada en PostgreSQL.')
     } catch (cause) {
       setError(photoErrorMessage(cause))
@@ -91,6 +92,7 @@ export function RealPhotoManager({ token, owner, title, canManage, onUnauthorize
     try {
       await gateway.remove(id)
       await refresh()
+      onChanged?.()
       setNotice('Foto quitada correctamente.')
     } catch(cause) {
       setError(photoErrorMessage(cause))
@@ -134,9 +136,9 @@ export function RealPhotoManager({ token, owner, title, canManage, onUnauthorize
   </section>
 }
 
-type PreviewProps = Shared & { alt:string; fallback?: 'user'|'business'|'product'|'supplier'; className?:string }
+type PreviewProps = Shared & { alt:string; className?:string; revision?:number }
 /** Vista previa perezosa: evita una descarga por cada fila paginada no visible. */
-export function RealPhotoPreview({token,owner,alt,className=''}: PreviewProps) {
+export function RealPhotoPreview({token,owner,alt,className='',revision=0}: PreviewProps) {
   const path=photoCollectionPath(owner)
   const gateway=useMemo(()=>createPhotoGateway(token,owner),[token,path])
   const element=useRef<HTMLSpanElement>(null)
@@ -157,7 +159,7 @@ export function RealPhotoPreview({token,owner,alt,className=''}: PreviewProps) {
     void gateway.list(abort.signal).then(records=>{if(!abort.signal.aborted)setCover(records[0]??null)})
       .catch(()=>{if(!abort.signal.aborted)setCover(null)})
     return()=>abort.abort()
-  },[gateway,visible])
+  },[gateway,visible,revision])
   return <span ref={element} className={'e3-photo-preview '+className}>
     {cover
       ?<AuthenticatedPhoto token={token} owner={owner} photo={cover} alt={alt}/>
