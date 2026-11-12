@@ -39,12 +39,17 @@ export function realWorkspaceHref(businessId: string, section: RealBusinessSecti
 
 /** Return a business only for the routes accepted by RealAuthApp. */
 export function realWorkspaceBusinessId(path: string): string | null {
+  const qrMatch = /^\/real\/empresas\/([^/]+)\/qr-cobros\/([^/]+)$/.exec(path)
+  if (qrMatch && UUID_PATTERN.test(qrMatch[1]) && UUID_PATTERN.test(qrMatch[2]))
+    return qrMatch[1]
   const match = /^\/real\/empresas\/([^/]+)(?:\/([a-z-]+))?$/.exec(path)
   if (!match || !UUID_PATTERN.test(match[1]) || !VALID_SECTIONS.has(match[2] ?? '')) return null
   return match[1]
 }
 
 export function realWorkspaceTitle(path: string): string {
+  if (/^\/real\/empresas\/[^/]+\/qr-cobros\/[^/]+$/.test(path) && realWorkspaceBusinessId(path))
+    return 'Cobro QR DEMO'
   if (path === '/real/perfil') return 'Mi perfil'
   if (path === '/real/invitaciones/aceptar') return 'Ingresar código de invitación'
   if (path === '/real/empresas/nueva') return 'Crear empresa'
