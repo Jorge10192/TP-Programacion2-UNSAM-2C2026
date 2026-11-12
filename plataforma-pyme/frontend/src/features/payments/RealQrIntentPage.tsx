@@ -5,6 +5,7 @@ import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
 import { createQrIntentGateway, qrIntentError } from './qrIntentGateway.ts'
 import type { QrIntent, QrPaymentEvent, QrSimAction } from './qrIntentGateway.ts'
 import type { SaleReceipt } from '../sales/realSalesReadGateway.ts'
+import { qrEffectiveStatus, qrStatusPresentation } from './qrUx.ts'
 import './realQrIntent.css'
 
 type Props = {
@@ -46,6 +47,7 @@ export function RealQrIntentPage({
   const [events, setEvents] = useState<QrPaymentEvent[]>([])
   const [receipt, setReceipt] = useState<SaleReceipt | null>(null)
   const [saleOutcomeUnknown, setSaleOutcomeUnknown] = useState(false)
+  const [saleRecoveryChecked, setSaleRecoveryChecked] = useState(false)
   const [uncertain, setUncertain] = useState(false)
   const actionRef = useRef<{action: QrSimAction; key: string} | null>(null)
   const [loading, setLoading] = useState(true)
@@ -86,8 +88,8 @@ export function RealQrIntentPage({
   }, [api, intentId, businessId, operations, onUnauthorized])
 
   const secondsRemaining = intent ? Math.max(0, Math.ceil((Date.parse(intent.expires_at) - now) / 1000)) : 0
-  const displayStatus = intent && intent.status === 'ESPERANDO_PAGO' && secondsRemaining === 0
-    ? 'EXPIRADA' : intent?.status
+  const displayStatus = intent ? qrEffectiveStatus(intent.status, intent.expires_at, now) : null
+  const presentation = displayStatus ? qrStatusPresentation(displayStatus) : null
   async function refresh() {
 
     if (busy || !intent) return
@@ -98,9 +100,23 @@ export function RealQrIntentPage({
       if (current.status === 'FINALIZADA') {
         const sale = await api.receipt(intentId)
         if (current.sale_id !== sale.id) throw new Error('Comprobante QR incompatible')
-        setReceipt(sale); setSaleOutcomeUnknown(false)
+        setReceipt(sale)
+        setSaleOutcomeUnknown(false)
+        setSaleRecoveryChecked(false)
+      } else {
+        setReceipt(null)
+        if (saleOutcomeUnknown && current.status === 'APROBADA_DEMO') {
+          // GET resolvió que no se creó venta: mismo QR/endpoint idempotente.
+          setSaleRecoveryChecked(true)
+        } else {
+          setSaleOutcomeUnknown(false)
+          setSaleRecoveryChecked(false)
+        }
       }
-      if (actionRef.current && history.some(event => event.event_key === actionRef.current?.key)) {
+      if (actionRef.current && (
+        history.some(event => event.event_key === actionRef.current?.key) ||
+        !['ESPERANDO_PAGO','INDETERMINADA'].includes(current.status)
+      )) {
         setUncertain(false); actionRef.current = null
       }
     } catch (err) {
@@ -146,18 +162,22 @@ export function RealQrIntentPage({
     } finally { setBusy(false) }
   }
 
-  async function finalizeDemoSale() {
+  async function finalizeDemoSale(retryAfterCheck = false) {
     if (!FINALIZE_QA_ENABLED || !isManager || busy || intent?.status !== 'APROBADA_DEMO') return
-    if (!window.confirm('¿Registrar UNA venta interna en la base de pruebas? Se descontará stock QA. Esta operación NO acredita dinero real.')) return
+    if (saleOutcomeUnknown && (!retryAfterCheck || !saleRecoveryChecked)) return
+    if (!retryAfterCheck && !window.confirm('¿Registrar UNA venta interna en la base de pruebas? Se descontará stock QA. Esta operación NO acredita dinero real.')) return
     setBusy(true); setError('')
     try {
       const done = await api.finalize(intentId)
       setIntent(done.intent); setReceipt(done.sale)
       setEvents(await api.events(intentId))
       setSaleOutcomeUnknown(false)
+      setSaleRecoveryChecked(false)
     } catch (err) {
-      if (err instanceof ApiTransportError || (err instanceof ApiHttpError && err.status >= 500))
+      if (err instanceof ApiTransportError || (err instanceof ApiHttpError && err.status >= 500)) {
         setSaleOutcomeUnknown(true)
+        setSaleRecoveryChecked(false)
+      }
       if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
       else setError(qrIntentError(err) +
         ' Antes de repetir el cierre consultá el estado de la venta por GET.')
@@ -171,19 +191,26 @@ export function RealQrIntentPage({
         <h1>Mercado Pago QR <span>DEMO</span></h1>
         <p>Desglose completo del importe de esta venta, almacenado en PostgreSQL.</p>
       </div>
-      <button type="button" className="real-auth-secondary" disabled={busy}
-        onClick={() => onNavigate('/real/empresas/' + businessId + '/pos')}>Volver al POS</button>
+      <div className="e3-qr-heading-actions">
+        <button type="button" className="real-auth-secondary" disabled={busy}
+          onClick={() => onNavigate('/real/empresas/' + businessId + '/cobros-qr')}>Ver cobros QR</button>
+        <button type="button" className="real-auth-secondary" disabled={busy}
+          onClick={() => onNavigate('/real/empresas/' + businessId + '/pos')}>Volver al POS</button>
+      </div>
     </div>
 
     <p className="e3-qr-warning" role="note"><strong>SIMULACIÓN · NO COBRABLE.</strong> Este QR solo codifica una referencia de prueba. No es una orden de Mercado Pago y no se recibe dinero real. Tampoco se registra una venta ni se reserva/descuenta stock al generarlo.</p>
+    {presentation && <div className={'e3-qr-explainer e3-qr-tone-'+presentation.tone} role="status">
+      <strong>{presentation.title}</strong>
+      <p>{presentation.description}</p>
+      <small><strong>Próximo paso:</strong> {presentation.nextStep}</small>
+    </div>}
     {loading && <p role="status">Cargando QR y detalle original desde la API…</p>}
     {error && <p className="real-auth-message real-auth-error" role="alert">{error}</p>}
     {intent && !loading && <div className="e3-qr-layout">
       <div className="e3-qr-visual-panel">
         <div className="e3-qr-status" role="status">
-          {displayStatus === 'ESPERANDO_PAGO' ? 'Esperando pago de prueba' :
-            displayStatus === 'EXPIRADA' ? 'QR vencido' :
-            displayStatus === 'CANCELADA' ? 'QR cancelado' : displayStatus}
+          {presentation?.title ?? 'Estado QR'}
         </div>
         <img src={intent.qr_png_data_uri} alt="QR escaneable de identificación DEMO, no se puede pagar"
           className="e3-qr-image" width="320" height="320"/>
@@ -237,7 +264,12 @@ export function RealQrIntentPage({
               onClick={()=>void finalizeDemoSale()}>
               {busy ? 'Registrando…' : 'Registrar venta QA y descontar stock'}
             </button>
-            {saleOutcomeUnknown && <p role="alert">Resultado incierto: consultá estado, eventos y comprobante mediante GET. No generes otro QR.</p>}
+            {saleOutcomeUnknown && <p role="alert">Resultado incierto: consultá el QR y el comprobante original mediante GET. No generes otro QR.</p>}
+            {saleOutcomeUnknown && saleRecoveryChecked && <button type="button"
+              className="real-auth-secondary" disabled={busy}
+              onClick={()=>void finalizeDemoSale(true)}>
+              Reintentar el mismo cierre QA
+            </button>}
           </section>}
         {intent.status === 'REQUIERE_REVISION' &&
           <p className="e3-qr-warning" role="alert"><strong>Requiere revisión:</strong> la venta no fue registrada. El stock, la sede o el catálogo deben verificarse. No hubo un débito parcial.</p>}
@@ -252,8 +284,10 @@ export function RealQrIntentPage({
                 onClick={()=>void refresh()}>Consultar comprobante</button>}
         </section>}
         {saleOutcomeUnknown && <button type="button" className="real-auth-secondary"
-          disabled={busy} onClick={()=>void refresh()}>Consultar resultado original del cierre</button>}
-                <div className="e3-qr-history">
+          disabled={busy} onClick={()=>void refresh()}>
+          {saleRecoveryChecked ? 'Volver a consultar el cierre QA' : 'Consultar resultado original del cierre'}
+        </button>}
+        <div className="e3-qr-history">
           <h2>Historial de eventos</h2>
           <p>Registros del servidor, ordenados por secuencia. Ningún evento representa acreditación externa.</p>
           {events.length === 0 ? <p>Aún no hay eventos registrados para este intento.</p> :
