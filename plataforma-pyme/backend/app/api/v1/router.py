@@ -21,6 +21,7 @@ from app.modules.purchases.adjustment_router import router as adjustment_router
 from app.modules.sales.router import router as sales_router
 
 from app.modules.media.router import router as photos_router
+from app.modules.payments.router import router as payment_connections_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(auth_router)
@@ -38,3 +39,4 @@ api_v1_router.include_router(inventory_router)
 api_v1_router.include_router(transfer_router)
 api_v1_router.include_router(adjustment_router)
 api_v1_router.include_router(sales_router)
+api_v1_router.include_router(payment_connections_router)
