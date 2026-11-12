@@ -54,8 +54,9 @@ test('E3-2A: foto perfil, empresa, galería servicios y proveedor con POS, sin c
   expect(content.headers()['content-type']).toContain('image/webp')
 
   await page.getByRole('button',{name:'Mis empresas',exact:true}).first().click()
-  await expect(page.getByText('Empresa imágenes E3',{exact:true})).toBeVisible()
-  await page.getByRole('button',{name:/Empresa imágenes E3/}).click()
+  const companyCard=page.getByRole('button',{name:/Empresa imágenes E3/})
+  await expect(companyCard).toBeVisible()
+  await companyCard.click()
   const company=page.getByRole('region',{name:'Imágenes de Foto o logo de la empresa'})
   await company.locator('input[type=file]').setInputFiles(image)
   await expect(company.getByText('Foto guardada en PostgreSQL.')).toBeVisible()
