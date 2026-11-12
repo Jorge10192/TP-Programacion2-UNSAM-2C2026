@@ -23,7 +23,7 @@ from app.modules.payments.qr_schemas import QrIntentView
 from app.modules.sales.schemas import CreateSaleRequest, SaleView
 from app.modules.sales.service import (
     SaleService, SaleInsufficientStock, SaleInvalidReference,
-    SaleLocationNotEnabled, SaleMissingCatalogPrice,
+    SaleLocationNotEnabled, SaleMissingCatalogPrice, SalePermissionDenied,
 )
 
 MANAGER_ROLES = frozenset(("TITULAR_ADMINISTRATIVO", "ADMINISTRADOR"))
@@ -208,7 +208,7 @@ class QrSettlementService:
             self.db.commit()
             return result
         except (SaleInsufficientStock, SaleInvalidReference, SaleLocationNotEnabled,
-                SaleMissingCatalogPrice) as error:
+                SaleMissingCatalogPrice, SalePermissionDenied) as error:
             self.db.rollback()
             self._mark_needs_review(actor, session, business, intent_id)
             raise QrFinalizationNeedsReview() from error
