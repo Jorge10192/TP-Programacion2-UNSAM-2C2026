@@ -65,6 +65,8 @@ test('E3-2A: foto perfil, empresa, galería servicios y proveedor con POS, sin c
   const companyCard=page.getByRole('button',{name:/Empresa imágenes E3/})
   await expect(companyCard).toBeVisible()
   await companyCard.click()
+  // La modificación del logo sólo se habilita dentro de Editar datos.
+  await page.getByRole('button',{name:'Editar datos'}).click()
   const company=page.getByRole('region',{name:'Imágenes de Foto o logo de la empresa'})
   await company.locator('input[type=file]').setInputFiles(image)
   await expect(company.getByText('Foto guardada en PostgreSQL.')).toBeVisible()
@@ -82,6 +84,21 @@ test('E3-2A: foto perfil, empresa, galería servicios y proveedor con POS, sin c
   expect(photos.status()).toBe(200)
   expect(await photos.json()).toHaveLength(2)
 
+  // Alta con imagen OPCIONAL en el mismo flujo; el producto existe antes del upload.
+  await page.getByRole('button',{name:'Volver al catálogo'}).click()
+  await page.getByRole('button',{name:'Crear artículo REAL'}).click()
+  const createCatalog=page.getByRole('region',{name:'Formulario de artículo'})
+  await createCatalog.getByLabel('Nombre',{exact:true}).fill('Artículo con foto al crear E3')
+  await createCatalog.getByLabel('Precio (pesos, opcional)').fill('2800')
+  await createCatalog.locator('.e3-photo-draft input[type=file]').setInputFiles(image)
+  await createCatalog.getByRole('button',{name:'Guardar artículo'}).click()
+  const createdGallery=page.getByRole('region',{name:'Imágenes de Fotografías de Artículo con foto al crear E3'})
+  await expect(createdGallery.getByText('1/8')).toBeVisible()
+  await expect(createdGallery.locator('img')).toHaveCount(1)
+  await page.getByRole('button',{name:'Editar artículo'}).click()
+  await expect(page.getByRole('region',{name:'Imágenes de Fotografías del artículo (edición)'})
+    .locator('input[type=file]')).toBeVisible()
+
   await page.getByRole('navigation',{name:'Secciones disponibles en REAL'})
     .getByRole('button',{name:'Proveedores',exact:true}).click()
   const supplierCard=page.locator('.e3-supplier-tile').filter({hasText:'Proveedor visual E3'})
@@ -96,6 +113,20 @@ test('E3-2A: foto perfil, empresa, galería servicios y proveedor con POS, sin c
   await expect(provider.getByText('Foto quitada correctamente.')).toBeVisible()
   const afterDelete=await request.get(api+'/photos/businesses/'+bid+'/suppliers/'+sid,{headers})
   expect(await afterDelete.json()).toHaveLength(0)
+
+  // Alta opcional de proveedor con foto y acceso posterior desde Editar.
+  await page.getByRole('button',{name:'Volver a proveedores'}).click()
+  await page.getByRole('button',{name:'Agregar proveedor REAL'}).click()
+  const createSupplier=page.getByRole('region',{name:'Formulario de proveedor'})
+  await createSupplier.getByLabel('Nombre comercial *').fill('Proveedor con foto al crear E3')
+  await createSupplier.locator('.e3-photo-draft input[type=file]').setInputFiles(image)
+  await createSupplier.getByRole('button',{name:'Crear proveedor'}).click()
+  const createdSupplier=page.getByRole('region',{name:'Imágenes de Foto de Proveedor con foto al crear E3'})
+  await expect(createdSupplier.getByText('1/1')).toBeVisible()
+  await expect(createdSupplier.locator('img')).toHaveCount(1)
+  await page.getByRole('button',{name:'Editar proveedor'}).click()
+  await expect(page.getByRole('region',{name:'Imágenes de Foto del proveedor (edición)'})
+    .locator('input[type=file]')).toBeVisible()
 
   await page.getByRole('navigation',{name:'Secciones disponibles en REAL'})
     .getByRole('button',{name:'Punto de venta',exact:true}).click()
