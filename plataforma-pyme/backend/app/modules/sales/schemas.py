@@ -18,6 +18,12 @@ PaymentMethod = Literal[
 ]
 
 
+RecordedPaymentMethod = Literal[
+    "EFECTIVO", "TRANSFERENCIA", "CUENTA_DNI", "TARJETA",
+    "MERCADO_PAGO_DECLARADO", "MERCADO_PAGO_DEMO_QA",
+]
+
+
 class SaleLineInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -97,7 +103,7 @@ class SaleLineView(BaseModel):
 class SalePaymentView(BaseModel):
     id: UUID
     payment_number: int
-    method: PaymentMethod
+    method: RecordedPaymentMethod
     amount_cents: int
     reference: str
 
