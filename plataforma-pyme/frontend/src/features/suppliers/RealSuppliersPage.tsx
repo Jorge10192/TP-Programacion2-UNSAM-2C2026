@@ -102,7 +102,7 @@ export function RealSuppliersPage({token,userId,businessId,onNavigate,onUnauthor
      }
    }
    if(!alive.current)return
-   setCreating(false);setEditingId(null);setCreatePhoto([]);setDetailId(saved.id)
+   setCreating(false);setEditingId(null);setCreatePhoto([]);setDetailId(null)
    setSameWhatsapp(false);setDraft(newSupplierCommercialDraft())
    setItems(old=>[saved,...old.filter(x=>x.id!==saved.id)])
    setNotice(editingId?'Cambios del proveedor confirmados en PostgreSQL.':'Proveedor registrado en PostgreSQL. No se realizó ninguna compra.')

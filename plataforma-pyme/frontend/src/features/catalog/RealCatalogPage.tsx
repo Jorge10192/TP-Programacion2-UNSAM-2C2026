@@ -176,7 +176,7 @@ export function RealCatalogPage({token,userId,businessId,onNavigate,onUnauthoriz
       }
       if(!mounted.current.active)return
       // El artículo ya está guardado; un GET posterior no autoriza repetir el POST.
-      setForm(false);setEditing(null);setCreatePhotos([]);setDetailId(saved.id)
+      setForm(false);setEditing(null);setCreatePhotos([]);setDetailId(null)
       setItems(old=>[saved,...old.filter(item=>item.id!==saved.id)])
       setNotice(editing?'Ficha actualizada en PostgreSQL.':'Artículo creado en PostgreSQL.')
       if(photoIssue)setError(photoIssue)
