@@ -100,3 +100,21 @@ Las capturas REAL y DEMO orientaron un cierre visual adicional. Se mantiene la d
 6. **Imágenes:** se usan iconos de reserva mientras no exista almacenamiento REAL de fotografías de artículos. Las futuras miniaturas deben obtenerse del **Catálogo REAL**, con vínculo al artículo, validación y persistencia backend por empresa. No cargar imágenes desde DEMO/localStorage como datos reales ni incorporar fotos hardcodeadas.
 
 QA: suites existentes POS/recovery, test E2E E3-1G extendido para saldo visible de un producto físico, límite de cantidad, incremento/decremento de carrito, descuento y completar pago; integración en DB descartable. No fusionar hasta CI y aprobación del usuario.
+
+
+## E3-1G — Corrección del catálogo/carrito y ticket (QA del 12/11/2026)
+
+**Hallazgo:** en el diseño anterior la ficha completa del catálogo era un botón asociado a `choose(item)`. Por ese motivo «Agregar unidades» solo seleccionaba o cambiaba el editor activo: el producto NO se agregaba al detalle hasta presionar una segunda acción, cuyo lugar visual confundía al usuario.
+
+**Nuevo recorrido:**
+- La ficha del catálogo pasa a ser informativa: nombre, categoría, SKU, unidad, precio, saldo físico de la **sede seleccionada** cuando está verificado. Su botón propio **«Agregar unidades» incorpora directamente UNA unidad al detalle**, suma una unidad si el artículo ya estaba, y nunca reemplaza los demás artículos. En la ficha se muestra «En detalle: X unidades».
+- El carrito ocupa la **sección completa bajo el catálogo**, de ancho suficiente. Cada línea tiene nombre, unidad, cantidad, precio unitario, subtotal y controles horizontales `−` / `+`, «Editar cantidad» y «Quitar». La edición manual, incluidas cantidades fraccionarias, ocurre en el mismo detalle; no aparece un editor desplegable debajo del catálogo.
+- Si un artículo no tiene precio, no se agrega con un importe inventado. El titular/administrador puede elegir «Definir precio», utilizar el editor excepcional del detalle y guardarlo. Los roles sin permiso de precios continúan bloqueados.
+- El resumen del detalle conserva el orden: **Subtotal de artículos → Descuento (si el rol está autorizado) → Descuento aplicado → Total a cobrar**. Al pasar a «Finalizar venta», la vista exclusiva muestra los **mismos renglones** y precios, descuento y pagos declarados antes de la confirmación explícita.
+- Las cantidades para bienes no pueden superar el saldo conocido en la sede. Una disponibilidad ausente o una página incompleta no se interpreta como cero; mientras el saldo no esté verificado no se permite agregar rápidamente. El usuario puede iniciar una consulta específica de ese artículo. No se reserva mercadería; la confirmación revalida todo en FastAPI.
+- La UI utiliza iconos neutros temporales. La carga futura de fotografías deberá realizarse en **Catálogo REAL**, con almacenamiento persistente y aislamiento por empresa, y luego alimentar estas mismas fichas; no se emplean imágenes de DEMO ni de navegador.
+- Se conserva el circuito de `Idempotency-Key` e IndexedDB, los precios de catálogo, el cálculo HALF_UP, el límite de líneas y la política de permisos, sin cambios de backend ni migraciones.
+
+**Regresión:** tests unitarios nuevos para suma directa al carrito, preservación de otros renglones, precio excepcional y límite de stock; E2E de POS/ventas adaptadas a la interacción nueva, incluida una compra con producto físico y servicio, y suite de integración completa contra PostgreSQL **descartable**.
+
+**Integración:** PR #59 en borrador, apilado sobre #58 → #57 → #55. Este ajuste NO constituye autorización de merge.

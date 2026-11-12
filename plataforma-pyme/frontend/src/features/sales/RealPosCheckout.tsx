@@ -345,18 +345,28 @@ export function RealPosCheckout({
         <h3>Detalle completo de la venta · pendiente de confirmación</h3>
         <p><strong>Empresa:</strong> {businessName}</p>
         <p><strong>Sede:</strong> {location?.name ?? 'Sin sede · servicios'}</p>
-        {review.body.lines.map((line, i) => <p key={i}>
-          {items.find(item => item.id === line.catalog_item_id)?.name ?? 'Artículo'}:
-          {' '}{posQuantityText(line.quantity_milli)} × {pesos(line.unit_price_cents)}
-          {' = '} <strong>{pesos(review.totals.line_totals_cents[i])}</strong>
-        </p>)}
-        <p>Subtotal: <strong>{pesos(review.totals.subtotal_cents)}</strong></p>
-        <p>Descuento: <strong>−{pesos(review.totals.discount_cents)}</strong></p>
-        <p className="real-pos-final-total">TOTAL: <strong>{pesos(review.totals.total_cents)}</strong></p>
+        <div className="e3-pos-review-lines" aria-label="Artículos incluidos en la venta">
+          {review.body.lines.map((line,i)=>{
+            const item=items.find(entry=>entry.id===line.catalog_item_id)
+            return <div key={line.catalog_item_id} className="e3-pos-review-line">
+              <div><strong>{item?.name??'Artículo'}</strong>
+                <small>{posQuantityText(line.quantity_milli)} {item?.unit??''} × {pesos(line.unit_price_cents)} por unidad</small>
+              </div>
+              <strong>{pesos(review.totals.line_totals_cents[i])}</strong>
+            </div>
+          })}
+        </div>
+        <div className="e3-pos-review-totals" aria-label="Total con descuento">
+          <p>Subtotal de artículos <strong>{pesos(review.totals.subtotal_cents)}</strong></p>
+          <p>Descuento aplicado <strong>−{pesos(review.totals.discount_cents)}</strong></p>
+          <p className="real-pos-final-total">Total a cobrar <strong>{pesos(review.totals.total_cents)}</strong></p>
+        </div>
         <h4>Pagos declarados</h4>
-        {review.body.payments.map((payment, i) =>
-          <p key={i}>{POS_PAYMENT_LABELS[payment.method]} · {pesos(payment.amount_cents)}
-            {payment.reference ? ' · ' + payment.reference : ''}</p>)}
+        <div className="e3-pos-review-payments">
+          {review.body.payments.map((payment,i)=>
+            <div key={i}><span>{POS_PAYMENT_LABELS[payment.method]}{payment.reference?' · '+payment.reference:''}</span>
+              <strong>{pesos(payment.amount_cents)}</strong></div>)}
+        </div>
         {review.body.notes && <p>Notas: {review.body.notes}</p>}
       </div>
       <label className="real-pos-ack">

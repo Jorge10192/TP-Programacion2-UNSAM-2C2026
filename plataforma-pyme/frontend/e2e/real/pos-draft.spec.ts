@@ -49,6 +49,13 @@ async function open(page: Page, f: Awaited<ReturnType<typeof seed>>) {
   await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible()
 }
 
+async function addAndEdit(page:Page,name:string) {
+  await page.getByRole('button',{name:'Agregar una unidad de '+name+' al detalle de venta'}).click()
+  await page.getByRole('region',{name:'Carrito de venta'})
+    .locator('.real-pos-cart-row').filter({hasText:name})
+    .getByRole('button',{name:'Editar cantidad'}).click()
+}
+
 test('T10-C POS REAL: carrito, sede, precio admin, descuento, sin POST de venta', async ({ page, request }) => {
   const fixture = await seed(request)
   let salePosts = 0
@@ -60,7 +67,7 @@ test('T10-C POS REAL: carrito, sede, precio admin, descuento, sin POST de venta'
   await expect(page.getByText('Modo de validación T10-D.')).toBeVisible()
   await expect(page.locator('.real-pos-product')).toHaveCount(1)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
-  await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
+  await addAndEdit(page,'Servicio POS prueba')
   await page.getByLabel('Cantidad del artículo').fill('2')
   // El catálogo propone $ 1.500,00 por unidad: bloqueado incluso para el
   // titular hasta elegir explícitamente la excepción prevista por P01.
@@ -71,7 +78,7 @@ test('T10-C POS REAL: carrito, sede, precio admin, descuento, sin POST de venta'
   await expect(page.getByLabel('Precio unitario de la venta')).toBeEnabled()
   await page.getByLabel('Precio unitario de la venta').fill('1800,50')
   await expect(page.locator('.real-pos-line-preview')).toContainText('3.601,00')
-  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Guardar cambios en detalle' }).click()
   const cart = page.getByRole('region', { name: 'Carrito de venta' })
   await expect(cart).toContainText('Cantidad: 2 SERVICIO')
   await expect(cart).toContainText('Precio unitario:')
@@ -81,11 +88,11 @@ test('T10-C POS REAL: carrito, sede, precio admin, descuento, sin POST de venta'
   await expect(page.locator('.real-pos-summary')).toContainText('3.501,00')
   // Reintegración funcional del botón DEMO "Agregar otro": sobre un artículo
   // ya incluido se edita el mismo renglón, sin duplicarlo ni eliminarlo.
-  await cart.getByRole('button', { name: 'Editar' }).click()
+  await cart.getByRole('button', { name: 'Editar cantidad' }).click()
   await expect(page.getByLabel('Cantidad del artículo')).toHaveValue('2')
   await page.getByLabel('Cantidad del artículo').fill('3')
   await expect(page.locator('.real-pos-line-preview')).toContainText('5.401,50')
-  await page.getByRole('button', { name: 'Actualizar en carrito' }).click()
+  await page.getByRole('button', { name: 'Guardar cambios en detalle' }).click()
   await expect(cart.locator('.real-pos-cart-row')).toHaveCount(1)
   await expect(cart).toContainText('5.401,50')
   await expect(page.locator('.real-pos-summary')).toContainText('5.301,50')
@@ -155,8 +162,8 @@ test('T10-D: POS genera UNA venta de servicio tras revisión y consentimiento, s
   })
   await open(page, fixture)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
-  await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
-  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await addAndEdit(page,'Servicio POS prueba')
+  await page.getByRole('button', { name: 'Guardar cambios en detalle' }).click()
   await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1500,00')
   await expect(page.getByRole('button', { name: 'Finalizar venta' })).toBeEnabled()
   expect(posts).toBe(0)
@@ -196,10 +203,10 @@ test('T10-E: pagos mixtos, precio excepcional y descuento quedan en comprobante 
   })
   await open(page, fixture)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
-  await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
+  await addAndEdit(page,'Servicio POS prueba')
   await page.getByRole('button', { name: 'Modificar precio excepcionalmente' }).click()
   await page.getByLabel('Precio unitario de la venta').fill('1800')
-  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Guardar cambios en detalle' }).click()
   await page.getByLabel('Descuento de la venta').fill('300')
   await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1500,00')
   await page.getByLabel('Importe declarado 1').fill('1000')
@@ -277,11 +284,11 @@ test('T10-E: venta física desde POS debita stock y registra un solo movimiento'
   })
   await open(page, fixture)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
-  await page.getByRole('button', { name: /Producto físico T10-E/ }).click()
+  await addAndEdit(page,'Producto físico T10-E')
   await expect(page.getByLabel('Precio unitario de la venta')).toHaveValue('2000,00')
   await page.getByLabel('Cantidad del artículo').fill('2')
   await expect(page.locator('.real-pos-line-preview')).toContainText('4.000,00')
-  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Guardar cambios en detalle' }).click()
   await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await expect(page.getByLabel('Revisión final de la venta')).toContainText('4.000,00')
   expect(posts).toBe(0)
@@ -352,9 +359,9 @@ test('T10-E: 409 por stock cambiado después de agregar conserva pendiente y no 
   })
   await open(page, fixture)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
-  await page.getByRole('button', { name: /Producto sin stock T10-E/ }).click()
+  await addAndEdit(page,'Producto sin stock T10-E')
   await expect(page.getByLabel('Disponibilidad de stock REAL')).toContainText('1 UNIDAD')
-  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await page.getByRole('button', { name: 'Guardar cambios en detalle' }).click()
   // Otra operación agota el stock antes de confirmar: FastAPI debe rechazar
   // la venta con 409 incluso cuando el borrador tenía saldo al cargarlo.
   const exhaust=await request.post(base+root+'/inventory/adjustments',{
@@ -401,8 +408,8 @@ test('T10-E: POST perdido antes de llegar a API, GET 404 y replay manual conserv
   })
   await open(page, fixture)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
-  await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
-  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await addAndEdit(page,'Servicio POS prueba')
+  await page.getByRole('button', { name: 'Guardar cambios en detalle' }).click()
   await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await page.getByLabel('Acepto registrar esta venta REAL').check()
   await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
@@ -451,8 +458,8 @@ test('T10-D: pérdida de respuesta después del 201, F5 y recuperación GET sin 
   })
   await open(page, fixture)
   await page.getByLabel('Sede del punto de venta').selectOption(fixture.locationId)
-  await page.getByRole('button', { name: /Servicio POS prueba/ }).click()
-  await page.getByRole('button', { name: 'Agregar al carrito' }).click()
+  await addAndEdit(page,'Servicio POS prueba')
+  await page.getByRole('button', { name: 'Guardar cambios en detalle' }).click()
   await page.getByRole('button', { name: 'Finalizar venta' }).click()
   await page.getByLabel('Acepto registrar esta venta REAL').check()
   await page.getByRole('button', { name: 'Confirmar y registrar venta REAL' }).click()
@@ -494,9 +501,9 @@ test('E3-1G: stock REAL por sede indica límite, bloquea exceso y se actualiza p
   })
   await open(page,f)
   await page.getByLabel('Sede del punto de venta').selectOption(f.locationId)
-  await page.getByRole('button',{name:/Producto stock E3 disponible/}).click()
+  await page.getByRole('button',{name:'Verificar disponibilidad'}).click()
   await expect(page.getByLabel('Disponibilidad de stock REAL')).toContainText('0 UNIDAD')
-  await expect(page.getByRole('button',{name:'Agregar al carrito'})).toBeDisabled()
+  await expect(page.getByRole('button',{name:'Agregar al detalle con este precio'})).toBeDisabled()
   const stock=await request.post(base+root+'/inventory/adjustments',{
     headers:{...headers,'Idempotency-Key':randomUUID()},
     data:{kind:'STOCK_INICIAL',catalog_item_id:itemId,location_id:f.locationId,
@@ -507,10 +514,10 @@ test('E3-1G: stock REAL por sede indica límite, bloquea exceso y se actualiza p
   await expect(page.getByLabel('Disponibilidad de stock REAL')).toContainText('2 UNIDAD')
   await page.getByLabel('Cantidad del artículo').fill('3')
   await expect(page.getByText('La cantidad supera el stock disponible', {exact:false})).toBeVisible()
-  await expect(page.getByRole('button',{name:'Agregar al carrito'})).toBeDisabled()
+  await expect(page.getByRole('button',{name:'Agregar al detalle con este precio'})).toBeDisabled()
   await page.getByLabel('Cantidad del artículo').fill('2')
-  await expect(page.getByRole('button',{name:'Agregar al carrito'})).toBeEnabled()
-  await page.getByRole('button',{name:'Agregar al carrito'}).click()
+  await expect(page.getByRole('button',{name:'Agregar al detalle con este precio'})).toBeEnabled()
+  await page.getByRole('button',{name:'Agregar al detalle con este precio'}).click()
   await expect(page.getByRole('region',{name:'Carrito de venta'})).toContainText('Cantidad: 2 UNIDAD')
   expect(postSales).toBe(0)
 })
@@ -524,7 +531,7 @@ test('E3-1G: descuento recotiza el pago final y botón completa saldo mixto exac
   await open(page,f)
   await page.getByLabel('Sede del punto de venta').selectOption(f.locationId)
   await page.getByRole('button',{name:/Servicio POS prueba/}).click()
-  await page.getByRole('button',{name:'Agregar al carrito'}).click()
+  await page.getByRole('button',{name:'Agregar al detalle con este precio'}).click()
   await page.getByLabel('Descuento de la venta').fill('100')
   await expect(page.getByLabel('Cálculo del total a cobrar')).toContainText('1.400,00')
   await expect(page.getByLabel('Importe declarado 1')).toHaveValue('1400,00')

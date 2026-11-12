@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  canOverrideSalesPrice, canOperateSales, parsePosQuantity,
+  addOnePosCartUnit, canOverrideSalesPrice, canOperateSales, parsePosQuantity,
   posLineTotalCents, posQuantityText, previewPosCart,
 } from '../src/features/sales/realPosDraft.ts'
 
@@ -135,4 +135,34 @@ test('T10-C subtotal por producto rechaza montos fuera de rango sin floats', () 
     [0, 150000], [1000, -1], [1000.5, 150000], [1000, NaN],
     [1000, Number.MAX_SAFE_INTEGER], [1000000000, 1], [2000, 99999999999],
   ]) assert.throws(() => posLineTotalCents(quantity, unit), RangeError)
+})
+
+test('E3-1G: Agregar unidades desde la tarjeta incorpora artículos distintos y no cambia la selección',()=>{
+ const service={...catalog[1],price_cents:100000}
+ const original=cart()
+ const updated=addOnePosCartUnit(original,service,null)
+ assert.equal(updated.length,2)
+ assert.deepEqual(updated[0],original[0])
+ assert.deepEqual(updated[1],{catalog_item_id:otherId,quantity_milli:1000,unit_price_cents:100000})
+ const again=addOnePosCartUnit(updated,service,null)
+ assert.equal(again.length,2)
+ assert.equal(again[1].quantity_milli,2000)
+ assert.deepEqual(original,cart(),'Nunca muta las líneas anteriores')
+})
+
+test('E3-1G: la acción rápida no supera el stock por sede ni duplica artículos',()=>{
+ const original=cart()
+ assert.equal(addOnePosCartUnit(original,catalog[0],3000)[0].quantity_milli,3000)
+ assert.throws(()=>addOnePosCartUnit(original,catalog[0],2000),/existencias/)
+ assert.throws(()=>addOnePosCartUnit([],catalog[0],null),/Consultá las existencias/)
+ assert.throws(()=>addOnePosCartUnit([],catalog[0],0),/existencias/)
+})
+
+test('E3-1G: conserva precio excepcional en carrito y exige precio definido al agregar',()=>{
+ const custom=[{catalog_item_id:itemId,quantity_milli:1000,unit_price_cents:9900}]
+ const updated=addOnePosCartUnit(custom,catalog[0],5000)
+ assert.equal(updated[0].unit_price_cents,9900)
+ assert.equal(updated[0].quantity_milli,2000)
+ assert.throws(()=>addOnePosCartUnit([],catalog[1],null),/precio definido/)
+ assert.throws(()=>addOnePosCartUnit([],{...catalog[0],status:'INACTIVO'},1000),/no está habilitado/)
 })

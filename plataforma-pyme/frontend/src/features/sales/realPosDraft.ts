@@ -87,3 +87,33 @@ export function previewPosCart(
     throw new RangeError('Tu rol no puede aplicar descuentos.')
   return { lines: result, totals: calculateSaleTotals(result, discountCents) }
 }
+
+/**
+ * Acción rápida POS: incorpora una unidad del catálogo al carrito sin
+ * reemplazar sus otros renglones. Los ajustes fraccionarios y excepciones
+ * de precio se editan desde el detalle, no desde la tarjeta.
+ */
+export function addOnePosCartUnit(
+  cart: readonly PosCartLine[],
+  item: CatalogItem,
+  stockAvailableMilli: number | null,
+):PosCartLine[] {
+  if(item.status!=='ACTIVO'||!item.sellable)
+    throw new RangeError('El artículo no está habilitado para vender.')
+  const index=cart.findIndex(line=>line.catalog_item_id===item.id)
+  if(index<0&&cart.length>=30)throw new RangeError('Máximo 30 artículos distintos por venta.')
+  if(item.item_type==='BIEN'&&stockAvailableMilli===null)
+    throw new RangeError('Consultá las existencias de la sede antes de agregar este artículo.')
+  const previous=index<0?null:cart[index]
+  const unitPrice=previous?.unit_price_cents??item.price_cents
+  if(unitPrice===null)
+    throw new RangeError('El artículo no tiene precio definido. El administrador debe establecerlo.')
+  const quantity=(previous?.quantity_milli??0)+1000
+  if(quantity>999_999_999)
+    throw new RangeError('Se alcanzó el máximo de cantidad por artículo.')
+  if(item.item_type==='BIEN'&&quantity>stockAvailableMilli!)
+    throw new RangeError('No hay suficientes existencias en la sede para agregar otra unidad.')
+  posLineTotalCents(quantity,unitPrice)
+  const line={catalog_item_id:item.id,quantity_milli:quantity,unit_price_cents:unitPrice}
+  return index<0?[...cart,line]:cart.map((row,i)=>i===index?line:row)
+}
