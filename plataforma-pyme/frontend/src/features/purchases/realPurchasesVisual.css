@@ -57,3 +57,111 @@
 @media(prefers-reduced-motion:reduce){
  .e3-purchases-back{transition:none}
 }
+
+
+/* E3-1E2: una vista REAL exclusiva para recepción y otra para comprobantes.
+   No modifica condiciones de stock, recibos ni gateway. */
+.e3-purchases-receive-view,.e3-purchases-receipt-view{min-width:0;}
+.e3-purchases-receive-surface.real-ops-subpanel{
+  margin:0; padding:clamp(17px,3vw,30px); border:1px solid #dce6f2;
+  background:#fff; border-radius:17px; box-shadow:0 5px 19px #173e7509;
+}
+.e3-purchases-receive-surface h3{
+  margin:22px 0 12px; font-size:16px; color:#245087;
+}
+.e3-purchases-receive-summary{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;margin:19px 0 23px;
+}
+.e3-purchases-receive-summary>div{
+  display:grid;gap:8px;min-width:0;border:1px solid #e1eaf6;
+  border-radius:12px;background:#f7faff;padding:15px;
+}
+.e3-purchases-receive-summary span{
+  font-size:11px;font-weight:750;color:#607794;
+}
+.e3-purchases-receive-summary strong{
+  font-size:14px;line-height:1.5;color:#173b67;overflow-wrap:anywhere;
+}
+.e3-purchases-receive-lines{
+  padding:0;margin:0 0 25px;list-style:none;display:grid;gap:8px;
+}
+.e3-purchases-receive-lines li{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  column-gap:14px;row-gap:4px;align-items:center;
+  padding:12px 14px;background:#fbfcff;
+  border:1px solid #e5edf8;border-radius:11px;
+  color:#3b5879;line-height:1.5;font-size:12px;min-width:0;
+}
+.e3-purchases-receive-lines li span{overflow-wrap:anywhere;}
+.e3-purchases-receive-lines li strong{
+  color:#1b538e;white-space:nowrap;font-size:13px;
+}
+.e3-purchases-receive-lines li small{
+  grid-column:1/-1;color:#7b6a49;font-size:11px;
+}
+.e3-purchases-receive-surface .e3-purchases-safety-note{margin:18px 0;}
+.e3-purchases-receive-surface .real-supply-label{
+  max-width:100%;margin-top:12px;
+}
+.e3-purchases-receive-surface .real-supply-label select{
+  width:100%;max-width:100%;background:#fff;
+}
+.e3-purchases-receive-actions{
+  border-top:1px solid #e6edf5;padding-top:18px;
+  margin:18px 0 0;gap:10px;
+}
+.e3-purchases-receive-actions button{
+  cursor:pointer;min-height:43px;
+  transition:background-color .15s ease,transform .1s ease;
+}
+.e3-purchases-receive-actions button:active:not(:disabled){
+  transform:translateY(1px);
+}
+.e3-purchases-receipt-surface{
+  min-width:0;margin:0 auto;
+  border:1px solid #dce6f2;border-radius:18px;
+  background:#fff;padding:clamp(17px,3vw,29px);
+  box-shadow:0 5px 19px #173e7509;
+}
+.e3-purchases-receipt-surface .real-supply-receipt-detail{
+  display:block;width:100%;max-width:100%;margin:0;
+  padding:0;border:0;background:transparent;
+  box-shadow:none;
+}
+.e3-purchases-receipt-surface .real-supply-receipt-facts{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+.e3-purchases-receipt-surface .real-supply-receipt-facts>div{
+  min-width:0;border:1px solid #e0e9f5;background:#f7faff;
+  border-radius:11px;padding:13px 15px;
+}
+.e3-purchases-receipt-surface .real-supply-receipt-facts dd{
+  overflow-wrap:anywhere;
+}
+.e3-purchases-receipt-surface .real-supply-receipt-movements{
+  padding:19px 0 10px;
+}
+.e3-purchases-receipt-surface .real-supply-receipt-movements ul{
+  display:grid;gap:10px;margin:0;padding:0;list-style:none;
+}
+.e3-purchases-receipt-surface .real-supply-receipt-movements li{
+  border:1px solid #dce7f5;border-radius:12px;background:#f8fbff;
+  padding:16px;min-width:0;
+}
+.e3-purchases-receipt-surface .real-supply-receipt-footer{
+  margin-top:12px;padding-top:18px;
+}
+@media(max-width:580px){
+  .e3-purchases-receive-summary,.e3-purchases-receipt-surface .real-supply-receipt-facts{
+    grid-template-columns:1fr;
+  }
+  .e3-purchases-receive-lines li{
+    grid-template-columns:1fr;gap:6px;
+  }
+  .e3-purchases-receive-lines li strong{white-space:normal;}
+}
+@media(prefers-reduced-motion:reduce){
+  .e3-purchases-receive-actions button{transition:none}
+}

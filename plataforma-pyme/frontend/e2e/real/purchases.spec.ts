@@ -97,11 +97,15 @@ test('Recuperar una recepción bloquea el cambio de compra y conserva la identid
   await expect.poll(() => page.evaluate(() => typeof (window as Window & {
     releaseReceiptLookup?: () => void
   }).releaseReceiptLookup)).toBe('function')
-  await expect(receiveB).toBeDisabled()
+  // La recepción ahora ocupa una vista exclusiva: el listado queda oculto.
+  await expect(card('Compra B')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Recepción de compra' })).toBeVisible()
   await expect(page.getByRole('button', { name: /^(Procesando|Confirmar recepción REAL)/ })).toBeDisabled()
   await page.evaluate(() => (window as Window & { releaseReceiptLookup?: () => void }).releaseReceiptLookup?.())
   await expect(page.getByRole('button', { name: 'Reintentar MISMA recepción', exact: true })).toBeEnabled()
-  await page.getByRole('button', { name: 'Cerrar', exact: true }).click()
+  await page.getByRole('button', { name: 'Volver a compras' }).first().click()
+  // La intención de A sigue guardada en IndexedDB, no se elimina al volver.
+  await expect(card('Compra A')).toBeVisible()
   await receiveB.click()
   await expect(page.getByRole('heading', { name: 'Recepción completa de compra Compra B', exact: true })).toBeVisible()
   await page.getByLabel('Destino con almacenamiento activo').selectOption(f.location.id)
@@ -111,6 +115,9 @@ test('Recuperar una recepción bloquea el cambio de compra y conserva la identid
   })
   page.on('dialog', dialog => dialog.accept())
   await page.getByRole('button', { name: 'Confirmar recepción REAL', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Comprobante de recepción' })).toBeVisible()
+  await expect(page.getByLabel('Detalle de recepción confirmada')).toBeVisible()
+  await page.getByRole('button', { name: 'Volver a compras' }).first().click()
   await expect(card('Compra B').getByRole('button', { name: 'Consultar comprobante', exact: true })).toBeVisible()
   expect(posts).toEqual([`${api}${f.root}/purchases/${f.b.id}/receive`.replace(':18001', ':5173')])
   const original = await request.get(api + f.root + '/purchases/' + f.a.id, { headers: f.headers })
