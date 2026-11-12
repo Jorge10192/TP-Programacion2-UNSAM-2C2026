@@ -6,9 +6,9 @@ import { createPaymentConnectionGateway } from './paymentConnectionGateway.ts'
 import type { DemoPaymentConnection } from './paymentConnectionGateway.ts'
 import './realPaymentConnections.css'
 
-type Props = { token: string; businessId: string; onUnauthorized: () => void }
+type Props = { token: string; userId: string; businessId: string; onUnauthorized: () => void }
 
-export function RealPaymentConnectionsPage({ token, businessId, onUnauthorized }: Props) {
+export function RealPaymentConnectionsPage({ token, userId, businessId, onUnauthorized }: Props) {
   const api = useMemo(() => createPaymentConnectionGateway(token, businessId), [token, businessId])
   const [company, setCompany] = useState<RealBusiness | null>(null)
   const [connection, setConnection] = useState<DemoPaymentConnection | null>(null)
@@ -22,7 +22,7 @@ export function RealPaymentConnectionsPage({ token, businessId, onUnauthorized }
     mounted.current = true
     const controller = new AbortController()
     setLoading(true); setError(''); setConnection(null); setCompany(null)
-    const businessApi = createBusinessGateway(token, '')
+    const businessApi = createBusinessGateway(token, userId)
     // Se obtiene la empresa del endpoint autenticado; sin estado global ni demoStore.
     void Promise.all([api.get(controller.signal), businessApi.get(businessId, controller.signal)])
       .then(([linked, business]) => {
@@ -36,7 +36,7 @@ export function RealPaymentConnectionsPage({ token, businessId, onUnauthorized }
       })
       .finally(() => { if (mounted.current && !controller.signal.aborted) setLoading(false) })
     return () => { mounted.current = false; controller.abort() }
-  }, [api, businessId, token, onUnauthorized])
+  }, [api, businessId, token, userId, onUnauthorized])
 
   const canManage = company?.status === 'ACTIVA'
     && ['TITULAR_ADMINISTRATIVO', 'ADMINISTRADOR'].includes(company.membership.role)
