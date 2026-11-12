@@ -57,7 +57,7 @@ test('B5: historial QR móvil→detalle→estado→POS sin escrituras desde UI',
   await expect(page.getByText('CREAR', {exact:true})).toBeVisible()
   await page.getByRole('button',{name:'Ver cobros QR'}).click()
   await expect(page.getByRole('heading',{name:'Cobros QR',exact:true})).toBeVisible()
-  await page.getByRole('button',{name:'Medios de cobro'}).click()
+  await page.locator('.e3-qr-history-actions').getByRole('button',{name:'Medios de cobro'}).click()
   await expect(page.getByRole('heading',{name:'Medios de cobro',exact:true})).toBeVisible()
   await expect(page.getByRole('button',{name:'Ver cobros QR'})).toBeVisible()
   const width=await page.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth))
