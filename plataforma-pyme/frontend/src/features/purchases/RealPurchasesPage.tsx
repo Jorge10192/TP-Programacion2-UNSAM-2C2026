@@ -3,9 +3,9 @@ import type { FormEvent } from 'react'
 import { ApiHttpError } from '../../api/httpClient.ts'
 import { Icon } from '../../app/Icon.tsx'
 import './realPurchasesVisual.css'
-import { createOperationsGateway } from '../businesses/realOperationsGateway.ts'
+import { createOperationsGateway, canReadTeam } from '../businesses/realOperationsGateway.ts'
 import type { RealBusiness } from '../businesses/businessGateway.ts'
-import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
+import type { LocationRecord, TeamMember } from '../businesses/realOperationsGateway.ts'
 import { createCatalogGateway, centsToPesos } from '../catalog/realCatalogGateway.ts'
 import type { CatalogItem } from '../catalog/realCatalogGateway.ts'
 import { createSupplyGateway, decimalToMilli, milliToDecimal, priceInputCents, purchaseStatusPresentation, missingReceiptMessage, inspectReceipt,
@@ -40,6 +40,9 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
  const [suppliers,setSuppliers]=useState<Supplier[]>([])
  const [catalog,setCatalog]=useState<CatalogItem[]>([])
  const [locations,setLocations]=useState<LocationRecord[]>([])
+ const [teamActors,setTeamActors]=useState<{
+   businessId:string;people:Array<Pick<TeamMember,'user_id'|'display_name'>>
+ }|null>(null)
  const [hasMore,setHasMore]=useState(false)
  const [catalogMore,setCatalogMore]=useState(false)
  const [suppliersMore,setSuppliersMore]=useState(false)
@@ -100,6 +103,24 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
    }).finally(()=>{if(!ctrl.signal.aborted&&alive.current)setLoading(false)})
    return ()=>{ctrl.abort();alive.current=false}
  },[api,catalogApi,companies,businessId,purchaseScope,onUnauthorized])
+ // El equipo es privado: consultarlo únicamente cuando el servidor ya informó
+ // que la membresía puede leerlo. La recepción histórica no se atribuye
+ // al usuario conectado si pertenece a otra persona.
+ useEffect(()=>{
+   const controller=new AbortController()
+   if(!business||business.id!==businessId||!canReadTeam(business))
+     return ()=>controller.abort()
+   void companies.team(businessId,controller.signal).then(rows=>{
+     if(!controller.signal.aborted)
+       setTeamActors({businessId,people:rows.map(({user_id,display_name})=>({user_id,display_name}))})
+   }).catch(err=>{
+     if(controller.signal.aborted)return
+     if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+     // 403 o falta de acceso: mantener nombres no disponibles;
+     // no filtrar personas ni hacer una segunda solicitud.
+   })
+   return ()=>controller.abort()
+ },[business,businessId,companies,onUnauthorized])
  const canWrite=business?.status==='ACTIVA'&&business.membership.status==='ACTIVA'
   &&['TITULAR_ADMINISTRATIVO','ADMINISTRADOR'].includes(business.membership.role)
  const canReceive=business?.status==='ACTIVA'&&business.membership.status==='ACTIVA'
@@ -375,6 +396,7 @@ export function RealPurchasesPage({token,userId,userDisplayName,businessId,onNav
        {shownReceipt?.purchase_id===p.id&&<div ref={receiptDetailRef} tabIndex={-1} className="real-supply-receipt-focus" aria-label="Comprobante de recepción consultado">
          <RealReceiptDetail receipt={shownReceipt} purchase={p}
            locations={locations} viewer={{id:userId,displayName:userDisplayName}}
+           actors={business&&canReadTeam(business)&&teamActors?.businessId===businessId?teamActors.people:[]}
            onClose={()=>setShownReceipt(null)}/>
        </div>}
 

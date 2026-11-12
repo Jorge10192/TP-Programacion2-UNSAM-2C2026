@@ -359,6 +359,8 @@ test('detalle de recepción usa sede y snapshot de compra, saldo posterior y res
  assert.equal(view.locationName,'Sede A TEST')
  assert.equal(view.purchaseTitle,'FC-TEST')
  assert.equal(view.responsibleName,'miguel')
+ assert.equal(view.purchaseCreatorName,'miguel')
+ assert.equal(view.purchaseCreatorId,actor)
  assert.equal(view.responsibleId,actor)
  assert.equal(view.receiptId,item)
  assert.notEqual(view.confirmedAt,'Fecha y hora no disponibles')
@@ -370,7 +372,8 @@ test('detalle de recepción usa sede y snapshot de compra, saldo posterior y res
 test('detalle de recepción no inventa nombre del responsable de otra cuenta',()=>{
  const view=receiptDisplay(receipt(),purchase(),[{id:site,name:'Sede A TEST'}],
    {id:B,displayName:'Otro usuario'})
- assert.equal(view.responsibleName,'Responsable identificado por ID')
+ assert.equal(view.responsibleName,'Nombre no disponible')
+ assert.equal(view.purchaseCreatorName,'Nombre no disponible')
  assert.equal(view.responsibleId,actor)
  assert.notEqual(view.responsibleName,'Otro usuario')
 })
@@ -390,4 +393,29 @@ test('solo presenta movimientos físicos recibidos; no inventa stock para servic
  const view=receiptDisplay(receipt(),doc,[{id:site,name:'Sede A TEST'}],{id:actor,displayName:'miguel'})
  assert.equal(view.movementLines.length,1)
  assert.equal(view.movementLines[0].entered,'2')
+})
+
+test('compra y recepción distinguen autores con nombres del equipo autorizado',()=>{
+ const registeredBy=actor
+ const receivedBy=B
+ const document={...purchase(),created_by_id:registeredBy}
+ const completed={...receipt(),confirmed_by_id:receivedBy}
+ const view=receiptDisplay(completed,document,[{id:site,name:'Sede A TEST'}],
+   {id:item,displayName:'Usuario conectado'},[
+     {user_id:registeredBy,display_name:'Jorge'},
+     {user_id:receivedBy,display_name:'Miguel'},
+   ])
+ assert.equal(view.purchaseCreatorName,'Jorge')
+ assert.equal(view.purchaseCreatorId,registeredBy)
+ assert.equal(view.responsibleName,'Miguel')
+ assert.equal(view.responsibleId,receivedBy)
+})
+
+test('no atribuye operaciones a usuario actual ni nombres sin permisos',()=>{
+ const view=receiptDisplay({...receipt(),confirmed_by_id:B},
+   {...purchase(),created_by_id:actor},[],{id:item,displayName:'Usuario conectado'})
+ assert.equal(view.purchaseCreatorName,'Nombre no disponible')
+ assert.equal(view.responsibleName,'Nombre no disponible')
+ assert.notEqual(view.purchaseCreatorName,'Usuario conectado')
+ assert.notEqual(view.responsibleName,'Usuario conectado')
 })

@@ -1,5 +1,5 @@
 import { receiptDisplay } from './receiptViewModel.ts'
-import type { ReceiptViewer } from './receiptViewModel.ts'
+import type { ReceiptViewer, ReceiptActor } from './receiptViewModel.ts'
 import type { Purchase, PurchaseReceipt } from './realSupplyGateway.ts'
 import type { LocationRecord } from '../businesses/realOperationsGateway.ts'
 
@@ -8,10 +8,11 @@ type Props={
   purchase:Purchase|null
   locations:LocationRecord[]
   viewer:ReceiptViewer
+  actors?:ReadonlyArray<ReceiptActor>
   onClose:()=>void
 }
-export function RealReceiptDetail({receipt,purchase,locations,viewer,onClose}:Props){
-  const info=receiptDisplay(receipt,purchase,locations,viewer)
+export function RealReceiptDetail({receipt,purchase,locations,viewer,actors=[],onClose}:Props){
+  const info=receiptDisplay(receipt,purchase,locations,viewer,actors)
   return <section className="real-supply-receipt-detail" aria-label="Detalle de recepción confirmada">
     <div className="real-supply-receipt-heading">
       <div>
@@ -23,8 +24,8 @@ export function RealReceiptDetail({receipt,purchase,locations,viewer,onClose}:Pr
     <dl className="real-supply-receipt-facts">
       <div><dt>Ubicación de recepción</dt><dd>{info.locationName}</dd></div>
       <div><dt>Fecha y hora de confirmación</dt><dd>{info.confirmedAt}</dd></div>
-      <div><dt>Responsable</dt><dd>{info.responsibleName}</dd></div>
-      <div><dt>Identificador del responsable</dt><dd className="real-supply-receipt-id">{info.responsibleId}</dd></div>
+      <div><dt>Registró la compra</dt><dd>{info.purchaseCreatorName}</dd></div>
+      <div><dt>Confirmó la recepción</dt><dd>{info.responsibleName}</dd></div>
     </dl>
     <div className="real-supply-receipt-movements">
       <h4>Entradas de inventario <span>({info.movementLines.length})</span></h4>
@@ -44,6 +45,8 @@ export function RealReceiptDetail({receipt,purchase,locations,viewer,onClose}:Pr
         <dl>
           <dt>Recepción</dt><dd className="real-supply-receipt-id">{info.receiptId}</dd>
           <dt>Ubicación</dt><dd className="real-supply-receipt-id">{info.locationId}</dd>
+          {info.purchaseCreatorId&&<><dt>Usuario que registró la compra</dt><dd className="real-supply-receipt-id">{info.purchaseCreatorId}</dd></>}
+          <dt>Usuario que confirmó la recepción</dt><dd className="real-supply-receipt-id">{info.responsibleId}</dd>
         </dl>
       </details>
       <button className="real-auth-secondary" type="button" onClick={onClose}>Cerrar detalle</button>
