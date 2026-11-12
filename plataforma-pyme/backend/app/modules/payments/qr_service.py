@@ -21,7 +21,7 @@ from app.modules.auth.tokens import now_utc
 from app.modules.locations.permissions import can_operate_at_location
 from app.modules.purchases.schemas import line_total_cents
 from app.modules.sales.service import SaleService
-from app.modules.payments.qr_schemas import CreateQrIntentRequest, QrIntentLineView, QrIntentView
+from app.modules.payments.qr_schemas import CreateQrIntentRequest, QrIntentLineView, QrIntentView, QrIntentSummaryView
 from app.modules.payments.qr_event_log import append_qr_event
 
 
@@ -226,6 +226,49 @@ class QrIntentService:
             result = self._view(intent)
             self.db.commit()
             return QrCreated(result, replayed=False)
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def list(self, actor_id: UUID, session_id: UUID, business_id: UUID,
+             *, offset: int, limit: int) -> list[QrIntentSummaryView]:
+        """Sólo cobros propios para operativos; administración ve el tenant completo.
+
+        Paginación en PostgreSQL antes de generar respuestas. No devuelve
+        QR PNG, renglones, notas o datos de otros negocios.
+        """
+        try:
+            _, member = self._authorize(actor_id, session_id, business_id)
+            query = (
+                select(QrPaymentIntent, QrPaymentSettlement.sale_id)
+                .outerjoin(
+                    QrPaymentSettlement,
+                    (QrPaymentSettlement.business_id == QrPaymentIntent.business_id)
+                    & (QrPaymentSettlement.intent_id == QrPaymentIntent.id),
+                )
+                .where(QrPaymentIntent.business_id == business_id)
+            )
+            if member.role not in ("TITULAR_ADMINISTRATIVO", "ADMINISTRADOR"):
+                query = query.where(QrPaymentIntent.created_by_id == actor_id)
+            rows = self.db.execute(query.order_by(
+                QrPaymentIntent.created_at.desc(), QrPaymentIntent.id.desc(),
+            ).offset(offset).limit(limit)).all()
+            current = now_utc()
+            result = [
+                QrIntentSummaryView(
+                    id=qr.id, business_id=qr.business_id, location_id=qr.location_id,
+                    created_by_id=qr.created_by_id,
+                    status="EXPIRADA" if qr.status == "ESPERANDO_PAGO"
+                        and qr.expires_at <= current else qr.status,
+                    provider="MOCK_QA", currency="ARS",
+                    reference=qr.reference, total_cents=qr.total_cents,
+                    created_at=qr.created_at, expires_at=qr.expires_at,
+                    sale_id=sale_id,
+                )
+                for qr, sale_id in rows
+            ]
+            self.db.rollback()
+            return result
         except Exception:
             self.db.rollback()
             raise
