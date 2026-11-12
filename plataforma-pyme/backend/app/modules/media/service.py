@@ -104,6 +104,20 @@ class PhotoService:
             if self.db.scalar(statement) is None:
                 raise _not_found()
 
+    def assert_upload_allowed(
+        self, ctx: AuthContext, owner_type: str, owner_id: UUID,
+        business_id: UUID | None,
+    ) -> None:
+        """Preflight: rechazar usuarios ajenos antes del costoso decodificado.
+
+        Es un control anticipado, NO sustituye al lock y autorización
+        transaccional que vuelve a ejecutar upload() antes de guardar.
+        """
+        try:
+            self._authorize(ctx, owner_type, owner_id, business_id, writing=True)
+        finally:
+            self.db.rollback()
+
     def list_for(
         self, ctx: AuthContext, owner_type: str, owner_id: UUID,
         business_id: UUID | None,
@@ -193,7 +207,12 @@ class PhotoService:
 
     def delete(self, ctx: AuthContext, photo_id: UUID) -> None:
         try:
-            photo = self.db.get(PhotoAsset, photo_id)
+            photo = self.db.scalar(
+                select(PhotoAsset).options(load_only(
+                    PhotoAsset.id, PhotoAsset.owner_type, PhotoAsset.owner_id,
+                    PhotoAsset.business_id,
+                )).where(PhotoAsset.id == photo_id)
+            )
             if photo is None:
                 raise _not_found()
             self._authorize(ctx, photo.owner_type, photo.owner_id, photo.business_id, writing=True)
