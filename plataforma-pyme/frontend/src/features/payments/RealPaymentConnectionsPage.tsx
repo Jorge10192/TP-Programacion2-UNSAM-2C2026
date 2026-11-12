@@ -6,9 +6,9 @@ import { createPaymentConnectionGateway } from './paymentConnectionGateway.ts'
 import type { DemoPaymentConnection } from './paymentConnectionGateway.ts'
 import './realPaymentConnections.css'
 
-type Props = { token: string; userId: string; businessId: string; onUnauthorized: () => void }
+type Props = { token: string; userId: string; businessId: string; onNavigate: (path:string)=>void; onUnauthorized: () => void }
 
-export function RealPaymentConnectionsPage({ token, userId, businessId, onUnauthorized }: Props) {
+export function RealPaymentConnectionsPage({ token, userId, businessId, onNavigate, onUnauthorized }: Props) {
   const api = useMemo(() => createPaymentConnectionGateway(token, businessId), [token, businessId])
   const [company, setCompany] = useState<RealBusiness | null>(null)
   const [connection, setConnection] = useState<DemoPaymentConnection | null>(null)
@@ -49,13 +49,15 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onUnauth
       if (!mounted.current) return
       setConnection(result)
       setNotice(action === 'connect'
-        ? 'Cuenta de prueba vinculada. Todavía no se pueden realizar cobros QR.'
+        ? 'Cuenta DEMO vinculada. Ya podés generar QR de prueba desde el POS: no cobran dinero real.'
         : 'Cuenta de prueba desvinculada.')
     } catch (err) {
       if (!mounted.current) return
       if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
       else {
-        setError(businessErrorMessage(err) + ' Consultá el estado antes de volver a intentar.')
+        setError(err instanceof ApiHttpError && err.status === 409 && action === 'disconnect'
+          ? 'La cuenta tiene un QR vigente pendiente. Consultá Cobros QR, resolvé o cancelá ese intento y después intentá desvincular.'
+          : businessErrorMessage(err) + ' Consultá el estado antes de volver a intentar.')
         // Nunca afirmar que la escritura falló en caso de timeout o error de red.
       }
     } finally { if (mounted.current) setBusy(false) }
@@ -102,8 +104,16 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onUnauth
             else setError(businessErrorMessage(err))
           }).finally(() => setLoading(false)) }}>Consultar estado</button>
       </div>
+      <div className="mp-actions" aria-label="Accesos al circuito QR de la empresa">
+        <button type="button" className="mp-outline" onClick={() => onNavigate('/real/empresas/'+businessId+'/cobros-qr')}>
+          Ver cobros QR
+        </button>
+        <button type="button" className="mp-outline" onClick={() => onNavigate('/real/empresas/'+businessId+'/pos')}>
+          Ir al punto de venta
+        </button>
+      </div>
       {!canManage && <p className="mp-footnote">Tu rol permite consultar esta configuración, pero no modificarla.</p>}
-      <p className="mp-footnote">Esta cuenta NO está conectada a Mercado Pago. No solicita credenciales, no genera cobros, no acredita fondos y no modifica caja ni stock.</p>
+      <p className="mp-footnote">Esta cuenta NO está conectada a Mercado Pago. Permite generar QR de identificación DEMO y simular eventos, pero no acredita fondos. En una base QA descartable, un cierre posterior y explícito puede registrar una venta interna y descontar stock.</p>
     </div>}
   </section>
 }
