@@ -6,6 +6,7 @@ texto, comentarios y perfiles que puedan contener información personal.
 from io import BytesIO
 
 from fastapi import HTTPException, UploadFile
+from starlette.concurrency import run_in_threadpool
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 UPLOAD_LIMIT = 5 * 1024 * 1024
@@ -23,6 +24,11 @@ async def clean_photo(upload: UploadFile) -> tuple[bytes, int, int]:
     await upload.close()
     if not raw or len(raw) > UPLOAD_LIMIT:
         raise HTTPException(413, detail="Cada fotografía debe pesar hasta 5 MB")
+    return await run_in_threadpool(_normalize_photo, raw)
+
+
+def _normalize_photo(raw: bytes) -> tuple[bytes, int, int]:
+    """CPU de Pillow fuera del event loop: carga de varias fotos no bloquea FastAPI."""
     try:
         with Image.open(BytesIO(raw)) as first:
             if first.format not in ALLOWED_FORMATS or getattr(first, "n_frames", 1) != 1:
