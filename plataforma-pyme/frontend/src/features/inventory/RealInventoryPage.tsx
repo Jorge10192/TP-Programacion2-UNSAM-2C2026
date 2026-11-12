@@ -18,6 +18,8 @@ import type { LoadedHistoryFilter } from './inventoryHistoryView.ts'
 import { RealTransferPanel } from './RealTransferPanel.tsx'
 import { RealAdjustmentPanel } from './RealAdjustmentPanel.tsx'
 import { Icon } from '../../app/Icon.tsx'
+import { RealSetupGuide } from '../onboarding/RealSetupGuide.tsx'
+import { inventorySetupSuggestion } from '../onboarding/realSetupGuidance.ts'
 import './realInventoryVisual.css'
 
 type Props = {
@@ -264,6 +266,17 @@ export function RealInventoryPage({token,userId,userDisplayName,businessId,onNav
     &&actorDirectory?.businessId===businessId?actorDirectory.actors:[]
   const view:'list'|'transfer'|'adjustment'=transferOpen?'transfer':adjustmentOpen?'adjustment':'list'
   const zeroLoaded=balances.filter(b=>b.quantity_milli===0).length
+  const setupSuggestion=inventorySetupSuggestion({
+    verified:view==='list'&&!metadataLoading&&!!company&&!metadataError
+      &&dataLoaded&&!dataLoading&&!dataError&&!pageError&&!catalogLoading,
+    locationsCount:locations.length,
+    catalogCount:catalog.length,
+    catalogComplete:!catalogHasMore,
+    physicalCount:catalog.filter(item=>item.item_type==='BIEN').length,
+    balancesLoaded:dataLoaded,
+    balancesCount:balances.length,
+    unfiltered:!locationId&&!catalogItemId,
+  })
   useEffect(()=>{
     if(view===previousView.current)return
     mainHeadingRef.current?.focus()
@@ -274,6 +287,7 @@ export function RealInventoryPage({token,userId,userDisplayName,businessId,onNav
     {view==='list'&&<nav className="real-business-nav" aria-label="Navegación del inventario REAL">
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId)}>Empresa</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/catalogo')}>Catálogo</button>
+      <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/inicio')}>Primeros pasos</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas/'+businessId+'/compras')}>Compras y recepciones</button>
       <button className="real-auth-link" type="button" onClick={()=>onNavigate('/real/empresas')}>Mis empresas</button>
     </nav>}
@@ -293,6 +307,7 @@ export function RealInventoryPage({token,userId,userDisplayName,businessId,onNav
     {metadataError&&<p className="real-auth-error" role="alert">{metadataError}</p>}
     {!metadataLoading&&company&&<>
       {view==='list'&&<>
+      <RealSetupGuide suggestion={setupSuggestion} businessId={businessId} onNavigate={onNavigate}/>
       {dataLoaded&&!dataLoading&&<div className="e3-inventory-stats" aria-label="Resumen de inventario cargado">
         <div><span>Existencias cargadas</span><strong>{balances.length}</strong></div>
         <div><span>Saldos en cero cargados</span><strong>{zeroLoaded}</strong></div>
