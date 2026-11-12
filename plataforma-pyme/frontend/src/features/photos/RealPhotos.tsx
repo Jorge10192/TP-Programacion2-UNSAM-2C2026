@@ -81,7 +81,7 @@ export function RealPhotoManager({ token, owner, title, canManage, onUnauthorize
     } catch (cause) {
       setError(photoErrorMessage(cause))
       // Una respuesta perdida puede representar una carga confirmada; consultar antes de reintentar.
-      try { await refresh() } catch { /* mensaje de consulta incierta permanece visible */ }
+      try { await refresh(); onChanged?.() } catch { /* mensaje de consulta incierta permanece visible */ }
       if (cause && typeof cause==='object' && 'status' in cause && cause.status===401) onUnauthorized?.()
     } finally {setBusy(false)}
   }
