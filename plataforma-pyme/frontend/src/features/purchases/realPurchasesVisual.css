@@ -1,0 +1,59 @@
+/* E3-1E1: Compras REAL, estilo aislado y vistas dedicadas sin alterar el ledger. */
+.real-workspace-mode .real-auth-main>.e3-purchases-page{max-width:1230px}
+.e3-purchases-page{min-width:0}
+.e3-purchases-page .real-business-nav{margin-bottom:26px}
+.e3-purchases-heading{display:flex;align-items:center;gap:17px;flex-wrap:wrap;margin:12px 0 24px}
+.e3-purchases-heading-icon{display:grid;place-items:center;width:62px;height:62px;flex:0 0 62px;border-radius:18px;background:#e8f1fe;color:#2766b7}
+.e3-purchases-heading-copy{flex:1;min-width:210px}
+.e3-purchases-kicker{display:block;margin-bottom:7px;letter-spacing:1.2px;text-transform:uppercase;font-size:11px;font-weight:850;color:#4b75b0;overflow-wrap:anywhere}
+.e3-purchases-heading h1{margin:0 0 7px;color:#172943;font-size:clamp(24px,3vw,33px)}
+.e3-purchases-heading-copy p{margin:0;font-size:13px;line-height:1.6;color:#637991;overflow-wrap:anywhere}
+.e3-purchases-heading-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-left:auto;min-height:45px}
+.e3-purchases-safety-note{border-left:3px solid #8db8ec;background:#f2f7ff;padding:12px 15px;border-radius:9px;color:#416183;line-height:1.6;font-size:12px;margin:0 0 18px}
+.e3-purchases-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 23px}
+.e3-purchases-summary>div{display:grid;gap:9px;border:1px solid #e0e9f4;border-radius:14px;background:#f7faff;padding:17px 20px;min-width:0}
+.e3-purchases-summary span{font-size:12px;font-weight:700;color:#64788e}
+.e3-purchases-summary strong{font-size:26px;color:#235da6;font-variant-numeric:tabular-nums}
+.e3-purchases-filterbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:15px 0 19px}
+.e3-purchases-search{display:flex;align-items:center;gap:9px;flex:1 1 270px;min-width:0;min-height:45px;background:#fff;border:1px solid #c9d9ef;border-radius:10px;padding:0 13px;color:#6182aa}
+.e3-purchases-search:focus-within{border-color:#397ee0;box-shadow:0 0 0 3px #397ee01a}
+.e3-purchases-search input{flex:1;min-width:0;border:0;outline:none;background:transparent;color:#172943;font:inherit;font-size:13px;padding:10px 0}
+.e3-purchases-state-filter{display:grid;gap:6px;min-width:160px;font-size:12px;color:#49637f;font-weight:800}
+.e3-purchases-state-filter select{min-height:45px;border-radius:10px;background:#fff;border:1px solid #c9d9ef;color:#1f385b;padding:9px 12px;font:inherit}
+.e3-purchases-page .e3-purchases-card-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px;margin:19px 0 25px}
+.e3-purchases-card-list .real-supply-card{border:1px solid #dce6f2;border-radius:16px;background:#fff;padding:19px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.e3-purchases-card-list .real-supply-card>small{color:#607690;line-height:1.5;overflow-wrap:anywhere}
+.e3-purchases-card-list .real-supply-card ul{margin:0;padding-left:20px;line-height:1.65;font-size:12px;color:#4d6682;overflow-wrap:anywhere}
+.e3-purchases-card-list .real-supply-card>button{align-self:flex-start}
+.e3-purchases-backbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid #e0e9f5;padding-bottom:20px;margin-bottom:24px}
+.e3-purchases-back{display:inline-flex;align-items:center;gap:9px;background:#eaf3ff;border:1px solid #cbdcf3;border-radius:11px;min-height:44px;padding:10px 15px;color:#24599e;font:inherit;font-size:13px;font-weight:800;cursor:pointer;transition:background .14s ease,transform .1s ease}
+.e3-purchases-back:hover:not(:disabled){background:#daeafd}
+.e3-purchases-back:active:not(:disabled){background:#c3dbfa;transform:translateY(1px)}
+.e3-purchases-back:disabled{cursor:not-allowed;opacity:.65}
+.e3-purchases-pending-label{border-radius:999px;background:#fff2da;color:#865820;font-size:11px;font-weight:800;padding:8px 12px}
+.e3-purchases-form-heading{border-bottom:1px solid #e5edf5;padding:0 0 21px;margin:0 0 23px}
+.e3-purchases-editor.real-ops-form{background:#fff;border:1px solid #dce6f2;border-radius:17px;padding:clamp(17px,3vw,30px);margin:0;min-width:0}
+.e3-purchases-form-section-head{border-bottom:1px solid #e5edf6;padding:0 0 18px;margin:0 0 18px}
+.e3-purchases-form-section-head h2{color:#245087;font-size:20px;margin:0 0 8px}
+.e3-purchases-form-section-head p{font-size:12px;line-height:1.6;color:#6a7d96;margin:0}
+.e3-purchases-editor .real-supply-line{border:1px solid #dce8f6;background:#f8fbff;border-radius:12px;padding:15px;min-width:0}
+.e3-purchases-editor .real-supply-grand-total{border:1px solid #cddff7;background:#edf5ff;border-radius:12px;padding:16px;min-width:0}
+.e3-purchases-page button:focus-visible,.e3-purchases-page select:focus-visible,.e3-purchases-page input:focus-visible,.e3-purchases-page textarea:focus-visible{outline:3px solid #4080dc;outline-offset:2px}
+.e3-purchases-heading h1:focus{outline:2px solid #4080dc;outline-offset:4px;border-radius:4px}
+@media(max-width:740px){
+ .e3-purchases-heading-action{width:100%;margin-left:0}
+ .e3-purchases-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .e3-purchases-filterbar{align-items:stretch;flex-direction:column}
+ .e3-purchases-search,.e3-purchases-state-filter{width:100%;flex-basis:auto}
+ .e3-purchases-page .e3-purchases-card-list{grid-template-columns:1fr}
+}
+@media(max-width:430px){
+ .e3-purchases-heading-icon{width:52px;height:52px;flex-basis:52px;border-radius:14px}
+ .e3-purchases-summary{gap:8px}
+ .e3-purchases-summary>div{padding:13px 12px}
+ .e3-purchases-summary strong{font-size:23px}
+ .e3-purchases-summary span{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+ .e3-purchases-back{transition:none}
+}
