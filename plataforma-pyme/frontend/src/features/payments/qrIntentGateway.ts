@@ -23,6 +23,19 @@ export type QrIntentLine = {
   line_total_cents: number
 }
 
+export type QrSimAction = 'APROBAR' | 'RECHAZAR' | 'EXPIRAR' | 'INDETERMINAR'
+export type QrPaymentEvent = {
+  id: string
+  business_id: string
+  intent_id: string
+  event_key: string
+  sequence: number
+  action: 'CREAR' | 'CANCELAR' | QrSimAction
+  from_status: string
+  to_status: QrIntent['status']
+  actor_id: string
+  created_at: string
+}
 export type QrIntent = {
   id: string
   business_id: string
@@ -117,6 +130,32 @@ export function createQrIntentGateway(token: string, businessId: string, transpo
       if (!UUID_V4_PATTERN.test(requestId)) throw new TypeError('Solicitud inválida')
       return api.request<unknown>(path + '/by-request/' + requestId, { signal })
         .then(raw => parseQrIntent(raw, businessId))
+    },
+    events(intentId: string, signal?: AbortSignal): Promise<QrPaymentEvent[]> {
+      if (!UUID_PATTERN.test(intentId)) throw new TypeError('Intento inválido')
+      return api.request<unknown>(path + '/' + intentId + '/events', { signal }).then(raw => {
+        if (!Array.isArray(raw) || raw.length > 1000) throw new ApiTransportError('invalid-response', false)
+        return raw.map((entry, i) => {
+          if (!isObject(entry) || !UUID_PATTERN.test(String(entry.id)) ||
+              entry.business_id !== businessId || entry.intent_id !== intentId ||
+              !UUID_PATTERN.test(String(entry.actor_id)) || !UUID_PATTERN.test(String(entry.event_key)) ||
+              entry.sequence !== i + 1 || typeof entry.from_status !== 'string' ||
+              !['CREAR','CANCELAR','APROBAR','RECHAZAR','EXPIRAR','INDETERMINAR'].includes(String(entry.action)) ||
+              !['ESPERANDO_PAGO','CANCELADA','EXPIRADA','APROBADA_DEMO','RECHAZADA','INDETERMINADA',
+                'REQUIERE_REVISION','FINALIZADA'].includes(String(entry.to_status)) ||
+              typeof entry.created_at !== 'string' || !Number.isFinite(Date.parse(entry.created_at)))
+            throw new ApiTransportError('invalid-response', false)
+          return entry as QrPaymentEvent
+        })
+      })
+    },
+    simulate(intentId: string, action: QrSimAction, eventKey: string): Promise<QrIntent> {
+      if (!UUID_PATTERN.test(intentId) || !UUID_V4_PATTERN.test(eventKey) ||
+          !['APROBAR','RECHAZAR','EXPIRAR','INDETERMINAR'].includes(action))
+        throw new TypeError('Acción de laboratorio inválida')
+      return api.request<unknown>(path + '/' + intentId + '/simulate', {
+        method: 'POST', body: { action }, idempotencyKey: eventKey,
+      }).then(raw => parseQrIntent(raw, businessId))
     },
     cancel(intentId: string): Promise<QrIntent> {
       if (!UUID_PATTERN.test(intentId)) throw new TypeError('Intento inválido')
