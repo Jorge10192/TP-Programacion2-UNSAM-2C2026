@@ -99,7 +99,7 @@ test('rechaza respuesta de otro tenant, un rechazo con venta y total falsificado
 test('E3-3E conserva la imagen QR de main delante de sus dos botones', () => {
   const code = readFileSync(new URL('../src/features/payments/RealQrIntentPage.tsx', import.meta.url), 'utf8')
   const image = code.indexOf('<img src={intent.qr_png_data_uri} alt="QR sintético de exhibición, no pagable y sin proveedor financiero"')
-  const accept = code.indexOf('Simular aceptación')
+  const accept = code.indexOf('Simular aceptación', image + 1)
   const reject = code.indexOf('Simular rechazo', accept + 1)
   const details = code.indexOf('<div className="e3-qr-details">', image + 1)
   assert.ok(image >= 0, 'se preserva el PNG de QR de main')
