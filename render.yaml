@@ -1,0 +1,38 @@
+# Render Blueprint for a temporary, publicly accessible two-person QA demo.
+# Select this Blueprint only AFTER this feature branch is reviewed and merged.
+# Supabase Postgres is external; this Blueprint deliberately creates no database.
+services:
+  - type: web
+    name: plataforma-pyme-qa-public
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    dockerfilePath: ./plataforma-pyme/Dockerfile.public
+    dockerContext: ./plataforma-pyme
+    healthCheckPath: /ready
+    autoDeployTrigger: "off"
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_USER
+        sync: false
+      - key: DB_NAME
+        value: postgres
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      # Never connect the locally verified shared seller TEST token to a public site.
+      - key: PYME_DISPOSABLE_QA
+        value: "0"
+      - key: PYME_MP_QR_SHARED_QA_ENABLED
+        value: "0"
+      - key: PYME_MP_SHARED_QA_ORDERS_ENABLED
+        value: "0"
+      - key: PYME_MP_QR_TEST_ENABLED
+        value: "0"
