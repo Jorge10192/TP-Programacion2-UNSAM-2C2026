@@ -10,6 +10,7 @@ from urllib.parse import parse_qs, urlparse
 from uuid import UUID, uuid4
 
 import pytest
+import httpx
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
@@ -101,6 +102,55 @@ def test_offline_order_money_and_pkce():
     verifier,challenge=new_pkce()
     assert 43<=len(verifier)<=128 and len(challenge)==43
     assert verifier!=challenge
+
+
+def test_official_order_http_contract_has_exact_items_idempotency_and_no_secrets():
+    reference="PYME"+"C"*32
+    headers_seen={}
+    def handler(request):
+        assert str(request.url)=="https://api.mercadopago.com/v1/orders"
+        assert request.method=="POST"
+        assert request.headers["authorization"]=="Bearer seller-qa-token"
+        assert request.headers["x-idempotency-key"]=="fixed-request-id"
+        assert "client_secret" not in request.content.decode()
+        import json
+        payload=json.loads(request.content)
+        assert payload["type"]=="qr"
+        assert payload["config"]["qr"]=={"external_pos_id":"CAJATEST001","mode":"dynamic"}
+        assert payload["total_amount"]=="40.00"
+        assert payload["transactions"]["payments"]==[{"amount":"40.00"}]
+        assert payload["items"]==[{
+            "title":"Bocaditos ejemplo","quantity":2,
+            "unit_price":"20.00","unit_measure":"unit",
+        }]
+        headers_seen["called"]=True
+        return httpx.Response(201,json={"id":"ORD01K371WBFDS4MD9JG0K8ZMECBE"})
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        response=MercadoPagoTransport(client).create_order(
+            token="seller-qa-token",key="fixed-request-id",
+            amount_cents=4000,external_reference=reference,
+            external_pos_id="CAJATEST001",description="B6 TEST",
+            items=[{"title":"Bocaditos ejemplo","quantity":2,
+                    "unit_price":"20.00","unit_measure":"unit"}],
+        )
+    assert headers_seen["called"] and response["id"].startswith("ORD")
+
+
+def test_official_order_rejects_mismatched_item_total_without_external_request():
+    calls=[]
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200,json={"id":"ORD01K371WBFDS4MD9JG0K8ZMECBE"})
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(MpIntegrityError):
+            MercadoPagoTransport(client).create_order(
+                token="test",key="one",amount_cents=4000,
+                external_reference="PYME"+"C"*32,external_pos_id="CAJATEST001",
+                description="B6 TEST",
+                items=[{"title":"Producto","quantity":2,
+                        "unit_price":"10.00","unit_measure":"unit"}],
+            )
+    assert not calls
 
 
 def test_hmac_signature_and_ttl_not_body():
