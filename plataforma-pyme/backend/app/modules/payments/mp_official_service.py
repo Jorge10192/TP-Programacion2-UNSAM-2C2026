@@ -489,7 +489,7 @@ class MpOfficialService:
                 result={"order":self.order_view(order),"sale_id":order.sale_id,"replayed":True}
                 self.db.rollback()
                 return result
-            if order.status!="PROCESADA" or order.provider_status_detail!="accredited":
+            if order.status!="PROCESADA" or order.provider_status_detail not in ("accredited","processed"):
                 raise MpConflict()
             source=self.qr._lookup_by_id(business,order.source_intent_id)
             if source is None or source.total_cents!=order.total_cents:
