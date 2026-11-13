@@ -13,7 +13,7 @@ test('QR público tiene etiqueta inequívoca NO PAGABLE y botón para exhibir', 
   assert.match(pos, /Generar QR de exhibición/)
   assert.match(qr, /EXHIBICIÓN · NO PAGABLE/)
   assert.match(qr, /sin proveedor financiero/)
-  assert.match(qr, /no crea órdenes/i)
+  assert.match(qr, /no genera órdenes/i)
 })
 
 test('La ruta pública no consulta ni exige conexión con Mercado Pago', () => {
