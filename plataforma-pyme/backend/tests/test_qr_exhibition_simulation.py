@@ -152,3 +152,99 @@ def test_public_simulation_requires_enablement_and_cannot_access_other_tenant(is
     monkeypatch.setenv("PYME_QR_EXHIBITION_ENABLED", "0")
     assert decision(client, a, b, qr["id"], "RECHAZAR", key).status_code == 403
     assert count(db, Sale, b) == 0
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(os.environ.get("RUN_DB_INTEGRATION") != "1", reason="PostgreSQL CI QA")
+def test_exhibition_charge_reduces_physical_stock_once(isolated, monkeypatch):
+    from sqlalchemy import select
+    from app.infrastructure.models import StockBalance
+    from test_sales_api_integration import location, seed_balance
+
+    setup_exhibition(monkeypatch)
+    client, db = isolated
+    owner = new_account(client, "stock")
+    company = new_company(client, owner, "Prueba QR inventario")
+    site = location(client, company, owner)
+    product = client.post(
+        f"/api/v1/businesses/{company}/catalog", headers=owner, json={
+            "name": "Producto fisico QR", "kind": "REVENTA",
+            "unit": "UNIDAD", "sellable": True,
+        },
+    )
+    assert product.status_code == 201, product.text
+    item_id = product.json()["id"]
+    seed_balance(db, company, site, item_id, milli=3000)
+    qr = client.post(
+        f"/api/v1/businesses/{company}/qr-payment-intents",
+        headers={**owner, "Idempotency-Key": str(uuid4())},
+        json={"location_id": str(site), "discount_cents": 100,
+              "lines": [{
+                  "catalog_item_id": item_id, "quantity_milli": 1000,
+                  "unit_price_cents": 2500,
+              }]},
+    )
+    assert qr.status_code == 201, qr.text
+    key = str(uuid4())
+    result = decision(client, owner, company, qr.json()["id"], "COBRAR", key)
+    assert result.status_code == 201, result.text
+    assert result.json()["sale"]["total_cents"] == 2400
+    assert count(db, StockMovement, company) == 1
+    stock = db.scalar(select(StockBalance.quantity_milli).where(
+        StockBalance.business_id == company,
+        StockBalance.location_id == site,
+        StockBalance.catalog_item_id == item_id,
+    ))
+    assert stock == 2000
+    assert decision(client, owner, company, qr.json()["id"], "COBRAR", key).status_code == 200
+    assert count(db, StockMovement, company) == 1
+    assert db.scalar(select(StockBalance.quantity_milli).where(
+        StockBalance.business_id == company,
+        StockBalance.location_id == site,
+        StockBalance.catalog_item_id == item_id,
+    )) == 2000
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(os.environ.get("RUN_DB_INTEGRATION") != "1", reason="PostgreSQL CI QA")
+def test_failed_stock_charge_rolls_back_simulated_approval(isolated, monkeypatch):
+    from test_sales_api_integration import location, seed_balance
+
+    setup_exhibition(monkeypatch)
+    client, db = isolated
+    owner = new_account(client, "no-stock")
+    company = new_company(client, owner, "Prueba QR sin stock")
+    site = location(client, company, owner)
+    product = client.post(
+        f"/api/v1/businesses/{company}/catalog", headers=owner, json={
+            "name": "Producto QR sin stock", "kind": "REVENTA",
+            "unit": "UNIDAD", "sellable": True,
+        },
+    )
+    assert product.status_code == 201, product.text
+    item_id = product.json()["id"]
+    seed_balance(db, company, site, item_id, milli=1000)
+    qr = client.post(
+        f"/api/v1/businesses/{company}/qr-payment-intents",
+        headers={**owner, "Idempotency-Key": str(uuid4())},
+        json={"location_id": str(site), "lines": [{
+            "catalog_item_id": item_id, "quantity_milli": 2000,
+            "unit_price_cents": 1000,
+        }]},
+    )
+    assert qr.status_code in (201, 409), qr.text
+    # If QR creation itself enforces stock availability, rejection is equally safe.
+    if qr.status_code == 409:
+        assert count(db, Sale, company) == 0
+        assert count(db, StockMovement, company) == 0
+        return
+    result = decision(client, owner, company, qr.json()["id"], "COBRAR", str(uuid4()))
+    assert result.status_code == 409, result.text
+    assert count(db, Sale, company) == 0
+    assert count(db, StockMovement, company) == 0
+    state = client.get(
+        f"/api/v1/businesses/{company}/qr-payment-intents/{qr.json()['id']}",
+        headers=owner,
+    )
+    assert state.status_code == 200, state.text
+    assert state.json()["status"] == "ESPERANDO_PAGO"
