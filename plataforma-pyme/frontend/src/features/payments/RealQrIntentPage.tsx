@@ -342,11 +342,15 @@ export function RealQrIntentPage({
     </div>
 
     <p className="e3-qr-warning" role="note">
-      {officialOrder
-        ? <><strong>ORDEN OFICIAL · SOLO ENTORNO TEST.</strong> Este QR procede de Orders API y puede probarse con cuentas de comprador de prueba. No lo uses para cobrar fondos reales. La venta QA se registra por separado tras conciliación.</>
-        : <><strong>SIMULACIÓN · NO COBRABLE.</strong> El QR DEMO solo contiene una referencia ficticia. No es una orden de Mercado Pago ni recibe dinero real.</>}
+      {sharedQa?.enabled
+        ? sharedOrder
+          ? <><strong>MERCADO PAGO · QR ESTÁTICO TEST.</strong> Orden asignada a nuestra única caja. Verificá el pago remoto antes de vender.</>
+          : <><strong>CAJA QA COMPARTIDA.</strong> Creá la orden para esta venta antes de mostrar el QR cobrable.</>
+        : officialOrder
+          ? <><strong>ORDEN OFICIAL · SOLO ENTORNO TEST.</strong> Este QR procede de Orders API y puede probarse con cuentas de comprador de prueba. No lo uses para cobrar fondos reales. La venta QA se registra por separado tras conciliación.</>
+          : <><strong>SIMULACIÓN · NO COBRABLE.</strong> El QR DEMO solo contiene una referencia ficticia. No es una orden de Mercado Pago ni recibe dinero real.</>}
     </p>
-    {!officialOrder && presentation && <div className={'e3-qr-explainer e3-qr-tone-'+presentation.tone} role="status">
+    {!officialOrder && !sharedOrder && !sharedQa?.enabled && presentation && <div className={'e3-qr-explainer e3-qr-tone-'+presentation.tone} role="status">
       <strong>{presentation.title}</strong>
       <p>{presentation.description}</p>
       <small><strong>Próximo paso:</strong> {presentation.nextStep}</small>
@@ -356,17 +360,23 @@ export function RealQrIntentPage({
     {intent && !loading && <div className="e3-qr-layout">
       <div className="e3-qr-visual-panel">
         <div className="e3-qr-status" role="status">
-          {officialOrder ? 'Mercado Pago TEST · '+officialOrder.status : presentation?.title ?? 'Estado QR'}
+          {sharedOrder ? 'Caja compartida TEST · '+sharedOrder.status : officialOrder ? 'Mercado Pago TEST · '+officialOrder.status : presentation?.title ?? 'Estado QR'}
         </div>
-        {officialOrder?.qr_png_data_uri
+        {sharedOrder?.qr_png_data_uri
+          ? <img src={sharedOrder.qr_png_data_uri} alt="QR oficial estático de la caja única TEST con orden asociada" className="e3-qr-image" width="320" height="320"/>
+          : officialOrder?.qr_png_data_uri
           ? <img src={officialOrder.qr_png_data_uri}
               alt="QR oficial de una orden Mercado Pago en entorno TEST"
               className="e3-qr-image" width="320" height="320"/>
-          : !officialOrder&&<img src={intent.qr_png_data_uri}
-              alt="QR de identificación ficticia DEMO, no cobrable"
-              className="e3-qr-image" width="320" height="320"/>}
+          : !officialOrder && !sharedQa?.enabled
+            ? <img src={intent.qr_png_data_uri}
+                alt="QR de identificación ficticia DEMO, no cobrable"
+                className="e3-qr-image" width="320" height="320"/>
+            : <p role="status">Sin orden cobrable: prepará un cobro TEST para esta venta.</p>}
         <strong className="e3-qr-not-payable">
-          {officialOrder ? 'MERCADO PAGO · CUENTA TEST · NO PRODUCCIÓN'
+          {sharedQa?.enabled ? (sharedOrder?.status==='CREADA'
+            ? 'QR CAJA ÚNICA · ORDEN TEST ACTIVA' : 'SIN ORDEN COBRABLE ACTIVA')
+            : officialOrder ? 'MERCADO PAGO · CUENTA TEST · NO PRODUCCIÓN'
             : 'QR DE PRUEBA · NO COBRABLE'}
         </strong>
         <p className="e3-qr-total">{pesos(intent.total_cents)}</p>
@@ -380,13 +390,63 @@ export function RealQrIntentPage({
         <div className="e3-qr-buttons">
           <button type="button" className="real-auth-secondary" disabled={busy}
             onClick={() => void refresh()}>{busy ? 'Consultando…' : 'Consultar estado'}</button>
-          {!officialOrder && displayStatus === 'ESPERANDO_PAGO' &&
+          {!officialOrder && !sharedOrder && displayStatus === 'ESPERANDO_PAGO' &&
             <button type="button" className="real-auth-secondary" disabled={busy}
               onClick={() => void cancel()}>Cancelar QR</button>}
         </div>
       </div>
       <div className="e3-qr-details">
-        <section className="e3-qr-official" aria-label="Integración oficial Mercado Pago TEST">
+        {sharedQa?.enabled && <section className="e3-qr-official" aria-label="Mercado Pago caja única QR TEST">
+          <div className="e3-qr-official-head">
+            <h2>Mercado Pago · Caja QR compartida</h2>
+            <span className="e3-qr-test-pill">SOLO QA</span>
+          </div>
+          <p>Todas las empresas usan la caja 140776986. Cada venta tiene una orden, importe y
+            referencia propia. Solo una orden puede estar pendiente en esta caja.</p>
+          {!sharedQa.orders_integrated && <p role="note">La caja está vinculada, pero falta
+            habilitar el Access Token exclusivamente en el backend QA. Todavía no se puede cobrar.</p>}
+          {officialError && <p role="alert" className="real-auth-message real-auth-error">{officialError}</p>}
+          <div className="e3-qr-official-actions">
+            {!sharedOrder && sharedQa.orders_integrated && displayStatus==='ESPERANDO_PAGO' &&
+              <button type="button" className="real-auth-primary" disabled={officialBusy||busy}
+                onClick={()=>void makeSharedOrder()}>
+                {officialBusy?'Generando…':'Asignar venta al QR real TEST'}</button>}
+            {sharedOrder && ['PREPARANDO','INDETERMINADA'].includes(sharedOrder.status) &&
+              <button type="button" className="real-auth-secondary" disabled={officialBusy}
+                onClick={()=>void makeSharedOrder()}>Reintentar misma orden y clave</button>}
+            {sharedOrder?.provider_order_id && <button type="button" className="real-auth-secondary"
+              disabled={officialBusy} onClick={()=>void reconcileShared()}>
+              Verificar pago en Mercado Pago</button>}
+            {sharedOrder?.status==='CREADA' && <button type="button" className="real-auth-secondary"
+              disabled={officialBusy} onClick={()=>void cancelShared()}>
+              Cancelar orden TEST y liberar caja</button>}
+            <button type="button" className="real-auth-secondary" disabled={officialBusy}
+              onClick={()=>void refreshShared()}>Consultar orden guardada</button>
+          </div>
+          {sharedOrder && <>
+            <p><strong>Estado:</strong> {sharedOrder.status} · Importe: {pesos(sharedOrder.total_cents)}</p>
+            <p><strong>Referencia:</strong> <code>{sharedOrder.external_reference}</code></p>
+            {sharedOrder.provider_order_id &&
+              <p><strong>ID de orden:</strong> <code>{sharedOrder.provider_order_id}</code></p>}
+            {sharedOrder.status==='CREADA' &&
+              <p role="status">Orden TEST activa. Usá únicamente comprador de prueba y verificá el resultado.</p>}
+            {sharedOrder.status==='INDETERMINADA' &&
+              <p role="alert">Respuesta incierta: la caja sigue reservada. No crees una orden nueva.</p>}
+            {sharedOrder.status==='PROCESADA' && !sharedOrder.sale_registered && <div>
+              <p role="status">Pago TEST verificado en Mercado Pago. Aún no se registró la venta.</p>
+              {isManager && <button type="button" className="real-auth-primary"
+                disabled={officialBusy} onClick={()=>void settleShared()}>
+                Registrar venta QA verificada y descontar stock</button>}
+            </div>}
+            {sharedOrder.sale_registered &&
+              <p role="status">Venta QA registrada: <code>{sharedOrder.sale_id}</code>.</p>}
+            {sharedOrder.status==='REQUIERE_REVISION' &&
+              <p role="alert">Pago verificado pero no se asentó la venta: revisar stock sin duplicar.</p>}
+            {['CANCELADA','EXPIRADA','REEMBOLSADA'].includes(sharedOrder.status) &&
+              <p role="status">Orden terminal. La caja se libera al confirmar ese estado.</p>}
+          </>}
+        </section>}
+        {!sharedQa?.enabled && <section className="e3-qr-official" aria-label="Integración oficial Mercado Pago TEST">
           <div className="e3-qr-official-head">
             <h2>Mercado Pago oficial · TEST</h2>
             <span className="e3-qr-test-pill">SIN PRODUCCIÓN</span>
@@ -450,8 +510,8 @@ export function RealQrIntentPage({
             {officialOrder.status==='REEMBOLSADA' &&
               <p role="alert">La orden figura reembolsada en TEST. Revisá el comprobante y la compensación de inventario si hubo venta.</p>}
           </>}
-        </section>
-        {!officialOrder && LAB_UI_ENABLED && isManager && <div className="e3-qr-lab" aria-label="Laboratorio de cobros ficticios">
+        </section>}
+        {!sharedQa?.enabled && !officialOrder && LAB_UI_ENABLED && isManager && <div className="e3-qr-lab" aria-label="Laboratorio de cobros ficticios">
           <h2>Laboratorio QR · Solo pruebas</h2>
           <p><strong>Este laboratorio NO valida un cobro Mercado Pago.</strong> Solo cambia el estado DEMO del intento y registra un evento auditado. No crea ventas ni modifica stock.</p>
           {intent.status === 'ESPERANDO_PAGO' || intent.status === 'INDETERMINADA'
@@ -475,7 +535,7 @@ export function RealQrIntentPage({
             </div>
             : <p role="status">El intento ya está resuelto; no pueden simularse nuevas transiciones.</p>}
         </div>}
-        {!officialOrder && FINALIZE_QA_ENABLED && isManager && intent.status === 'APROBADA_DEMO' &&
+        {!sharedQa?.enabled && !officialOrder && FINALIZE_QA_ENABLED && isManager && intent.status === 'APROBADA_DEMO' &&
           <section className="e3-qr-finalize" aria-label="Registrar venta QA">
             <h2>Confirmar venta de prueba</h2>
             <p>El pago fue aprobado únicamente por el simulador. Este botón registra UNA venta en PostgreSQL QA y descuenta stock de forma transaccional, sin mover dinero real.</p>
