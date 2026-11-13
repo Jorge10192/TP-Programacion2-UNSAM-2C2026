@@ -10,7 +10,7 @@ from app.modules.auth.session_service import AuthContext
 from app.modules.purchases.service import PurchaseSessionInvalid, PurchaseBusinessUnavailable, PurchasePermissionDenied
 from app.modules.payments.qr_schemas import (
     CreateQrIntentRequest, QrIntentView, QrPaymentEventView, QrSimulateRequest, QrFinalizedView,
-    QrIntentSummaryView,
+    QrIntentSummaryView, QrExhibitionDecisionRequest,
 )
 from app.modules.payments.qr_event_service import QrEventService, QrLabDisabled
 from app.modules.payments.qr_settlement_service import (
@@ -144,6 +144,32 @@ def list_qr_events(
             context.user.id, context.auth_session.id, business_id, intent_id)
     except Exception as error:
         _handle(error)
+
+
+
+@router.post("/{intent_id}/exhibition-decision", response_model=QrIntentView,
+    status_code=201,
+    responses={200: {"description": "Mismo evento idempotente"},
+               401: {"description": "Sin sesión"},
+               403: {"description": "Sin permiso o fuera del modo exhibición"},
+               404: {"description": "QR ajeno"},
+               409: {"description": "QR vencido o resuelto"},
+               422: {"description": "Solo APROBAR o RECHAZAR"}},
+    summary="Simular aprobación o rechazo en el QR existente (sin venta ni stock)")
+def exhibition_decision(
+    business_id: UUID, intent_id: UUID, command: QrExhibitionDecisionRequest,
+    response: Response, idempotency_key: UUID4 = Header(alias="Idempotency-Key"),
+    context: AuthContext = Depends(current_auth), db: Session = Depends(get_db),
+) -> QrIntentView:
+    try:
+        result = QrEventService(db).simulate(
+            context.user.id, context.auth_session.id, business_id,
+            intent_id, idempotency_key, command.action, exhibition=True,
+        )
+    except Exception as error:
+        _handle(error)
+    response.status_code = 200 if result.replayed else 201
+    return result.intent
 
 
 @router.post("/{intent_id}/simulate", response_model=QrIntentView, status_code=201,
