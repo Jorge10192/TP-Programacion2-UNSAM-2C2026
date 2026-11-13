@@ -333,8 +333,8 @@ export function RealSalesPage({ token, userId, userDisplayName, businessId, onNa
           <p>{date(receipt.created_at)} · {locationName(receipt.location_id)}</p>
         </div>
       </header>
-      {receipt.payments.some(payment=>payment.method==='MERCADO_PAGO_DEMO_QA') &&
-        <p role="note"><strong>VENTA QA · Mercado Pago DEMO.</strong> Cobro ficticio: no representa dinero real acreditado.</p>}
+      {receipt.payments.some(payment=>['MERCADO_PAGO_DEMO_QA','MERCADO_PAGO_QR_TEST'].includes(payment.method)) &&
+        <p role="note"><strong>VENTA QA · Mercado Pago.</strong> Operación de prueba: DEMO ficticia o QR oficial TEST. No representa dinero de producción acreditado.</p>}
       <section className="real-sales-receipt e3-sales-receipt" aria-label="Comprobante de venta REAL">
       <div className="real-sales-receipt-head">
         <div><span className="real-auth-eyebrow">Comprobante histórico REAL</span><h2>Venta confirmada</h2></div>
@@ -362,7 +362,7 @@ export function RealSalesPage({ token, userId, userDisplayName, businessId, onNa
       <div className="real-sales-receipt-lines">
         {receipt.payments.map(payment => <div key={payment.id}>
           <div><strong>{payment.method.replaceAll('_', ' ')}</strong>
-            {payment.reference && <small>{payment.method === 'MERCADO_PAGO_DEMO_QA' ? 'Referencia ficticia QR: ' : 'Referencia declarada: '}{payment.reference}</small>}</div>
+            {payment.reference && <small>{['MERCADO_PAGO_DEMO_QA','MERCADO_PAGO_QR_TEST'].includes(payment.method) ? 'Referencia QR de prueba: ' : 'Referencia declarada: '}{payment.reference}</small>}</div>
           <strong>{cents(payment.amount_cents)}</strong>
         </div>)}
       </div>
