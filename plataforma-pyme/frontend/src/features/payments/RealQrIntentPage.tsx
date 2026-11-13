@@ -593,10 +593,10 @@ export function RealQrIntentPage({
         </button>}
         <div className="e3-qr-history">
           <h2>Historial de eventos</h2>
-          <p>Registros del servidor, ordenados por secuencia. Ningún evento representa acreditación externa.</p>
+          <p>{EXHIBITION_UI ? 'Historial de referencias de exhibición. No representa pagos, aprobaciones ni ventas.' : 'Registros del servidor, ordenados por secuencia. Ningún evento representa acreditación externa.'}</p>
           {events.length === 0 ? <p>Aún no hay eventos registrados para este intento.</p> :
             <ol>{events.map(e=><li key={e.id}>
-              <strong>{e.action}</strong> · {e.from_status} → {e.to_status}
+              <strong>{EXHIBITION_UI && e.action === 'CREAR' ? 'GENERAR EXHIBICIÓN' : EXHIBITION_UI && e.action === 'CANCELAR' ? 'CERRAR EXHIBICIÓN' : e.action}</strong> · {EXHIBITION_UI ? (e.action === 'CANCELAR' ? 'EXHIBICIÓN CERRADA' : 'REFERENCIA NO PAGABLE') : e.from_status + ' → ' + e.to_status}
               <small>{new Date(e.created_at).toLocaleString('es-AR')} · Evento {e.sequence}</small>
             </li>)}</ol>}
         </div>
@@ -619,10 +619,12 @@ export function RealQrIntentPage({
         <div className="e3-qr-totals">
           <p>Subtotal <strong>{pesos(intent.subtotal_cents)}</strong></p>
           <p>Descuento <strong>−{pesos(intent.discount_cents)}</strong></p>
-          <p className="e3-qr-grand-total">Total a cobrar <strong>{pesos(intent.total_cents)}</strong></p>
+          <p className="e3-qr-grand-total">{EXHIBITION_UI ? 'Importe exhibido' : 'Total a cobrar'} <strong>{pesos(intent.total_cents)}</strong></p>
         </div>
         {intent.notes && <p className="e3-qr-note"><strong>Nota interna:</strong> {intent.notes}</p>}
-        <p className="e3-qr-footnote">Las imágenes son vistas actuales del catálogo; nombre, cantidad, precio e importes pertenecen al snapshot original. El laboratorio de B3 registra resultados ficticios. El cierre de B4, disponible solo en QA descartable, crea una venta interna; Mercado Pago no acredita fondos.</p>
+        <p className="e3-qr-footnote">{EXHIBITION_UI
+          ? 'Exhibición únicamente informativa. Nombre, cantidad, precio e importes son un snapshot de PostgreSQL. El QR contiene solo una referencia ficticia, no puede pagarse y no genera venta ni movimiento de inventario. Para registrar una venta utilizá los pagos declarados del POS.'
+          : 'Las imágenes son vistas actuales del catálogo; nombre, cantidad, precio e importes pertenecen al snapshot original. El laboratorio de B3 registra resultados ficticios. El cierre de B4, disponible solo en QA descartable, crea una venta interna; Mercado Pago no acredita fondos.'}</p>
       </div>
     </div>}
   </section>
