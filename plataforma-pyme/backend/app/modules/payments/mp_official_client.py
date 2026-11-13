@@ -180,16 +180,26 @@ class MercadoPagoTransport:
 
     def create_order(self, *, token: str, key: str, amount_cents: int,
                      external_reference: str, external_pos_id: str,
-                     description: str) -> dict:
+                     description: str, items: list[dict] | None = None) -> dict:
         if not POS_PATTERN.fullmatch(external_pos_id) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", external_reference):
             raise MpIntegrityError()
-        return self._call("POST", "/v1/orders", token=token, key=key, body={
+        # Items son opcionales en Orders API, pero si se envían deben
+        # representar exactamente el total (HALF_UP ya fue aplicado al snapshot).
+        if items is not None:
+            if not 1 <= len(items) <= 30:
+                raise MpIntegrityError()
+            if sum(parse_money(x["unit_price"]) * x["quantity"] for x in items) != amount_cents:
+                raise MpIntegrityError()
+        body = {
             "type": "qr", "total_amount": money(amount_cents),
             "external_reference": external_reference,
             "description": description[:150], "expiration_time": "PT15M",
             "config": {"qr": {"external_pos_id": external_pos_id, "mode": "dynamic"}},
             "transactions": {"payments": [{"amount": money(amount_cents)}]},
-        })
+        }
+        if items is not None:
+            body["items"] = items
+        return self._call("POST", "/v1/orders", token=token, key=key, body=body)
 
     def order(self, *, token: str, order_id: str) -> dict:
         if not ORDER_PATTERN.fullmatch(order_id):
