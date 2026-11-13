@@ -181,7 +181,10 @@ class MercadoPagoTransport:
 
     def create_order(self, *, token: str, key: str, amount_cents: int,
                      external_reference: str, external_pos_id: str,
-                     description: str, items: list[dict] | None = None) -> dict:
+                     description: str, items: list[dict] | None = None,
+                     mode: str = "dynamic") -> dict:
+        if mode not in ("static", "dynamic"):
+            raise MpIntegrityError()
         if not POS_PATTERN.fullmatch(external_pos_id) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", external_reference):
             raise MpIntegrityError()
         # Items son opcionales en Orders API, pero si se envían deben
@@ -195,12 +198,21 @@ class MercadoPagoTransport:
             "type": "qr", "total_amount": money(amount_cents),
             "external_reference": external_reference,
             "description": description[:150], "expiration_time": "PT15M",
-            "config": {"qr": {"external_pos_id": external_pos_id, "mode": "dynamic"}},
+            "config": {"qr": {"external_pos_id": external_pos_id, "mode": mode}},
             "transactions": {"payments": [{"amount": money(amount_cents)}]},
         }
         if items is not None:
             body["items"] = items
         return self._call("POST", "/v1/orders", token=token, key=key, body=body)
+
+    def seller(self, *, token: str) -> dict:
+        # Identidad comprobada en proveedor, nunca afirmada desde el navegador.
+        return self._call("GET", "/users/me", token=token)
+
+    def cancel(self, *, token: str, order_id: str, key: str) -> dict:
+        if not ORDER_PATTERN.fullmatch(order_id):
+            raise MpIntegrityError()
+        return self._call("POST", "/v1/orders/" + order_id + "/cancel", token=token, key=key)
 
     def order(self, *, token: str, order_id: str) -> dict:
         if not ORDER_PATTERN.fullmatch(order_id):
@@ -210,7 +222,8 @@ class MercadoPagoTransport:
 
 def validate_order(payload: dict, *, order_id: str | None,
                    external_reference: str, amount_cents: int,
-                   merchant_id: str, pos_id: str) -> tuple[str, str | None, str | None, str | None]:
+                   merchant_id: str, pos_id: str,
+                   mode: str = "dynamic") -> tuple[str, str | None, str | None, str | None]:
     """Todo dato financiero se valida contra backend; nunca contra webhook."""
     try:
         oid = payload.get("id")
@@ -223,7 +236,7 @@ def validate_order(payload: dict, *, order_id: str | None,
         if str(payload.get("user_id")) != merchant_id:
             raise MpIntegrityError()
         qr = payload.get("config", {}).get("qr", {})
-        if not isinstance(qr, dict) or qr.get("mode") != "dynamic" or qr.get("external_pos_id") != pos_id:
+        if mode not in ("static", "dynamic") or not isinstance(qr, dict) or qr.get("mode") != mode or qr.get("external_pos_id") != pos_id:
             raise MpIntegrityError()
         status = payload.get("status")
         if status not in {"created","processed","canceled","expired","refunded"}:
