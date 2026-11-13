@@ -214,6 +214,26 @@ export function createQrIntentGateway(token: string, businessId: string, transpo
         method: 'POST', body: { action }, idempotencyKey: eventKey,
       }).then(raw => parseQrIntent(raw, businessId))
     },
+    async decideExhibition(intentId: string, action: 'COBRAR' | 'RECHAZAR',
+      eventKey: string): Promise<{ intent: QrIntent; sale: SaleReceipt | null; replayed: boolean }> {
+      if (!UUID_PATTERN.test(intentId) || !UUID_V4_PATTERN.test(eventKey) ||
+          !['COBRAR', 'RECHAZAR'].includes(action))
+        throw new TypeError('Simulación de exhibición inválida')
+      const raw = await api.request<unknown>(path + '/' + intentId + '/exhibition-simulation', {
+        method: 'POST', body: { action }, idempotencyKey: eventKey,
+      })
+      if (!isObject(raw) || typeof raw.replayed !== 'boolean')
+        throw new ApiTransportError('invalid-response', true)
+      const intent = parseQrIntent(raw.intent, businessId)
+      const sale = raw.sale === null ? null : parseSaleReceipt(raw.sale, businessId)
+      if (intent.id !== intentId || (action === 'COBRAR'
+        ? intent.status !== 'FINALIZADA' || !sale || intent.sale_id !== sale.id ||
+          intent.total_cents !== sale.total_cents ||
+          sale.payments.length !== 1 || sale.payments[0].method !== 'MERCADO_PAGO_DEMO_QA'
+        : intent.status !== 'RECHAZADA' || sale !== null || intent.sale_id != null))
+        throw new ApiTransportError('invalid-response', true)
+      return { intent, sale, replayed: raw.replayed }
+    },
     async finalize(intentId: string): Promise<QrFinalized> {
       if (!UUID_PATTERN.test(intentId)) throw new TypeError('Intento inválido')
       // El servidor usa el ID del QR como identidad idempotente: no generar una venta nueva al reintentar.
