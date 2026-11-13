@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.models import QrPaymentEvent, QrPaymentIntent, MercadoPagoTestOrder, MpSharedQaOrder
 from app.modules.auth.tokens import now_utc
 from app.modules.payments.qr_event_log import append_qr_event
+from app.modules.payments.qr_exhibition import exhibition_enabled
 from app.modules.payments.qr_service import (
     QrIntentService, QrIntentNotFound, QrIntentConflict, QrIntentForbidden,
 )
@@ -73,9 +74,15 @@ class QrEventService:
             raise
 
     def simulate(self, actor: UUID, session_id: UUID, business_id: UUID,
-                 intent_id: UUID, event_key: UUID, action: str) -> QrEventResult:
+                 intent_id: UUID, event_key: UUID, action: str, *,
+                 exhibition: bool = False) -> QrEventResult:
         try:
-            if not is_qr_lab_enabled():
+            if exhibition:
+                # Public exhibition only allows two fictional decisions.
+                # The old laboratory /simulate stays disabled on the public site.
+                if not exhibition_enabled() or action not in ("APROBAR", "RECHAZAR"):
+                    raise QrLabDisabled()
+            elif not is_qr_lab_enabled():
                 raise QrLabDisabled()
             company, member = self.intents._authorize(actor, session_id, business_id)
             # El laboratorio nunca se habilita para vendedores u otros empleados.
