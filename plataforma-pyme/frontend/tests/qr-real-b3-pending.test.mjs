@@ -92,3 +92,30 @@ test('B3 un almacenamiento inaccesible bloquea el POST; no hay degradación a me
   await assert.rejects(journal.reserve(p))
   await assert.rejects(journal.load(p.scope))
 })
+
+
+test('E3-3F descarte del QR obsoleto elimina solo su mismo actor, empresa y clave', async () => {
+  const {port,values}=fakePort(),journal=createQrPendingJournal(port)
+  const first=newQrPending(actor,business,body(),key)
+  await journal.reserve(first)
+  await journal.discardAbsent(first)
+  assert.equal(await journal.load(first.scope),null)
+
+  // Si otra pestaña guardó otra solicitud, nunca se puede borrar por error.
+  const next=newQrPending(actor,business,body(),'50fa6971-2a25-44a9-87f9-ef19b4cde1f7')
+  await journal.reserve(next)
+  await assert.rejects(journal.discardAbsent(first),QrPendingConflict)
+  assert.deepEqual(await journal.load(first.scope),next)
+  assert.equal(values.size,1)
+})
+
+test('E3-3F no se descarta journal adulterado ni almacenamiento inaccesible', async () => {
+  const {port,values,disable}=fakePort(),journal=createQrPendingJournal(port)
+  const original=newQrPending(actor,business,body(),key)
+  await journal.reserve(original)
+  values.set(original.scope,{...original,body:{...original.body,notes:'adulterado'}})
+  await assert.rejects(journal.discardAbsent(original),QrPendingConflict)
+  values.set(original.scope,structuredClone(original))
+  disable(true)
+  await assert.rejects(journal.discardAbsent(original))
+})
