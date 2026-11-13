@@ -20,7 +20,7 @@ export type MpSharedQaConnection={
   pos_id:string|null
   external_pos_id:string|null
   qr_png_data_uri:string|null
-  orders_integrated:false
+  orders_integrated:boolean
   remote_verified:false
   sandbox_only:true
 }
@@ -28,7 +28,7 @@ export function parseMpSharedQaConnection(raw:unknown,businessId:string):MpShare
   if(!isObject(raw)||raw.business_id!==businessId||
     typeof raw.enabled!=='boolean'||raw.virtual_link!==raw.enabled||
     raw.status!==(raw.enabled?'DISPONIBLE_QA':'DESHABILITADA')||
-    raw.orders_integrated!==false||raw.remote_verified!==false||raw.sandbox_only!==true||
+    typeof raw.orders_integrated!=='boolean'||raw.remote_verified!==false||raw.sandbox_only!==true||
     !(raw.mp_user_id===null||raw.mp_user_id==='3837129107')||
     !(raw.store_id===null||raw.store_id==='89968780')||
     !(raw.pos_id===null||raw.pos_id==='140776986')||
@@ -39,6 +39,11 @@ export function parseMpSharedQaConnection(raw:unknown,businessId:string):MpShare
     (!raw.enabled && (raw.qr_png_data_uri!==null||raw.mp_user_id!==null||raw.pos_id!==null)))
     throw new ApiTransportError('invalid-response',false)
   return raw as MpSharedQaConnection
+}
+export type MpSharedQaOrder=MpTestOrder & {shared_box:true}
+export function parseMpSharedQaOrder(raw:unknown,businessId:string,sourceId?:string):MpSharedQaOrder{
+  if(!isObject(raw)||raw.shared_box!==true)throw new ApiTransportError('invalid-response',false)
+  return parseMpTestOrder(raw,businessId,sourceId) as MpSharedQaOrder
 }
 export type MpTestOrder={
   id:string
@@ -97,6 +102,45 @@ export function createMpOfficialTestGateway(token:string,businessId:string,trans
     connection:()=>http.request<unknown>(root+'/connection').then(r=>parseMpTestConnection(r,businessId)),
     sharedConnection:()=>http.request<unknown>('/businesses/'+businessId+
       '/mercadopago/qa-shared/connection').then(r=>parseMpSharedQaConnection(r,businessId)),
+    sharedBySource:(sourceId:string)=>{
+      if(!UUID_PATTERN.test(sourceId))throw new TypeError('QR inválido')
+      return http.request<unknown>('/businesses/'+businessId+
+        '/mercadopago/qa-shared/orders/for-qr/'+sourceId)
+        .then(r=>r===null?null:parseMpSharedQaOrder(r,businessId,sourceId))
+    },
+    sharedCreate:(sourceId:string,key:string)=>{
+      if(!UUID_PATTERN.test(sourceId)||!UUID_V4_PATTERN.test(key))
+        throw new TypeError('QR o clave inválidos')
+      return http.request<unknown>('/businesses/'+businessId+
+        '/mercadopago/qa-shared/orders/from-qr/'+sourceId,{
+        method:'POST',idempotencyKey:key,
+      }).then(r=>parseMpSharedQaOrder(r,businessId,sourceId))
+    },
+    sharedReconcile:(id:string)=>{
+      if(!UUID_PATTERN.test(id))throw new TypeError('Orden inválida')
+      return http.request<unknown>('/businesses/'+businessId+
+        '/mercadopago/qa-shared/orders/'+id+'/reconcile',{method:'POST'})
+        .then(r=>parseMpSharedQaOrder(r,businessId))
+    },
+    sharedCancel:(id:string)=>{
+      if(!UUID_PATTERN.test(id))throw new TypeError('Orden inválida')
+      return http.request<unknown>('/businesses/'+businessId+
+        '/mercadopago/qa-shared/orders/'+id+'/cancel',{method:'POST'})
+        .then(r=>parseMpSharedQaOrder(r,businessId))
+    },
+    sharedSettle:(id:string)=>{
+      if(!UUID_PATTERN.test(id))throw new TypeError('Orden inválida')
+      return http.request<unknown>('/businesses/'+businessId+
+        '/mercadopago/qa-shared/orders/'+id+'/settle-qa',{method:'POST'})
+        .then(r=>{
+          if(!isObject(r)||!isObject(r.order)||!UUID_PATTERN.test(String(r.sale_id))||
+            typeof r.replayed!=='boolean')throw new ApiTransportError('invalid-response',true)
+          const order=parseMpSharedQaOrder(r.order,businessId)
+          if(order.id!==id||order.sale_id!==r.sale_id||!order.sale_registered)
+            throw new ApiTransportError('invalid-response',true)
+          return {order,sale_id:r.sale_id as string,replayed:r.replayed}
+        })
+    },
     async startOAuth():Promise<string>{
       const result=await http.request<unknown>(root+'/oauth/start',{method:'POST'})
       if(!isObject(result)||typeof result.authorization_url!=='string'){
