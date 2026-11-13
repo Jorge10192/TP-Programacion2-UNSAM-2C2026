@@ -7,7 +7,7 @@ import type { QrIntent, QrPaymentEvent, QrSimAction } from './qrIntentGateway.ts
 import type { SaleReceipt } from '../sales/realSalesReadGateway.ts'
 import { qrEffectiveStatus, qrStatusPresentation } from './qrUx.ts'
 import { createMpOfficialTestGateway } from './mpOfficialTestGateway.ts'
-import type { MpTestConnection, MpTestOrder } from './mpOfficialTestGateway.ts'
+import type { MpTestConnection, MpTestOrder, MpSharedQaConnection, MpSharedQaOrder } from './mpOfficialTestGateway.ts'
 import './realQrIntent.css'
 
 type Props = {
@@ -50,6 +50,8 @@ export function RealQrIntentPage({
   const [events, setEvents] = useState<QrPaymentEvent[]>([])
   const [officialConnection, setOfficialConnection] = useState<MpTestConnection|null>(null)
   const [officialOrder, setOfficialOrder] = useState<MpTestOrder|null>(null)
+  const [sharedQa, setSharedQa] = useState<MpSharedQaConnection|null>(null)
+  const [sharedOrder, setSharedOrder] = useState<MpSharedQaOrder|null>(null)
   const [officialBusy, setOfficialBusy] = useState(false)
   const [officialError, setOfficialError] = useState('')
   const [receipt, setReceipt] = useState<SaleReceipt | null>(null)
@@ -73,14 +75,18 @@ export function RealQrIntentPage({
       api.events(intentId, ctrl.signal),
       officialApi.connection(),
       officialApi.bySource(intentId),
+      officialApi.sharedConnection(),
+      officialApi.sharedBySource(intentId),
       operations.business(businessId, ctrl.signal),
       operations.locations(businessId, ctrl.signal),
-    ]).then(([qr, history, officialState, officialSaved, company, sites]) => {
+]).then(([qr, history, officialState, officialSaved, sharedState, sharedSaved, company, sites]) => {
       if (ctrl.signal.aborted) return
       setIntent(qr)
       setEvents(history)
       setOfficialConnection(officialState)
       setOfficialOrder(officialSaved)
+      setSharedQa(sharedState)
+      setSharedOrder(sharedSaved)
       if (qr.status === 'FINALIZADA') {
         void api.receipt(intentId, ctrl.signal).then(sale=>{
           if (!ctrl.signal.aborted && qr.sale_id === sale.id) setReceipt(sale)
@@ -111,6 +117,71 @@ export function RealQrIntentPage({
       if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
       else setOfficialError(qrIntentError(err))
     } finally{setOfficialBusy(false)}
+  }
+
+  async function refreshShared() {
+    if (officialBusy) return
+    setOfficialBusy(true);setOfficialError('')
+    try {
+      const [connected,order]=await Promise.all([
+        officialApi.sharedConnection(),officialApi.sharedBySource(intentId),
+      ])
+      setSharedQa(connected)
+      setSharedOrder(order)
+    } catch(err) {
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      else setOfficialError(qrIntentError(err))
+    } finally {setOfficialBusy(false)}
+  }
+
+  async function makeSharedOrder() {
+    if(!intent||!sharedQa?.enabled||!sharedQa.orders_integrated||officialBusy||
+      (sharedOrder!==null && !['INDETERMINADA','PREPARANDO'].includes(sharedOrder.status)))return
+    if(!window.confirm('¿Asignar esta venta a la caja QR de Mercado Pago TEST? Solo para cuentas de prueba.'))return
+    setOfficialBusy(true);setOfficialError('')
+    try {
+      setSharedOrder(await officialApi.sharedCreate(intentId,intent.request_id))
+    } catch(err) {
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      else setOfficialError(qrIntentError(err)+
+        ' La caja puede estar ocupada por otra empresa. Consultá la orden antes de reintentar.')
+      void officialApi.sharedBySource(intentId).then(setSharedOrder).catch(()=>{})
+    } finally {setOfficialBusy(false)}
+  }
+
+  async function reconcileShared() {
+    if(!sharedOrder||officialBusy)return
+    setOfficialBusy(true);setOfficialError('')
+    try {setSharedOrder(await officialApi.sharedReconcile(sharedOrder.id))}
+    catch(err) {
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      else setOfficialError(qrIntentError(err))
+    } finally {setOfficialBusy(false)}
+  }
+
+  async function cancelShared() {
+    if(!sharedOrder||sharedOrder.status!=='CREADA'||officialBusy||
+      !window.confirm('¿Cancelar la orden de prueba y liberar la caja?'))return
+    setOfficialBusy(true);setOfficialError('')
+    try {setSharedOrder(await officialApi.sharedCancel(sharedOrder.id))}
+    catch(err) {
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      else setOfficialError(qrIntentError(err)+' Consultá estado antes de volver a usar la caja.')
+    } finally {setOfficialBusy(false)}
+  }
+
+  async function settleShared() {
+    if(!sharedOrder||sharedOrder.status!=='PROCESADA'||officialBusy||!isManager||
+      !window.confirm('¿Registrar venta QA tras verificar pago TEST? Se descontará stock exactamente una vez.'))return
+    setOfficialBusy(true);setOfficialError('')
+    try {
+      const result=await officialApi.sharedSettle(sharedOrder.id)
+      setSharedOrder(result.order)
+    } catch(err) {
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      else setOfficialError(qrIntentError(err)+' Consultá la venta antes de repetir el cierre.')
+      void officialApi.sharedBySource(intentId).then(setSharedOrder).catch(()=>{})
+    } finally {setOfficialBusy(false)}
   }
 
   async function makeOfficialTestOrder() {
