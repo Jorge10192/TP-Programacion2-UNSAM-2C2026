@@ -206,6 +206,20 @@ export function createQrIntentGateway(token: string, businessId: string, transpo
         })
       })
     },
+    simulateExhibition(intentId: string, action: 'APROBAR' | 'RECHAZAR', eventKey: string): Promise<QrIntent> {
+      if (!UUID_PATTERN.test(intentId) || !UUID_V4_PATTERN.test(eventKey) ||
+          !['APROBAR', 'RECHAZAR'].includes(action))
+        throw new TypeError('Simulación QR de exhibición inválida')
+      return api.request<unknown>(path + '/' + intentId + '/exhibition-decision', {
+        method: 'POST', body: { action }, idempotencyKey: eventKey,
+      }).then(raw => {
+        const value = parseQrIntent(raw, businessId)
+        if (value.id !== intentId || value.sale_id != null ||
+            value.status !== (action === 'APROBAR' ? 'APROBADA_DEMO' : 'RECHAZADA'))
+          throw new ApiTransportError('invalid-response', true)
+        return value
+      })
+    },
     simulate(intentId: string, action: QrSimAction, eventKey: string): Promise<QrIntent> {
       if (!UUID_PATTERN.test(intentId) || !UUID_V4_PATTERN.test(eventKey) ||
           !['APROBAR','RECHAZAR','EXPIRAR','INDETERMINAR'].includes(action))
