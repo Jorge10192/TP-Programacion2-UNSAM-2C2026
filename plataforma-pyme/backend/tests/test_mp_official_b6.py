@@ -196,6 +196,37 @@ def test_hmac_signature_and_ttl_not_body():
                                data_id="ORD01K371WBFDS4MD9JG0K8ZMEDIF",now=now)
 
 
+def test_webhook_rejects_production_events_and_unsigned_body_even_with_valid_hmac(monkeypatch):
+    """Un mensaje firmado no sirve para inyectar producción ni alterar resource ID."""
+    secret="mp-b6-qa-signature-only"
+    monkeypatch.setenv("PYME_MP_WEBHOOK_SECRET",secret)
+    order_id="ORD01K371WBFDS4MD9JG0K8ZMECBE"
+    request_id="mp-test-webhook-request"
+    ts=str(int(time.time()))
+    digest=hmac.new(secret.encode(),
+        f"id:{order_id.lower()};request-id:{request_id};ts:{ts};".encode(),
+        hashlib.sha256).hexdigest()
+    headers={"x-signature":f"ts={ts},v1={digest}","x-request-id":request_id}
+    url="/api/v1/mercadopago/official-test/orders/webhook"
+    with TestClient(create_app()) as client:
+        for bad in [
+            {"type":"order","action":"order.processed","live_mode":True,
+             "data":{"id":order_id}},
+            {"type":"order","action":"order.processed","live_mode":False,
+             "data":{"id":"ORD01K371WBFDS4MD9JG0K8ZMEZZ"}},
+            {"type":"order","action":"order.processed","live_mode":False},
+            {"type":"payment","action":"payment.created","live_mode":False,
+             "data":{"id":order_id}},
+        ]:
+            response=client.post(url,params={"data.id":order_id,"type":"order"},
+                                 headers=headers,json=bad)
+            assert response.status_code==400,response.text
+        assert client.post(url,params={"data.id":order_id,"type":"order"},
+                           headers={"x-signature":"ts=1,v1=bogus","x-request-id":request_id},
+                           json={"type":"order","action":"order.processed",
+                                 "live_mode":False,"data":{"id":order_id}}).status_code==401
+
+
 def test_api_official_test_disabled_by_default(monkeypatch):
     monkeypatch.delenv("PYME_MP_QR_TEST_ENABLED",raising=False)
     with TestClient(create_app()) as client:
