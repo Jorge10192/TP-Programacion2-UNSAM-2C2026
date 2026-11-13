@@ -19,7 +19,8 @@ type Props = {
   onUnauthorized: () => void
 }
 
-const LAB_UI_ENABLED = import.meta.env.VITE_PYME_ENABLE_QR_DEMO_LAB === '1'
+const EXHIBITION_UI = import.meta.env.VITE_PYME_QR_EXHIBITION === '1'
+const LAB_UI_ENABLED = !EXHIBITION_UI && import.meta.env.VITE_PYME_ENABLE_QR_DEMO_LAB === '1'
 const FINALIZE_QA_ENABLED = LAB_UI_ENABLED && import.meta.env.VITE_PYME_ENABLE_QR_FINALIZATION_QA === '1'
 const ACTIONS: { action: QrSimAction; label: string }[] = [
   { action: 'APROBAR', label: 'Simular aprobación' },
@@ -73,10 +74,10 @@ export function RealQrIntentPage({
     void Promise.all([
       api.get(intentId, ctrl.signal),
       api.events(intentId, ctrl.signal),
-      officialApi.connection(),
-      officialApi.bySource(intentId),
-      officialApi.sharedConnection(),
-      officialApi.sharedBySource(intentId),
+      EXHIBITION_UI ? Promise.resolve(null) : officialApi.connection(),
+      EXHIBITION_UI ? Promise.resolve(null) : officialApi.bySource(intentId),
+      EXHIBITION_UI ? Promise.resolve(null) : officialApi.sharedConnection(),
+      EXHIBITION_UI ? Promise.resolve(null) : officialApi.sharedBySource(intentId),
       operations.business(businessId, ctrl.signal),
       operations.locations(businessId, ctrl.signal),
 ]).then(([qr, history, officialState, officialSaved, sharedState, sharedSaved, company, sites]) => {
@@ -329,9 +330,9 @@ export function RealQrIntentPage({
   return <section className="real-auth-card real-business-panel e3-qr-page" aria-label="Cobro Mercado Pago QR DEMO">
     <div className="e3-qr-heading">
       <div>
-        <p className="e3-qr-eyebrow">Punto de venta · Cobro individual</p>
-        <h1>Mercado Pago QR <span>DEMO</span></h1>
-        <p>Desglose completo del importe de esta venta, almacenado en PostgreSQL.</p>
+        <p className="e3-qr-eyebrow">{EXHIBITION_UI ? 'Punto de venta · Exhibición no vinculante' : 'Punto de venta · Cobro individual'}</p>
+        <h1>{EXHIBITION_UI ? 'QR de exhibición' : 'Mercado Pago QR'} <span>{EXHIBITION_UI ? 'NO PAGABLE' : 'DEMO'}</span></h1>
+        <p>{EXHIBITION_UI ? 'Importe y detalle de artículos solo para mostrar. No constituye un pago ni una venta.' : 'Desglose completo del importe de esta venta, almacenado en PostgreSQL.'}</p>
       </div>
       <div className="e3-qr-heading-actions">
         <button type="button" className="real-auth-secondary" disabled={busy}
@@ -342,7 +343,8 @@ export function RealQrIntentPage({
     </div>
 
     <p className="e3-qr-warning" role="note">
-      {sharedQa?.enabled
+      {EXHIBITION_UI ? <><strong>EXHIBICIÓN · NO PAGABLE.</strong> QR sintético de Plataforma PyME. No está vinculado a una cuenta ni a una caja de Mercado Pago; escanearlo no permite pagar. No genera órdenes, cobros, ventas ni movimientos de stock.</>
+        : sharedQa?.enabled
         ? sharedOrder
           ? <><strong>MERCADO PAGO · QR ESTÁTICO TEST.</strong> Orden asignada a nuestra única caja. Verificá el pago remoto antes de vender.</>
           : <><strong>CAJA QA COMPARTIDA.</strong> Creá la orden para esta venta antes de mostrar el QR cobrable.</>
@@ -350,7 +352,7 @@ export function RealQrIntentPage({
           ? <><strong>ORDEN OFICIAL · SOLO ENTORNO TEST.</strong> Este QR procede de Orders API y puede probarse con cuentas de comprador de prueba. No lo uses para cobrar fondos reales. La venta QA se registra por separado tras conciliación.</>
           : <><strong>SIMULACIÓN · NO COBRABLE.</strong> El QR DEMO solo contiene una referencia ficticia. No es una orden de Mercado Pago ni recibe dinero real.</>}
     </p>
-    {!officialOrder && !sharedOrder && !sharedQa?.enabled && presentation && <div className={'e3-qr-explainer e3-qr-tone-'+presentation.tone} role="status">
+    {!EXHIBITION_UI && !officialOrder && !sharedOrder && !sharedQa?.enabled && presentation && <div className={'e3-qr-explainer e3-qr-tone-'+presentation.tone} role="status">
       <strong>{presentation.title}</strong>
       <p>{presentation.description}</p>
       <small><strong>Próximo paso:</strong> {presentation.nextStep}</small>
@@ -360,9 +362,11 @@ export function RealQrIntentPage({
     {intent && !loading && <div className="e3-qr-layout">
       <div className="e3-qr-visual-panel">
         <div className="e3-qr-status" role="status">
-          {sharedOrder ? 'Caja compartida TEST · '+sharedOrder.status : officialOrder ? 'Mercado Pago TEST · '+officialOrder.status : presentation?.title ?? 'Estado QR'}
+          {EXHIBITION_UI ? 'EXHIBICIÓN · NO PAGABLE' : sharedOrder ? 'Caja compartida TEST · '+sharedOrder.status : officialOrder ? 'Mercado Pago TEST · '+officialOrder.status : presentation?.title ?? 'Estado QR'}
         </div>
-        {sharedOrder?.qr_png_data_uri
+        {EXHIBITION_UI
+          ? <img src={intent.qr_png_data_uri} alt="QR sintético de exhibición, no pagable y sin proveedor financiero" className="e3-qr-image" width="320" height="320"/>
+          : sharedOrder?.qr_png_data_uri
           ? <img src={sharedOrder.qr_png_data_uri} alt="QR oficial estático de la caja única TEST con orden asociada" className="e3-qr-image" width="320" height="320"/>
           : officialOrder?.qr_png_data_uri
           ? <img src={officialOrder.qr_png_data_uri}
@@ -374,29 +378,30 @@ export function RealQrIntentPage({
                 className="e3-qr-image" width="320" height="320"/>
             : <p role="status">Sin orden cobrable: prepará un cobro TEST para esta venta.</p>}
         <strong className="e3-qr-not-payable">
-          {sharedQa?.enabled ? (sharedOrder?.status==='CREADA'
+          {EXHIBITION_UI ? 'EXHIBICIÓN · NO ES UN MEDIO DE PAGO' : sharedQa?.enabled ? (sharedOrder?.status==='CREADA'
             ? 'QR CAJA ÚNICA · ORDEN TEST ACTIVA' : 'SIN ORDEN COBRABLE ACTIVA')
             : officialOrder ? 'MERCADO PAGO · CUENTA TEST · NO PRODUCCIÓN'
             : 'QR DE PRUEBA · NO COBRABLE'}
         </strong>
         <p className="e3-qr-total">{pesos(intent.total_cents)}</p>
         <p className="e3-qr-clock">{
+          EXHIBITION_UI ? 'Vigencia de la exhibición: ' + new Date(intent.expires_at).toLocaleString('es-AR') :
           displayStatus === 'ESPERANDO_PAGO'
             ? 'Vence en ' + Math.floor(secondsRemaining / 60) + ':' +
               String(secondsRemaining % 60).padStart(2, '0')
             : 'Vencimiento: ' + new Date(intent.expires_at).toLocaleString('es-AR')
         }</p>
-        <p className="e3-qr-reference">Referencia de prueba: <code>{intent.reference}</code></p>
+        <p className="e3-qr-reference">Referencia {EXHIBITION_UI ? 'de exhibición' : 'de prueba'}: <code>{intent.reference}</code></p>
         <div className="e3-qr-buttons">
           <button type="button" className="real-auth-secondary" disabled={busy}
-            onClick={() => void refresh()}>{busy ? 'Consultando…' : 'Consultar estado'}</button>
+            onClick={() => void refresh()}>{busy ? 'Consultando…' : EXHIBITION_UI ? 'Actualizar exhibición' : 'Consultar estado'}</button>
           {!officialOrder && !sharedOrder && displayStatus === 'ESPERANDO_PAGO' &&
             <button type="button" className="real-auth-secondary" disabled={busy}
-              onClick={() => void cancel()}>Cancelar QR</button>}
+              onClick={() => void cancel()}>{EXHIBITION_UI ? 'Cerrar exhibición' : 'Cancelar QR'}</button>}
         </div>
       </div>
       <div className="e3-qr-details">
-        {sharedQa?.enabled && <section className="e3-qr-official" aria-label="Mercado Pago caja única QR TEST">
+        {!EXHIBITION_UI && sharedQa?.enabled && <section className="e3-qr-official" aria-label="Mercado Pago caja única QR TEST">
           <div className="e3-qr-official-head">
             <h2>Mercado Pago · Caja QR compartida</h2>
             <span className="e3-qr-test-pill">SOLO QA</span>
@@ -446,7 +451,7 @@ export function RealQrIntentPage({
               <p role="status">Orden terminal. La caja se libera al confirmar ese estado.</p>}
           </>}
         </section>}
-        {!sharedQa?.enabled && <section className="e3-qr-official" aria-label="Integración oficial Mercado Pago TEST">
+        {!EXHIBITION_UI && !sharedQa?.enabled && <section className="e3-qr-official" aria-label="Integración oficial Mercado Pago TEST">
           <div className="e3-qr-official-head">
             <h2>Mercado Pago oficial · TEST</h2>
             <span className="e3-qr-test-pill">SIN PRODUCCIÓN</span>
@@ -595,7 +600,7 @@ export function RealQrIntentPage({
               <small>{new Date(e.created_at).toLocaleString('es-AR')} · Evento {e.sequence}</small>
             </li>)}</ol>}
         </div>
-        <h2>Detalle de la venta</h2>
+        <h2>{EXHIBITION_UI ? 'Detalle de la operación exhibida' : 'Detalle de la venta'}</h2>
         <p><strong>Empresa:</strong> {companyName || 'Empresa activa'}</p>
         <p><strong>Ubicación:</strong> {intent.location_id ? siteName || 'Sede de venta' : 'Servicios sin sede'}</p>
         <div className="e3-qr-lines" aria-label="Renglones congelados del intento">
