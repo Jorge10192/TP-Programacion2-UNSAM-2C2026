@@ -10,9 +10,10 @@ from app.modules.auth.session_service import AuthContext
 from app.modules.purchases.service import PurchaseSessionInvalid, PurchaseBusinessUnavailable, PurchasePermissionDenied
 from app.modules.payments.qr_schemas import (
     CreateQrIntentRequest, QrIntentView, QrPaymentEventView, QrSimulateRequest, QrFinalizedView,
-    QrIntentSummaryView,
+    QrIntentSummaryView, QrExhibitionDecisionRequest, QrExhibitionDecisionView,
 )
 from app.modules.payments.qr_event_service import QrEventService, QrLabDisabled
+from app.modules.payments.qr_exhibition_service import QrExhibitionService
 from app.modules.payments.qr_settlement_service import (
     QrSettlementService, QrFinalizationDisabled, QrFinalizationNeedsReview,
 )
@@ -205,3 +206,26 @@ def qr_sale_receipt(
             context.user.id, context.auth_session.id, business_id, intent_id)
     except Exception as error:
         _handle(error)
+
+
+@router.post("/{intent_id}/exhibition-simulation",
+    response_model=QrExhibitionDecisionView, status_code=201,
+    responses={200: {"description": "Misma simulación recuperada, no duplica venta"},
+               403: {"description": "Entorno o rol sin autorización"},
+               404: {"description": "Intento ajeno o inexistente"},
+               409: {"description": "Estado, vencimiento o stock incompatible"}},
+    summary="Simular cobro interno o rechazo en exhibición: sin Mercado Pago")
+def exhibition_simulation(
+    business_id: UUID, intent_id: UUID, command: QrExhibitionDecisionRequest,
+    response: Response, idempotency_key: UUID4 = Header(alias="Idempotency-Key"),
+    context: AuthContext = Depends(current_auth), db: Session = Depends(get_db),
+) -> QrExhibitionDecisionView:
+    try:
+        result = QrExhibitionService(db).decide(
+            context.user.id, context.auth_session.id, business_id,
+            intent_id, idempotency_key, command.action,
+        )
+    except Exception as error:
+        _handle(error)
+    response.status_code = 200 if result.replayed else 201
+    return QrExhibitionDecisionView(intent=result.intent, sale=result.sale, replayed=result.replayed)
