@@ -11,7 +11,7 @@ services:
     dockerfilePath: ./plataforma-pyme/Dockerfile.public
     dockerContext: ./plataforma-pyme
     healthCheckPath: /ready
-    autoDeployTrigger: "off"
+    autoDeployTrigger: "checksPass"
     envVars:
       - key: PORT
         value: "8000"
@@ -29,6 +29,8 @@ services:
         value: require
       # Never connect the locally verified shared seller TEST token to a public site.
       - key: PYME_QR_EXHIBITION_ENABLED
+        value: "1"
+      - key: PYME_QR_EXHIBITION_DECISIONS_ENABLED
         value: "1"
       - key: PYME_ENABLE_QR_DEMO_LAB
         value: "0"

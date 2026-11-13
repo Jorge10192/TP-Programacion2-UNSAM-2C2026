@@ -84,6 +84,8 @@ export function RealPosCheckout({
   const [qrUnknown, setQrUnknown] = useState(false)
   const [qrBusy, setQrBusy] = useState(false)
   const qrAttempt = useRef<QrPending | null>(null)
+  const qrNavigateRef = useRef(onNavigate)
+  useEffect(() => { qrNavigateRef.current = onNavigate }, [onNavigate])
   const qrScope = useMemo(() => qrPendingScope(userId, businessId), [userId,businessId])
   const [qrRecoveryChecked, setQrRecoveryChecked] = useState(false)
   const [stage, setStage] = useState<Stage>('checking')
@@ -133,9 +135,43 @@ export function RealPosCheckout({
   useEffect(() => {
     let mounted = true
     onDraftLock(true) // fail closed until IndexedDB verifies absence of pending command
-    void Promise.all([coordinator.pending(), qrPendingJournal.load(qrScope)]).then(([row, qrRow]) => {
+    void Promise.all([coordinator.pending(), qrPendingJournal.load(qrScope)]).then(async ([row, qrRow]) => {
       if (!mounted) return
       setPending(row)
+      // Recuperación automática del QR de exhibición: no exigir F12,
+      // IndexedDB ni comandos manuales para volver a utilizar el POS.
+      if (EXHIBITION_UI && qrRow) {
+        try {
+          const existing = await qrApi.byRequest(qrRow.key)
+          if (!mounted) return
+          await qrPendingJournal.close(qrRow, existing)
+          if (!mounted) return
+          qrAttempt.current = null
+          setQrUnknown(false)
+          onDraftLock(Boolean(row))
+          setStage(row ? 'pending' : 'editing')
+          qrNavigateRef.current('/real/empresas/' + businessId + '/qr-cobros/' + existing.id)
+          return
+        } catch (error) {
+          if (error instanceof ApiHttpError && error.status === 404) {
+            // Solo un GET 404 autenticado habilita el descarte local.
+            // Un timeout, 500 o sesión vencida conserva la solicitud.
+            try {
+              await qrPendingJournal.discardAbsent(qrRow)
+              if (!mounted) return
+              qrAttempt.current = null
+              setQrUnknown(false)
+              setNotice('Se limpió una solicitud QR anterior que no existe en esta base de pruebas.')
+              setStage(row ? 'pending' : 'editing')
+              onDraftLock(Boolean(row))
+              return
+            } catch {
+              // Si IndexedDB cambió o falló, conservar el bloqueo existente.
+            }
+          }
+        }
+      }
+      if (!mounted) return
       qrAttempt.current = qrRow
       setQrUnknown(Boolean(qrRow))
       setStage(row ? 'pending' : 'editing')
@@ -147,7 +183,7 @@ export function RealPosCheckout({
       onDraftLock(true)
     })
     return () => { mounted = false }
-  }, [coordinator, onDraftLock, qrScope])
+  }, [coordinator, onDraftLock, qrScope, qrApi, businessId])
 
   const changePayment = (i: number, changes: Partial<PosPaymentDraft>) => {
     setPaymentModified(true)
@@ -232,13 +268,31 @@ export function RealPosCheckout({
     } catch (error) {
       setQrUnknown(true)
       if (error instanceof ApiHttpError && error.status === 404) {
-        setQrRecoveryChecked(true)
-        setNotice('GET devolvió 404. El POST anterior podría no haber llegado. Podés reintentar explícitamente la misma clave y el mismo cuerpo guardado.')
+        if (EXHIBITION_UI && qrAttempt.current) {
+          // La exhibición no mueve dinero: si el servidor confirma que
+          // el QR no existe, liberar el POS sin limpiar todo el navegador.
+          try {
+            await qrPendingJournal.discardAbsent(qrAttempt.current)
+            qrAttempt.current = null
+            setQrUnknown(false)
+            setQrRecoveryChecked(false)
+            setNotice('QR anterior inexistente: ya podés generar uno nuevo.')
+            setStage('editing')
+            onDraftLock(Boolean(pending))
+          } catch {
+            setNotice('No se pudo limpiar la solicitud QR local. Conservamos el bloqueo para no duplicarla.')
+            onDraftLock(true)
+          }
+        } else {
+          setQrRecoveryChecked(true)
+          setNotice('GET devolvió 404. El POST anterior podría no haber llegado. Podés reintentar explícitamente la misma clave y el mismo cuerpo guardado.')
+          onDraftLock(true)
+        }
       } else {
         setNotice(qrIntentError(error))
+        onDraftLock(true)
         if (error instanceof ApiHttpError && error.status === 401) onUnauthorized()
       }
-      onDraftLock(true)
     } finally {
       busy.current = false
       setQrBusy(false)
@@ -400,7 +454,7 @@ export function RealPosCheckout({
         {qrConnection === 'error' && <p role="alert">No se pudo verificar la vinculación. Abrí Medios de cobro y volvé a intentar.</p>}
         {qrConnection === 'inactive' && <p role="status">Antes de generar un QR, vinculá la cuenta de Mercado Pago DEMO de esta empresa.</p>}
         {qrUnknown && <p role="alert" className="real-auth-message real-ops-warning">
-          Existe un intento QR guardado en IndexedDB. No modifiques el carrito ni crees otra clave: consultá su estado original.
+          Hay una solicitud QR anterior pendiente. Estamos comprobando su estado para evitar duplicados.
         </p>}
         <div className="e3-pos-qr-buttons">
           {qrConnection === 'active' && <button type="button" className="real-auth-primary"

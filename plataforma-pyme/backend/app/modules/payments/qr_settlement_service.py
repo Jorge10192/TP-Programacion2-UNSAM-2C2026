@@ -16,6 +16,8 @@ from app.infrastructure.models import (
     Sale, SaleLine, MercadoPagoTestOrder, MpSharedQaOrder,
 )
 from app.modules.payments.qr_event_log import append_qr_event
+from app.modules.payments.qr_exhibition import exhibition_decisions_enabled
+from app.modules.auth.tokens import now_utc
 from app.modules.payments.qr_service import (
     QrIntentService, QrIntentConflict, QrIntentForbidden, QrIntentNotFound,
 )
@@ -115,9 +117,15 @@ class QrSettlementService:
             raise QrIntentConflict()
         return command, lines
 
-    def finalize(self, actor: UUID, session: UUID, business: UUID, intent_id: UUID) -> QrSettlementView:
+    def finalize(self, actor: UUID, session: UUID, business: UUID, intent_id: UUID,
+                 *, exhibition_key: UUID | None = None) -> QrSettlementView:
         try:
-            if not qr_finalization_enabled():
+            # Public exhibition has its own guarded path. The legacy B4
+            # finalization remains disposable-QA-only.
+            if exhibition_key is not None:
+                if not exhibition_decisions_enabled():
+                    raise QrFinalizationDisabled()
+            elif not qr_finalization_enabled():
                 raise QrFinalizationDisabled()
             self._authorize(actor, session, business, manager=True)
             intent = self.qr._lookup_by_id(business, intent_id, lock=True)
@@ -138,6 +146,16 @@ class QrSettlementService:
             if link is not None:
                 if intent.status != "FINALIZADA":
                     raise QrIntentConflict()
+                if exhibition_key is not None:
+                    original = self.db.scalar(select(QrPaymentEvent.id).where(
+                        QrPaymentEvent.business_id == business,
+                        QrPaymentEvent.intent_id == intent_id,
+                        QrPaymentEvent.event_key == exhibition_key,
+                        QrPaymentEvent.action == "APROBAR",
+                        QrPaymentEvent.actor_id == actor,
+                    ).limit(1))
+                    if original is None:
+                        raise QrIntentConflict()
                 response = QrSettlementView(
                     intent=self.qr._view(intent),
                     sale=self._sale_view(business, link.sale_id),
@@ -146,6 +164,18 @@ class QrSettlementService:
                 self.db.rollback()
                 return response
 
+            if exhibition_key is not None:
+                if intent.status != "ESPERANDO_PAGO" or intent.expires_at <= now_utc():
+                    raise QrIntentConflict()
+                # Approval and sale use the SAME transaction: no phantom
+                # approval is persisted when inventory or sale validation fails.
+                intent.status = "APROBADA_DEMO"
+                self.db.flush()
+                append_qr_event(
+                    self.db, intent, actor_id=actor, event_key=exhibition_key,
+                    action="APROBAR", from_status="ESPERANDO_PAGO",
+                    to_status="APROBADA_DEMO",
+                )
             if intent.status == "REQUIERE_REVISION":
                 raise QrFinalizationNeedsReview()
             if intent.status != "APROBADA_DEMO":
@@ -220,7 +250,10 @@ class QrSettlementService:
         except (SaleInsufficientStock, SaleInvalidReference, SaleLocationNotEnabled,
                 SaleMissingCatalogPrice, SalePermissionDenied) as error:
             self.db.rollback()
-            self._mark_needs_review(actor, session, business, intent_id)
+            if exhibition_key is None:
+                self._mark_needs_review(actor, session, business, intent_id)
+            # Public simulation intentionally leaves the QR pending on
+            # any failure; never claim a payment or partially debit inventory.
             raise QrFinalizationNeedsReview() from error
         except Exception:
             self.db.rollback()

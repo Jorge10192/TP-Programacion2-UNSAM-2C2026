@@ -83,6 +83,18 @@ class QrSimulateRequest(BaseModel):
     action: Literal["APROBAR", "RECHAZAR", "EXPIRAR", "INDETERMINAR"]
 
 
+class QrExhibitionDecisionRequest(BaseModel):
+    """Only a user's explicit fictitious decision, no payment credentials."""
+    model_config = ConfigDict(extra="forbid")
+    action: Literal["ACEPTAR", "RECHAZAR"]
+
+
+class QrExhibitionDecisionView(BaseModel):
+    intent: QrIntentView
+    sale: SaleView | None = None
+    replayed: bool
+
+
 class QrPaymentEventView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID

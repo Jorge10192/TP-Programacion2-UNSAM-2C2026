@@ -10,9 +10,10 @@ from app.modules.auth.session_service import AuthContext
 from app.modules.purchases.service import PurchaseSessionInvalid, PurchaseBusinessUnavailable, PurchasePermissionDenied
 from app.modules.payments.qr_schemas import (
     CreateQrIntentRequest, QrIntentView, QrPaymentEventView, QrSimulateRequest, QrFinalizedView,
-    QrIntentSummaryView,
+    QrIntentSummaryView, QrExhibitionDecisionRequest, QrExhibitionDecisionView,
 )
 from app.modules.payments.qr_event_service import QrEventService, QrLabDisabled
+from app.modules.payments.qr_exhibition_decisions import ExhibitionDecisionService
 from app.modules.payments.qr_settlement_service import (
     QrSettlementService, QrFinalizationDisabled, QrFinalizationNeedsReview,
 )
@@ -205,3 +206,30 @@ def qr_sale_receipt(
             context.user.id, context.auth_session.id, business_id, intent_id)
     except Exception as error:
         _handle(error)
+
+
+@router.post("/{intent_id}/exhibition-decision", response_model=QrExhibitionDecisionView,
+    status_code=201,
+    responses={200: {"description": "Reintento de la misma decisión; no duplica venta"},
+               401: {"description": "Sin sesión"},
+               403: {"description": "Rol o simulación no habilitada"},
+               404: {"description": "QR de otra empresa o inexistente"},
+               409: {"description": "QR vencido, cancelado, stock insuficiente o ya resuelto"}},
+    summary="Aceptar ficticiamente una venta o rechazar QR sintético, sin Mercado Pago")
+def exhibition_decision(
+    business_id: UUID, intent_id: UUID, command: QrExhibitionDecisionRequest,
+    response: Response,
+    idempotency_key: UUID4 = Header(alias="Idempotency-Key"),
+    context: AuthContext = Depends(current_auth), db: Session = Depends(get_db),
+) -> QrExhibitionDecisionView:
+    try:
+        result = ExhibitionDecisionService(db).decide(
+            context.user.id, context.auth_session.id, business_id,
+            intent_id, idempotency_key, command.action,
+        )
+    except Exception as error:
+        _handle(error)
+    response.status_code = 200 if result.replayed else 201
+    return QrExhibitionDecisionView(
+        intent=result.intent, sale=result.sale, replayed=result.replayed,
+    )

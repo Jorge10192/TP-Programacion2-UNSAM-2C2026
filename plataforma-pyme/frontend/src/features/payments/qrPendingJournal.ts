@@ -90,6 +90,14 @@ export function createQrPendingJournal(port:QrPendingPort){
       if(saved.key!==entry.key||!qrIntentMatchesPending(saved,response))throw new QrPendingConflict()
       await port.remove(saved.scope,saved.key)
     },
+    // Exclusivo de la recuperación de exhibición después de GET 404:
+    // nunca borrar otra solicitud que haya reemplazado a la consultada.
+    async discardAbsent(entry:QrPending):Promise<void>{
+      const checked=parseQrPending(entry,entry.scope)
+      const saved=parseQrPending(await port.read(checked.scope),checked.scope)
+      if(saved.key!==checked.key||!same(saved,checked))throw new QrPendingConflict()
+      await port.remove(saved.scope,saved.key)
+    },
   }
 }
 const DATABASE='asistente-pyme-real-qr-v1'
