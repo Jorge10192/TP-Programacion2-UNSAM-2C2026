@@ -8,7 +8,8 @@ COPY frontend/ ./
 # A build-time Vite flag: enable normal POS mutations, NOT QR simulations.
 ENV VITE_PYME_ENABLE_REAL_SALES=1 \
     VITE_PYME_ENABLE_QR_DEMO_LAB=0 \
-    VITE_PYME_ENABLE_QR_FINALIZATION_QA=0
+    VITE_PYME_ENABLE_QR_FINALIZATION_QA=0 \
+    VITE_PYME_QR_EXHIBITION=1
 RUN npm run build
 
 FROM python:3.12-slim
