@@ -1,0 +1,22 @@
+/* B6 — Cuenta del vendedor TEST y caja oficial, aislada de DEMO. */
+.mp-official-card{display:grid;gap:17px;padding:clamp(18px,2.6vw,28px);
+ border:1px solid #a8c8ee;border-radius:16px;background:#f7fbff;
+ box-shadow:0 4px 18px #173a610b;min-width:0}
+.mp-official-card h2{font-size:clamp(19px,2.6vw,26px);margin:7px 0}
+.mp-official-card h2 small{font-size:11px;letter-spacing:.05em;
+ color:#215c9f;background:#dfefff;border-radius:7px;padding:5px 8px;vertical-align:middle}
+.mp-official-card .mp-connection-head{gap:12px}
+.mp-official-card .mp-connection-head p{max-width:700px}
+.mp-official-warning{background:#fff4dc;border-left:4px solid #dca03e;
+ border-radius:9px;padding:12px 14px;line-height:1.55;font-size:13px;margin:0;color:#775116}
+.mp-official-pos{border:1px solid #c2d8ed;border-radius:11px;padding:15px;
+ background:#fff;display:grid;gap:9px}
+.mp-official-pos label{font-size:13px;font-weight:800;color:#294965}
+.mp-official-pos p{font-size:12px;line-height:1.5;color:#59728c;margin:0}
+.mp-official-pos-controls{display:flex;flex-wrap:wrap;gap:10px}
+.mp-official-pos-controls input{flex:1 1 230px;max-width:510px;min-width:0;
+ padding:10px 12px;border:1px solid #bed0e3;border-radius:9px;font-size:14px}
+.mp-official-pos-controls button{min-height:44px}
+.mp-official-card button:focus-visible,.mp-official-card input:focus-visible{outline:3px solid #2178ce;outline-offset:3px}
+@media(max-width:500px){.mp-official-pos-controls{display:grid;grid-template-columns:1fr}
+ .mp-official-pos-controls input,.mp-official-pos-controls button{width:100%}}
