@@ -83,6 +83,18 @@ class QrSimulateRequest(BaseModel):
     action: Literal["APROBAR", "RECHAZAR", "EXPIRAR", "INDETERMINAR"]
 
 
+class QrExhibitionDecisionRequest(BaseModel):
+    """User-triggered simulation, never a Mercado Pago payment."""
+    model_config = ConfigDict(extra="forbid")
+    action: Literal["COBRAR", "RECHAZAR"]
+
+
+class QrExhibitionDecisionView(BaseModel):
+    intent: QrIntentView
+    sale: SaleView | None = None
+    replayed: bool
+
+
 class QrPaymentEventView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
