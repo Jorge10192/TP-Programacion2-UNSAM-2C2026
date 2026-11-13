@@ -115,7 +115,7 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
     {loading && <p role="status">Consultando empresa y medios de cobro…</p>}
     {error && <p className="mp-message mp-error" role="alert">{error}</p>}
     {notice && <p className="mp-message" role="status">{notice}</p>}
-    {!loading && company && connection && <div className="mp-connection-card">
+    {!loading && company && connection && !sharedQa?.enabled && <div className="mp-connection-card">
       <div className="mp-connection-title">
         <span className="mp-symbol" aria-hidden="true">MP</span>
         <div><h2>Mercado Pago <small>DEMO</small></h2>
@@ -173,6 +173,7 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
         <div><dt>Sucursal única</dt><dd>{sharedQa.store_id}</dd></div>
         <div><dt>Caja única</dt><dd>{sharedQa.pos_id}</dd></div>
         <div><dt>External POS ID</dt><dd><code>{sharedQa.external_pos_id}</code></dd></div>
+        <div><dt>Órdenes TEST</dt><dd>{sharedQa.orders_integrated ? "Configuradas en backend QA" : "Pendientes de habilitar en backend QA"}</dd></div>
       </dl>
       {sharedQa.qr_png_data_uri &&
         <div className="mp-official-qr">
