@@ -8,6 +8,8 @@ on:
       - "plataforma-pyme/frontend/**"
       - "plataforma-pyme/backend/app/web_spa.py"
       - "plataforma-pyme/backend/app/main.py"
+      - "plataforma-pyme/backend/app/modules/payments/qr_exhibition.py"
+      - "plataforma-pyme/backend/app/modules/payments/qr_service.py"
       - "render.yaml"
       - ".github/workflows/plataforma-pyme-public-qa.yml"
   pull_request:
@@ -17,6 +19,8 @@ on:
       - "plataforma-pyme/frontend/**"
       - "plataforma-pyme/backend/app/web_spa.py"
       - "plataforma-pyme/backend/app/main.py"
+      - "plataforma-pyme/backend/app/modules/payments/qr_exhibition.py"
+      - "plataforma-pyme/backend/app/modules/payments/qr_service.py"
       - "render.yaml"
       - ".github/workflows/plataforma-pyme-public-qa.yml"
 
