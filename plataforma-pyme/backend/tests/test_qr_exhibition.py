@@ -55,3 +55,22 @@ def test_synthetic_qr_is_png_not_provider_url():
     img = Image.open(BytesIO(png))
     assert img.format == "PNG"
     assert img.size[0] > 50
+
+
+def test_public_exhibition_simulation_requires_both_explicit_flags(monkeypatch):
+    from app.modules.payments.qr_exhibition import exhibition_simulation_enabled
+    monkeypatch.delenv("PYME_QR_EXHIBITION_ENABLED", raising=False)
+    monkeypatch.setenv("PYME_QR_EXHIBITION_SIMULATION_ENABLED", "1")
+    assert exhibition_simulation_enabled() is False
+    with pytest.raises(RuntimeError, match="requiere modo exhibicion"):
+        validate_exhibition_environment()
+
+    monkeypatch.setenv("PYME_QR_EXHIBITION_ENABLED", "1")
+    for flag in (
+        "PYME_DISPOSABLE_QA", "PYME_MP_QR_SHARED_QA_ENABLED",
+        "PYME_MP_SHARED_QA_ORDERS_ENABLED", "PYME_MP_QR_TEST_ENABLED",
+        "PYME_ENABLE_QR_DEMO_LAB", "PYME_ENABLE_QR_FINALIZATION_QA",
+    ):
+        monkeypatch.setenv(flag, "0")
+    assert exhibition_simulation_enabled() is True
+    validate_exhibition_environment()
