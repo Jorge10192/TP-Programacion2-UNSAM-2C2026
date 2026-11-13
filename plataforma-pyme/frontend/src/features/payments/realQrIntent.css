@@ -1,0 +1,117 @@
+/* E3-2B B2: QR de venta demo, aislado de estilos de la DEMO general. */
+.e3-qr-page { max-width: 1360px; margin: 0 auto; display: grid; gap: 20px; }
+.e3-qr-heading { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:16px; }
+.e3-qr-heading h1 { margin: 6px 0; font-size: clamp(24px,3vw,34px); }
+.e3-qr-heading h1 span { display:inline-block; font-size:12px; vertical-align:middle; background:#e8f0ff; color:#225cb4; padding:6px 9px; border-radius:8px; }
+.e3-qr-heading p { color:#64748b; margin:0; line-height:1.6; }
+.e3-qr-heading .e3-qr-eyebrow { font-size:12px; color:#2462b3; font-weight:800; letter-spacing:.03em; }
+.e3-qr-warning { background:#fff9e9; border:1px solid #efdb9f; border-left:4px solid #d29922; color:#694f16; padding:14px; margin:0; border-radius:10px; line-height:1.5; }
+.e3-qr-layout { display:grid; grid-template-columns:minmax(280px,390px) minmax(0,1fr); align-items:start; gap:24px; }
+.e3-qr-visual-panel,.e3-qr-details { background:#fff; border:1px solid #dce5ef; border-radius:17px; padding:clamp(16px,2.5vw,26px); box-shadow:0 5px 24px #1729430c; min-width:0; }
+.e3-qr-visual-panel { display:grid; gap:13px; justify-items:center; text-align:center; }
+.e3-qr-status { background:#e5f5ec; color:#12663d; padding:8px 13px; border-radius:99px; font-size:12px; font-weight:800; }
+.e3-qr-image { width:min(100%,320px); height:auto; aspect-ratio:1; object-fit:contain; border:8px solid #fff; image-rendering:pixelated; }
+.e3-qr-not-payable { font-size:12px; letter-spacing:.04em; color:#a14a16; }
+.e3-qr-total { font-size:clamp(28px,4vw,40px); font-weight:900; margin:0; color:#182b47; }
+.e3-qr-clock,.e3-qr-reference { margin:0; font-size:13px; color:#63728a; overflow-wrap:anywhere; }
+.e3-qr-reference code { font-size:11px; }
+.e3-qr-buttons { display:flex; flex-wrap:wrap; gap:9px; justify-content:center; }
+.e3-qr-buttons button { min-height:40px; }
+.e3-qr-details { display:grid; gap:14px; }
+.e3-qr-details h2 { font-size:22px; margin:0; }
+.e3-qr-details > p { margin:0; font-size:14px; }
+.e3-qr-lines { display:grid; border-block:1px solid #e5eaf2; }
+.e3-qr-line { display:grid; grid-template-columns:62px minmax(0,1fr) auto; gap:13px; align-items:center; padding:12px 0; border-bottom:1px solid #eef2f7; }
+.e3-qr-line:last-child { border-bottom:0; }
+.e3-qr-photo { width:60px; height:60px; border:1px solid #e3eaf2; border-radius:10px; overflow:hidden; object-fit:cover; }
+.e3-qr-line-body { display:grid; gap:4px; min-width:0; }
+.e3-qr-line-body strong { font-size:14px; overflow-wrap:anywhere; }
+.e3-qr-line-body small { font-size:12px; color:#65758e; }
+.e3-qr-line>strong { font-size:14px; white-space:nowrap; }
+.e3-qr-totals { display:grid; gap:12px; }
+.e3-qr-totals p { display:flex; justify-content:space-between; gap:15px; margin:0; font-size:14px; }
+.e3-qr-totals .e3-qr-grand-total { padding-top:14px; border-top:2px solid #dce5ef; font-size:18px; font-weight:800; }
+.e3-qr-note { font-size:12px!important; color:#516178; overflow-wrap:anywhere; }
+.e3-qr-footnote { font-size:12px!important; line-height:1.55; color:#63738a; }
+.e3-pos-qr-action { padding:16px; border:1px solid #bad8fc; background:#f0f7ff; border-radius:12px; display:grid; gap:11px; margin:18px 0; }
+.e3-pos-qr-action p { margin:0; font-size:13px; line-height:1.55; color:#345576; }
+.e3-pos-qr-action h3 { font-size:16px; margin:0; }
+.e3-pos-qr-action .e3-pos-qr-buttons { display:flex; gap:12px; flex-wrap:wrap; }
+.e3-pos-qr-action button { min-height:43px; }
+@media(max-width:850px){ .e3-qr-layout { grid-template-columns:1fr; } .e3-qr-visual-panel{ max-width:100%; } }
+@media(max-width:450px){ .e3-qr-line { grid-template-columns:48px minmax(0,1fr); } .e3-qr-photo{ width:48px;height:48px; } .e3-qr-line>strong { grid-column:2; } .e3-qr-heading button{ width:100%; } }
+
+/* B3: laboratorio de eventos, visualmente separado del detalle de compra. */
+.e3-qr-lab { display:grid; gap:12px; border:1px solid #b5d2f8; border-radius:13px;
+  padding:16px; background:#f0f6ff; }
+.e3-qr-lab h2,.e3-qr-history h2 { font-size:17px; margin:0; }
+.e3-qr-lab p,.e3-qr-history p { font-size:12px; line-height:1.55; color:#48617d; margin:0; }
+.e3-qr-lab-actions { display:flex; flex-wrap:wrap; gap:9px; }
+.e3-qr-lab-actions button { border-radius:9px; min-height:39px; }
+.e3-qr-history { display:grid; gap:10px; border:1px solid #e1e9f2; padding:16px; border-radius:13px; }
+.e3-qr-history ol { padding-left:22px; margin:0; display:grid; gap:10px; }
+.e3-qr-history li { line-height:1.55; overflow-wrap:anywhere; }
+.e3-qr-history li small { display:block; color:#67788e; font-size:11px; }
+
+/* E3-2B B4 — confirmación REAL solo en base QA descartable. */
+.e3-qr-finalize{display:grid;gap:11px;padding:17px;background:#ecf8f2;
+  border:1px solid #b4dec9;border-radius:12px;color:#194b35}
+.e3-qr-finalize h2{font-size:18px;margin:0}
+.e3-qr-finalize p{font-size:13px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.e3-qr-finalize button{justify-self:start;min-height:42px}
+.e3-qr-finalize code{font-size:11px;overflow-wrap:anywhere}
+
+/* B5: orientación de usuario, botones de navegación y lectores de pantalla. */
+.e3-qr-heading-actions {display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.e3-qr-heading-actions button {min-height:42px}
+.e3-qr-explainer {display:grid;gap:6px;padding:13px 16px;border:1px solid #ccdaeb;border-radius:12px;font-size:13px;line-height:1.55}
+.e3-qr-explainer strong{font-size:14px}
+.e3-qr-explainer p{margin:0}
+.e3-qr-explainer small{font-size:12px;line-height:1.55}
+.e3-qr-tone-pending{background:#eef6ff;color:#1e538d;border-color:#bed8f1}
+.e3-qr-tone-success{background:#e8f5ee;color:#155b38;border-color:#b8e3cc}
+.e3-qr-tone-warning{background:#fff4d9;color:#775116;border-color:#edd59a}
+.e3-qr-tone-neutral{background:#f4f6f8;color:#44556b;border-color:#dde5ef}
+.e3-qr-lab-actions button,.e3-qr-buttons button,.e3-qr-finalize button{min-height:44px}
+.e3-qr-page button:focus-visible{outline:3px solid #2b68d3;outline-offset:3px}
+@media(max-width:520px){
+ .e3-qr-heading-actions{display:grid;grid-template-columns:1fr;width:100%}
+ .e3-qr-heading-actions button{width:100%}
+ .e3-qr-buttons{width:100%}
+ .e3-qr-buttons button{flex:1 1 100%}
+ .e3-qr-lab-actions{display:grid;grid-template-columns:1fr}
+ .e3-qr-lab-actions button{width:100%}
+ .e3-qr-finalize button{justify-self:stretch}
+}
+
+/* B5: comprobante completo disponible tras FINALIZADA, legible sin scroll horizontal. */
+.e3-qr-receipt {border-top:1px solid #afd7c1;padding-top:11px;max-width:100%;min-width:0}
+.e3-qr-receipt summary {cursor:pointer;font-size:14px;font-weight:750;padding:8px 0}
+.e3-qr-receipt summary:focus-visible {outline:3px solid #2b68d3;outline-offset:3px}
+.e3-qr-receipt-body{display:grid;gap:9px;padding-top:8px;min-width:0}
+.e3-qr-receipt-body p{margin:0;overflow-wrap:anywhere}
+.e3-qr-receipt-lines{display:grid;gap:8px;border-block:1px solid #afd7c1;padding:12px 0}
+.e3-qr-receipt-line{display:flex;justify-content:space-between;align-items:start;gap:14px;font-size:12px}
+.e3-qr-receipt-line span{min-width:0;overflow-wrap:anywhere}
+.e3-qr-receipt-line strong{white-space:nowrap}
+.e3-qr-receipt-grand{border-top:1px solid #afd7c1;padding-top:8px}
+
+/* B6: orden oficial TEST separada visual y semánticamente del QR ficticio. */
+.e3-qr-official{display:grid;gap:12px;padding:16px;border:1px solid #a2c3e7;
+ border-left:4px solid #2e73bd;border-radius:13px;background:#eef6ff;min-width:0}
+.e3-qr-official-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.e3-qr-official-head h2{font-size:18px;margin:0}
+.e3-qr-test-pill{border-radius:20px;background:#dbeafd;color:#215a94;
+ font-size:10px;font-weight:800;padding:5px 9px}
+.e3-qr-official p{margin:0;font-size:13px;line-height:1.6;overflow-wrap:anywhere;color:#315977}
+.e3-qr-official code{overflow-wrap:anywhere;font-size:11px}
+.e3-qr-official-actions{display:flex;flex-wrap:wrap;gap:9px}
+.e3-qr-official-actions button{min-height:44px}
+.e3-qr-official-processed{padding:13px;border:1px solid #9fdbbf;
+ background:#e5f6ee;border-radius:10px;display:grid;gap:10px}
+.e3-qr-official-processed p{color:#195b40}
+.e3-qr-official-processed button{justify-self:start}
+@media(max-width:520px){
+ .e3-qr-official-actions{display:grid;grid-template-columns:1fr}
+ .e3-qr-official-actions button,.e3-qr-official-processed button{width:100%}
+}

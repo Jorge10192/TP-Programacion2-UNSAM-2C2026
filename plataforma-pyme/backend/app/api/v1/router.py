@@ -21,6 +21,10 @@ from app.modules.purchases.adjustment_router import router as adjustment_router
 from app.modules.sales.router import router as sales_router
 
 from app.modules.media.router import router as photos_router
+from app.modules.payments.router import router as payment_connections_router
+from app.modules.payments.qr_router import router as qr_payment_intents_router
+from app.modules.payments.mp_official_router import router as mp_test_router, public_router as mp_test_public_router
+from app.modules.payments.mp_shared_qa_router import router as mp_shared_qa_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(auth_router)
@@ -38,3 +42,8 @@ api_v1_router.include_router(inventory_router)
 api_v1_router.include_router(transfer_router)
 api_v1_router.include_router(adjustment_router)
 api_v1_router.include_router(sales_router)
+api_v1_router.include_router(payment_connections_router)
+api_v1_router.include_router(qr_payment_intents_router)
+api_v1_router.include_router(mp_test_router)
+api_v1_router.include_router(mp_shared_qa_router)
+api_v1_router.include_router(mp_test_public_router)

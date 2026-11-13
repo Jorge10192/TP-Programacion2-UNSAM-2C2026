@@ -101,7 +101,18 @@ class SaleService:
         return self._view(row)
 
     def create(self, actor_id: UUID, session_id: UUID, business_id: UUID,
-               key: UUID, command: CreateSaleRequest) -> SaleCreated:
+               key: UUID, command: CreateSaleRequest, *,
+               commit: bool = True, trusted_qr_demo: bool = False,
+               trusted_mp_test: bool = False) -> SaleCreated:
+        # B4: el QR DEMO de QA gobierna el commit junto al enlace y los eventos.
+        # El endpoint público /sales no expone estos parámetros.
+        if trusted_qr_demo and trusted_mp_test:
+            raise ValueError('Dos modos QR incompatibles')
+        if (trusted_qr_demo or trusted_mp_test) and (
+            commit or len(command.payments) != 1
+            or command.payments[0].method != "MERCADO_PAGO_DECLARADO"
+        ):
+            raise ValueError("Pago QR interno requiere transacción externa y pago único")
         digest = command.payload_digest()
         try:
             company, member = self._authorize(actor_id, session_id, business_id)
@@ -131,6 +142,8 @@ class SaleService:
                 raise SalePermissionDenied()
             previous = self._replay(business_id, actor_id, key, digest)
             if previous is not None:
+                if not commit:
+                    raise SaleIdempotencyConflict()
                 self.db.rollback()
                 return SaleCreated(previous, replayed=True)
             if company.status != "ACTIVA":
@@ -215,7 +228,9 @@ class SaleService:
             payments = [
                 SalePayment(
                     id=uuid4(), business_id=business_id, sale_id=row.id,
-                    payment_number=number, method=payment.method,
+                    payment_number=number,
+                    method=("MERCADO_PAGO_DEMO_QA" if trusted_qr_demo else
+                            "MERCADO_PAGO_QR_TEST" if trusted_mp_test else payment.method),
                     amount_cents=payment.amount_cents, reference=payment.reference,
                 )
                 for number, payment in enumerate(command.payments, 1)
@@ -254,7 +269,9 @@ class SaleService:
             row.balances_after = snapshots
             self.db.flush()
             body = SaleView.from_records(row, lines, payments)
-            self.db.commit()
+            if commit:
+                self.db.commit()
+            # commit=False deja la misma transacción abierta para QR settlement.
             return SaleCreated(body, replayed=False)
         except IntegrityError as error:
             self.db.rollback()
