@@ -28,6 +28,12 @@ services:
       - key: DB_SSLMODE
         value: require
       # Never connect the locally verified shared seller TEST token to a public site.
+      - key: PYME_QR_EXHIBITION_ENABLED
+        value: "1"
+      - key: PYME_ENABLE_QR_DEMO_LAB
+        value: "0"
+      - key: PYME_ENABLE_QR_FINALIZATION_QA
+        value: "0"
       - key: PYME_DISPOSABLE_QA
         value: "0"
       - key: PYME_MP_QR_SHARED_QA_ENABLED
