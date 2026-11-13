@@ -1,8 +1,9 @@
 """QR público no debe producir pagos, conectar vendedor ni permitir flags QA."""
-from io import BytesIO
+import base64
 
 import pytest
 from PIL import Image
+from io import BytesIO
 
 from app.modules.payments.qr_exhibition import (
     exhibition_enabled, validate_exhibition_environment,
@@ -47,8 +48,10 @@ def test_exhibition_accepts_explicit_safe_configuration(monkeypatch):
 
 
 def test_synthetic_qr_is_png_not_provider_url():
-    import base64
     uri = render_demo_qr_data_uri("PYME-DEMO-" + "A" * 32)
     assert uri.startswith("data:image/png;base64,")
     png = base64.b64decode(uri.split(",", 1)[1])
-    assert png.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
+    assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+    img = Image.open(BytesIO(png))
+    assert img.format == "PNG"
+    assert img.size[0] > 50
