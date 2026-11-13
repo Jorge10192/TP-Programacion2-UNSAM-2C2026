@@ -112,7 +112,8 @@ def signature_valid(*, secret: str, signature: str, request_id: str,
     current = time.time() if now is None else now
     if abs(current - timestamp) > 300:
         return False
-    manifest = f"id:{data_id};request-id:{request_id};ts:{ts};"
+    # Mercado Pago firma el data.id alfanumérico en minúsculas en el manifest.
+    manifest = f"id:{data_id.lower()};request-id:{request_id};ts:{ts};"
     expected = hmac.new(secret.encode(), manifest.encode(), hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, actual.lower())
 
