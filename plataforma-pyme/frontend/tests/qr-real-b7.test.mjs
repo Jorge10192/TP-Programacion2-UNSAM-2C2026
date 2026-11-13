@@ -29,7 +29,7 @@ test('B7 rechaza QR falso, otro POS o estado de pago atribuido a esta vista',()=
     {...data(),pos_id:'otro'},
     {...data(),business_id:'713fa8a7-5c21-4c3b-9b39-ade992cf8df2'},
     {...data(),qr_png_data_uri:'https://otro-sitio.example/falso.png'},
-    {...data(),orders_integrated:true},
+    {...data(),orders_integrated:'sí'},
     {...data(),virtual_link:false},
     {...data(),remote_verified:true},
   ]) assert.throws(()=>parseMpSharedQaConnection(invalid,bid),ApiTransportError)
