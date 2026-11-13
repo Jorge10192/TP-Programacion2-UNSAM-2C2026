@@ -10,10 +10,12 @@ from app.api.health import router as health_router
 from app.api.readiness import router as readiness_router
 from app.api.v1.router import api_v1_router
 from app.web_spa import attach_spa
+from app.modules.payments.qr_exhibition import validate_exhibition_environment
 
 
 def create_app() -> FastAPI:
     """Construye la aplicacion y monta sus routers publicos."""
+    validate_exhibition_environment()
     application = FastAPI(
         title="Asistente PyME — API",
         description=(
