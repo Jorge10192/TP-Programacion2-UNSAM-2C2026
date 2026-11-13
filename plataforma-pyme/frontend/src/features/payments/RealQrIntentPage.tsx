@@ -20,6 +20,8 @@ type Props = {
 }
 
 const EXHIBITION_UI = import.meta.env.VITE_PYME_QR_EXHIBITION === '1'
+const EXHIBITION_DECISIONS_UI = EXHIBITION_UI &&
+  import.meta.env.VITE_PYME_QR_EXHIBITION_DECISIONS === '1'
 const LAB_UI_ENABLED = !EXHIBITION_UI && import.meta.env.VITE_PYME_ENABLE_QR_DEMO_LAB === '1'
 const FINALIZE_QA_ENABLED = LAB_UI_ENABLED && import.meta.env.VITE_PYME_ENABLE_QR_FINALIZATION_QA === '1'
 const ACTIONS: { action: QrSimAction; label: string }[] = [
@@ -53,6 +55,9 @@ export function RealQrIntentPage({
   const [officialOrder, setOfficialOrder] = useState<MpTestOrder|null>(null)
   const [sharedQa, setSharedQa] = useState<MpSharedQaConnection|null>(null)
   const [sharedOrder, setSharedOrder] = useState<MpSharedQaOrder|null>(null)
+  const [exhibitionUnknown, setExhibitionUnknown] = useState(false)
+  const [exhibitionChecked, setExhibitionChecked] = useState(false)
+  const exhibitionPending = useRef<{ action: 'ACEPTAR' | 'RECHAZAR'; key: string } | null>(null)
   const [officialBusy, setOfficialBusy] = useState(false)
   const [officialError, setOfficialError] = useState('')
   const [receipt, setReceipt] = useState<SaleReceipt | null>(null)
@@ -240,6 +245,13 @@ export function RealQrIntentPage({
     try {
       const [current, history] = await Promise.all([api.get(intentId), api.events(intentId)])
       setIntent(current); setEvents(history)
+      if (EXHIBITION_DECISIONS_UI && exhibitionUnknown) {
+        setExhibitionChecked(current.status === 'ESPERANDO_PAGO')
+        if (current.status !== 'ESPERANDO_PAGO') {
+          setExhibitionUnknown(false)
+          exhibitionPending.current = null
+        }
+      }
       if (current.status === 'FINALIZADA') {
         const sale = await api.receipt(intentId)
         if (current.sale_id !== sale.id) throw new Error('Comprobante QR incompatible')
@@ -279,6 +291,41 @@ export function RealQrIntentPage({
     catch (err) {
       if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
       else setError(qrIntentError(err))
+    } finally { setBusy(false) }
+  }
+
+
+  async function decideExhibition(action: 'ACEPTAR' | 'RECHAZAR', retry = false) {
+    if (!EXHIBITION_DECISIONS_UI || !isManager || busy || !intent ||
+        displayStatus !== 'ESPERANDO_PAGO' ||
+        (exhibitionUnknown && (!retry || !exhibitionChecked))) return
+    if (!retry) {
+      const question = action === 'ACEPTAR'
+        ? '¿SIMULAR la aceptación de este QR? Se registrará una venta ficticia y se descontará el stock local. No se moverá dinero.'
+        : '¿SIMULAR el rechazo? Se cerrará este QR sin venta ni movimiento de stock.'
+      if (!window.confirm(question)) return
+      exhibitionPending.current = { action, key: crypto.randomUUID() }
+    }
+    const request = exhibitionPending.current
+    if (!request || request.action !== action) return
+    setBusy(true); setError('')
+    try {
+      const result = await api.decideExhibition(intentId, request.action, request.key)
+      setIntent(result.intent)
+      setReceipt(result.sale)
+      setEvents(await api.events(intentId))
+      exhibitionPending.current = null
+      setExhibitionUnknown(false)
+      setExhibitionChecked(false)
+    } catch (err) {
+      const unknown = err instanceof ApiTransportError ||
+        (err instanceof ApiHttpError && err.status >= 500)
+      setExhibitionUnknown(unknown)
+      setExhibitionChecked(false)
+      if (!unknown) exhibitionPending.current = null
+      if (err instanceof ApiHttpError && err.status === 401) onUnauthorized()
+      else setError(qrIntentError(err) +
+        (unknown ? ' Consultá el QR antes de reintentar con la misma clave.' : ' No se confirmó ningún pago externo.'))
     } finally { setBusy(false) }
   }
 
@@ -343,7 +390,7 @@ export function RealQrIntentPage({
     </div>
 
     <p className="e3-qr-warning" role="note">
-      {EXHIBITION_UI ? <><strong>EXHIBICIÓN · NO PAGABLE.</strong> QR sintético de Plataforma PyME. No está vinculado a una cuenta ni a una caja de Mercado Pago; escanearlo no permite pagar. No genera órdenes, cobros, ventas ni movimientos de stock.</>
+      {EXHIBITION_UI ? <><strong>EXHIBICIÓN · NO PAGABLE.</strong> QR sintético de Plataforma PyME. No está vinculado a Mercado Pago; escanearlo no permite pagar. {EXHIBITION_DECISIONS_UI ? 'La aceptación o el rechazo se simulan exclusivamente desde los botones administrativos.' : 'No genera órdenes, cobros, ventas ni movimientos de stock.'}</>
         : sharedQa?.enabled
         ? sharedOrder
           ? <><strong>MERCADO PAGO · QR ESTÁTICO TEST.</strong> Orden asignada a nuestra única caja. Verificá el pago remoto antes de vender.</>
@@ -399,6 +446,34 @@ export function RealQrIntentPage({
             <button type="button" className="real-auth-secondary" disabled={busy}
               onClick={() => void cancel()}>{EXHIBITION_UI ? 'Cerrar exhibición' : 'Cancelar QR'}</button>}
         </div>
+        {EXHIBITION_DECISIONS_UI && isManager && displayStatus === 'ESPERANDO_PAGO' &&
+          <div className="e3-qr-finalize" aria-label="Decisión ficticia de QR">
+            <strong>Simulación interna · Sin dinero real</strong>
+            <p>Estos botones no cobran por Mercado Pago. Una aceptación registra una venta ficticia; el rechazo no descuenta stock.</p>
+            {!exhibitionUnknown ? <div className="e3-qr-buttons">
+              <button type="button" className="real-auth-primary" disabled={busy}
+                onClick={() => void decideExhibition('ACEPTAR')}>
+                {busy ? 'Procesando…' : 'Simular aceptación'}
+              </button>
+              <button type="button" className="real-auth-secondary" disabled={busy}
+                onClick={() => void decideExhibition('RECHAZAR')}>
+                Simular rechazo
+              </button>
+            </div> : <>
+              <p role="alert">Resultado incierto. Consultá el QR antes de repetir la simulación.</p>
+              <button type="button" className="real-auth-secondary" disabled={busy}
+                onClick={() => void refresh()}>Consultar estado original</button>
+              {exhibitionChecked && exhibitionPending.current &&
+                <button type="button" className="real-auth-secondary" disabled={busy}
+                  onClick={() => { if (exhibitionPending.current) void decideExhibition(exhibitionPending.current.action, true) }}>
+                  Reintentar misma decisión y clave
+                </button>}
+            </>}
+          </div>}
+        {EXHIBITION_DECISIONS_UI && intent.status === 'RECHAZADA' &&
+          <p className="e3-qr-warning" role="status">
+            <strong>Rechazo ficticio registrado.</strong> No se creó una venta ni se descontó stock.
+          </p>}
       </div>
       <div className="e3-qr-details">
         {!EXHIBITION_UI && sharedQa?.enabled && <section className="e3-qr-official" aria-label="Mercado Pago caja única QR TEST">
@@ -558,7 +633,7 @@ export function RealQrIntentPage({
         {intent.status === 'REQUIERE_REVISION' &&
           <p className="e3-qr-warning" role="alert"><strong>Requiere revisión:</strong> la venta no fue registrada. El stock, la sede o el catálogo deben verificarse. No hubo un débito parcial.</p>}
         {intent.status === 'FINALIZADA' && <section className="e3-qr-finalize" aria-label="Venta QA confirmada">
-          <h2>Venta de prueba confirmada</h2>
+          <h2>{EXHIBITION_DECISIONS_UI ? 'Aceptación ficticia registrada' : 'Venta de prueba confirmada'}</h2>
           <p><strong>Registro QA, no dinero real.</strong> El comprobante está vinculado a este QR. No se puede registrar otra venta con el mismo intento.</p>
           {receipt ? <div>
               <p>Comprobante: <code>{receipt.id}</code></p>
@@ -593,10 +668,13 @@ export function RealQrIntentPage({
         </button>}
         <div className="e3-qr-history">
           <h2>Historial de eventos</h2>
-          <p>{EXHIBITION_UI ? 'Historial de referencias de exhibición. No representa pagos, aprobaciones ni ventas.' : 'Registros del servidor, ordenados por secuencia. Ningún evento representa acreditación externa.'}</p>
+          <p>{EXHIBITION_DECISIONS_UI ? 'Historial de exhibición y decisiones ficticias. Ningún evento acredita dinero.' : EXHIBITION_UI ? 'Historial de referencias de exhibición. No representa pagos, aprobaciones ni ventas.' : 'Registros del servidor, ordenados por secuencia. Ningún evento representa acreditación externa.'}</p>
           {events.length === 0 ? <p>Aún no hay eventos registrados para este intento.</p> :
             <ol>{events.map(e=><li key={e.id}>
-              <strong>{EXHIBITION_UI && e.action === 'CREAR' ? 'GENERAR EXHIBICIÓN' : EXHIBITION_UI && e.action === 'CANCELAR' ? 'CERRAR EXHIBICIÓN' : e.action}</strong> · {EXHIBITION_UI ? (e.action === 'CANCELAR' ? 'EXHIBICIÓN CERRADA' : 'REFERENCIA NO PAGABLE') : e.from_status + ' → ' + e.to_status}
+              <strong>{EXHIBITION_UI && e.action === 'CREAR' ? 'GENERAR EXHIBICIÓN' : EXHIBITION_UI && e.action === 'CANCELAR' ? 'CERRAR EXHIBICIÓN' :
+                EXHIBITION_DECISIONS_UI && e.action === 'APROBAR' ? 'SIMULAR ACEPTACIÓN' :
+                EXHIBITION_DECISIONS_UI && e.action === 'RECHAZAR' ? 'SIMULAR RECHAZO' :
+                EXHIBITION_DECISIONS_UI && e.action === 'FINALIZAR' ? 'REGISTRAR VENTA FICTICIA' : e.action}</strong> · {EXHIBITION_UI && e.action === 'CREAR' ? 'REFERENCIA NO PAGABLE' : e.from_status + ' → ' + e.to_status}
               <small>{new Date(e.created_at).toLocaleString('es-AR')} · Evento {e.sequence}</small>
             </li>)}</ol>}
         </div>
@@ -623,7 +701,8 @@ export function RealQrIntentPage({
         </div>
         {intent.notes && <p className="e3-qr-note"><strong>Nota interna:</strong> {intent.notes}</p>}
         <p className="e3-qr-footnote">{EXHIBITION_UI
-          ? 'Exhibición únicamente informativa. Nombre, cantidad, precio e importes son un snapshot de PostgreSQL. El QR contiene solo una referencia ficticia, no puede pagarse y no genera venta ni movimiento de inventario. Para registrar una venta utilizá los pagos declarados del POS.'
+          ? (EXHIBITION_DECISIONS_UI ? 'QR no pagable y desconectado de Mercado Pago. Solo la aceptación ficticia por botón puede registrar una venta interna y descontar stock; el rechazo solo cierra el QR.' :
+              'Exhibición únicamente informativa. Nombre, cantidad, precio e importes son un snapshot de PostgreSQL. El QR contiene solo una referencia ficticia, no puede pagarse y no genera venta ni movimiento de inventario. Para registrar una venta utilizá los pagos declarados del POS.')
           : 'Las imágenes son vistas actuales del catálogo; nombre, cantidad, precio e importes pertenecen al snapshot original. El laboratorio de B3 registra resultados ficticios. El cierre de B4, disponible solo en QA descartable, crea una venta interna; Mercado Pago no acredita fondos.'}</p>
       </div>
     </div>}
