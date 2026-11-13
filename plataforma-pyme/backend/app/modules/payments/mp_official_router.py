@@ -164,8 +164,17 @@ async def order_webhook(request:Request,db:Session=Depends(get_db),
         payload=await request.json()
     except ValueError:
         raise HTTPException(400,detail="Notificación inválida") from None
-    if not isinstance(payload,dict) or payload.get("type") not in ("order","orders") or (
-        isinstance(payload.get("data"),dict) and str(payload["data"].get("id"))!=order_id
+    # TEST no acepta webhook productivo, tipo distinto o ID ausente.
+    # Se contrasta el cuerpo con el data.id firmado antes del GET remoto.
+    if (
+        not isinstance(payload, dict)
+        or payload.get("type") != "order"
+        or payload.get("live_mode") is not False
+        or payload.get("action") not in (
+            "order.processed", "order.canceled", "order.expired", "order.refunded"
+        )
+        or not isinstance(payload.get("data"), dict)
+        or str(payload["data"].get("id")) != order_id
     ):
         raise HTTPException(400,detail="Orden incompatible")
     try:
