@@ -23,9 +23,11 @@ pytestmark = [
 
 
 def test_real_postgres_accepts_queries() -> None:
+    expected_major = int(os.environ.get("EXPECTED_POSTGRES_MAJOR", "16"))
     with get_engine().connect() as conn:
         assert conn.execute(text("SELECT 1")).scalar_one() == 1
-        assert conn.execute(text("SELECT current_setting('server_version_num')")).scalar_one().startswith("16")
+        server_version = int(conn.execute(text("SELECT current_setting('server_version_num')")).scalar_one())
+        assert server_version // 10000 == expected_major
 
 
 def test_real_postgres_has_current_alembic_revision() -> None:

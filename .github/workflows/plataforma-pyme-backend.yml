@@ -17,15 +17,21 @@ permissions:
 
 jobs:
   backend-tests:
-    name: Python ${{ matrix.python-version }} · Pytest + PostgreSQL
+    name: Python ${{ matrix.python-version }} · Pytest + PostgreSQL ${{ matrix.postgres-version }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.12', '3.14']
+        include:
+          - python-version: '3.12'
+            postgres-version: '16'
+          - python-version: '3.14'
+            postgres-version: '16'
+          - python-version: '3.12'
+            postgres-version: '18'
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:${{ matrix.postgres-version }}-alpine
         env:
           POSTGRES_DB: asistente_pyme
           POSTGRES_USER: pyme
@@ -43,6 +49,7 @@ jobs:
       POSTGRES_HOST_PORT: '5432'
       DB_HOST: 127.0.0.1
       RUN_DB_INTEGRATION: '1'
+      EXPECTED_POSTGRES_MAJOR: ${{ matrix.postgres-version }}
     defaults:
       run:
         working-directory: plataforma-pyme/backend

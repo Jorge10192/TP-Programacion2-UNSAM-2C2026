@@ -1,8 +1,4 @@
-"""Entrada ASGI de Asistente PyME.
-
-E2-0.3 incorpora conexion SQLAlchemy, readiness y Alembic.
-El frontend continua independiente.
-"""
+"""Entrada ASGI de la API multiempresa; el frontend se publica por separado."""
 
 from fastapi import FastAPI
 
@@ -16,8 +12,8 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="Asistente PyME — API",
         description=(
-            "Backend REST del sistema de gestion multiempresa. "
-            "E2-0.3: conexion PostgreSQL y migraciones; sin datos comerciales."
+            "API REST de gestion multiempresa: usuarios, equipos, ubicaciones, "
+            "catalogo, proveedores, compras, inventario y ventas con pagos declarados."
         ),
         version="0.1.0",
     )
