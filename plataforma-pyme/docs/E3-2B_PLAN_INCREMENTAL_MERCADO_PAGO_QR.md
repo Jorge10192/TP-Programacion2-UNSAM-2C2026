@@ -1,6 +1,6 @@
 # E3-2B — Plan rector incremental: vinculación de Mercado Pago DEMO, QR con detalle y confirmación de venta
 
-**Estado:** B1–B4 incorporados con CI aprobado. B5 implementado en rama (historial de cobros QR, navegación, estados de UX, recuperación tras F5 y mejoras móviles), con controles automáticos en ejecución. B6 pendiente. Auditoría y pruebas manuales de punta a punta solo tras B6.  
+**Estado:** B1–B5 incorporados y aprobados en CI (commit af4328d5). B6 implementado en esta rama (OAuth PKCE TEST por empresa, Orders QR dinámico, detalle del POS, webhooks HMAC, conciliación y venta QA única); pendientes la validación integral del último SHA y la prueba oficial con Seller TEST autorizado. No se habilita producción. Auditoría y recorrido manual B1–B6 tras cerrar la revisión automática. Referencia: E3-2B_B6_MERCADO_PAGO_OFICIAL_TEST_QA.md.  
 **Rama exclusiva:** `feature/e3-2b-mercadopago-qr-demo`, nacida de `main` en `5b21daec04df6c551d3221a06ce03d577ec36544`.  
 **Proyecto:** plataforma PyME multitenant y multirrubro. Los HTML de WALOS son referencias de UX, no código definitivo, ni modelo exclusivo de un negocio.  
 **Límite:** `plataforma-pyme/` y, cuando sea necesario, CI exclusivo de PyME. No modificar `main` hasta aprobación expresa.
