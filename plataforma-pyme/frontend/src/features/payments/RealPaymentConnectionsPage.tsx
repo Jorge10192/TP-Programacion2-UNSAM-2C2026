@@ -44,7 +44,7 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
         setConnection(linked); setCompany(business)
         setOfficialConnection(officialLinked)
         setSharedQa(sharedLinked)
-        setPosText(officialLinked.external_pos_id??'')
+        setPosText(officialLinked?.external_pos_id??'')
       })
       .catch(err => {
         if (!mounted.current || controller.signal.aborted) return
