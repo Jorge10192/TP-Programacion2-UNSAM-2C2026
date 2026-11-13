@@ -275,7 +275,7 @@ export function RealQrIntentPage({
         ? <><strong>ORDEN OFICIAL · SOLO ENTORNO TEST.</strong> Este QR procede de Orders API y puede probarse con cuentas de comprador de prueba. No lo uses para cobrar fondos reales. La venta QA se registra por separado tras conciliación.</>
         : <><strong>SIMULACIÓN · NO COBRABLE.</strong> El QR DEMO solo contiene una referencia ficticia. No es una orden de Mercado Pago ni recibe dinero real.</>}
     </p>
-    {presentation && <div className={'e3-qr-explainer e3-qr-tone-'+presentation.tone} role="status">
+    {!officialOrder && presentation && <div className={'e3-qr-explainer e3-qr-tone-'+presentation.tone} role="status">
       <strong>{presentation.title}</strong>
       <p>{presentation.description}</p>
       <small><strong>Próximo paso:</strong> {presentation.nextStep}</small>
@@ -340,7 +340,7 @@ export function RealQrIntentPage({
               disabled={officialBusy||busy} onClick={()=>void refreshOfficial()}>
               Consultar orden guardada
             </button>}
-            {officialOrder?.status==='INDETERMINADA' && <button type="button"
+            {['INDETERMINADA','PREPARANDO'].includes(officialOrder?.status??'') && officialOrder && <button type="button"
               className="real-auth-secondary" disabled={officialBusy}
               onClick={()=>void makeOfficialTestOrder()}>
               Reintentar la misma orden y clave
