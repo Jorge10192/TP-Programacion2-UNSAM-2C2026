@@ -192,10 +192,11 @@ def test_oauth_and_orders_offline_tenant_idempotent_settlement(isolated,monkeypa
     assert db.scalar(select(func.count()).select_from(Sale).where(Sale.business_id==bid))==1
     payment=db.scalar(select(SalePayment.method).where(SalePayment.business_id==bid))
     assert payment=="MERCADO_PAGO_QR_TEST"
-    db_account=db.scalar(select(MercadoPagoTestAccount).where(MercadoPagoTestAccount.business_id==bid))
-    assert db_account is not None
-    assert db_account.access_encrypted!="APP_USR-TEST-only-123"
-    assert db_account.refresh_encrypted!="REFRESH-QA-ONLY"
+    secrets=db.execute(select(
+        MercadoPagoTestAccount.access_encrypted,MercadoPagoTestAccount.refresh_encrypted,
+    ).where(MercadoPagoTestAccount.business_id==bid)).one()
+    assert secrets[0]!="APP_USR-TEST-only-123"
+    assert secrets[1]!="REFRESH-QA-ONLY"
     assert calls["create"]==1
 
 
