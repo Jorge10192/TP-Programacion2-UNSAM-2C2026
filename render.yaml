@@ -30,6 +30,8 @@ services:
       # Never connect the locally verified shared seller TEST token to a public site.
       - key: PYME_QR_EXHIBITION_ENABLED
         value: "1"
+      - key: PYME_QR_EXHIBITION_SIMULATION_ENABLED
+        value: "1"
       - key: PYME_ENABLE_QR_DEMO_LAB
         value: "0"
       - key: PYME_ENABLE_QR_FINALIZATION_QA
