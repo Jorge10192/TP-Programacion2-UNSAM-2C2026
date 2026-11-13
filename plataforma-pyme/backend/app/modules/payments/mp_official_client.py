@@ -239,7 +239,14 @@ def validate_order(payload: dict, *, order_id: str | None,
             raise MpIntegrityError()
         if tx and parse_money(tx[0].get("amount")) != amount_cents:
             raise MpIntegrityError()
-        if status == "processed" and (not tx or tx[0].get("status") != "processed"):
+        # QR Orders: la order y su única transacción deben acreditar.
+        # Un 'processed' sin transacción status_detail='accredited', o con
+        # reembolso parcial, nunca habilita el registro comercial.
+        if status == "processed" and (
+            detail != "accredited" or not tx
+            or tx[0].get("status") != "processed"
+            or tx[0].get("status_detail") != "accredited"
+        ):
             raise MpIntegrityError()
         data = payload.get("type_response")
         qr_data = data.get("qr_data") if isinstance(data, dict) else None
