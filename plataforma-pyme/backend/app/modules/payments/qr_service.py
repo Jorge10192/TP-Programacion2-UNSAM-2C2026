@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.models import (
     CatalogItem, Location, LocationAssignment, MerchantPaymentConnection,
-    QrPaymentIntent, QrPaymentIntentLine, QrPaymentSettlement, MercadoPagoTestOrder, StockBalance,
+    QrPaymentIntent, QrPaymentIntentLine, QrPaymentSettlement, MercadoPagoTestOrder, MpSharedQaOrder, StockBalance,
 )
 from app.modules.auth.tokens import now_utc
+from app.modules.payments.mp_shared_qa_config import shared_qa_enabled
 from app.modules.locations.permissions import can_operate_at_location
 from app.modules.purchases.schemas import line_total_cents
 from app.modules.sales.service import SaleService
@@ -130,6 +131,27 @@ class QrIntentService:
                 MerchantPaymentConnection.mode == "DEMO",
                 MerchantPaymentConnection.status == "ACTIVA",
             ))
+            if connection is None and shared_qa_enabled():
+                # La vinculación interna QA se crea al primer QR; ninguna llamada externa.
+                previous=self.db.scalar(select(MerchantPaymentConnection).where(
+                    MerchantPaymentConnection.business_id==business_id,
+                    MerchantPaymentConnection.provider=="MERCADO_PAGO",
+                    MerchantPaymentConnection.mode=="DEMO",
+                ))
+                if previous:
+                    previous.status="ACTIVA"
+                    previous.updated_by_user_id=actor_id
+                    connection=previous
+                else:
+                    connection=MerchantPaymentConnection(
+                        id=uuid4(),business_id=business_id,provider="MERCADO_PAGO",
+                        mode="DEMO",status="ACTIVA",
+                        mock_merchant_name="Mercado Pago QA compartido",
+                        mock_merchant_ref="MP-QA-"+uuid4().hex.upper(),
+                        updated_by_user_id=actor_id,
+                    )
+                    self.db.add(connection)
+                self.db.flush()
             if connection is None:
                 raise QrIntentNoConnection()
 
@@ -322,6 +344,11 @@ class QrIntentService:
             if self.db.scalar(select(MercadoPagoTestOrder.id).where(
                 MercadoPagoTestOrder.business_id == business_id,
                 MercadoPagoTestOrder.source_intent_id == intent_id,
+            ).limit(1)) is not None:
+                raise QrIntentConflict()
+            if self.db.scalar(select(MpSharedQaOrder.id).where(
+                MpSharedQaOrder.business_id == business_id,
+                MpSharedQaOrder.source_intent_id == intent_id,
             ).limit(1)) is not None:
                 raise QrIntentConflict()
             # B2: no hay orden remota, pago ni venta que compensar.

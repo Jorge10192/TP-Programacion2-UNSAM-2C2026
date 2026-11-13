@@ -82,6 +82,8 @@ def oauth_callback(state:str=Query(min_length=20,max_length=200),
                    code:str=Query(min_length=2,max_length=512),
                    db:Session=Depends(get_db)):
     try:
+        if os.getenv("PYME_DISPOSABLE_QA") == "1" and os.getenv("PYME_MP_QR_SHARED_QA_ENABLED") == "1":
+            raise MpConflict()
         MpOfficialService(db).finish_oauth(state,code)
         result="linked"
     except Exception:
@@ -109,6 +111,8 @@ def create_order(business_id:UUID,source_intent_id:UUID,
                  idempotency_key:UUID4=Header(alias="Idempotency-Key"),
                  context:AuthContext=Depends(current_auth),db:Session=Depends(get_db)):
     try:
+        if os.getenv("PYME_DISPOSABLE_QA") == "1" and os.getenv("PYME_MP_QR_SHARED_QA_ENABLED") == "1":
+            raise MpConflict()
         return MpOfficialService(db).create_order(context.user.id,
             context.auth_session.id,business_id,source_intent_id,idempotency_key)
     except Exception as e:
@@ -182,7 +186,11 @@ async def order_webhook(request:Request,db:Session=Depends(get_db),
     ):
         raise HTTPException(400,detail="Orden incompatible")
     try:
-        MpOfficialService(db).webhook_reconcile(order_id)
+        if os.getenv("PYME_DISPOSABLE_QA") == "1" and os.getenv("PYME_MP_QR_SHARED_QA_ENABLED") == "1":
+            from app.modules.payments.mp_shared_qa_service import MpSharedQaService
+            MpSharedQaService(db).webhook_reconcile(order_id)
+        else:
+            MpOfficialService(db).webhook_reconcile(order_id)
     except (MpProviderFailure,MpIntegrityError,MpNotReady):
         raise HTTPException(503,detail="No se pudo verificar estado en Orders API") from None
     return {"accepted":True}

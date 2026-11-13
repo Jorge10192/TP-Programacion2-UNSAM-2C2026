@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.models import (
     QrPaymentEvent, QrPaymentIntent, QrPaymentIntentLine, QrPaymentSettlement,
-    Sale, SaleLine, MercadoPagoTestOrder,
+    Sale, SaleLine, MercadoPagoTestOrder, MpSharedQaOrder,
 )
 from app.modules.payments.qr_event_log import append_qr_event
 from app.modules.payments.qr_service import (
@@ -127,6 +127,11 @@ class QrSettlementService:
             if self.db.scalar(select(MercadoPagoTestOrder.id).where(
                 MercadoPagoTestOrder.business_id == business,
                 MercadoPagoTestOrder.source_intent_id == intent_id,
+            ).limit(1)) is not None:
+                raise QrIntentConflict()
+            if self.db.scalar(select(MpSharedQaOrder.id).where(
+                MpSharedQaOrder.business_id == business,
+                MpSharedQaOrder.source_intent_id == intent_id,
             ).limit(1)) is not None:
                 raise QrIntentConflict()
             link = self._link(business, intent_id)

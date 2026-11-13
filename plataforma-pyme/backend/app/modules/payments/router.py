@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
 from app.infrastructure.models import MerchantPaymentConnection, QrPaymentIntent
 from app.modules.auth.tokens import now_utc
+from app.modules.payments.mp_shared_qa_config import shared_qa_enabled
 from app.modules.auth.dependencies import current_auth, unauthorized
 from app.modules.auth.session_service import AuthContext
 from app.modules.businesses.repository import BusinessRepository
@@ -68,6 +69,10 @@ def get_connection(
     business_id: UUID, context: AuthContext = Depends(current_auth), db: Session = Depends(get_db),
 ) -> PaymentConnectionView:
     _authorize(db, context, business_id, write=False)
+    if shared_qa_enabled():
+        return PaymentConnectionView(business_id=business_id, status="ACTIVA",
+            mock_merchant_name="Mercado Pago QA compartido",
+            mock_merchant_ref="MP-QA-SHARED")
     return _view(business_id, _lookup(db, business_id))
 
 
@@ -77,6 +82,8 @@ def connect_demo(
 ) -> PaymentConnectionView:
     try:
         company = _authorize(db, context, business_id, write=True)
+        if shared_qa_enabled():
+            raise HTTPException(409, detail="La caja QA compartida se vincula automáticamente")
         connection = _lookup(db, business_id)
         if connection is None:
             connection = MerchantPaymentConnection(
@@ -104,6 +111,8 @@ def disconnect_demo(
 ) -> PaymentConnectionView:
     try:
         _authorize(db, context, business_id, write=True)
+        if shared_qa_enabled():
+            raise HTTPException(409, detail="No se desvincula la caja QA compartida")
         connection = _lookup(db, business_id)
         if connection is not None and connection.status != "INACTIVA":
             pending = db.scalar(select(QrPaymentIntent.id).where(
