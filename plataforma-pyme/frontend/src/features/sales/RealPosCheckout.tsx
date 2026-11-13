@@ -45,6 +45,7 @@ type Props = {
  * This front-end switch is not RBAC: FastAPI validates every write.
  */
 const MUTATIONS_ENABLED = import.meta.env.VITE_PYME_ENABLE_REAL_SALES === '1'
+const EXHIBITION_UI = import.meta.env.VITE_PYME_QR_EXHIBITION === '1'
 const pesos = (c: number) => new Intl.NumberFormat('es-AR', {
   style: 'currency', currency: 'ARS',
 }).format(c / 100)
@@ -79,7 +80,7 @@ export function RealPosCheckout({
   )
   const qrApi = useMemo(() => createQrIntentGateway(token, businessId), [token, businessId])
   const connectionApi = useMemo(() => createPaymentConnectionGateway(token, businessId), [token, businessId])
-  const [qrConnection, setQrConnection] = useState<'loading' | 'active' | 'inactive' | 'error'>('loading')
+  const [qrConnection, setQrConnection] = useState<'loading' | 'active' | 'inactive' | 'error'>(EXHIBITION_UI ? 'active' : 'loading')
   const [qrUnknown, setQrUnknown] = useState(false)
   const [qrBusy, setQrBusy] = useState(false)
   const qrAttempt = useRef<QrPending | null>(null)
@@ -99,6 +100,7 @@ export function RealPosCheckout({
   useEffect(()=>onStageChange(stage),[stage,onStageChange])
 
   useEffect(() => {
+    if (EXHIBITION_UI) return // No consultar ni exigir vínculos con Mercado Pago.
     const ctrl = new AbortController()
     setQrConnection('loading')
     void connectionApi.get(ctrl.signal).then(row => {
@@ -389,9 +391,11 @@ export function RealPosCheckout({
         <span>Total a cobrar <strong>{pesos(draft.totals.total_cents)}</strong></span>
         <small>El descuento cambia el total a pagar; no altera los precios unitarios de catálogo.</small>
       </div>}
-      <div className="e3-pos-qr-action" aria-label="Pago alternativo con QR DEMO">
-        <h3>Mercado Pago QR (DEMO)</h3>
-        <p>Alternativa a los pagos declarados: genera un intento para el total completo del carrito, sin registrar venta ni cobrar dinero. Podrás ver los artículos, cantidades y descuentos junto al QR.</p>
+      <div className="e3-pos-qr-action" aria-label={EXHIBITION_UI ? "QR de exhibición no pagable" : "Pago alternativo con QR DEMO"}>
+        <h3>{EXHIBITION_UI ? 'QR de exhibición · NO PAGABLE' : 'Mercado Pago QR (DEMO)'}</h3>
+        <p>{EXHIBITION_UI
+          ? 'Solo exhibición: mostrará artículos, cantidades, descuentos y total del carrito. El código no abre Mercado Pago, no crea órdenes ni registra ventas o pagos. Para registrar una venta real utilizá los medios declarados.'
+          : 'Alternativa a los pagos declarados: genera un intento para el total completo del carrito, sin registrar venta ni cobrar dinero. Podrás ver los artículos, cantidades y descuentos junto al QR.'}</p>
         {qrConnection === 'loading' && <p role="status">Consultando la vinculación de Mercado Pago…</p>}
         {qrConnection === 'error' && <p role="alert">No se pudo verificar la vinculación. Abrí Medios de cobro y volvé a intentar.</p>}
         {qrConnection === 'inactive' && <p role="status">Antes de generar un QR, vinculá la cuenta de Mercado Pago DEMO de esta empresa.</p>}
@@ -402,7 +406,7 @@ export function RealPosCheckout({
           {qrConnection === 'active' && <button type="button" className="real-auth-primary"
             disabled={!draft.totals || qrBusy || qrUnknown}
             onClick={() => void beginQrIntent()}>
-              {qrBusy ? 'Generando QR…' : 'Generar QR de cobro (DEMO)'}
+              {qrBusy ? 'Generando QR…' : EXHIBITION_UI ? 'Generar QR de exhibición' : 'Generar QR de cobro (DEMO)'}
           </button>}
           {qrUnknown && <button type="button" className="real-auth-secondary"
             disabled={qrBusy} onClick={() => void recoverQrAttempt()}>
@@ -414,7 +418,7 @@ export function RealPosCheckout({
           </button>}
           <button type="button" className="real-auth-secondary"
             onClick={() => onNavigate('/real/empresas/' + businessId + '/cobros-qr')}>
-            Ver cobros QR anteriores
+            {EXHIBITION_UI ? 'Ver QR de exhibición anteriores' : 'Ver cobros QR anteriores'}
           </button>
           {qrConnection !== 'active' && <button type="button" className="real-auth-secondary"
             onClick={() => onNavigate('/real/empresas/' + businessId + '/medios-de-cobro')}>

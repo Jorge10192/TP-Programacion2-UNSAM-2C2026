@@ -19,6 +19,7 @@ from app.infrastructure.models import (
 )
 from app.modules.auth.tokens import now_utc
 from app.modules.payments.mp_shared_qa_config import shared_qa_enabled
+from app.modules.payments.qr_exhibition import exhibition_enabled
 from app.modules.locations.permissions import can_operate_at_location
 from app.modules.purchases.schemas import line_total_cents
 from app.modules.sales.service import SaleService
@@ -131,8 +132,8 @@ class QrIntentService:
                 MerchantPaymentConnection.mode == "DEMO",
                 MerchantPaymentConnection.status == "ACTIVA",
             ))
-            if connection is None and shared_qa_enabled():
-                # La vinculación interna QA se crea al primer QR; ninguna llamada externa.
+            if connection is None and (shared_qa_enabled() or exhibition_enabled()):
+                # Vinculación ficticia para QR QA o exhibición; ninguna llamada externa.
                 previous=self.db.scalar(select(MerchantPaymentConnection).where(
                     MerchantPaymentConnection.business_id==business_id,
                     MerchantPaymentConnection.provider=="MERCADO_PAGO",
@@ -146,7 +147,8 @@ class QrIntentService:
                     connection=MerchantPaymentConnection(
                         id=uuid4(),business_id=business_id,provider="MERCADO_PAGO",
                         mode="DEMO",status="ACTIVA",
-                        mock_merchant_name="Mercado Pago QA compartido",
+                        mock_merchant_name=("QR de exhibición - no pagable"
+                                            if exhibition_enabled() else "Mercado Pago QA compartido"),
                         mock_merchant_ref="MP-QA-"+uuid4().hex.upper(),
                         updated_by_user_id=actor_id,
                     )
