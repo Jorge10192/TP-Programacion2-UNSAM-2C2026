@@ -16,6 +16,8 @@ from app.infrastructure.models import (
     Sale, SaleLine, MercadoPagoTestOrder, MpSharedQaOrder,
 )
 from app.modules.payments.qr_event_log import append_qr_event
+from app.modules.payments.qr_exhibition import exhibition_simulation_enabled
+from app.modules.auth.tokens import now_utc
 from app.modules.payments.qr_service import (
     QrIntentService, QrIntentConflict, QrIntentForbidden, QrIntentNotFound,
 )
@@ -115,9 +117,18 @@ class QrSettlementService:
             raise QrIntentConflict()
         return command, lines
 
-    def finalize(self, actor: UUID, session: UUID, business: UUID, intent_id: UUID) -> QrSettlementView:
+    def finalize(self, actor: UUID, session: UUID, business: UUID, intent_id: UUID, *,
+                 exhibition_event_key: UUID | None = None) -> QrSettlementView:
+        """Register one internal simulated sale; approval and stock commit atomically.
+
+        exhibition_event_key selects the strictly separate public exhibition path.
+        Legacy QR lab finalization remains gated to a disposable database.
+        """
         try:
-            if not qr_finalization_enabled():
+            if exhibition_event_key is not None:
+                if not exhibition_simulation_enabled():
+                    raise QrFinalizationDisabled()
+            elif not qr_finalization_enabled():
                 raise QrFinalizationDisabled()
             self._authorize(actor, session, business, manager=True)
             intent = self.qr._lookup_by_id(business, intent_id, lock=True)
@@ -145,6 +156,17 @@ class QrSettlementService:
                 )
                 self.db.rollback()
                 return response
+
+            if exhibition_event_key is not None:
+                if intent.status != "ESPERANDO_PAGO" or intent.expires_at <= now_utc():
+                    raise QrIntentConflict()
+                intent.status = "APROBADA_DEMO"
+                self.db.flush()
+                append_qr_event(
+                    self.db, intent, actor_id=actor, event_key=exhibition_event_key,
+                    action="APROBAR", from_status="ESPERANDO_PAGO",
+                    to_status="APROBADA_DEMO",
+                )
 
             if intent.status == "REQUIERE_REVISION":
                 raise QrFinalizationNeedsReview()
@@ -220,7 +242,10 @@ class QrSettlementService:
         except (SaleInsufficientStock, SaleInvalidReference, SaleLocationNotEnabled,
                 SaleMissingCatalogPrice, SalePermissionDenied) as error:
             self.db.rollback()
-            self._mark_needs_review(actor, session, business, intent_id)
+            if exhibition_event_key is None:
+                self._mark_needs_review(actor, session, business, intent_id)
+            # Exhibition mode rolls back approval + sale + stock together, so
+            # an insufficient balance is safely retryable after restocking.
             raise QrFinalizationNeedsReview() from error
         except Exception:
             self.db.rollback()
