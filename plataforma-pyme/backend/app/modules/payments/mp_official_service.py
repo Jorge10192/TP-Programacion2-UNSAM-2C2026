@@ -5,6 +5,7 @@ Un pedido de prueba conserva snapshot, idempotencia y tenant en su propia tabla.
 """
 import hashlib
 import re
+from decimal import Decimal
 from sqlalchemy.exc import IntegrityError
 import secrets
 from datetime import timedelta
@@ -239,6 +240,47 @@ class MpOfficialService:
             self.db.rollback()
             raise
 
+    def _order_items(self, source: QrPaymentIntent) -> list[dict]:
+        """Preservar la descripción del POS sin alterar descuentos/centavos.
+
+        Si hay descuento, cantidades fraccionarias o ítems gratuitos, mostrar
+        el desglose en la pantalla PyME y un único concepto ajustado en MP.
+        Nunca enviar items cuya suma difiera del importe de la orden.
+        """
+        lines=list(self.db.scalars(select(QrPaymentIntentLine).where(
+            QrPaymentIntentLine.business_id==source.business_id,
+            QrPaymentIntentLine.intent_id==source.id,
+        ).order_by(QrPaymentIntentLine.line_number)).all())
+        if not lines or len(lines)>30:
+            raise MpIntegrityError()
+        safe=(source.discount_cents==0 and
+              all(line.quantity_milli % 1000==0 and
+                  line.quantity_milli>0 and line.unit_price_cents>0 and
+                  line.line_total_cents ==
+                  (line.quantity_milli//1000)*line.unit_price_cents
+                  for line in lines))
+        if safe:
+            result=[]
+            for line in lines:
+                item={
+                    "title":line.description_snapshot,
+                    "quantity":line.quantity_milli//1000,
+                    "unit_price":money(line.unit_price_cents),
+                    "unit_measure":"unit",
+                }
+                if line.sku_snapshot:
+                    item["external_code"]=line.sku_snapshot
+                result.append(item)
+            if sum(int(Decimal(x["unit_price"])*100)*x["quantity"] for x in result)!=source.total_cents:
+                raise MpIntegrityError()
+            return result
+        return [{
+            "title":"Venta PyME (detalle y descuento en comprobante)",
+            "quantity":1,
+            "unit_price":money(source.total_cents),
+            "unit_measure":"unit",
+        }]
+
     def _validate_source(self,actor: UUID,session: UUID,business:UUID,source_id:UUID):
         member=self.authorize(actor,session,business,manager=False)
         source=self.qr._lookup_by_id(business,source_id,lock=True)
@@ -314,6 +356,7 @@ class MpOfficialService:
                 external_reference=record.external_reference,
                 external_pos_id=record.external_pos_id,
                 description="Cobro PyME · " + str(record.id),
+                items=self._order_items(source),
             )
             status,detail,pay_id,qr_data=validate_order(
                 payload,order_id=record.provider_order_id,
