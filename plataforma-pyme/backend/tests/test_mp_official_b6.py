@@ -163,6 +163,11 @@ def test_official_processed_requires_both_order_and_transaction_accredited():
     kwargs = {"order_id": valid["id"], "external_reference": order["external_reference"],
               "amount_cents": 2500, "merchant_id": "100000001", "pos_id": "CAJATEST001"}
     assert validate_order(valid, **kwargs)[0] == "processed"
+    # QR Orders admite status_detail processed con pago accredited.
+    from copy import deepcopy
+    qr_variant = deepcopy(valid)
+    qr_variant["status_detail"] = "processed"
+    assert validate_order(qr_variant, **kwargs)[0] == "processed"
     for bad in [
         ("status_detail", "partially_refunded"),
         ("transactions", {"payments":[{"id":"PAY1","amount":"25.00",
