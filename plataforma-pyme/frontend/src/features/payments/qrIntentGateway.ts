@@ -214,6 +214,47 @@ export function createQrIntentGateway(token: string, businessId: string, transpo
         method: 'POST', body: { action }, idempotencyKey: eventKey,
       }).then(raw => parseQrIntent(raw, businessId))
     },
+    async decideExhibition(intentId: string, action: 'ACEPTAR' | 'RECHAZAR',
+      eventKey: string): Promise<{ intent: QrIntent; sale: SaleReceipt | null; replayed: boolean }> {
+      if (!UUID_PATTERN.test(intentId) || !UUID_V4_PATTERN.test(eventKey) ||
+          !['ACEPTAR','RECHAZAR'].includes(action))
+        throw new TypeError('Decisión QR ficticia inválida')
+      const raw = await api.request<unknown>(
+        path + '/' + intentId + '/exhibition-decision', {
+          method: 'POST', body: { action }, idempotencyKey: eventKey,
+        })
+      try {
+        if (!isObject(raw) || typeof raw.replayed !== 'boolean')
+          throw Error('Respuesta de decisión inválida')
+        const intent = parseQrIntent(raw.intent, businessId)
+        const sale = raw.sale === null ? null : parseSaleReceipt(raw.sale, businessId)
+        if (intent.id !== intentId) throw Error('QR incompatible')
+        if (action === 'RECHAZAR') {
+          if (intent.status !== 'RECHAZADA' || sale !== null || intent.sale_id != null)
+            throw Error('Rechazo QR incompatible')
+        } else if (intent.status !== 'FINALIZADA' || !sale ||
+                   intent.sale_id !== sale.id ||
+                   intent.total_cents !== sale.total_cents ||
+                   intent.subtotal_cents !== sale.subtotal_cents ||
+                   intent.discount_cents !== sale.discount_cents ||
+                   sale.location_id !== intent.location_id ||
+                   sale.notes !== intent.notes ||
+                   sale.payments.length !== 1 ||
+                   sale.payments[0].method !== 'MERCADO_PAGO_DEMO_QA' ||
+                   sale.payments[0].reference !== intent.reference ||
+                   sale.payments[0].amount_cents !== intent.total_cents ||
+                   sale.lines.length !== intent.lines.length ||
+                   sale.lines.some((line,i) =>
+                     line.catalog_item_id !== intent.lines[i].catalog_item_id ||
+                     line.description_snapshot !== intent.lines[i].description_snapshot ||
+                     line.quantity_milli !== intent.lines[i].quantity_milli ||
+                     line.unit_price_cents !== intent.lines[i].unit_price_cents ||
+                     line.line_total_cents !== intent.lines[i].line_total_cents)) {
+          throw Error('Venta ficticia incompatible con el QR')
+        }
+        return { intent, sale, replayed: raw.replayed }
+      } catch { throw new ApiTransportError('invalid-response', true) }
+    },
     async finalize(intentId: string): Promise<QrFinalized> {
       if (!UUID_PATTERN.test(intentId)) throw new TypeError('Intento inválido')
       // El servidor usa el ID del QR como identidad idempotente: no generar una venta nueva al reintentar.
