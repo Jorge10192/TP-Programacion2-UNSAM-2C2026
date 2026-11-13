@@ -9,6 +9,8 @@ import type { DemoPaymentConnection } from './paymentConnectionGateway.ts'
 import './realPaymentConnections.css'
 import './mpOfficialTest.css'
 
+const EXHIBITION_UI = import.meta.env.VITE_PYME_QR_EXHIBITION === '1'
+
 type Props = { token: string; userId: string; businessId: string; onNavigate: (path:string)=>void; onUnauthorized: () => void }
 
 export function RealPaymentConnectionsPage({ token, userId, businessId, onNavigate, onUnauthorized }: Props) {
@@ -34,7 +36,9 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
     setLoading(true); setError(''); setConnection(null); setCompany(null)
     const businessApi = createBusinessGateway(token, userId)
     // Se obtiene la empresa del endpoint autenticado; sin estado global ni demoStore.
-    void Promise.all([api.get(controller.signal), businessApi.get(businessId, controller.signal), official.connection(), official.sharedConnection()])
+    void Promise.all([api.get(controller.signal), businessApi.get(businessId, controller.signal),
+      EXHIBITION_UI ? Promise.resolve(null) : official.connection(),
+      EXHIBITION_UI ? Promise.resolve(null) : official.sharedConnection()])
       .then(([linked, business, officialLinked, sharedLinked]) => {
         if (!mounted.current || controller.signal.aborted) return
         setConnection(linked); setCompany(business)
@@ -108,14 +112,27 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
     <div className="mp-connection-head">
       <div><span className="mp-eyebrow">Administración · Medios de cobro</span>
         <h1>Medios de cobro</h1>
-        <p>Configurá cómo querés cobrar en tu empresa. La integración con Mercado Pago empieza en modo de prueba.</p>
+        <p>{EXHIBITION_UI ? 'La exhibición QR no vincula cuentas ni cobra dinero. Las ventas reales siguen utilizando pagos declarados.' : 'Configurá cómo querés cobrar en tu empresa. La integración con Mercado Pago empieza en modo de prueba.'}</p>
       </div>
-      <span className="mp-mode-pill">SIMULACIÓN</span>
+      <span className="mp-mode-pill">{EXHIBITION_UI ? 'QR NO PAGABLE' : 'SIMULACIÓN'}</span>
     </div>
     {loading && <p role="status">Consultando empresa y medios de cobro…</p>}
     {error && <p className="mp-message mp-error" role="alert">{error}</p>}
     {notice && <p className="mp-message" role="status">{notice}</p>}
-    {!loading && company && connection && !sharedQa?.enabled && <div className="mp-connection-card">
+    {!loading && company && EXHIBITION_UI && <div className="mp-connection-card" aria-label="QR de exhibición no vinculante">
+      <div className="mp-connection-title">
+        <div><h2>QR de exhibición <small>NO PAGABLE</small></h2>
+          <p>{company.name} · No hay cuenta ni caja vinculada</p></div>
+        <span className="mp-state mp-active">Disponible</span>
+      </div>
+      <p>El punto de venta puede generar un QR sintético con el importe y el detalle de cada operación. No conecta con Mercado Pago, no crea órdenes externas ni confirma pagos.</p>
+      <div className="mp-actions">
+        <button type="button" className="mp-outline" onClick={() => onNavigate('/real/empresas/'+businessId+'/pos')}>Ir al punto de venta</button>
+        <button type="button" className="mp-outline" onClick={() => onNavigate('/real/empresas/'+businessId+'/cobros-qr')}>Ver exhibiciones anteriores</button>
+      </div>
+      <p className="mp-footnote">La caja Mercado Pago TEST se mantiene deshabilitada en el sitio público. Para registrar una venta utilizá pagos declarados desde el POS.</p>
+    </div>}
+    {!EXHIBITION_UI && !loading && company && connection && !sharedQa?.enabled && <div className="mp-connection-card">
       <div className="mp-connection-title">
         <span className="mp-symbol" aria-hidden="true">MP</span>
         <div><h2>Mercado Pago <small>DEMO</small></h2>
@@ -156,7 +173,7 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
       {!canManage && <p className="mp-footnote">Tu rol permite consultar esta configuración, pero no modificarla.</p>}
       <p className="mp-footnote">Esta cuenta NO está conectada a Mercado Pago. Permite generar QR de identificación DEMO y simular eventos, pero no acredita fondos. En una base QA descartable, un cierre posterior y explícito puede registrar una venta interna y descontar stock.</p>
     </div>}
-    {!loading && company && sharedQa?.enabled && <div className="mp-official-card"
+    {!EXHIBITION_UI && !loading && company && sharedQa?.enabled && <div className="mp-official-card"
       aria-label="Caja Mercado Pago QA compartida">
       <div className="mp-connection-head">
         <div>
@@ -192,7 +209,7 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
         </button>
       </div>
     </div>}
-    {!loading && company && officialConnection && !sharedQa?.enabled && <div className="mp-official-card"
+    {!EXHIBITION_UI && !loading && company && officialConnection && !sharedQa?.enabled && <div className="mp-official-card"
       aria-label="Mercado Pago oficial TEST">
       <div className="mp-connection-head">
         <div>
