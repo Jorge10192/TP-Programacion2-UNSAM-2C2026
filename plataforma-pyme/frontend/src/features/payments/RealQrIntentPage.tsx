@@ -6,6 +6,8 @@ import { createQrIntentGateway, qrIntentError } from './qrIntentGateway.ts'
 import type { QrIntent, QrPaymentEvent, QrSimAction } from './qrIntentGateway.ts'
 import type { SaleReceipt } from '../sales/realSalesReadGateway.ts'
 import { qrEffectiveStatus, qrStatusPresentation } from './qrUx.ts'
+import { createMpOfficialTestGateway } from './mpOfficialTestGateway.ts'
+import type { MpTestConnection, MpTestOrder } from './mpOfficialTestGateway.ts'
 import './realQrIntent.css'
 
 type Props = {
@@ -39,12 +41,17 @@ export function RealQrIntentPage({
   token, userId, businessId, intentId, onNavigate, onUnauthorized,
 }: Props) {
   const api = useMemo(() => createQrIntentGateway(token, businessId), [token, businessId])
+  const officialApi = useMemo(()=>createMpOfficialTestGateway(token,businessId),[token,businessId])
   const operations = useMemo(() => createOperationsGateway(token, userId), [token, userId])
   const [intent, setIntent] = useState<QrIntent | null>(null)
   const [companyName, setCompanyName] = useState('')
   const [siteName, setSiteName] = useState('')
   const [isManager, setIsManager] = useState(false)
   const [events, setEvents] = useState<QrPaymentEvent[]>([])
+  const [officialConnection, setOfficialConnection] = useState<MpTestConnection|null>(null)
+  const [officialOrder, setOfficialOrder] = useState<MpTestOrder|null>(null)
+  const [officialBusy, setOfficialBusy] = useState(false)
+  const [officialError, setOfficialError] = useState('')
   const [receipt, setReceipt] = useState<SaleReceipt | null>(null)
   const [saleOutcomeUnknown, setSaleOutcomeUnknown] = useState(false)
   const [saleRecoveryChecked, setSaleRecoveryChecked] = useState(false)
@@ -64,12 +71,16 @@ export function RealQrIntentPage({
     void Promise.all([
       api.get(intentId, ctrl.signal),
       api.events(intentId, ctrl.signal),
+      officialApi.connection(),
+      officialApi.bySource(intentId),
       operations.business(businessId, ctrl.signal),
       operations.locations(businessId, ctrl.signal),
-    ]).then(([qr, history, company, sites]) => {
+    ]).then(([qr, history, officialState, officialSaved, company, sites]) => {
       if (ctrl.signal.aborted) return
       setIntent(qr)
       setEvents(history)
+      setOfficialConnection(officialState)
+      setOfficialOrder(officialSaved)
       if (qr.status === 'FINALIZADA') {
         void api.receipt(intentId, ctrl.signal).then(sale=>{
           if (!ctrl.signal.aborted && qr.sale_id === sale.id) setReceipt(sale)
@@ -85,7 +96,67 @@ export function RealQrIntentPage({
       else setError(qrIntentError(err))
     }).finally(() => { if (!ctrl.signal.aborted) setLoading(false) })
     return () => ctrl.abort()
-  }, [api, intentId, businessId, operations, onUnauthorized])
+  }, [api, officialApi, intentId, businessId, operations, onUnauthorized])
+
+  async function refreshOfficial() {
+    if (officialBusy) return
+    setOfficialBusy(true);setOfficialError('')
+    try {
+      const [link,order]=await Promise.all([
+        officialApi.connection(),officialApi.bySource(intentId),
+      ])
+      setOfficialConnection(link)
+      setOfficialOrder(order)
+    } catch(err) {
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      else setOfficialError(qrIntentError(err))
+    } finally{setOfficialBusy(false)}
+  }
+
+  async function makeOfficialTestOrder() {
+    if(!intent||!officialConnection?.enabled||officialConnection.status!=='ACTIVA'||
+       !officialConnection.external_pos_id||officialBusy||
+       (officialOrder!==null && !['INDETERMINADA','PREPARANDO'].includes(officialOrder.status)))return
+    if(!window.confirm('¿Crear una orden QR en Mercado Pago TEST? Usará la cuenta de prueba y la caja de esta empresa. No es un pago de producción.'))return
+    setOfficialBusy(true);setOfficialError('')
+    try{
+      // Se conserva el UUID4 original del QR como clave remota idempotente.
+      const result=await officialApi.create(intentId,intent.request_id)
+      setOfficialOrder(result)
+    }catch(err){
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      else setOfficialError(qrIntentError(err)+
+        ' Consultá la orden original antes de volver a enviarla.')
+      void officialApi.bySource(intentId).then(setOfficialOrder).catch(()=>{})
+    }finally{setOfficialBusy(false)}
+  }
+
+  async function reconcileOfficial() {
+    if(!officialOrder||officialBusy)return
+    setOfficialBusy(true);setOfficialError('')
+    try{
+      const result=await officialApi.reconcile(officialOrder.id)
+      setOfficialOrder(result)
+    }catch(err){
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      else setOfficialError(qrIntentError(err))
+    }finally{setOfficialBusy(false)}
+  }
+
+  async function settleOfficialSale() {
+    if(!officialOrder||officialOrder.status!=='PROCESADA'||officialBusy||!isManager)return
+    if(!window.confirm('¿Registrar una sola venta QA a partir del pago procesado por Mercado Pago TEST? No mueve dinero real.'))return
+    setOfficialBusy(true);setOfficialError('')
+    try{
+      const result=await officialApi.settle(officialOrder.id)
+      setOfficialOrder(result.order)
+    }catch(err){
+      if(err instanceof ApiHttpError&&err.status===401)onUnauthorized()
+      else setOfficialError(qrIntentError(err)+
+        ' Consultá orden y comprobante: no generes otro QR.')
+      void officialApi.bySource(intentId).then(setOfficialOrder).catch(()=>{})
+    }finally{setOfficialBusy(false)}
+  }
 
   const secondsRemaining = intent ? Math.max(0, Math.ceil((Date.parse(intent.expires_at) - now) / 1000)) : 0
   const displayStatus = intent ? qrEffectiveStatus(intent.status, intent.expires_at, now) : null
@@ -199,7 +270,11 @@ export function RealQrIntentPage({
       </div>
     </div>
 
-    <p className="e3-qr-warning" role="note"><strong>SIMULACIÓN · NO COBRABLE.</strong> Este QR solo codifica una referencia de prueba. No es una orden de Mercado Pago y no se recibe dinero real. Tampoco se registra una venta ni se reserva/descuenta stock al generarlo.</p>
+    <p className="e3-qr-warning" role="note">
+      {officialOrder
+        ? <><strong>ORDEN OFICIAL · SOLO ENTORNO TEST.</strong> Este QR procede de Orders API y puede probarse con cuentas de comprador de prueba. No lo uses para cobrar fondos reales. La venta QA se registra por separado tras conciliación.</>
+        : <><strong>SIMULACIÓN · NO COBRABLE.</strong> El QR DEMO solo contiene una referencia ficticia. No es una orden de Mercado Pago ni recibe dinero real.</>}
+    </p>
     {presentation && <div className={'e3-qr-explainer e3-qr-tone-'+presentation.tone} role="status">
       <strong>{presentation.title}</strong>
       <p>{presentation.description}</p>
@@ -210,11 +285,19 @@ export function RealQrIntentPage({
     {intent && !loading && <div className="e3-qr-layout">
       <div className="e3-qr-visual-panel">
         <div className="e3-qr-status" role="status">
-          {presentation?.title ?? 'Estado QR'}
+          {officialOrder ? 'Mercado Pago TEST · '+officialOrder.status : presentation?.title ?? 'Estado QR'}
         </div>
-        <img src={intent.qr_png_data_uri} alt="QR escaneable de identificación DEMO, no se puede pagar"
-          className="e3-qr-image" width="320" height="320"/>
-        <strong className="e3-qr-not-payable">QR DE PRUEBA · NO COBRABLE</strong>
+        {officialOrder?.qr_png_data_uri
+          ? <img src={officialOrder.qr_png_data_uri}
+              alt="QR oficial de una orden Mercado Pago en entorno TEST"
+              className="e3-qr-image" width="320" height="320"/>
+          : !officialOrder&&<img src={intent.qr_png_data_uri}
+              alt="QR de identificación ficticia DEMO, no cobrable"
+              className="e3-qr-image" width="320" height="320"/>}
+        <strong className="e3-qr-not-payable">
+          {officialOrder ? 'MERCADO PAGO · CUENTA TEST · NO PRODUCCIÓN'
+            : 'QR DE PRUEBA · NO COBRABLE'}
+        </strong>
         <p className="e3-qr-total">{pesos(intent.total_cents)}</p>
         <p className="e3-qr-clock">{
           displayStatus === 'ESPERANDO_PAGO'
@@ -226,13 +309,78 @@ export function RealQrIntentPage({
         <div className="e3-qr-buttons">
           <button type="button" className="real-auth-secondary" disabled={busy}
             onClick={() => void refresh()}>{busy ? 'Consultando…' : 'Consultar estado'}</button>
-          {displayStatus === 'ESPERANDO_PAGO' &&
+          {!officialOrder && displayStatus === 'ESPERANDO_PAGO' &&
             <button type="button" className="real-auth-secondary" disabled={busy}
               onClick={() => void cancel()}>Cancelar QR</button>}
         </div>
       </div>
       <div className="e3-qr-details">
-        {LAB_UI_ENABLED && isManager && <div className="e3-qr-lab" aria-label="Laboratorio de cobros ficticios">
+        <section className="e3-qr-official" aria-label="Integración oficial Mercado Pago TEST">
+          <div className="e3-qr-official-head">
+            <h2>Mercado Pago oficial · TEST</h2>
+            <span className="e3-qr-test-pill">SIN PRODUCCIÓN</span>
+          </div>
+          <p>Separa el QR ficticio de una orden oficial de prueba. El importe y los artículos permanecen congelados desde el POS; las credenciales se usan exclusivamente en FastAPI.</p>
+          {officialConnection && !officialConnection.enabled &&
+            <p role="note">El backend aún no está configurado para conectarse con el proveedor TEST. La DEMO sigue disponible sin esa conexión.</p>}
+          {officialConnection?.enabled && officialConnection.status!=='ACTIVA' &&
+            <p role="note">Vinculá primero una cuenta Seller TEST desde Medios de cobro.</p>}
+          {officialConnection?.enabled && officialConnection.status==='ACTIVA' &&
+            !officialConnection.external_pos_id &&
+            <p role="note">Configurá una caja de Mercado Pago TEST en Medios de cobro antes de emitir la orden.</p>}
+          {officialError&&<p role="alert" className="real-auth-message real-auth-error">{officialError}</p>}
+          <div className="e3-qr-official-actions">
+            {!officialOrder && officialConnection?.enabled && officialConnection.status==='ACTIVA' &&
+              officialConnection.external_pos_id && displayStatus==='ESPERANDO_PAGO' &&
+              <button type="button" className="real-auth-primary" disabled={officialBusy||busy}
+                onClick={()=>void makeOfficialTestOrder()}>
+                {officialBusy?'Generando…':'Crear QR oficial en Mercado Pago TEST'}
+              </button>}
+            {officialOrder && <button type="button" className="real-auth-secondary"
+              disabled={officialBusy||busy} onClick={()=>void refreshOfficial()}>
+              Consultar orden guardada
+            </button>}
+            {officialOrder?.status==='INDETERMINADA' && <button type="button"
+              className="real-auth-secondary" disabled={officialBusy}
+              onClick={()=>void makeOfficialTestOrder()}>
+              Reintentar la misma orden y clave
+            </button>}
+            {officialOrder?.provider_order_id && <button type="button"
+              className="real-auth-secondary" disabled={officialBusy}
+              onClick={()=>void reconcileOfficial()}>
+              Verificar pago en Mercado Pago
+            </button>}
+            <button type="button" className="real-auth-secondary"
+              onClick={()=>onNavigate('/real/empresas/'+businessId+'/medios-de-cobro')}>
+              Cuenta y caja TEST
+            </button>
+          </div>
+          {officialOrder && <>
+            <p><strong>Estado de la orden:</strong> {officialOrder.status}</p>
+            <p><strong>Referencia:</strong> <code>{officialOrder.external_reference}</code></p>
+            {officialOrder.provider_order_id &&
+              <p><strong>Order ID:</strong> <code>{officialOrder.provider_order_id}</code></p>}
+            {officialOrder.status==='CREADA' &&
+              <p role="status">Esperando pago con cuenta de comprador TEST. Usá «Verificar pago» para conciliar con Orders API.</p>}
+            {officialOrder.status==='INDETERMINADA' &&
+              <p role="alert">La respuesta de Mercado Pago fue incierta. Se mantiene la clave original; no generes otro cobro.</p>}
+            {officialOrder.status==='PROCESADA' && !officialOrder.sale_registered &&
+              <div className="e3-qr-official-processed">
+                <p><strong>Pago TEST verificado con proveedor.</strong> La venta de prueba aún no se registró ni se descontó stock.</p>
+                {isManager&&<button type="button" className="real-auth-primary"
+                  disabled={officialBusy} onClick={()=>void settleOfficialSale()}>
+                  Registrar venta QA verificada y descontar stock
+                </button>}
+              </div>}
+            {officialOrder.sale_registered &&
+              <p role="status"><strong>Venta QA registrada.</strong> Comprobante: <code>{officialOrder.sale_id}</code>. No volverá a descontar stock con esta orden.</p>}
+            {officialOrder.status==='REQUIERE_REVISION' &&
+              <p role="alert">El proveedor TEST reportó cobro pero el registro comercial requiere revisión. No se asentó stock parcial.</p>}
+            {officialOrder.status==='REEMBOLSADA' &&
+              <p role="alert">La orden figura reembolsada en TEST. Revisá el comprobante y la compensación de inventario si hubo venta.</p>}
+          </>}
+        </section>
+        {!officialOrder && LAB_UI_ENABLED && isManager && <div className="e3-qr-lab" aria-label="Laboratorio de cobros ficticios">
           <h2>Laboratorio QR · Solo pruebas</h2>
           <p><strong>Este laboratorio NO valida un cobro Mercado Pago.</strong> Solo cambia el estado DEMO del intento y registra un evento auditado. No crea ventas ni modifica stock.</p>
           {intent.status === 'ESPERANDO_PAGO' || intent.status === 'INDETERMINADA'
@@ -256,7 +404,7 @@ export function RealQrIntentPage({
             </div>
             : <p role="status">El intento ya está resuelto; no pueden simularse nuevas transiciones.</p>}
         </div>}
-        {FINALIZE_QA_ENABLED && isManager && intent.status === 'APROBADA_DEMO' &&
+        {!officialOrder && FINALIZE_QA_ENABLED && isManager && intent.status === 'APROBADA_DEMO' &&
           <section className="e3-qr-finalize" aria-label="Registrar venta QA">
             <h2>Confirmar venta de prueba</h2>
             <p>El pago fue aprobado únicamente por el simulador. Este botón registra UNA venta en PostgreSQL QA y descuenta stock de forma transaccional, sin mover dinero real.</p>
