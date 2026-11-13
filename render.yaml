@@ -6,7 +6,7 @@ services:
     name: plataforma-pyme-qa-public
     runtime: docker
     plan: free
-    region: virginia
+    region: oregon
     branch: main
     dockerfilePath: ./plataforma-pyme/Dockerfile.public
     dockerContext: ./plataforma-pyme
