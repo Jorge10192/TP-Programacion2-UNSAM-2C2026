@@ -89,7 +89,8 @@ def official_payload(order, *, processed=False):
         "type_response":{"qr_data":"00020101021226MPQRTEST"},
         "transactions":{"payments":[{"id":"PAY01K371WBFDS4MD9JG0KCV6PRKQ",
             "amount":money(order["total_cents"]),
-            "status":"processed" if processed else "created"}]},
+            "status":"processed" if processed else "created",
+            "status_detail":"accredited" if processed else "created"}]},
     }
 
 
@@ -151,6 +152,27 @@ def test_official_order_rejects_mismatched_item_total_without_external_request()
                         "unit_price":"10.00","unit_measure":"unit"}],
             )
     assert not calls
+
+
+def test_official_processed_requires_both_order_and_transaction_accredited():
+    """Regresión: un estado processed sin transacción acreditada no es cobro válido."""
+    from copy import deepcopy
+    order = {"total_cents": 2500, "external_reference": "PYME" + "A" * 32,
+             "external_pos_id": "CAJATEST001"}
+    valid = official_payload(order, processed=True)
+    kwargs = {"order_id": valid["id"], "external_reference": order["external_reference"],
+              "amount_cents": 2500, "merchant_id": "100000001", "pos_id": "CAJATEST001"}
+    assert validate_order(valid, **kwargs)[0] == "processed"
+    for bad in [
+        ("status_detail", "partially_refunded"),
+        ("transactions", {"payments":[{"id":"PAY1","amount":"25.00",
+                                       "status":"processed", "status_detail":"pending"}]}),
+        ("transactions", {"payments":[]}),
+    ]:
+        changed = deepcopy(valid)
+        changed[bad[0]] = bad[1]
+        with pytest.raises(MpIntegrityError):
+            validate_order(changed, **kwargs)
 
 
 def test_hmac_signature_and_ttl_not_body():
