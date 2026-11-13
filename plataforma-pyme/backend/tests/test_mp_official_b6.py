@@ -109,7 +109,7 @@ def test_hmac_signature_and_ttl_not_body():
     rid="request-999"
     now=1_700_000_000
     ts=str(now*1000)
-    msg=f"id:{order_id};request-id:{rid};ts:{ts};".encode()
+    msg=f"id:{order_id.lower()};request-id:{rid};ts:{ts};".encode()
     digest=hmac.new(secret.encode(),msg,hashlib.sha256).hexdigest()
     sig=f"ts={ts},v1={digest}"
     assert signature_valid(secret=secret,signature=sig,request_id=rid,data_id=order_id,now=now)
