@@ -148,10 +148,14 @@ def test_oauth_and_orders_offline_tenant_idempotent_settlement(isolated,monkeypa
     mock_order={"total_cents":qr["total_cents"],"external_reference":None,
         "external_pos_id":"TESTPOS001"}
     calls={"create":0,"order":0}
-    def create(self,*,token,key,amount_cents,external_reference,external_pos_id,description):
+    def create(self,*,token,key,amount_cents,external_reference,external_pos_id,description,items=None):
         assert token=="APP_USR-TEST-only-123"
         assert key==qr["request_id"]
         assert amount_cents==qr["total_cents"]
+        assert items is not None and len(items)==1
+        assert items[0]["unit_price"]==money(qr["total_cents"])
+        assert items[0]["quantity"]==1
+        assert items[0]["title"]==qr["lines"][0]["description_snapshot"]
         calls["create"]+=1
         mock_order["external_reference"]=external_reference
         return official_payload(mock_order)
