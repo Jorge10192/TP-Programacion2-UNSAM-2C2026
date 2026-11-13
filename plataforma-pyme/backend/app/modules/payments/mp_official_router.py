@@ -70,6 +70,8 @@ def connection(business_id:UUID,context:AuthContext=Depends(current_auth),
 def oauth_start(business_id:UUID,context:AuthContext=Depends(current_auth),
                 db:Session=Depends(get_db)):
     try:
+        if os.getenv("PYME_DISPOSABLE_QA") == "1" and os.getenv("PYME_MP_QR_SHARED_QA_ENABLED") == "1":
+            raise MpConflict()  # QA compartido no permite OAuth de empresas.
         return {"authorization_url":MpOfficialService(db).start_oauth(
             context.user.id,context.auth_session.id,business_id)}
     except Exception as e:
@@ -94,6 +96,8 @@ def oauth_callback(state:str=Query(min_length=20,max_length=200),
 def save_pos(business_id:UUID,command:PosInput,context:AuthContext=Depends(current_auth),
              db:Session=Depends(get_db)):
     try:
+        if os.getenv("PYME_DISPOSABLE_QA") == "1" and os.getenv("PYME_MP_QR_SHARED_QA_ENABLED") == "1":
+            raise MpConflict()  # La caja QA es única e inmutable para usuarios.
         return MpOfficialService(db).set_pos(
             context.user.id,context.auth_session.id,business_id,command.external_pos_id)
     except Exception as e:

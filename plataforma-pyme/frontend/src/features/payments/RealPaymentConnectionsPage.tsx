@@ -4,7 +4,7 @@ import { createBusinessGateway, businessErrorMessage } from '../businesses/busin
 import type { RealBusiness } from '../businesses/businessGateway.ts'
 import { createPaymentConnectionGateway } from './paymentConnectionGateway.ts'
 import { createMpOfficialTestGateway } from './mpOfficialTestGateway.ts'
-import type { MpTestConnection } from './mpOfficialTestGateway.ts'
+import type { MpTestConnection, MpSharedQaConnection } from './mpOfficialTestGateway.ts'
 import type { DemoPaymentConnection } from './paymentConnectionGateway.ts'
 import './realPaymentConnections.css'
 import './mpOfficialTest.css'
@@ -15,6 +15,7 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
   const api = useMemo(() => createPaymentConnectionGateway(token, businessId), [token, businessId])
   const official = useMemo(() => createMpOfficialTestGateway(token,businessId), [token,businessId])
   const [officialConnection, setOfficialConnection] = useState<MpTestConnection | null>(null)
+  const [sharedQa, setSharedQa] = useState<MpSharedQaConnection | null>(null)
   const [posText, setPosText] = useState('')
   const [officialBusy, setOfficialBusy] = useState(false)
   const [officialError, setOfficialError] = useState('')
@@ -33,11 +34,12 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
     setLoading(true); setError(''); setConnection(null); setCompany(null)
     const businessApi = createBusinessGateway(token, userId)
     // Se obtiene la empresa del endpoint autenticado; sin estado global ni demoStore.
-    void Promise.all([api.get(controller.signal), businessApi.get(businessId, controller.signal), official.connection()])
-      .then(([linked, business, officialLinked]) => {
+    void Promise.all([api.get(controller.signal), businessApi.get(businessId, controller.signal), official.connection(), official.sharedConnection()])
+      .then(([linked, business, officialLinked, sharedLinked]) => {
         if (!mounted.current || controller.signal.aborted) return
         setConnection(linked); setCompany(business)
         setOfficialConnection(officialLinked)
+        setSharedQa(sharedLinked)
         setPosText(officialLinked.external_pos_id??'')
       })
       .catch(err => {
@@ -154,7 +156,42 @@ export function RealPaymentConnectionsPage({ token, userId, businessId, onNaviga
       {!canManage && <p className="mp-footnote">Tu rol permite consultar esta configuración, pero no modificarla.</p>}
       <p className="mp-footnote">Esta cuenta NO está conectada a Mercado Pago. Permite generar QR de identificación DEMO y simular eventos, pero no acredita fondos. En una base QA descartable, un cierre posterior y explícito puede registrar una venta interna y descontar stock.</p>
     </div>}
-    {!loading && company && officialConnection && <div className="mp-official-card"
+    {!loading && company && sharedQa?.enabled && <div className="mp-official-card"
+      aria-label="Caja Mercado Pago QA compartida">
+      <div className="mp-connection-head">
+        <div>
+          <span className="mp-eyebrow">QA · Asociación automática</span>
+          <h2>Mercado Pago · QR único de prueba</h2>
+          <p>La empresa {company.name} utiliza la misma caja de prueba administrada por la plataforma.
+            No se crea una cuenta ni una caja adicional al registrar un negocio.</p>
+        </div>
+        <span className="mp-mode-pill">SOLO TEST</span>
+      </div>
+      <dl className="mp-fields">
+        <div><dt>Vinculación interna</dt><dd>Disponible automáticamente en QA</dd></div>
+        <div><dt>Vendedor de prueba</dt><dd>{sharedQa.mp_user_id}</dd></div>
+        <div><dt>Sucursal única</dt><dd>{sharedQa.store_id}</dd></div>
+        <div><dt>Caja única</dt><dd>{sharedQa.pos_id}</dd></div>
+        <div><dt>External POS ID</dt><dd><code>{sharedQa.external_pos_id}</code></dd></div>
+      </dl>
+      {sharedQa.qr_png_data_uri &&
+        <div className="mp-official-qr">
+          <img src={sharedQa.qr_png_data_uri} width="220" height="220"
+            alt="QR oficial estático de la única caja Mercado Pago QA"/>
+        </div>}
+      <p className="mp-official-warning" role="note">
+        Esta es una vista del QR estático real de la caja de prueba. Aún NO hay una orden de
+        pago asociada a una venta de esta empresa. Escanearlo no demuestra un pago,
+        ni asigna el importe mostrado en el POS. No usar para cobrar fuera de QA.
+      </p>
+      <div className="mp-actions">
+        <button type="button" className="mp-outline"
+          onClick={() => onNavigate('/real/empresas/'+businessId+'/pos')}>
+          Ir al POS
+        </button>
+      </div>
+    </div>}
+    {!loading && company && officialConnection && !sharedQa?.enabled && <div className="mp-official-card"
       aria-label="Mercado Pago oficial TEST">
       <div className="mp-connection-head">
         <div>

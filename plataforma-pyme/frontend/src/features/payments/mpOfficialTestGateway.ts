@@ -10,6 +10,36 @@ export type MpTestConnection={
   external_pos_id:string|null
   sandbox_only:true
 }
+export type MpSharedQaConnection={
+  business_id:string
+  enabled:boolean
+  virtual_link:boolean
+  status:'DISPONIBLE_QA'|'DESHABILITADA'
+  mp_user_id:string|null
+  store_id:string|null
+  pos_id:string|null
+  external_pos_id:string|null
+  qr_png_data_uri:string|null
+  orders_integrated:false
+  remote_verified:false
+  sandbox_only:true
+}
+export function parseMpSharedQaConnection(raw:unknown,businessId:string):MpSharedQaConnection{
+  if(!isObject(raw)||raw.business_id!==businessId||
+    typeof raw.enabled!=='boolean'||raw.virtual_link!==raw.enabled||
+    raw.status!==(raw.enabled?'DISPONIBLE_QA':'DESHABILITADA')||
+    raw.orders_integrated!==false||raw.remote_verified!==false||raw.sandbox_only!==true||
+    !(raw.mp_user_id===null||raw.mp_user_id==='3837129107')||
+    !(raw.store_id===null||raw.store_id==='89968780')||
+    !(raw.pos_id===null||raw.pos_id==='140776986')||
+    !(raw.external_pos_id===null||raw.external_pos_id==='PYMEQA001POS001')||
+    !(raw.qr_png_data_uri===null||(typeof raw.qr_png_data_uri==='string' &&
+      /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(raw.qr_png_data_uri)))||
+    (raw.enabled && (!raw.qr_png_data_uri||raw.mp_user_id===null))||
+    (!raw.enabled && (raw.qr_png_data_uri!==null||raw.mp_user_id!==null||raw.pos_id!==null)))
+    throw new ApiTransportError('invalid-response',false)
+  return raw as MpSharedQaConnection
+}
 export type MpTestOrder={
   id:string
   business_id:string
@@ -65,6 +95,8 @@ export function createMpOfficialTestGateway(token:string,businessId:string,trans
   const root='/businesses/'+businessId+'/mercadopago/official-test'
   return {
     connection:()=>http.request<unknown>(root+'/connection').then(r=>parseMpTestConnection(r,businessId)),
+    sharedConnection:()=>http.request<unknown>('/businesses/'+businessId+
+      '/mercadopago/qa-shared/connection').then(r=>parseMpSharedQaConnection(r,businessId)),
     async startOAuth():Promise<string>{
       const result=await http.request<unknown>(root+'/oauth/start',{method:'POST'})
       if(!isObject(result)||typeof result.authorization_url!=='string'){
