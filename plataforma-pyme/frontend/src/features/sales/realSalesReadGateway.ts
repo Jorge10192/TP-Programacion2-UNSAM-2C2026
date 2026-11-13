@@ -10,7 +10,7 @@ export type SaleKind = 'BIEN' | 'SERVICIO'
 export type DeclaredPaymentMethod =
   'EFECTIVO' | 'TRANSFERENCIA' | 'CUENTA_DNI' | 'TARJETA' | 'MERCADO_PAGO_DECLARADO'
 
-export type RecordedPaymentMethod = DeclaredPaymentMethod | 'MERCADO_PAGO_DEMO_QA'
+export type RecordedPaymentMethod = DeclaredPaymentMethod | 'MERCADO_PAGO_DEMO_QA' | 'MERCADO_PAGO_QR_TEST'
 
 export type SaleSummary = {
   id: string
@@ -76,7 +76,7 @@ const units = new Set([
 const discreteUnits = new Set(['UNIDAD', 'PAQUETE', 'CAJA', 'SERVICIO'])
 const methods = new Set([
   'EFECTIVO', 'TRANSFERENCIA', 'CUENTA_DNI', 'TARJETA', 'MERCADO_PAGO_DECLARADO',
-  'MERCADO_PAGO_DEMO_QA',
+  'MERCADO_PAGO_DEMO_QA', 'MERCADO_PAGO_QR_TEST',
 ])
 const obj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
