@@ -1,0 +1,24 @@
+# Docker build context is plataforma-pyme/, never include local secrets.
+**/.git
+**/.env
+**/.env.*
+!**/.env.example
+**/.venv
+**/node_modules
+**/dist
+**/.pytest_cache
+**/__pycache__
+**/*.pyc
+**/.mypy_cache
+**/.ruff_cache
+**/test-results
+**/playwright-report
+**/.coverage
+**/*.log
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/secrets
+**/credentials
+**/tests
