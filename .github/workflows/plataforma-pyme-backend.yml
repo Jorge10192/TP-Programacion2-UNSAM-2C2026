@@ -4,11 +4,13 @@ on:
   push:
     paths:
       - 'plataforma-pyme/backend/**'
+      - 'plataforma-pyme/render.yaml'
       - 'plataforma-pyme/compose.yaml'
       - '.github/workflows/plataforma-pyme-backend.yml'
   pull_request:
     paths:
       - 'plataforma-pyme/backend/**'
+      - 'plataforma-pyme/render.yaml'
       - 'plataforma-pyme/compose.yaml'
       - '.github/workflows/plataforma-pyme-backend.yml'
 
