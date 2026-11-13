@@ -320,6 +320,10 @@ class MpOfficialService:
                     result=self.order_view(existing)
                     self.db.rollback()
                     return result
+                # MP declara ventana de idempotencia de 24 horas. Fuera de ella
+                # no repetir un POST que pudo procesarse; revisión manual segura.
+                if existing.created_at + timedelta(hours=23) <= now_utc():
+                    raise MpConflict()
                 # El usuario decide explícitamente repetir misma orden con misma clave.
                 record=existing
             else:
