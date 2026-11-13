@@ -254,7 +254,16 @@ class MpOfficialService:
         # Punto exacto de reintento: siempre mismo QR, request_id y payload.
         try:
             config()
-            source=self._validate_source(actor,session,business,source_id)
+            member=self.authorize(actor,session,business,manager=False)
+            source=self.qr._lookup_by_id(business,source_id,lock=True)
+            if source is None or (
+                member.role not in MANAGERS and source.created_by_id != actor
+            ):
+                raise MpMissing()
+            if source.provider!="MOCK_QA" or request_id!=source.request_id:
+                raise MpConflict()
+            # Replays de una orden ya creada son posibles aun si el QR original
+            # venció: JAMÁS inventar otra clave ni otra external_reference.
             existing=self.db.scalar(select(MercadoPagoTestOrder).where(
                 MercadoPagoTestOrder.business_id == business,
                 MercadoPagoTestOrder.source_intent_id == source_id,
@@ -272,6 +281,8 @@ class MpOfficialService:
                 # El usuario decide explícitamente repetir misma orden con misma clave.
                 record=existing
             else:
+                if source.status!="ESPERANDO_PAGO" or source.expires_at<=now_utc():
+                    raise MpConflict()
                 acc=self.account(business)
                 if acc is None or acc.status!="ACTIVA" or not acc.external_pos_id:
                     raise MpMissing()
