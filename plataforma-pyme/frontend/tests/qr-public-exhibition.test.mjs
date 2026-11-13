@@ -6,6 +6,7 @@ const read = path => readFileSync(new URL(path, import.meta.url), 'utf8')
 const pos = read('../src/features/sales/RealPosCheckout.tsx')
 const qr = read('../src/features/payments/RealQrIntentPage.tsx')
 const connections = read('../src/features/payments/RealPaymentConnectionsPage.tsx')
+const history = read('../src/features/payments/RealQrHistoryPage.tsx')
 const docker = read('../../Dockerfile.public')
 
 test('QR público tiene etiqueta inequívoca NO PAGABLE y botón para exhibir', () => {
@@ -14,6 +15,8 @@ test('QR público tiene etiqueta inequívoca NO PAGABLE y botón para exhibir', 
   assert.match(qr, /EXHIBICIÓN · NO PAGABLE/)
   assert.match(qr, /sin proveedor financiero/)
   assert.match(qr, /no genera órdenes/i)
+  assert.match(history, /Exhibiciones QR/)
+  assert.match(history, /sin pago ni venta/)
 })
 
 test('La ruta pública no consulta ni exige conexión con Mercado Pago', () => {
