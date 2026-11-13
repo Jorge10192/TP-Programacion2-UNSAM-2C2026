@@ -3,7 +3,7 @@
 All integration tests run inside a rollback transaction on the CI QA DB.
 """
 import os
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import func, select
@@ -174,7 +174,7 @@ def test_exhibition_charge_reduces_physical_stock_once(isolated, monkeypatch):
     )
     assert product.status_code == 201, product.text
     item_id = product.json()["id"]
-    seed_balance(db, company, site, item_id, milli=3000)
+    seed_balance(db, UUID(company), site, UUID(item_id), milli=3000)
     qr = client.post(
         f"/api/v1/businesses/{company}/qr-payment-intents",
         headers={**owner, "Idempotency-Key": str(uuid4())},
@@ -223,7 +223,7 @@ def test_failed_stock_charge_rolls_back_simulated_approval(isolated, monkeypatch
     )
     assert product.status_code == 201, product.text
     item_id = product.json()["id"]
-    seed_balance(db, company, site, item_id, milli=1000)
+    seed_balance(db, UUID(company), site, UUID(item_id), milli=1000)
     qr = client.post(
         f"/api/v1/businesses/{company}/qr-payment-intents",
         headers={**owner, "Idempotency-Key": str(uuid4())},
