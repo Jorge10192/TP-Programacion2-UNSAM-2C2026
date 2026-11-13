@@ -147,11 +147,11 @@ class MpSharedQaService:
                 QrPaymentEvent.action.in_(("APROBAR","RECHAZAR","EXPIRAR","INDETERMINAR","FINALIZAR")),
             ).limit(1)) is not None:
                 raise MpConflict()
-            gate = self._gate()
             existing = self.db.scalar(select(MpSharedQaOrder).where(
                 MpSharedQaOrder.business_id == business,
                 MpSharedQaOrder.source_intent_id == source_id,
             ).with_for_update().execution_options(populate_existing=True))
+            gate = self._gate()
             if existing:
                 if existing.request_id != request_id or existing.created_by_id != actor:
                     raise MpConflict()
@@ -196,8 +196,8 @@ class MpSharedQaService:
                 amount_cents=record.total_cents, merchant_id=MERCHANT_ID,
                 pos_id=EXTERNAL_POS_ID, mode="static",
             )
-            gate = self._gate()
             record = self._order(business, record.id, lock=True)
+            gate = self._gate()
             if gate.active_order_id != record.id:
                 raise MpIntegrityError()
             record.provider_order_id=payload["id"]
@@ -283,8 +283,8 @@ class MpSharedQaService:
             )
             if status!="canceled":
                 raise MpIntegrityError()
-            gate=self._gate()
             row=self._order(business,order_id,lock=True)
+            gate=self._gate()
             if gate.active_order_id == row.id:
                 gate.active_order_id=None
             row.status="CANCELADA"
