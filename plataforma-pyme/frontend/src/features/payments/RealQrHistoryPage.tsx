@@ -5,6 +5,8 @@ import type { QrIntentSummary } from './qrIntentGateway.ts'
 import { qrStatusPresentation } from './qrUx.ts'
 import './realQrHistory.css'
 
+const EXHIBITION_UI = import.meta.env.VITE_PYME_QR_EXHIBITION === '1'
+
 type Props = {
   token: string
   businessId: string
@@ -39,35 +41,35 @@ export function RealQrHistoryPage({ token, businessId, onNavigate, onUnauthorize
     return ()=>ctrl.abort()
   },[api,page,refreshKey,onUnauthorized])
 
-  return <section className="e3-qr-history-page" aria-label="Cobros QR de la empresa">
+  return <section className="e3-qr-history-page" aria-label={EXHIBITION_UI ? "Exhibiciones QR de la empresa" : "Cobros QR de la empresa"}>
     <header className="e3-qr-history-head">
       <div>
-        <span className="e3-qr-history-eyebrow">Operaciones · Mercado Pago DEMO</span>
-        <h1>Cobros QR</h1>
-        <p>Consultá intentos guardados en PostgreSQL, su estado y sus comprobantes de prueba. Los permisos se aplican desde la API de tu empresa.</p>
+        <span className="e3-qr-history-eyebrow">{EXHIBITION_UI ? 'Operaciones · QR no pagable' : 'Operaciones · Mercado Pago DEMO'}</span>
+        <h1>{EXHIBITION_UI ? 'Exhibiciones QR' : 'Cobros QR'}</h1>
+        <p>{EXHIBITION_UI ? 'Consultá las referencias de exhibición guardadas en PostgreSQL. No son cobros ni ventas. Los permisos se aplican por empresa y usuario.' : 'Consultá intentos guardados en PostgreSQL, su estado y sus comprobantes de prueba. Los permisos se aplican desde la API de tu empresa.'}</p>
       </div>
       <div className="e3-qr-history-actions">
         <button type="button" className="real-auth-primary"
-          onClick={()=>onNavigate(base+'/pos')}>Nueva venta en POS</button>
+          onClick={()=>onNavigate(base+'/pos')}>{EXHIBITION_UI ? 'Nueva exhibición desde el POS' : 'Nueva venta en POS'}</button>
         <button type="button" className="real-auth-secondary"
           onClick={()=>onNavigate(base+'/medios-de-cobro')}>Medios de cobro</button>
       </div>
     </header>
     <p className="e3-qr-history-disclaimer" role="note">
-      <strong>Modo DEMO.</strong> Estos QR no permiten pagar ni acreditar dinero real. Un estado «Aprobado» solo refleja el laboratorio; la venta QA se confirma por separado.
+      {EXHIBITION_UI ? <><strong>EXHIBICIÓN NO PAGABLE.</strong> Estos códigos no generan órdenes de Mercado Pago, ni acreditaciones, ni ventas, ni movimientos de stock.</> : <><strong>Modo DEMO.</strong> Estos QR no permiten pagar ni acreditar dinero real. Un estado «Aprobado» solo refleja el laboratorio; la venta QA se confirma por separado.</>}
     </p>
     <div className="e3-qr-history-toolbar">
-      <h2>Historial de intentos</h2>
+      <h2>{EXHIBITION_UI ? 'Historial de exhibiciones' : 'Historial de intentos'}</h2>
       <button type="button" className="real-auth-secondary"
         disabled={loading} onClick={()=>setRefreshKey(x=>x+1)}>Actualizar listado</button>
     </div>
-    {loading && <p role="status">Consultando cobros QR…</p>}
+    {loading && <p role="status">{EXHIBITION_UI ? 'Consultando exhibiciones…' : 'Consultando cobros QR…'}</p>}
     {error && <div className="real-auth-message real-auth-error" role="alert">
       {error}
       <button type="button" className="real-auth-secondary" onClick={()=>setRefreshKey(x=>x+1)}>Reintentar consulta</button>
     </div>}
     {!loading && !error && rows.length===0 && <div className="e3-qr-history-empty">
-      <strong>{page===0?'Todavía no hay cobros QR registrados':'No hay más resultados en esta página'}</strong>
+      <strong>{page===0?(EXHIBITION_UI ? 'Todavía no hay exhibiciones' : 'Todavía no hay cobros QR registrados'):'No hay más resultados en esta página'}</strong>
       <p>{page===0?'Generá un QR desde el punto de venta. Lo verás aquí incluso después de recargar la sesión.':'Volvé a la página anterior para continuar la consulta.'}</p>
       <button type="button" className="real-auth-secondary"
         onClick={()=>page===0?onNavigate(base+'/pos'):setPage(p=>p-1)}>
@@ -75,7 +77,7 @@ export function RealQrHistoryPage({ token, businessId, onNavigate, onUnauthorize
       </button>
     </div>}
     {!loading && !error && rows.length>0 &&
-      <div className="e3-qr-history-list" aria-label="Lista de cobros QR DEMO">
+      <div className="e3-qr-history-list" aria-label={EXHIBITION_UI ? "Lista de exhibiciones no pagables" : "Lista de cobros QR DEMO"}>
         {rows.map(qr=>{
           const state=qrStatusPresentation(qr.status)
           return <article key={qr.id} className="e3-qr-history-card">
@@ -87,10 +89,10 @@ export function RealQrHistoryPage({ token, businessId, onNavigate, onUnauthorize
               <div className="e3-qr-history-info">
                 <strong className="e3-qr-history-amount">{pesos(qr.total_cents)}</strong>
                 <span className="e3-qr-history-reference">{qr.reference}</span>
-                <span className="e3-qr-history-description">{state.description}</span>
+                <span className="e3-qr-history-description">{EXHIBITION_UI ? 'Referencia ficticia, sin pago ni venta' : state.description}</span>
               </div>
               <div className="e3-qr-history-side">
-                <span className={'e3-qr-state-pill e3-qr-tone-'+state.tone}>{state.title}</span>
+                <span className={'e3-qr-state-pill e3-qr-tone-'+state.tone}>{EXHIBITION_UI ? (qr.status === 'CANCELADA' ? 'Exhibición cerrada' : qr.status === 'EXPIRADA' ? 'Exhibición vencida' : 'Exhibición') : state.title}</span>
                 {qr.sale_id&&<small className="e3-qr-history-linked">Comprobante QA asociado</small>}
                 <button type="button" className="real-auth-secondary"
                   onClick={()=>onNavigate(base+'/qr-cobros/'+qr.id)}>
@@ -101,7 +103,7 @@ export function RealQrHistoryPage({ token, businessId, onNavigate, onUnauthorize
           </article>
         })}
       </div>}
-    <nav className="e3-qr-history-pagination" aria-label="Paginación de cobros QR">
+    <nav className="e3-qr-history-pagination" aria-label={EXHIBITION_UI ? "Paginación de exhibiciones QR" : "Paginación de cobros QR"}>
       <button type="button" className="real-auth-secondary"
         disabled={loading || page===0} onClick={()=>setPage(p=>p-1)}>Anterior</button>
       <span aria-live="polite">Página {page+1}</span>
