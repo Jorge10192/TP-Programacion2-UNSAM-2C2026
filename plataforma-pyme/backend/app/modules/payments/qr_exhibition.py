@@ -19,8 +19,18 @@ def exhibition_enabled() -> bool:
     return os.environ.get("PYME_QR_EXHIBITION_ENABLED") == "1"
 
 
+def exhibition_decisions_enabled() -> bool:
+    """The only public simulation capability; no external payment provider."""
+    return (
+        exhibition_enabled()
+        and os.environ.get("PYME_QR_EXHIBITION_DECISIONS_ENABLED") == "1"
+    )
+
+
 def validate_exhibition_environment() -> None:
     """Fail closed if demo exhibition could reach provider/simulate settlement."""
+    if os.environ.get("PYME_QR_EXHIBITION_DECISIONS_ENABLED") == "1" and not exhibition_enabled():
+        raise RuntimeError("Simulacion QR requiere modo exhibicion")
     if exhibition_enabled():
         conflicting = [key for key in _INCOMPATIBLE_FLAGS if os.environ.get(key) == "1"]
         if conflicting:
