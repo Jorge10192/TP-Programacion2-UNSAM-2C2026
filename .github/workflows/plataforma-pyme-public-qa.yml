@@ -1,0 +1,46 @@
+name: Plataforma PyME · Public QA Docker
+
+on:
+  push:
+    paths:
+      - "plataforma-pyme/Dockerfile.public"
+      - "plataforma-pyme/.dockerignore"
+      - "plataforma-pyme/frontend/**"
+      - "plataforma-pyme/backend/app/web_spa.py"
+      - "plataforma-pyme/backend/app/main.py"
+      - "render.yaml"
+      - ".github/workflows/plataforma-pyme-public-qa.yml"
+  pull_request:
+    paths:
+      - "plataforma-pyme/Dockerfile.public"
+      - "plataforma-pyme/.dockerignore"
+      - "plataforma-pyme/frontend/**"
+      - "plataforma-pyme/backend/app/web_spa.py"
+      - "plataforma-pyme/backend/app/main.py"
+      - "render.yaml"
+      - ".github/workflows/plataforma-pyme-public-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web-docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build single-origin React + FastAPI Docker image
+        run: docker build -f plataforma-pyme/Dockerfile.public -t pyme-public-qa:ci plataforma-pyme
+      - name: Verify static SPA and API routes without database secrets
+        run: |
+          docker run --rm --entrypoint python pyme-public-qa:ci -c "
+          from fastapi.testclient import TestClient
+          from app.main import app
+          c=TestClient(app)
+          assert c.get('/real/login').status_code == 200
+          assert c.get('/').status_code == 200
+          assert c.get('/api/v1/path-that-does-not-exist').status_code == 404
+          assert c.get('/assets/does-not-exist.js').status_code == 404
+          assert c.get('/health').status_code == 200
+          print('SPA+API built and routed correctly')
+          "
