@@ -243,7 +243,7 @@ def validate_order(payload: dict, *, order_id: str | None,
         # Un 'processed' sin transacción status_detail='accredited', o con
         # reembolso parcial, nunca habilita el registro comercial.
         if status == "processed" and (
-            detail != "accredited" or not tx
+            detail not in ("accredited", "processed") or not tx
             or tx[0].get("status") != "processed"
             or tx[0].get("status_detail") != "accredited"
         ):
