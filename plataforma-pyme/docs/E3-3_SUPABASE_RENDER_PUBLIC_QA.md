@@ -14,7 +14,8 @@
 1. Entrar a https://supabase.com/dashboard y crear proyecto **nuevo** llamado `plataforma-pyme-qa-public` (el nombre es sugerido). Elegir región próxima a Render Virginia si está disponible y una contraseña de base fuerte que se guarde **fuera del repositorio y del chat**.
 2. En **Connect** elegir **Session pooler**, modo sesión, **puerto 5432**, para servidor Render IPv4. No copiar la conexión directa IPv6 de `db.<ref>.supabase.co`, ni Transaction pooler 6543. Ver docs oficiales: https://supabase.com/docs/guides/database/connecting-to-postgres.
 3. De esa pantalla obtener exactamente **HOST**, **USER** (normalmente `postgres.<project-ref>`), **PORT=5432**, **DATABASE=postgres**, y la contraseña privada que eligió el propietario. El host del pooler no se infiere: copiarlo.
-4. No pegar la URL completa con la contraseña en tickets, capturas ni ChatGPT. Solo compartir confirmación de proyecto creado, región y, si es necesario, host sin credenciales.
+4. **Seguridad obligatoria ANTES de crear tablas**: en el dashboard de Supabase abrir **Data API → Integrations / Data API Settings** y desactivar **Enable Data API**. Este sistema NO usa `supabase-js`, REST ni GraphQL; todas las consultas pasan por FastAPI. Dejar el Data API habilitado podría exponer tablas del esquema `public` sin RLS, dependiendo de los grants del proyecto. Revisar además el ajuste **Automatically expose new tables** y mantenerlo desactivado. La conexión PostgreSQL directa/pooler seguirá funcionando. Documentación: https://supabase.com/docs/guides/api/securing-your-api.
+5. No pegar la URL completa con la contraseña en tickets, capturas ni ChatGPT. Solo compartir confirmación de proyecto creado, región y, si es necesario, host sin credenciales.
 
 ## 2. Crear un Render Blueprint después del merge aprobado
 1. Entrar a https://dashboard.render.com, conectar el repo `Jorge10192/TP-Programacion2-UNSAM-2C2026` y crear un Blueprint desde `render.yaml` (en la raíz del repo), **solo cuando esté en main**.
@@ -39,6 +40,7 @@
 - Render Free puede suspender el proceso tras inactividad y demorar el primer ingreso; está destinado a pruebas y no ofrece disponibilidad comercial.
 - Supabase Free tiene límites de almacenamiento, tráfico, conexiones y posible pausado por inactividad; supervisar ambos paneles.
 - Las llamadas al backend usan la misma URL HTTPS que la página. No publicar claves de base ni Access Tokens MP en variables `VITE_*`.
+- **Bloqueo de salida**: no desplegar antes de verificar que el **Data API de Supabase esté desactivado**, para que las tablas de PostgreSQL del backend no sean consultables fuera de FastAPI.
 - No se realiza migración de datos locales; el Supabase nuevo empieza vacío. Mantener intacta `asistente_pyme` y la base Docker QA local `asistente_pyme_mp_b7_20261113_013813`.
 - Sin pruebas públicas de dos usuarios, **no** declarar publicación funcional ni merge de producción.
 
