@@ -84,6 +84,8 @@ export function RealPosCheckout({
   const [qrUnknown, setQrUnknown] = useState(false)
   const [qrBusy, setQrBusy] = useState(false)
   const qrAttempt = useRef<QrPending | null>(null)
+  const qrNavigateRef = useRef(onNavigate)
+  useEffect(() => { qrNavigateRef.current = onNavigate }, [onNavigate])
   const qrScope = useMemo(() => qrPendingScope(userId, businessId), [userId,businessId])
   const [qrRecoveryChecked, setQrRecoveryChecked] = useState(false)
   const [stage, setStage] = useState<Stage>('checking')
@@ -148,7 +150,7 @@ export function RealPosCheckout({
           setQrUnknown(false)
           onDraftLock(Boolean(row))
           setStage(row ? 'pending' : 'editing')
-          onNavigate('/real/empresas/' + businessId + '/qr-cobros/' + existing.id)
+          qrNavigateRef.current('/real/empresas/' + businessId + '/qr-cobros/' + existing.id)
           return
         } catch (error) {
           if (error instanceof ApiHttpError && error.status === 404) {
@@ -181,7 +183,7 @@ export function RealPosCheckout({
       onDraftLock(true)
     })
     return () => { mounted = false }
-  }, [coordinator, onDraftLock, qrScope, qrApi, onNavigate, businessId])
+  }, [coordinator, onDraftLock, qrScope, qrApi, businessId])
 
   const changePayment = (i: number, changes: Partial<PosPaymentDraft>) => {
     setPaymentModified(true)
