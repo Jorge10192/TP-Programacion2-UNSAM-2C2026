@@ -83,6 +83,12 @@ class QrSimulateRequest(BaseModel):
     action: Literal["APROBAR", "RECHAZAR", "EXPIRAR", "INDETERMINAR"]
 
 
+class QrExhibitionDecisionRequest(BaseModel):
+    """Only simulated QR states, never a payment or a sale."""
+    model_config = ConfigDict(extra="forbid")
+    action: Literal["APROBAR", "RECHAZAR"]
+
+
 class QrPaymentEventView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
