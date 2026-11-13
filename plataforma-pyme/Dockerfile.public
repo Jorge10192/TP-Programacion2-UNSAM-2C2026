@@ -1,0 +1,28 @@
+# Deployment web: one HTTPS origin serves React and FastAPI.
+# This file is separate from backend/Dockerfile used by the local Compose stack.
+FROM node:24-alpine AS ui
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+# A build-time Vite flag: enable normal POS mutations, NOT QR simulations.
+ENV VITE_PYME_ENABLE_REAL_SALES=1 \
+    VITE_PYME_ENABLE_QR_DEMO_LAB=0 \
+    VITE_PYME_ENABLE_QR_FINALIZATION_QA=0
+RUN npm run build
+
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+WORKDIR /app
+COPY backend/ /app/
+RUN python -m pip install --no-cache-dir .
+COPY --from=ui /frontend/dist /app/site
+USER 10001:10001
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "from urllib.request import urlopen; exit(0 if urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"
+# Single-instance QA: initialize/update this EMPTY Supabase database before serving.
+# Alembic upgrade is idempotent on cold restarts.
+CMD ["sh", "-c", "python -m alembic upgrade head && exec python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

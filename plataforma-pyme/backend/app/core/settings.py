@@ -3,6 +3,7 @@
 No requiere un .env para importar la API: se lee al solicitar DB.
 """
 from functools import lru_cache
+from typing import Literal
 from pathlib import Path
 
 from pydantic import Field, SecretStr
@@ -32,6 +33,9 @@ class DatabaseSettings(BaseSettings):
     )
     db_user: str = Field(default="pyme", validation_alias="DB_USER")
     db_name: str = Field(default="asistente_pyme", validation_alias="DB_NAME")
+    db_sslmode: Literal["require", "verify-ca", "verify-full"] | None = Field(
+        default=None, validation_alias="DB_SSLMODE"
+    )
 
     @property
     def database_url(self) -> URL:
@@ -43,6 +47,7 @@ class DatabaseSettings(BaseSettings):
             host=self.db_host,
             port=self.db_port or self.postgres_host_port,
             database=self.db_name,
+            query={"sslmode": self.db_sslmode} if self.db_sslmode else {},
         )
 
 
